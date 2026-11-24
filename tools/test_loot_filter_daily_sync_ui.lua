@@ -191,7 +191,10 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	assert(main.popups[1].controls.observedStack:IsEnabled())
 	sync.compareObservedStack=function(id,name,count,area,level,class)
 		assert(id=="default" and name=="Orb of Alteration" and count==5 and area==83 and level==nil and class==nil)
-		return {action="Hide",line=17,styles={}}, {action="Show",line=26,styles={MinimapIcon={"1","Cyan","Diamond"}}}
+		return {action="Hide",line=17,styles={}}, {action="Show",line=26,styles={MinimapIcon={"1","Cyan","Diamond"},
+			PlayEffect={"Blue"},SetTextColor={"255","100","50","255"},SetBorderColor={"1","2","3","255"},
+			SetBackgroundColor={"4","5","6","255"},SetFontSize={"40"},PlayAlertSound={"2","250"},
+			CustomAlertSound={"sound.ogg","100"},DisableDropSound={}}}
 	end
 	harness:click("observedStack")
 	harness:text("name","Orb of Alteration")
@@ -204,7 +207,29 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	for _, comparison in ipairs(compared.controls.details.list) do evidence[#evidence+1]=StripEscapes(comparison[1] or "") end
 	local shown=table.concat(evidence," ")
 	assert(shown:find("Hide at line 17",1,true) and shown:find("Show at line 26",1,true) and shown:find("1 Cyan Diamond",1,true),shown)
+	assert(shown:find("Beam: Blue",1,true) and shown:find("Text color (RGBA): 255 100 50 255",1,true)
+		and shown:find("Alert sound: 2 250",1,true) and shown:find("Drop sound disabled",1,true),shown)
+	local x,y=compared.controls.close:GetPos();local w,h=compared.controls.close:GetSize()
+	assert(x>=0 and y>=0 and x+w<=size[1] and y+h<=size[2],"Long comparison must keep Close on screen")
+	harness:frame()
+	local previewLabels={}
+	for _,command in ipairs(harness.commands) do if command.kind=="text" then previewLabels[StripEscapes(command.text)]=true end end
+	assert(previewLabels["Fixed baseline | Hide"] and previewLabels["Verified filter | Show"],"Preview must identify both filter outcomes")
 	if output then harness:frame():write(output.."/"..size[1].."-observed-stack-review.json") end
+	if size[1]==720 then
+		harness:click("close")
+		local warning=string.rep("Check the included filter before using this result. ",35)
+		sync.compareObservedStack=function() return {action="Unknown",reasons={warning,warning,warning}}, {action="Show",styles={}} end
+		harness:click("test")
+		local long=main.popups[1].controls
+		harness:frame()
+		local scroll=long.details.controls.scrollBar
+		assert(scroll.enabled and scroll.offsetMax>0,"Long warnings must remain scrollable")
+		scroll:SetOffset(scroll.offsetMax)
+		assert(scroll.offset>0,"Could not reach the end of the warning")
+		local cx,cy=long.close:GetPos();local cw,ch=long.close:GetSize()
+		assert(cx>=0 and cy>=0 and cx+cw<=size[1] and cy+ch<=size[2],"Long warnings pushed Close off screen")
+	end
 	sync.compareObservedStack,sync.status=originalStack,previousStatus
 	reviewFixture = nil
 	print(string.format("Native setup and diagnostics controls passed at %dx%d.", unpack(size)))
@@ -308,9 +333,11 @@ do
 	end
 	sync.compareObservedStackBatch=function(before,after,path)
 		assert(before==raw and after==raw:gsub("^Hide","Show") and path=="C:/PoE/recorded.JSON")
-		return {count=1,units=5,shown=1,hidden=0,unchanged=0,unknown=0},{
+		return {count=1,units=5,shown=1,hidden=0,unchanged=0,unknown=0,
+			byClass={{key="Stackable Currency",count=1,units=5,shown=1,hidden=0,unchanged=0,unknown=0}},
+			byArea={{key=83,count=1,units=5,shown=1,hidden=0,unchanged=0,unknown=0}}},{
 			{item={BaseType="Orb of Alteration",StackSize=5,AreaLevel=83,Class="Stackable Currency"},
-				before={action="Hide",line=1},after={action="Show",line=1,styles={}},group="shown"},
+				before={action="Hide",line=4,matches={1,4},reasons={"Included file needs review."}},after={action="Show",line=1,styles={}},group="shown"},
 		}
 	end
 	reviewUI:click("inspectStack")
@@ -318,13 +345,28 @@ do
 	assert(main.popups[1].title=="Recorded stack comparison")
 	local facts={}
 	for _, row in ipairs(main.popups[1].controls.details.list) do facts[#facts+1]=StripEscapes(row[1] or "") end
-	local summary=table.concat(facts," ")
+	local summary=table.concat(facts," "):gsub("%s+"," ")
 	assert(summary:find("1 recorded stack, 5 items in total",1,true) and summary:find("Became visible: 1",1,true))
+	assert(summary:find("they do not estimate drop rates",1,true))
+	assert(not main.popups[1].controls.choose:IsEnabled(),"Summary cannot be previewed as an item")
 	if output then reviewUI:frame():write(output.."/"..reviewWidth.."-batch-observed-stack.json") end
 	reviewUI:choose("category","Became visible")
 	local filtered=main.popups[1].controls
 	assert(filtered.count.label:find("1 result |",1,true))
 	assert(filtered.results.list[1].entry.label:find("Orb of Alteration",1,true))
+	local warning={}
+	for _,row in ipairs(filtered.details.list) do warning[#warning+1]=StripEscapes(row[1] or "") end
+	assert(table.concat(warning," "):gsub("%s+"," "):find("Included file needs review.",1,true))
+	assert(table.concat(warning," "):gsub("%s+"," "):find("Matched lines in order: 1, 4",1,true))
+	assert(filtered.choose:IsEnabled())
+	reviewUI:click("choose")
+	assert(main.popups[1].title=="Observed stack result" and main.popups[1].controls.preview)
+	reviewUI:click("close")
+	assert(main.popups[1].title=="Recorded stack comparison","Preview must return to the selected observations")
+	reviewUI:choose("category","By area level")
+	assert(main.popups[1].controls.results.list[1].entry.label=="Area level 83")
+	reviewUI:choose("category","By item class")
+	assert(main.popups[1].controls.results.list[1].entry.label=="Stackable Currency")
 	picker.Open,sync.compareObservedStackBatch=originalChoose,originalBatch
 	main.popups={};reviewFixture=nil
 	sync.setOfflinePriceDays, sync.previewOffline = save, originalPreview
