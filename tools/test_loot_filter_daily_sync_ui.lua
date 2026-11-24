@@ -308,7 +308,9 @@ do
 	end
 	sync.compareObservedStackBatch=function(before,after,path)
 		assert(before==raw and after==raw:gsub("^Hide","Show") and path=="C:/PoE/recorded.JSON")
-		return {count=1,units=5,shown=1,hidden=0,unchanged=0,unknown=0},{
+		return {count=1,units=5,shown=1,hidden=0,unchanged=0,unknown=0,
+			byClass={{key="Stackable Currency",count=1,units=5,shown=1,hidden=0,unchanged=0,unknown=0}},
+			byArea={{key=83,count=1,units=5,shown=1,hidden=0,unchanged=0,unknown=0}}},{
 			{item={BaseType="Orb of Alteration",StackSize=5,AreaLevel=83,Class="Stackable Currency"},
 				before={action="Hide",line=1},after={action="Show",line=1,styles={}},group="shown"},
 		}
@@ -320,11 +322,16 @@ do
 	for _, row in ipairs(main.popups[1].controls.details.list) do facts[#facts+1]=StripEscapes(row[1] or "") end
 	local summary=table.concat(facts," ")
 	assert(summary:find("1 recorded stack, 5 items in total",1,true) and summary:find("Became visible: 1",1,true))
+	assert(summary:find("they do not estimate drop rates",1,true))
 	if output then reviewUI:frame():write(output.."/"..reviewWidth.."-batch-observed-stack.json") end
 	reviewUI:choose("category","Became visible")
 	local filtered=main.popups[1].controls
 	assert(filtered.count.label:find("1 result |",1,true))
 	assert(filtered.results.list[1].entry.label:find("Orb of Alteration",1,true))
+	reviewUI:choose("category","By area level")
+	assert(main.popups[1].controls.results.list[1].entry.label=="Area level 83")
+	reviewUI:choose("category","By item class")
+	assert(main.popups[1].controls.results.list[1].entry.label=="Stackable Currency")
 	picker.Open,sync.compareObservedStackBatch=originalChoose,originalBatch
 	main.popups={};reviewFixture=nil
 	sync.setOfflinePriceDays, sync.previewOffline = save, originalPreview

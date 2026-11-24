@@ -75,10 +75,17 @@ do
 	local summary,rows=sync.compareObservedStackBatch(original,proposed,path)
 	assert(summary.count==4 and summary.units==15 and summary.shown==2 and summary.hidden==0
 		and summary.unchanged==1 and summary.unknown==1)
+	assert(#summary.byClass==1 and summary.byClass[1].key=="Stackable Currency" and summary.byClass[1].units==15)
+	assert(#summary.byArea==2 and summary.byArea[1].key==60 and summary.byArea[1].unchanged==1
+		and summary.byArea[2].key==83 and summary.byArea[2].shown==2 and summary.byArea[2].unknown==1)
 	assert(rows[1].before.action=="Hide" and rows[2].after.action=="Show")
 	assert(rows[4].after.missingProperties[1]=="ItemLevel")
 	local reversed=sync.compareObservedStackBatch(proposed,original,path)
 	assert(reversed.hidden==2 and reversed.shown==0)
+	assert(reversed.byArea[2].hidden==2 and reversed.byArea[2].unknown==1)
+	write(path,'['..first..',{ "BaseType":"Example Card", "Class":"Divination Cards", "StackSize":1, "AreaLevel":60 }]')
+	local grouped=sync.compareObservedStackBatch(original,proposed,path)
+	assert(#grouped.byClass==2 and grouped.byClass[1].key=="Divination Cards" and grouped.byClass[2].key=="Stackable Currency")
 	for _,invalid in ipairs({first,"[null]","[]",observations.." trailing",'['..first:gsub('"StackSize"','"WrongSize"')..']'}) do
 		write(path,invalid)
 		assert(not pcall(sync.compareObservedStackBatch,original,proposed,path))

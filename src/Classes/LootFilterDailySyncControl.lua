@@ -91,7 +91,20 @@ local function compareStackFile(compare, beforeLabel, afterLabel)
 				summary.units,summary.units==1 and "item" or "items"),
 			"Became visible: "..summary.shown, "Became hidden: "..summary.hidden,
 			"Same visibility: "..summary.unchanged, "Unresolved: "..summary.unknown,
+			"Counts describe only this file; they do not estimate drop rates.",
 		}}}
+		local function addGroups(groups,category,prefix)
+			for _,group in ipairs(groups or {}) do
+				local label=prefix..tostring(group.key)
+				entries[#entries+1]={id=category..":"..group.key,label=label,category=category,details={
+					label, string.format("%d stacks, %d items",group.count,group.units),
+					"Became visible: "..group.shown, "Became hidden: "..group.hidden,
+					"Same visibility: "..group.unchanged, "Unresolved: "..group.unknown,
+				}}
+			end
+		end
+		addGroups(summary.byClass,"By item class","")
+		addGroups(summary.byArea,"By area level","Area level ")
 		for index, row in ipairs(rows) do
 			local item = row.item
 			local label = string.format("%s | Stack %d | Area %d",item.BaseType,item.StackSize,item.AreaLevel)
