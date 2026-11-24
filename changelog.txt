@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1289][2026/11/24]
+
+* Compare rolled rare armour and weapon asking prices with sockets, quality and displayed properties.
+
 VERSION[2.69.0-ai.preview1288][2026/11/24]
 
 * Prevent duplicate daily filter sync profile IDs and repeated revision tokens.

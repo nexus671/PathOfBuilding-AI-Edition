@@ -39,6 +39,10 @@ local function showListingSample(target, league, sample)
 		string.format("%d same-base listings checked | %d matching rolls",sample.inspected,sample.matched),
 		string.format("%d matching listings with a supported asking price",sample.priced),
 	}
+	local equipment = target.listingItem.equipment
+	if equipment then
+		details[#details+1] = string.format("Matched sockets: %s | Quality: %d%%",equipment.sockets, equipment.quality)
+	end
 	local capture = sample.capture
 	if capture then
 		details[#details+1] = "Declared PC capture | "..os.date("!%Y-%m-%d %H:%M UTC",capture.capturedAt)
