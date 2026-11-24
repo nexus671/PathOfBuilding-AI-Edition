@@ -260,7 +260,18 @@ function M.EditSample(item,save,focusKey)
 		end;save(nextItem);main:ClosePopup()
 	end) end)
 	button(c,"moreSample",168,h-48,160,"More properties",function() M.EditAdditionalSample(extra,function(value) extra=value end) end)
-	button(c,"cancel",w-156,h-48,140,"Cancel",function() main:ClosePopup() end);ui.style(c,{useSample=true});main:OpenPopup(w,h,"Test a drop",c,nil,c[focusKey or ""] and focusKey or "BaseType","cancel")
+	button(c,"cancel",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
+	if h<520 or w<760 then
+		c.page=new("DropDownControl"):DropDownControl(ui.anchor,{16,20,160,26},{"Item","Properties"})
+		ui.tabs(c,c.page,{{"pageItem","Item","Item"},{"pageProperties","Properties","Properties"}},16,20,w-32)
+		for i,key in ipairs(fields) do
+			local name=i<=16 and "Item" or "Properties";local slot=(i-1)%16;local x=16+(slot%columns)*fieldWidth;local y=60+math.floor(slot/columns)*60
+			local label,control=c[key.."Label"],c[key];label.x=x;label.y=y;label.label=ui.fit(key:gsub("(%l)(%u)","%1 %2"),fieldWidth-32,14);control.x=x;control.y=y+18
+			label.shown=function() return c.page:GetSelValue()==name end;control.shown=label.shown
+			if key==focusKey then c.page:SelByValue(name) end
+		end
+	end
+	ui.style(c,{useSample=true});main:OpenPopup(w,h,"Test a drop",c,nil,c[focusKey or ""] and focusKey or "BaseType","cancel")
 	for _,key in ipairs(additionalSampleFields()) do if key==focusKey then M.EditAdditionalSample(extra,function(value) extra=value end,key);break end end
 end
 function M.Export(profile,raw,report)

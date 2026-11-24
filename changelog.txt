@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1245][2026/11/23]
+
+* Keep campaign pickups, filter rules, drop testing and styling usable in smaller windows.
+
 VERSION[2.68.1-ai.preview1244][2026/11/23]
 
 * Use bundled raw precision for matching mana and percentage regeneration modifier rolls.
