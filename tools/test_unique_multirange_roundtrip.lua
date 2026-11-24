@@ -41,4 +41,28 @@ for index,option in ipairs(before) do
 		'Saving and reopening changed a Divine modifier roll')
 end
 assert(unique.divineOptions(unique.divine(reopened,12345).itemText), 'Reopened item could not be crafted again')
+local ui=require('Modules.HeadlessUI').install({width=960,height=640})
+ui:bind(build)
+require('Classes.CraftingUniqueQualityControl').Open(build,build.savers.CraftingProjects.projects[1])
+ui:click('divine')
+local controls=main.popups[1].controls
+local selected={}
+for index,option in ipairs(after) do
+	if option.line==multi and option.component<=2 then selected[option.component]={index=index,option=option} end
+end
+assert(selected[1] and selected[2], 'Independent target choices are missing')
+controls.stat:SelByValue('modifier:'..selected[1].index,'val')
+ui:text('target',tostring(selected[1].option.max))
+ui:click('addGoal')
+controls.stat:SelByValue('modifier:'..selected[2].index,'val')
+ui:text('target',tostring(selected[2].option.max))
+ui:click('plan')
+local goals=assert(build.savers.CraftingProjects.projects[1].nativeRecipe).requirements.uniqueModifiers
+assert(goals and #goals==2 and goals[1].component==1 and goals[2].component==2, 'Independent target conditions were not saved')
+local xmlWithGoals=build:SaveDB('Independent roll targets')
+loadBuildFromXML(xmlWithGoals,'Independent roll targets')
+local saved=build.savers.CraftingProjects.projects[1]
+assert(saved.nativeRecipe.requirements.uniqueModifiers[2].component==2, 'Reopening lost the second roll target')
+assert(type(unique.matches(saved.startingItem,saved.nativeRecipe.requirements))=='boolean', 'Saved roll targets could not be evaluated')
+ui:restore()
 print('UNIQUE_MULTIRANGE_ROUNDTRIP_OK')
