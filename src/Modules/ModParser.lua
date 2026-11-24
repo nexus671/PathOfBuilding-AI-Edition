@@ -2065,6 +2065,9 @@ for _, id in ipairs(skillIds) do
 end
 local function grantedExtraSkill(name, level, noSupports)
 	name = name:gsub(" skill","")
+	-- Greater Chimeral Eye displays level 20 but grants the level-1 skill:
+	-- https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10558
+	if name == "petrification statue" then level = 1 end
 	if gemIdLookup[name] then
 		return {
 			mod("ExtraSkill", "LIST", { skillId = gemIdLookup[name], level = tonumber(level), noSupports = noSupports })

@@ -16959,8 +16959,7 @@ c["Grants Level 1 Blood Sacrament"]={{[1]={flags=0,keywordFlags=0,name="ExtraSki
 c["Grants Level 1 Detonate Mines"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=1,skillId="GemDetonateMines"}}},nil}
 c["Grants Level 1 Icestorm"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=1,skillId="Icestorm"}}},nil}
 c["Grants Level 1 Lightning Warp Skill"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=1,skillId="LightningWarp"}}},nil}
-c["Grants Level 1 Petrification Statue"]={nil,nil}
-c["Grants Level 1 Petrification Statue 250% increased Energy Shield"]={nil,nil}
+c["Grants Level 1 Petrification Statue"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=1,skillId="SummonPetrificationStatue"}}},nil}
 c["Grants Level 10 Elemental Weakness"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=10,skillId="ElementalWeakness"}}},nil}
 c["Grants Level 10 Enduring Cry"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=10,skillId="EnduringCry"}}},nil}
 c["Grants Level 10 Frostblink"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=10,skillId="Frostblink"}}},nil}
@@ -16988,7 +16987,7 @@ c["Grants Level 20 Illusory Warp"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkil
 c["Grants Level 20 Misty Reflection"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=20,skillId="MistyReflection"}}},nil}
 c["Grants Level 20 Pacify"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=20,skillId="Pacify"}}},nil}
 c["Grants Level 20 Penance Mark"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=20,skillId="PenanceMark"}}},nil}
-c["Grants Level 20 Petrification Statue"]={nil,nil}
+c["Grants Level 20 Petrification Statue"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=1,skillId="SummonPetrificationStatue"}}},nil}
 c["Grants Level 20 Queen's Demand"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=20,skillId="QueensDemand"}}},nil}
 c["Grants Level 20 Ravenous"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=20,skillId="Ravenous"}}},nil}
 c["Grants Level 20 Savage Barnacle"]={{[1]={flags=0,keywordFlags=0,name="ExtraSkill",type="LIST",value={level=20,skillId="BarnacleSnap"}}},nil}
@@ -20007,8 +20006,8 @@ c["Requires Class Scion Allocates Warden if you have the matching modifier on Fo
 c["Requires Class Shadow"]={nil,"Requires Class Shadow "}
 c["Requires Class Shadow Allocates Assassination Style if you have the matching modifier on Forbidden Flame"]={nil,"Requires Class Shadow Allocates Assassination Style if you have the matching modifier on Forbidden Flame "}
 c["Requires Class Shadow Allocates Assassination Style if you have the matching modifier on Forbidden Flesh"]={nil,"Requires Class Shadow Allocates Assassination Style if you have the matching modifier on Forbidden Flesh "}
-end)();(function()
 c["Requires Class Shadow Allocates Bomb Specialist if you have the matching modifier on Forbidden Flame"]={nil,"Requires Class Shadow Allocates Bomb Specialist if you have the matching modifier on Forbidden Flame "}
+end)();(function()
 c["Requires Class Shadow Allocates Bomb Specialist if you have the matching modifier on Forbidden Flesh"]={nil,"Requires Class Shadow Allocates Bomb Specialist if you have the matching modifier on Forbidden Flesh "}
 c["Requires Class Shadow Allocates Born in the Shadows if you have the matching modifier on Forbidden Flame"]={nil,"Requires Class Shadow Allocates Born in the Shadows if you have the matching modifier on Forbidden Flame "}
 c["Requires Class Shadow Allocates Born in the Shadows if you have the matching modifier on Forbidden Flesh"]={nil,"Requires Class Shadow Allocates Born in the Shadows if you have the matching modifier on Forbidden Flesh "}

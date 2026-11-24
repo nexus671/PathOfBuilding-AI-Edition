@@ -2657,6 +2657,12 @@ function buildMode:AddDisplayStatList(statList, actor, actorName)
 end
 
 function buildMode:InsertItemWarnings()
+	for _, grantedSkill in ipairs(self.calcsTab.mainEnv.grantedSkillsItems or {}) do
+		if grantedSkill.skillId == "SummonPetrificationStatue" then
+			InsertIfNew(self.controls.warnings.lines, "Petrification Statue's enemy slow and petrification are not included in calculations")
+			break
+		end
+	end
 	if self.calcsTab.mainEnv.itemWarnings.jewelLimitWarning then
 		for _, warning in ipairs(self.calcsTab.mainEnv.itemWarnings.jewelLimitWarning) do
 			InsertIfNew(self.controls.warnings.lines, "You are exceeding jewel limit with the jewel "..warning)

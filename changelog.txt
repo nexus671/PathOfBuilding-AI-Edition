@@ -1,6 +1,11 @@
-VERSION[2.69.0-ai.preview1275][2026/11/24]
+VERSION[2.69.0-ai.preview1276][2026/11/24]
 
 * Test an observed stack against a price preview before saving any changes.
+
+VERSION[2.69.0-ai.preview1275][2026/11/24]
+
+* Show Petrification Statue when granted by Gorgon's Gaze or Greater Chimeral Eye.
+* Warn that its enemy slow and petrification are not included in calculations.
 
 VERSION[2.69.0-ai.preview1274][2026/11/24]
 
