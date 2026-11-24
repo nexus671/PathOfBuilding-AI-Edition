@@ -40,6 +40,20 @@ for _,size in ipairs({{640,480},{960,640},{1024,768},{1280,720}}) do
 		assert(not controls.list:IsShown() and controls.minionNameLabel:IsShown(), 'Compact details page is incorrect')
 		assert(fits(controls.source) and fits(controls.spawnLocations) and fits(controls.minionGemLevel), 'Compact details controls leave the screen')
 		if output then ui:frame():write(output..'/'..size[1]..'-spectre-details-compact.json') end
+		ui:click('sortMonsterCheckboxShowAll')
+		local longest,wide
+		for _,id in ipairs(controls.source.list) do
+			local width=DrawStringWidth(18,'VAR BOLD',build.data.minions[id].name)
+			if not wide or width>wide then longest,wide=id,width end
+		end
+		controls.source.selValue=longest;controls.source.OnSelect()
+		ui:frame()
+		local title
+		for _,command in ipairs(ui.commands) do
+			if command.kind=='text' and command.text=='^7'..build.data.minions[longest].name then title=command end
+		end
+		assert(title and title.width<=229, 'Long Spectre name extends beyond the details header')
+		if output then ui:frame():write(output..'/'..size[1]..'-spectre-details-long-name.json') end
 		local x,y=controls.source:GetPos()
 		ui:clickAt(x+12,y+8)
 		local selected=assert(controls.source.selValue, 'Could not select a compact spectre')

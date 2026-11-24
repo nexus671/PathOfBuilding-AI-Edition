@@ -2009,7 +2009,10 @@ function buildMode:OpenSpectreLibrary()
 		SetDrawColor(0,0,0,1)
 		DrawImage(nil, xPos-76, yPos-8, 241, 34)
 		SetDrawColor(1, 1, 1)
-		DrawString(xPos + 45, yPos, "CENTER_X", 18, "VAR BOLD", self.labelText or "Monster Stats")
+		local title = self.labelText or "Monster Stats"
+		local fontSize = 18
+		while fontSize > 12 and DrawStringWidth(fontSize, "VAR BOLD", title) > 229 do fontSize = fontSize - 1 end
+		DrawString(xPos + 45, yPos, "CENTER_X", fontSize, "VAR BOLD", title)
 	end
 	controls.minionGemLevelLabel = new("LabelControl"):LabelControl({"BOTTOM", controls.minionNameLabel, "TOP"}, {24, 271, 0, 16}, "^7Gem Level:")
 	controls.minionGemLevel = new("EditControl"):EditControl({"LEFT", controls.minionGemLevelLabel, "RIGHT"}, {4, 0, 60, 20}, 20, nil, "%D", 3, function()
