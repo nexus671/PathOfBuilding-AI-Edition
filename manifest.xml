@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1259" />
+	<Version number="2.68.1-ai.preview1260" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="011022810a23fd5defdf46b5b1302850678b1794" />
+	<File name="changelog.txt" part="default" sha1="488b713606bdfed680f027c5f05e4c3204904096" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -3198,7 +3198,7 @@
 	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="6be233a8d4096745b207e4b92734f67d134e19b6" />
 	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="dd2ddec74f6771e298f352d3de9be689286714f1" />
 	<File name="Modules/LootFilterBackground.lua" part="program" sha1="2dcf95cb77c17cd9fe6ef9a4c8ca2f890ec05995" />
-	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="3d0b770d8dad428f17ebcfa7ea5f6a6ca7e6f8eb" />
+	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="c4beda6d9d5b5197aaaa53215fb86b43e4b9a61c" />
 	<File name="Classes/LootFilterManagedEconomyControl.lua" part="program" sha1="3e64c1939f98910775acfe186ec1f8e5a7481d52" />
 	<File name="Modules/LootFilterBaseRefresh.lua" part="program" sha1="5d56325487cf70b68b8fb6a679b6173c02fcbde5" />
 	<File name="Modules/LootFilterMapMarket.lua" part="program" sha1="68623991b04af30f97167fd737ae310a9d0eb52d" />

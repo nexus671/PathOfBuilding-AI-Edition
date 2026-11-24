@@ -66,7 +66,7 @@ If a sync target was edited outside PoB, **External edits** compares the live fi
 
 Select **Enable background sync** in **Daily price sync** to register a task for your Windows account. While you are signed in, Windows checks every five minutes for a due update, including when PoB is closed. PoB still uses your configured daily time, verified baseline, and protected samples. The task stays idle when sync is paused or disabled, and **Disable background sync** removes it.
 
-**Enable notifications** adds a Windows notification for a new failure or when an update changes at least five managed cutoffs. Clicking it opens PoB. Windows notification settings determine when the alert appears.
+**Enable notifications** adds a Windows notification for a new failure or when an update changes at least five managed cutoffs. PoB counts separate area rules, map tiers and variants, and gem variants. Appearance-only and quote-evidence changes leave this count unchanged. Clicking the notification opens PoB. Windows notification settings determine when the alert appears.
 
 For a one-time scheduled check from the Windows command line, launch your PoB executable with `--loot-filter-sync`. It uses the saved local settings and exits after the check. It returns exit code 1 on failure, even if Windows cannot save the failure to the sync history. The worker continues checking other due profiles and respects the daily time, pause state, and provider cooldown. For a task registered by an older version, use **Check Windows task** and **Repair task** if the action needs updating.
 

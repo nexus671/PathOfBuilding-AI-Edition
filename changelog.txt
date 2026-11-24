@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1260][2026/11/24]
+
+* Count distinct cutoff changes accurately in Windows economy notifications.
+
 VERSION[2.68.1-ai.preview1259][2026/11/24]
 
 * Add native controls for editing the maximum hidden stack size of managed commodity rules.
