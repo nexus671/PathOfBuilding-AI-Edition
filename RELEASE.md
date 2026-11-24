@@ -34,6 +34,22 @@ were created inside the extraction. It refuses an extraction with existing user
 data. Run this against the exact release candidate; it checks startup and local
 data isolation, not every feature or the updater's network behaviour.
 
+To qualify the scheduled economy worker, use a fresh extraction and a supported
+fixed baseline located outside the extraction. This optional check requires
+Python's Lupa with LuaJIT and contacts the configured market source.
+
+```powershell
+python tools/smoke_portable_windows.py <fresh-extraction-folder> --loot-filter <fixed-baseline.filter> --league Covens
+```
+
+It runs one real refresh against a copy, reports the verified feed ages and
+protected checks, and compares the filter, baseline, profile, and review after a
+same-day run. It leaves the evidence inside the extraction. The default minimum
+is 600 protected checks for the tiered test baseline. Pass `--protected-checks`
+with the expected minimum for a different supported baseline. Run the check
+during the same local calendar day and load the approved filter in the PoE
+client separately.
+
 This produces a portable package, not an installer or a published release.
 A fork-owned release process still requires separate verification. The tool does
 not sign files or upload a release.
