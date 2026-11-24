@@ -19,13 +19,14 @@ local function canonical(key,values)
 		return value
 	end
 end
-local function normalized(key,value)
+local function normalized(key,value,allowNone)
 	assert(type(value)=="string" and #value>0 and #value<=1000 and not value:find('["\r\n%z]'),"Invalid shared style value")
 	if colours[key] then
 		local rgba=appearance.fromHex(value);assert(rgba and #value==8,"Use an eight-digit RGBA colour")
 		return appearance.hex(rgba)
 	end
 	assert(sounds[key],"Unknown shared style")
+	if allowNone and value=="None" then return value end
 	if key=="PlayAlertSound" or key=="PlayAlertSoundPositional" then
 		local n=tonumber(value);assert(n and n==math.floor(n) and n>=1 and n<=16,"Choose an alert from 1 to 16");return tostring(n)
 	end
@@ -34,12 +35,13 @@ local function normalized(key,value)
 end
 function M.validate(entries)
 	assert(type(entries)=="table" and entries~=require("dkjson").null,"Invalid shared styles")
+	assert(not getmetatable(entries) or getmetatable(entries).__jsontype~="object","Expected a shared-style list")
 	local result,seen={},{}
 	for key in pairs(entries) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#entries,"Expected a dense shared-style list") end
 	for _,entry in ipairs(entries) do
 		assert(type(entry)=="table","Invalid shared style")
 		local key=entry.key;assert(colours[key] or sounds[key],"Unknown shared style")
-		local from,to=normalized(key,entry.from),normalized(key,entry.to);local id=key.."\0"..from
+		local from,to=normalized(key,entry.from),normalized(key,entry.to,true);local id=key.."\0"..from
 		assert(not seen[id],"Duplicate shared style source");seen[id]=true
 		result[#result+1]={key=key,from=from,to=to};assert(#result<=500,"Too many shared styles")
 	end
@@ -76,7 +78,7 @@ function M.apply(raw,entries)
 		local target=lookup[key.."\0"..value];if not target then return end
 		local prefix=line:match("^%s*") or "";local values={}
 		if colours[key] then for i=1,8,2 do values[#values+1]=tostring(tonumber(target:sub(i,i+1),16)) end
-		else values[1]=(key=="CustomAlertSound" or key=="CustomAlertSoundOptional") and ('"'..target..'"') or target;for i=3,#tokens do values[#values+1]=quoted[i] and ('"'..tokens[i]..'"') or tokens[i] end end
+		else values[1]=(key=="CustomAlertSound" or key=="CustomAlertSoundOptional") and target~="None" and ('"'..target..'"') or target;if target~="None" then for i=3,#tokens do values[#values+1]=quoted[i] and ('"'..tokens[i]..'"') or tokens[i] end end end
 		local suffix=comment(line);return prefix..key.." "..table.concat(values," ")..(suffix and " "..suffix or "")
 	end)
 end

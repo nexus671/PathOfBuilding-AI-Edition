@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1256][2026/11/24]
+
+* Replace shared loot-filter colours and sounds.
+
 VERSION[2.68.1-ai.preview1255][2026/11/24]
 
 * Require a value for new loot filter conditions.

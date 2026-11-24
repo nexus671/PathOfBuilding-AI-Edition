@@ -26,6 +26,8 @@ assert(result:find("SetBackgroundColor 17 34 51 68",1,true),"Background default 
 assert(result:find("PlayAlertSound 6 200 # alert",1,true),"Alert volume or comment was lost")
 assert(result:find('CustomAlertSound "C:\\sounds\\b.wav" 100',1,true),"Quoted custom sound was not preserved")
 assert(result:find('Import "other.filter"\n SetTextColor 255 0 0',1,true),"An import's contents were changed without loading it")
+local silent=shared.apply(raw,{{key="PlayAlertSound",from="2",to="None"},{key="CustomAlertSound",from="C:\\sounds\\a#1.wav",to="None"}})
+assert(silent:find("PlayAlertSound None # alert",1,true) and silent:find("CustomAlertSound None",1,true),"Muting shared sounds must remove their volume and preserve comments")
 assert(shared.apply(raw,{})==raw,"Empty mappings changed the filter")
 assert(not pcall(shared.validate,{{key="SetTextColor",from="FF0000FF",to="00FF00FF"},{key="SetTextColor",from="FF0000FF",to="FFFFFFFF"}}),"Duplicate sources were accepted")
 newBuild();local filters=require("Modules.LootFilters");local profile=filters.profile("shared","Shared styles")
@@ -50,5 +52,12 @@ for _,size in ipairs({{640,480},{960,640},{1280,720}}) do
 	require("Classes.LootFilterSharedStylesControl").Open(kept,function(value) kept=value end)
 	ui:text("search","FF0000FF");ui:click("choose");ui:click("remove");assert(#kept.sharedStyles==0,"Shared style editor did not remove the replacement")
 end
+ui:restore()
+newBuild();ui=require("Modules.HeadlessUI").install({width=1280,height=720});ui:bind(build)
+profile=filters.profile("workspace","Shared");profile.template="Show\n SetTextColor 255 0 0";build.savers.LootFilters:Upsert(profile)
+build.planningWorkspace=require("Modules.PlanningWorkspace").new(build);build.viewMode="PLANNER";build.planningWorkspace:Show("filters")
+ui:click("viewStyle");ui:click("sharedStyles");ui:text("search","FF0000FF");ui:click("choose");ui:text("target","00FF00FF");ui:click("keep")
+local function current() return build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1] end
+assert(current().sharedStyles[1].to=="00FF00FF");ui:click("undo");assert(not current().sharedStyles);ui:click("redo");assert(current().sharedStyles[1].to=="00FF00FF","Workspace undo/redo lost the replacement")
 ui:restore()
 print("FILTER_SHARED_STYLES_OK")
