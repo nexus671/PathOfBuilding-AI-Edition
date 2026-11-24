@@ -92,10 +92,10 @@ local function compareObservedStack(profileId)
 		local ok,before,after = pcall(sync.compareObservedStack,profileId,name,
 			tonumber(controls.size.buf),tonumber(controls.area.buf),level,controls.class:GetSelValueByKey("class"))
 		if not ok then main:OpenMessagePopup("Test observed stack",ui.errorText(before)); return end
-		local details = {string.format("%s × %d in area level %d",name,tonumber(controls.size.buf),tonumber(controls.area.buf))}
+		local details = {string.format("%s, stack of %d, area level %d",name,tonumber(controls.size.buf),tonumber(controls.area.buf))}
 		for _, pair in ipairs({{"Fixed baseline",before},{"Verified filter",after}}) do
 			local result = pair[2]
-			details[#details+1] = pair[1].." · "..result.action..(result.line and (" at line "..result.line) or "")
+			details[#details+1] = pair[1].." | "..result.action..(result.line and (" at line "..result.line) or "")
 			if result.action=="Unknown" then
 				local missing = require("Modules.LootFilterParser").safeMissingProperties(result.missingProperties)
 				details[#details+1] = missing and ("Needs "..table.concat(missing,", ")..".") or "A filter rule or included file could not be verified."
