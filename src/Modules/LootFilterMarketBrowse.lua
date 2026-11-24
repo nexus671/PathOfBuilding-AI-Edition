@@ -1,6 +1,7 @@
 local json = require("dkjson")
 local marketJSON = require("Modules.LootFilterMarketJSON")
 local maps = require("Modules.LootFilterMapMarket")
+local gemMarket = require("Modules.LootFilterGemMarket")
 local M = {maxBytes=12*1024*1024}
 M.categories = {
 	{ id="DivinationCard", label="Divination cards", feed="exchange" },
@@ -72,7 +73,6 @@ end
 
 function M.managedTarget(rule)
 	local market = require("Modules.LootFilterEconomy")
-	local gemMarket = require("Modules.LootFilterGemMarket")
 	local entry = market.validateManagedRules({rule})[1]
 	local category = entry.exchangeCategory
 	local target = {managed=true,name=entry.name,details={}}
@@ -397,14 +397,21 @@ function M.rows(body, category, query, target, catalogue)
 		local handled = {}
 		for _, item in ipairs(data.lines) do
 			local extended = advisoryCategories[category.id]
+			local regularFeed = category.id=="SkillGem"
 			local identity = marketName(item.detailsId) and item.detailsId or nil
-			if extended then identity=require("Modules.LootFilterEconomy").evidencePriceId(item.detailsId) end
+			if extended or regularFeed then identity=require("Modules.LootFilterEconomy").evidencePriceId(item.detailsId) end
 			local name = extended and providerText(item.name,200) or not extended and item.name
 			local base = extended and providerText(item.baseType,200) or not extended and item.baseType
 			local variant = extended and providerText(item.variant,200) or not extended and item.variant
+			local normalizedQuality, normalizedCorrupted, regularGem
+			if regularFeed then
+				local _
+				_, normalizedQuality, normalizedCorrupted, regularGem = gemMarket.variant(item)
+			end
 			local advisoryId = advisory and identity
 			local comparable = not target or (target.level and item.name==target.name and item.gemLevel==target.level
-				and item.gemQuality==target.quality or not target.level and (item.name==target.name
+				and (regularFeed and regularGem and normalizedQuality==target.quality
+					or not regularFeed and item.gemQuality==target.quality) or not target.level and (item.name==target.name
 					or (target.category=="BaseType" or target.baseTarget) and item.baseType==target.name))
 			if marketName(name) and positive(item.chaosValue) and matches(name,base,variant,identity)
 				and comparable and not (advisoryId and handled[advisoryId]) then
@@ -413,9 +420,13 @@ function M.rows(body, category, query, target, catalogue)
 				local gemLevel = positive(item.gemLevel) and item.gemLevel==math.floor(item.gemLevel) and item.gemLevel or nil
 				local gemQuality = (positive(item.gemQuality) or item.gemQuality==0)
 					and item.gemQuality==math.floor(item.gemQuality) and item.gemQuality or nil
+				if regularGem then
+					gemQuality, corrupted = normalizedQuality, normalizedCorrupted
+				end
 				local evidence = variants and identity and variants[identity]
 				local conflicting = evidence and evidence.conflicting
 				local supported = variants and identity and supportedVolume(item) and evidence and evidence.supported and not conflicting
+				if regularFeed and not regularGem then supported=false end
 				local details,complete = providerEvidence(item)
 				if extended and (item.baseType~=nil and item.baseType~="" and not base or item.variant~=nil and item.variant~="" and not variant) then complete,supported=false,false end
 				if advisoryId then handled[advisoryId] = true end
@@ -423,7 +434,7 @@ function M.rows(body, category, query, target, catalogue)
 					name=name, price=not conflicting and item.chaosValue or nil, identity=identity,
 					conflicting=conflicting, supported=supported or nil,
 					incomplete=advisory and (not identity or advisoryCategories[category.id] and not complete or gems[category.id]
-						and (not gemLevel or gemQuality==nil or corrupted==nil)) or nil,
+						and (not gemLevel or gemQuality==nil or corrupted==nil or regularFeed and not regularGem)) or nil,
 					base=type(base)=="string" and base or nil,
 					variant=type(variant)=="string" and variant or nil,
 					corrupted=corrupted,

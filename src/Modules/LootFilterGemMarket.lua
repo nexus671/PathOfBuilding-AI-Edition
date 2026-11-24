@@ -19,6 +19,25 @@ function M.key(name,level,quality,corrupted)
 	end
 end
 
+-- Current regular-gem labels encode omitted zero quality/false corruption.
+-- Infer those defaults only with an exactly agreeing canonical label; legacy
+-- unlabeled rows still need the complete explicitly typed tuple.
+function M.variant(row)
+	local quality, corrupted = row.gemQuality, row.corrupted
+	local labeled = row.variant~=nil and row.variant~=""
+	if labeled then
+		if quality==nil then quality=0 end
+		if corrupted==nil then corrupted=false end
+	end
+	local key = M.key(row.name,row.gemLevel,quality,corrupted)
+	local canonical = key and tostring(row.gemLevel)..(quality>0 and "/"..quality or "")..(corrupted and "c" or "")
+	local regular = not (row.Imbued or row.imbued or row.TransfiguredGem or row.transfiguredGem or row.transfigured)
+		and (row.baseType==nil or row.baseType=="" or row.baseType==row.name)
+	local kind = type(row.metadata)=="table" and row.metadata.gemKind
+	if kind=="transfigured" or kind=="imbued" then regular=false end
+	return key, quality, corrupted, key and regular and (not labeled or row.variant==canonical) or false
+end
+
 local allowed = {
 	Class=true,BaseType=true,GemLevel=true,Quality=true,
 	Corrupted=true,Imbued=true,TransfiguredGem=true,AreaLevel=true,
@@ -64,11 +83,11 @@ function M.quotes(body,requested)
 	assert(data and #data.lines>0,"Invalid gem market overview")
 	local ids, result = {}, {}
 	for _, row in ipairs(data.lines) do
-		local key = M.key(row.name,row.gemLevel,row.gemQuality,row.corrupted)
-		local id = text(row.detailsId) and row.detailsId
+		local key, _, _, regular = M.variant(row)
+		local id = type(row.detailsId)=="string" and #row.detailsId>=1 and #row.detailsId<=200
+			and row.detailsId:match("^[A-Za-z0-9_.%-]+$") and row.detailsId
 		local volume = positive(row.count) and positive(row.listingCount) and math.min(row.count,row.listingCount)
-		local exact = key and id and volume and positive(row.chaosValue) and (row.baseType==nil or row.baseType=="" or row.baseType==row.name)
-			and (row.variant==nil or row.variant=="")
+		local exact = regular and id and volume and positive(row.chaosValue)
 		if id then
 			local signature = exact and key.."\0"..tostring(row.chaosValue) or false
 			if ids[id]~=nil and ids[id]~=signature then signature=false end
