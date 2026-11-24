@@ -1579,6 +1579,53 @@ local function checkManagedGemPrices()
 	local reused = overview:gsub("arc%-corrupt%-19","arc-exact")
 	assert(market.quotes(reused,"SkillGem",requests)[gems.key("Arc",20,20,false)]==false)
 	assert(not pcall(market.quotes,overview.."broken","SkillGem",requests))
+	do
+		local json = require("dkjson")
+		local function row(variant,quality,corrupted)
+			return {name="Arc",detailsId="arc-canonical",gemLevel=20,gemQuality=quality,corrupted=corrupted,
+				variant=variant,chaosValue=50,count=40,listingCount=40}
+		end
+		local function quote(value)
+			local key,quality,corrupted = gems.variant(value)
+			return gems.quotes(assert(json.encode({lines={value}})),{[key or gems.key("Arc",20,0,false)]=true})[key or gems.key("Arc",20,0,false)],quality,corrupted
+		end
+		for _, value in ipairs({row("20",nil,nil),row("20c",nil,true),row("20/20",20,nil),row("20/20c",20,true)}) do
+			assert(quote(value))
+			local shown=browser.rows(assert(json.encode({lines={value}})),{id="SkillGem"},"=Arc",{name="Arc",level=20,quality=value.gemQuality or 0})[1]
+			assert(shown and shown.gemQuality==(value.gemQuality or 0) and shown.corrupted==(value.corrupted or false) and not shown.incomplete)
+		end
+		for _, value in ipairs({row(nil,nil,nil),row("20/0",0,false),row("020",0,false),row("20C",0,true),row("20/20",0,false),row("19",0,false)}) do
+			assert(not quote(value))
+		end
+		for _, field in ipairs({"Imbued","imbued","TransfiguredGem","transfiguredGem","transfigured"}) do
+			local value=row("20",nil,nil);value[field]=true;assert(quote(value)==false)
+		end
+		for _,kind in ipairs({"transfigured","imbued"}) do
+			local value=row("20",nil,nil);value.metadata={gemKind=kind};assert(quote(value)==false)
+		end
+		-- Read-only build comparisons include named transfigured gems, while
+		-- their complete typed/canonical tuples remain excluded from managed rules.
+		for _, labeled in ipairs({false,true}) do
+			local value=row(labeled and "20" or nil,0,false)
+			if labeled then value.gemQuality,value.corrupted=nil,nil end
+			value.name="Arc of Surging";value.metadata={gemKind="transfigured"};value.TransfiguredGem=true
+			local target={name=value.name,level=20,quality=0}
+			local function compared() return browser.rows(assert(json.encode({lines={value}})),{id="SkillGem"},"",target) end
+			local shown=compared()[1]
+			assert(shown and shown.gemQuality==0 and shown.corrupted==false and not shown.incomplete)
+			local key,_,_,regular,validTuple=gems.variant(value)
+			assert(validTuple and not regular and gems.quotes(assert(json.encode({lines={value}})),{[key]=true})[key]==false)
+			value.variant="20/0"
+			assert(not pcall(compared))
+			assert(browser.rows(assert(json.encode({lines={value}})),{id="SkillGem"},"=Arc of Surging")[1].incomplete)
+		end
+		local invalid=row("20",nil,nil);invalid.detailsId="bad/id";assert(quote(invalid)==false)
+		local good,bad=row("20",nil,nil),row("20/0",0,false)
+		local key=gems.key("Arc",20,0,false)
+		for _, lines in ipairs({{good,bad},{bad,good}}) do
+			assert(gems.quotes(assert(json.encode({lines=lines})),{[key]=true})[key]==false)
+		end
+	end
 	local setup = assert(loadfile("Modules/LootFilterDailySync.lua"))()
 	local id = setup.createProfile("Managed gem prices")
 	local target, baseline = dir.."/gem-target.filter",dir.."/gem-baseline.filter"
