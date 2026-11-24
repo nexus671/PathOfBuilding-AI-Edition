@@ -60,6 +60,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_atlas_refinement.lua")
     sources.append(ROOT / "tools/test_atlas_preview_details_ui.lua")
     sources.append(ROOT / "tools/test_crafting_blank_ui.lua")
+    sources.append(ROOT / "tools/test_crafting_alternative_scope.lua")
     sources.append(ROOT / "tools/test_crafting_flat_stats.lua")
     sources.append(ROOT / "tools/test_crafting_base_roll.lua")
     sources.append(ROOT / "tools/test_viscera_sort.lua")
@@ -233,6 +234,10 @@ def main():
                                 env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-blank-base-controls.log").write_text(blank_base.stdout)
     assert blank_base.returncode == 0, blank_base.stdout
+    alternative_scope = subprocess.run(lua_command + ["../tools/test_crafting_alternative_scope.lua"], cwd=ROOT / "src",
+                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-alternative-scope.log").write_text(alternative_scope.stdout)
+    assert alternative_scope.returncode == 0, alternative_scope.stdout
     base_implicit = subprocess.run(lua_command + ["../tools/test_crafting_base_implicit_ui.lua"], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-base-implicit-controls.log").write_text(base_implicit.stdout)

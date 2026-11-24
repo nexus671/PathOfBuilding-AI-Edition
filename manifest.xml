@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.69.0-ai.preview1278" />
+	<Version number="2.69.0-ai.preview1279" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="c9aa5c50f433d03af4c2db2b6df0eecaddc65ce8" />
+	<File name="changelog.txt" part="default" sha1="9a19c61872c17fad7b15eb908cf29996627c4a50" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
@@ -1619,7 +1619,7 @@
 	<File name="Classes/CraftingRecipeGraphControl.lua" part="program" sha1="a3f12c0823b83e552a19e597750352622b070aa2" />
 	<File name="Classes/CraftingRecoveryControl.lua" part="program" sha1="6bdf797c867f14c6a1b5338bfc6f6dcea18cd1f1" />
 	<File name="Classes/CraftingRogControl.lua" part="program" sha1="54ccfdd2725fa8fca63a6e4f7063fa421eff721e" />
-	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="18b7ec7831ae49dd2cf1dd0b68eeb92986c8aa39" />
+	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="947718c35dc695b8239980f35c3df00498729552" />
 	<File name="Classes/CraftingSocketControl.lua" part="program" sha1="c4672980da1ce5080a9e2abce0ac478a12751d09" />
 	<File name="Classes/CraftingStepCostsControl.lua" part="program" sha1="6659d42da2a3c970da94b16bf90e62d926305e7b" />
 	<File name="Classes/CraftingTargetControl.lua" part="program" sha1="91db1d6f43dbd1e39a0b84d09cc83d8985adf975" />

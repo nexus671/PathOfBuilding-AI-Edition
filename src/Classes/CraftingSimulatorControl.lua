@@ -494,11 +494,23 @@ function Panel.Open(build,project,layout)
 		local id=controls.target:GetSelValueByKey("val");local mod=simulator.context(model,state).byId[id]
 		targets[#targets+1]={anyOf={id},scope=require("Modules.CraftingModifiers").scope(mod)};changed();refresh()
 	end)
+	local function alternativeReason()
+		local group=targets[#targets]
+		if not group then return "Add a target group first." end
+		local id=controls.target:GetSelValueByKey("val")
+		local mod=id and simulator.context(model,state).byId[id]
+		if not mod then return "Choose an available modifier." end
+		if require("Modules.CraftingModifiers").scope(mod)~=(group.scope or "explicit") then return "Choose a modifier with the same explicit, implicit or enchantment scope." end
+		for _,existing in ipairs(group.anyOf) do if existing==id then return "This modifier is already in the target group." end end
+		if #group.anyOf>=30 then return "Use up to thirty alternatives per group." end
+	end
 	button(controls,"alternative",160,310,132,"Add alternative",function()
-		local group=assert(targets[#targets],"Add a target group first")
-		assert(#group.anyOf < 30,"Use up to thirty alternatives per group")
+		local reason=alternativeReason();assert(not reason,reason)
+		local group=targets[#targets]
 		group.anyOf[#group.anyOf+1]=controls.target:GetSelValueByKey("val");changed();refresh()
 	end)
+	controls.alternative.enabled=function() return not alternativeReason() end
+	controls.alternative.tooltipText=function() return alternativeReason() or "Add this modifier as an alternative in the last target group." end
 	button(controls,"clearTargets",304,310,128,"Clear targets",function() targets={};changed();refresh() end)
 	label(controls,"trialsLabel",16,354,"Trials / action budget per trial")
 	edit(controls,"trials",16,374,130,24,"200","Trials",5)
