@@ -57,7 +57,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Keep invalid forms editable and explain validation errors without source paths.
 - [x] Show stale dependencies after gear, craft or Atlas targets change.
 - [x] Keep linked character, crafting, filter and farming plans easy to navigate.
-- [x] Complete repeated native navigation at 960, 1024 and 1280 widths.
+- [x] Exercise navigation in the headless UI harness at 960, 1024 and 1280 widths.
 - [x] Verify save/reopen, undo, portable bundles and local MCP workflows.
 - [ ] Review final screenshots, run required CI and verify the updater manifest.
 - [ ] Verify the release candidate in the native desktop renderer without modifying the installed application or personal builds.
