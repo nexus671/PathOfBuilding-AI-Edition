@@ -167,3 +167,28 @@ test('drops a validator whose body is too old and fetches a full replacement',as
   assert.equal(refreshed.headers.get('age'),'0');
   assert.equal(cache.requests.at(-1).tag,undefined);
 });
+
+
+test('relays all documented exchange categories and rejects unknown or misrouted types',async t=>{
+  const categories = ['Currency', 'Fragment', 'Runegraft', 'AllflameEmber', 'Tattoo', 'Omen', 'DjinnCoin', 'Ducat',
+    'EnshroudingCrystal', 'DivinationCard', 'Artifact', 'Oil', 'DeliriumOrb', 'Scarab', 'Astrolabe', 'Thread', 'Fossil',
+    'Resonator', 'Essence'];
+  const cache = await fixture(t,(path,options,{ now })=>snapshot(path==='/leagues' ? leagueBody : priceBody,now));
+  for (const category of categories) {
+    const path='/exchange/current/overview?league=Covens&type='+category;
+    const response=await cache.request(path);
+    assert.equal(response.status,200,category);
+    assert.equal(await response.text(),priceBody);
+    assert.equal(cache.requests.at(-1).path,path);
+    const cached=await cache.request('/exchange/current/overview?type='+category+'&league=Covens');
+    assert.equal(cached.status,200);
+    assert.equal(await cached.text(),priceBody);
+  }
+  assert.equal(cache.requests.length,20);
+  for (const path of [
+    '/exchange/current/overview?league=Covens&type=InventedType',
+    '/exchange/current/overview?league=Covens&type=UniqueAccessory',
+    '/stash/current/item/overview?league=Covens&type=Scarab',
+  ]) assert.equal((await cache.request(path)).status,400);
+  assert.equal(cache.requests.length,20);
+});

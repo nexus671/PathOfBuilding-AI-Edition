@@ -87,3 +87,20 @@ test('does not qualify regular gems from transfigured or ambiguous names alone',
   assert.equal(report.status,'failed');
   assert.match(report.probes.at(-1).reason,/unambiguous/);
 });
+
+
+test('qualifies optional exchange feeds from the relay allowlist without repeating core feeds',async()=>{
+  const f=fixture();
+  const categories=['Runegraft','AllflameEmber','Tattoo','DjinnCoin','Ducat','EnshroudingCrystal',
+    'DivinationCard','DeliriumOrb','Scarab','Astrolabe','Fossil'];
+  const report=await qualifyCache(root,{...f,extra:[...categories,'Currency','Fossil']});
+  assert.equal(report.status,'passed');
+  assert.equal(f.requests.length,21);
+  for (const category of [...categories,'Currency']) {
+    assert.equal(f.requests.filter(name=>name===category).length,1,category);
+    assert.equal(report.probes.find(probe=>probe.name===category).priced,1,category);
+  }
+  const baseline=fixture();
+  assert.equal((await qualifyCache(root,baseline)).status,'passed');
+  assert.equal(baseline.requests.length,10);
+});

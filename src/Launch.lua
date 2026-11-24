@@ -275,11 +275,11 @@ end
 ---Download the given page in the background, and calls the provided callback function when done:
 ---@param url string
 ---@param callback fun(response:table, errMsg:string) @ response = { header, body }
----@param params? table @ params = { header, body }
+---@param params? table @ params = { header, body, timeout, maxBytes, followRedirects }
 function launch:DownloadPage(url, callback, params)
 	params = params or {}
 	local script = [[
-		local url, requestHeader, requestBody, connectionProtocol, proxyURL, noSSL, timeout, maxBytes = ...
+		local url, requestHeader, requestBody, connectionProtocol, proxyURL, noSSL, timeout, maxBytes, followRedirects = ...
 		local responseHeader = ""
 		local responseBody = ""
 		local bytes, oversized = 0, false
@@ -297,7 +297,7 @@ function launch:DownloadPage(url, callback, params)
 		easy:setopt_url(url)
 		easy:setopt(curl.OPT_USERAGENT, "Path of Building/]]..self.versionNumber..[[")
 		easy:setopt(curl.OPT_ACCEPT_ENCODING, "")
-		easy:setopt(curl.OPT_FOLLOWLOCATION, 1)
+		easy:setopt(curl.OPT_FOLLOWLOCATION, followRedirects == false and 0 or 1)
 		if timeout then
 			easy:setopt(curl.OPT_TIMEOUT, timeout)
 			easy:setopt(curl.OPT_CONNECTTIMEOUT, math.min(timeout, 10))
@@ -343,7 +343,7 @@ function launch:DownloadPage(url, callback, params)
 		ConPrintf("Download complete. Status: %s", errMsg or "OK")
 		return responseBody, errMsg, responseHeader
 	]]
-	local id = LaunchSubScript(script, "", "ConPrintf", url, params.header, params.body, self.connectionProtocol, self.proxyURL, self.noSSL or false, params.timeout, params.maxBytes)
+	local id = LaunchSubScript(script, "", "ConPrintf", url, params.header, params.body, self.connectionProtocol, self.proxyURL, self.noSSL or false, params.timeout, params.maxBytes, params.followRedirects ~= false)
 	if id then
 		self.subScripts[id] = {
 			type = "DOWNLOAD",

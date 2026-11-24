@@ -4,7 +4,9 @@ const { createServer } = require('node:http');
 const { setTimeout: delay } = require('node:timers/promises');
 
 const upstreamBase = 'https://poe.ninja/poe1/api/economy/';
-const exchange = new Set(['Currency', 'Oil', 'Omen', 'Essence', 'Thread', 'Fragment', 'Resonator', 'Artifact', 'DivinationCard']);
+const exchange = new Set(['Currency', 'Fragment', 'Runegraft', 'AllflameEmber', 'Tattoo', 'Omen', 'DjinnCoin', 'Ducat',
+  'EnshroudingCrystal', 'DivinationCard', 'Artifact', 'Oil', 'DeliriumOrb', 'Scarab', 'Astrolabe', 'Thread', 'Fossil',
+  'Resonator', 'Essence']);
 const stash = new Set(['Map', 'BlightedMap', 'BlightRavagedMap', 'UniqueWeapon', 'UniqueArmour', 'UniqueAccessory',
   'UniqueJewel', 'UniqueFlask', 'UniqueMap', 'SkillGem', 'ImbuedGem', 'BaseType']);
 const stashLimit = 12 * 1024 * 1024;
@@ -20,6 +22,12 @@ class MarketError extends Error {
   }
 }
 
+function overviewRoute(category) {
+  if (exchange.has(category)) return 'exchange/current/overview';
+  if (stash.has(category)) return 'stash/current/item/overview';
+  return null;
+}
+
 function requestKey(raw) {
   if (!raw || raw.length > 512 || !raw.startsWith('/') || raw.startsWith('//')) {
     throw new MarketError(404, 'Unknown market route');
@@ -31,7 +39,7 @@ function requestKey(raw) {
   if (!isStash && route !== 'exchange/current/overview') throw new MarketError(404, 'Unknown market route');
   const league = url.searchParams.get('league');
   const category = url.searchParams.get('type');
-  if (url.searchParams.size !== 2 || !leaguePattern.test(league || '') || !(isStash ? stash : exchange).has(category)) {
+  if (url.searchParams.size !== 2 || !leaguePattern.test(league || '') || overviewRoute(category) !== route) {
     throw new MarketError(400, 'Choose a supported item category and league');
   }
   const params = new URLSearchParams({ league, type: category });
@@ -238,4 +246,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createMarketCache, requestKey, ageSource, boundedBody, validatePayload };
+module.exports = { createMarketCache, requestKey, overviewRoute, ageSource, boundedBody, validatePayload };

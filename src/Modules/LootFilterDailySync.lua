@@ -7,6 +7,15 @@ local M = { status = "Daily sync is disabled." }
 local volumeLimit = 2 * 1024 * 1024
 local polls, nextSweep = {}, 0
 local function nowText(now) return os.date("%Y-%m-%d %H:%M", now) end
+local sourceChanged = "The price source changed. Review the current source and update this daily sync profile."
+local function sourceMatches(config)
+	return market.endpoint and (not config.marketSourceHash or config.marketSourceHash == sha(market.endpoint))
+end
+
+function M.assertPriceSource(config)
+	assert(market.endpoint, market.endpointError)
+	assert(sourceMatches(config), sourceChanged)
+end
 
 local function readWithLimit(path, limit)
 	local file = io.open(path, "rb")
@@ -314,6 +323,9 @@ function M.publicStatus(now, id)
 		providerWaitSeconds=providerWait>0 and providerWait or nil,
 		latestChanges={},
 	}
+	if output.state == "enabled" and not sourceMatches(config) then
+		output.state, output.warning = "error", sourceChanged
+	end
 	if output.state == "enabled" and type(config.lastFailure) == "table" then
 		output.state = "error"
 		output.lastFailure = config.lastFailure.checkedAt
@@ -558,6 +570,7 @@ function M.adoptExternalEdits(id, reviewed)
 end
 
 local function prepare(target, baselineFile, league, options)
+	assert(market.endpoint, market.endpointError)
 	options = options or {}
 	local targetValue = options.targetValue or 1
 	local pickupPolicy = market.pickupPolicy(targetValue, options.pickupPolicy)
@@ -587,7 +600,7 @@ local function prepare(target, baselineFile, league, options)
 	local key = sha(baseline)
 	return {
 		enabled=true, target=target, baseline=main.userPath.."LootFilterBaseline-"..key..".filter",
-		baselineHash=key, current=sha(original),
+		baselineHash=key, current=sha(original), marketSourceHash=sha(market.endpoint),
 		league=league, realm="pc", hour=hour, minute=minute, intervalDays=intervalDays, targetValue=targetValue, pickupPolicy=pickupPolicy,
 		protections=protections, protectionFile=options.protectionFile,
 	}, original, baseline
@@ -683,7 +696,7 @@ function M.configure(target, baselineFile, league, options)
 		nextConfig.backupLimit = current and current.backupLimit
 		nextConfig.offlinePriceDays = current and current.offlinePriceDays
 		if current and current.baselineHash == nextConfig.baselineHash then
-			if current.league == nextConfig.league then nextConfig.priceHistory = current.priceHistory end
+			if current.league == nextConfig.league and current.marketSourceHash == nextConfig.marketSourceHash then nextConfig.priceHistory = current.priceHistory end
 			if current.target == nextConfig.target and current.current == nextConfig.current and not current.pending then
 				nextConfig.backupRecords = backupRecords(current)
 				if nextConfig.backupLimit then nextConfig.backup, nextConfig.history = current.backup, current.history end
@@ -1014,6 +1027,7 @@ end
 local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 	return lockSettings(function()
 		local current = get(id)
+		assert(sourceMatches(config) and current and sourceMatches(current), sourceChanged)
 		assert(current and current.enabled and not current.paused and current.baselineHash == config.baselineHash and current.target == config.target
 			and current.revision == config.revision and current.league == config.league and current.targetValue == config.targetValue and current.hour == config.hour and current.minute == config.minute and current.protectionFile == config.protectionFile, "Daily sync settings changed during the refresh")
 		if not force and current.day == day then return "Already synced today." end
@@ -1023,9 +1037,11 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		local baseline = assert(read(current.baseline), "Baseline filter is missing")
 		assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
 		verifyUnmanagedRules(original, baseline)
+		local history = current.marketSourceHash == config.marketSourceHash and current.priceHistory or nil
 		local candidate, count, changes, skipped, snapshots, protectedChecks = validate(
-			baseline, bodies, false, current.targetValue, current.protections, current.priceHistory, day, now, current.pickupPolicy, confirmation)
+			baseline, bodies, false, current.targetValue, current.protections, history, day, now, current.pickupPolicy, confirmation)
 		current.priceHistory = snapshots
+		current.marketSourceHash = config.marketSourceHash or sha(market.endpoint)
 		local records = backupRecords(current)
 		keepExpected(candidate)
 		if candidate ~= original then
@@ -1090,6 +1106,7 @@ end
 
 local function fetchPrices(config, baseline, now, complete, onFailure, id)
 	local categories, gemRequests = market.feedCategories(baseline)
+	local endpoint = market.endpoint
 	local job, bodies, responses = {onFailure=onFailure,profileId=id}, {}, {}
 	M.busy, M.deadline = job, now + 300
 	local function finish(success, message)
@@ -1099,13 +1116,15 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 		if ConPrintf then ConPrintf("%s", M.status) end
 	end
 	local function diagnoseLeague(problem)
+		if market.endpoint ~= endpoint then finish(false,sourceChanged); return end
 		local time = os.time()
 		if time+15>=M.deadline or M.providerWait(time)>0 then finish(false,problem); return end
 		M.status = "Checking current PC trade league availability."
-		launch:DownloadPage(market.endpoint.."leagues",function(response,err)
+		launch:DownloadPage(endpoint.."leagues",function(response,err)
+			if M.busy ~= job then return end
+			if market.endpoint ~= endpoint then finish(false,sourceChanged); return end
 			local code = err and tonumber(err:match("^Response code: (%d+)$"))
 			M.noteProviderLimit(response,code,os.time())
-			if M.busy ~= job then return end
 			if not err then
 				local valid, _, leagues = pcall(function()
 					return market.tradeLeagues(M.fresh(response,os.time()))
@@ -1116,9 +1135,10 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 				end
 			end
 			finish(false,problem)
-		end,{timeout=15,maxBytes=65536,header="Accept: application/json"})
+		end,{followRedirects=false,timeout=15,maxBytes=65536,header="Accept: application/json"})
 	end
 	local function finishWithPrices(confirmation)
+		if market.endpoint ~= endpoint then finish(false,sourceChanged); return end
 		local finishedAt = os.time()
 		local feeds = {}
 		for index, response in ipairs(responses) do
@@ -1149,10 +1169,11 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 		end)
 	end
 	local function fetch(index, attempt)
+		if market.endpoint ~= endpoint then finish(false,sourceChanged); return end
 		local category = categories[index]
 		if not category then confirmTightening(); return end
 		M.status = "Fetching " .. config.league .. " prices: " .. category
-		local url = market.endpoint .. market.feedPath(config.league, category)
+		local url = endpoint .. market.feedPath(config.league, category)
 		local cached, time = cache[url], os.time()
 		local function defer(delay,message,callback)
 			job.resumeAt, job.resume = time+delay,callback
@@ -1172,10 +1193,11 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			cached = nil
 		end
 		launch:DownloadPage(url, function(response, err)
+			if M.busy ~= job then return end
+			if market.endpoint ~= endpoint then finish(false,sourceChanged); return end
 			time = os.time()
 			local status = err and tonumber(err:match("^Response code: (%d+)$"))
 			local providerDelay = M.noteProviderLimit(response,status,time)
-			if M.busy ~= job then return end
 			if err == "Response code: 304" and cached and time >= cached.sourceAt and time-cached.sourceAt <= 3600 then
 				local valid, age = pcall(function() return responseAge(headers(response), time, time-cached.sourceAt) end)
 				if not valid then finish(false, category .. ": " .. tostring(age)); return end
@@ -1210,7 +1232,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			storeFeed(url,{body=data,tag=tag,sourceAt=time-age,checkedAt=time})
 			bodies[index], responses[index] = data, {initialAge=age, checkedAt=time, revalidated=false}
 			fetch(index + 1, 1)
-		end, {timeout=20,maxBytes=market.maxFeedBytes(category),header=requestHeaders})
+		end, {followRedirects=false,timeout=20,maxBytes=market.maxFeedBytes(category),header=requestHeaders})
 	end
 	fetch(1, 1)
 end
@@ -1254,6 +1276,13 @@ function M.tick(now, force, scheduled, id)
 		onFailure(M.status)
 		return
 	end
+	if not sourceMatches(config) then
+		M.status = "Sync skipped: "..sourceChanged
+		onFailure(M.status)
+		return
+	end
+	-- Bind legacy profiles to this job before the first asynchronous request.
+	config.marketSourceHash = config.marketSourceHash or sha(market.endpoint)
 	if launch.noSSL then
 		M.status = "Sync skipped: enable HTTPS certificate verification in PoB."
 		onFailure(M.status)
@@ -1307,6 +1336,7 @@ function M.profileStatus(id)
 	local config = get(id)
 	if not config or not config.enabled then return "Daily sync is disabled." end
 	if config.paused then return "Daily sync is paused." end
+	if not sourceMatches(config) then return sourceChanged end
 	return config.lastFailure and failureStatus(config.lastFailure) or config.summary or enabledStatus(config)
 end
 
@@ -1321,7 +1351,7 @@ function M.preview(target, baselineFile, league, options, callback, onFailure)
 	local found, saved = pcall(get,id)
 	local savedHold = found and saved and finiteNumber(saved.providerRetryAfter)
 	assert(not savedHold or now>=savedHold,"Wait before contacting the rate-limited exchange again")
-	local history = found and saved and saved.league == config.league and saved.baselineHash == config.baselineHash and saved.priceHistory
+	local history = found and saved and saved.league == config.league and saved.baselineHash == config.baselineHash and saved.marketSourceHash == config.marketSourceHash and saved.priceHistory
 	local day = history and os.date("%Y-%m-%d", now) or nil
 	fetchPrices(config, baseline, now, function(bodies, _, confirmation)
 		local candidate = validate(baseline,bodies,false,config.targetValue,config.protections,history,day,now,config.pickupPolicy,confirmation)
