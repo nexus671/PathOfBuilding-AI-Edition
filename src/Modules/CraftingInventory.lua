@@ -20,12 +20,12 @@ function M.validate(entries)
 	end
 	return result
 end
-function M.capture(project,state,title,originNote)
-	return M.validate({{id="item-"..require("sha1")(tostring({})..os.time()):sub(1,20),title=title or project.title,slot=project.slot,baseItem=project.startingItem,at=os.time(),state=state,originNote=originNote}})[1]
+function M.capture(project,state,title,originNote,existing)
+	return M.validate({{id=require("Modules.PlanningData").newId("item-",existing or project.inventory,20),title=title or project.title,slot=project.slot,baseItem=project.startingItem,at=os.time(),state=state,originNote=originNote}})[1]
 end
-function M.project(entry)
+function M.project(entry,existing)
 	entry=M.validate({entry})[1]
-	return {id="craft-"..require("sha1")(tostring({})..os.time()):sub(1,20),title=entry.title,slot=entry.slot,startingItem=entry.baseItem,goals={},steps={},notes=entry.originNote,originNote=entry.originNote,run=M.run(entry.state)}
+	return {id=require("Modules.PlanningData").newId("craft-",existing,20),title=entry.title,slot=entry.slot,startingItem=entry.baseItem,goals={},steps={},notes=entry.originNote,originNote=entry.originNote,run=M.run(entry.state)}
 end
 local function metadataMatches(project,entry,query)
 	return (entry.title.." "..entry.slot.." "..project.title.." "..entry.baseItem.." "..(entry.originNote or "")):lower():find(query,1,true)~=nil

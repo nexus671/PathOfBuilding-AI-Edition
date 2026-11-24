@@ -123,7 +123,7 @@ function M.Open(build,options)
 	c.source.tooltipText="Read the saved item's source and assumptions."
 	ui.label(c,"count",right+144,h-78,"",13);c.count.label=function() return "^7"..ui.fit(selected and selected.project.title or #entries.." saved items",compact and w-200 or w-right-160,13) end
 	button("resume",16,h-42,260,"Resume as separate working craft",function()
-		assert(selected,"Select an item first");local project=inventory.project(selected.item);main:ClosePopup();options.resume(project)
+		assert(selected,"Select an item first");local project=inventory.project(selected.item,build.savers.CraftingProjects.projects);main:ClosePopup();options.resume(project)
 	end);c.resume.enabled=function() return selected~=nil and options.resume~=nil end
 	button("compare",292,h-42,220,"Compare with working item",function() assert(selected and options.current,"Choose a saved item and open inventory from a working craft");require("Classes.CraftingItemComparisonControl").Open(selected.item,options.current) end)
 	c.compare.enabled=function() return selected~=nil and options.current~=nil end;c.compare.tooltipText="Open the inventory from a working craft to compare its item with this saved snapshot."

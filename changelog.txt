@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1291][2026/11/24]
+
+* Prevent new crafting, Atlas and filter records from reusing saved IDs.
+
 VERSION[2.69.0-ai.preview1290][2026/11/24]
 
 * Let AI tools compare equipped or copied jewellery against a local listing snapshot.

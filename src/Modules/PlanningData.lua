@@ -2,6 +2,17 @@
 -- cspell:ignore jsontype
 local json=require("dkjson")
 local M={}
+local idSequence=0
+-- New records must never reuse an existing ID: Upsert treats it as an edit.
+function M.newId(prefix,entries,length)
+	local used={};for _,entry in ipairs(entries or {}) do used[entry.id]=true end
+	for _=1,1024 do
+		idSequence=idSequence+1
+		local id=prefix..require("sha1")(tostring({})..":"..os.time()..":"..idSequence):sub(1,length or 16)
+		if not used[id] then return id end
+	end
+	error("Unable to create a unique planning ID",0)
+end
 function M.encode(value,seen,exactNumbers)
 	if exactNumbers and type(value)=="number" and value==value and value~=math.huge and value~=-math.huge then
 		-- Seventeen significant digits round-trip an IEEE double. Keep the
