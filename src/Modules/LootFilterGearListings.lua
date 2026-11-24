@@ -16,6 +16,7 @@ local conditions = {"corrupted", "fractured", "synthesised", "split"}
 local influences = {shaper="shaper",elder="elder",adjudicator="warlord",basilisk="hunter",
 	crusader="crusader",eyrie="redeemer",cleansing="searing",tangle="tangled"}
 local currencies = {chaos=true,divine=true}
+local listingFlags = {fractured=true,crafted=true,mutated=true,desecrated=true,vestigial=true,rareonly=true}
 local knownInfluences = {}
 for _, key in pairs(influences) do knownInfluences[key]=true end
 
@@ -42,6 +43,7 @@ local function addMods(values, mods, build, enchant, legacy)
 		local flags = build and mod or mod.flags or {}
 		local text = build and mod.line or mod.description
 		if type(flags)~="table" or type(text)~="string" or #text>1200 or not text:find("%S") then return false end
+		if not build then for flag,value in pairs(flags) do if not listingFlags[flag] or value~=true then return false end end end
 		for line in text:gmatch("[^\r\n]+") do
 			local key = modKey(line,flags,enchant,legacy)
 			if not key then return false end
@@ -71,6 +73,7 @@ function M.target(item, publicBase)
 	if item.rarity~="RARE" or not item.base or item.unidentifiedMarker
 		or type(item.itemLevel)~="number" or item.itemLevel<1 or item.itemLevel>100 or item.itemLevel~=math.floor(item.itemLevel)
 		or item.variant or item.mirrored or item.twiceCorrupted or item.talismanTier or item.memoryStrands or item.intangibility
+	or item.crucible or item.vestigial
 		or (item.catalyst or 0)>0 or (item.catalystQuality or 0)>0
 		or hasEntries(item.scourgeModLines) or hasEntries(item.crucibleModLines) then return end
 	local equipment
@@ -93,9 +96,11 @@ function M.target(item, publicBase)
 end
 
 local function sameItem(item, target)
-	if item.identified~=true or item.rarity~="Rare" or item.ilvl~=target.level or item.realm~=nil
+	if item.identified~=true or item.rarity~="Rare" or item.frameType~=nil and item.frameType~=2 or item.ilvl~=target.level or item.realm~=nil
 		or item.duplicated or item.doubleCorrupted or item.memoryItem or item.mutated or item.veiled
 		or item.lockedToCharacter or item.lockedToAccount or item.enshrouded or item.unmodifiable
+		or item.vestigial or item.delve or item.foreseeing or item.scourged~=nil or item.crucible~=nil
+		or item.incubatedItem~=nil or item.builtInSupport~=nil or item.monsterLevel~=nil
 		or item.unmodifiableExceptChaos or item.stackSize and item.stackSize~=1
 		or hasEntries(item.socketedItems) or hasEntries(item.scourgeMods) or hasEntries(item.crucibleMods)
 		or hasEntries(item.veiledMods) or hasEntries(item.grantedSkills) then return false end
@@ -103,6 +108,10 @@ local function sameItem(item, target)
 		if not gearProperties.matches(item,target.equipment) then return false end
 	elseif hasEntries(item.sockets) or item.properties~=nil and (type(item.properties)~="table" or next(item.properties)) then
 		return false
+	end
+	for _,field in ipairs({"notableProperties","additionalProperties","utilityMods","ultimatumMods"}) do
+		local value=item[field]
+		if value~=nil and (type(value)~="table" or next(value)) then return false end
 	end
 	for _, key in ipairs(conditions) do
 		if (item[key]==true)~=target[key] then return false end

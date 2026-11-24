@@ -2,11 +2,13 @@
 local directory=assert(arg[1],"Supply an output directory")
 arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true
 local UI=require("Modules.HeadlessUI")
-for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
+local sizes={{1280,720},{1024,768},{960,640},{640,480}}
+for _,size in ipairs(sizes) do
 	newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build)
 	local plan={id="genesis-ui",title="Genesis UI",version="3.30.0c",budget=10,nodes={},notes=""}
 	require("Classes.AtlasPlannerControl").Open(build,plan)
-	ui:click("tools");ui:text("search","Genesis");ui:click("choose")
+	if size[1]==640 then ui:click("more");ui:text("search","Plan tools");ui:click("choose") else ui:click("tools") end
+	ui:text("search","Genesis");ui:click("choose")
 	assert(main.popups[1].title=="Genesis tree","Genesis planner did not open")
 	local c=main.popups[1].controls
 	ui:frame():write(directory.."/"..size[1].."-genesis-overview.json")
@@ -55,4 +57,4 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(reopened.version==saved.version and #reopened.nodes==#saved.nodes,"Genesis version or allocation count changed after reopening")
 	for _,id in ipairs(reopened.nodes) do assert(expected[id],"A Genesis allocation or choice changed after reopening") end
 end
-print("GENESIS_UI_OK",18)
+print("GENESIS_UI_OK",#sizes*6)

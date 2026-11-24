@@ -1394,6 +1394,30 @@ Item Level: 86
 	local function stash(id,seller,items,note)
 		return {id=string.format("%064x",id),accountName=seller,items=items,stash=note,league="Covens",public=true}
 	end
+	do
+		item.crucible=true;assert(not listings.target(item),"A target with a Crucible tree needs review");item.crucible=nil
+		item.vestigial=true;assert(not listings.target(item),"A vestigial target needs review");item.vestigial=false
+		local json=require("dkjson")
+		local cases={
+			{"crucible",{nodes={}}}, {"scourged",{tier=1}}, {"incubatedItem",{name="Test"}},
+			{"vestigial",true}, {"delve",true}, {"foreseeing",true}, {"builtInSupport","Support"}, {"monsterLevel",1},
+			{"notableProperties",{{name="Unknown",values={}}}}, {"additionalProperties",{{name="Unknown",values={}}}},
+			{"utilityMods",{"Unknown"}}, {"ultimatumMods",{{type="Unknown",tier=1}}}, {"additionalProperties","invalid"},
+		}
+		for index,case in ipairs(cases) do
+			local listed=row(100+index,"~price 1 chaos");listed[case[1]]=case[2]
+			local snapshot={next_change_id="cursor",stashes={stash(100+index,"Seller#0001",{listed})}}
+			assert(listings.compare(json.encode(snapshot),target,"Covens").matched==0,case[1].." must not be treated as an exact match")
+		end
+		for index,flags in ipairs({{unknown=true},{fractured="yes"},{crafted=false}}) do
+			local listed=row(200+index,"~price 1 chaos");listed.explicitMods[1].flags=flags
+			local snapshot={next_change_id="cursor",stashes={stash(200+index,"Seller#0001",{listed})}}
+			assert(listings.compare(json.encode(snapshot),target,"Covens").matched==0,"Unknown or invalid modifier flags need review")
+		end
+		local contradiction=row(210,"~price 1 chaos");contradiction.frameType=3
+		local snapshot={next_change_id="cursor",stashes={stash(210,"Seller#0001",{contradiction})}}
+		assert(listings.compare(json.encode(snapshot),target,"Covens").matched==0,"A contradictory item frame needs review")
+	end
 	local low, early, high = row(1,"~price 20 chaos"),row(2,"~price 10 chaos"),row(3,"~b/o 30 chaos")
 	early.explicitMods={{description="+41% to Cold Resistance\n+79 to maximum Life"}}
 	local wrongRoll, wrongLevel, wrongState, wrongChannel = row(4,"~price 1 chaos"),row(5,"~price 2 chaos"),row(6,"~price 3 chaos"),row(7,"~price 4 chaos")
@@ -1424,6 +1448,7 @@ Item Level: 86
 	assert(sample.results[1].sellers==3 and sample.results[1].low==10 and sample.results[1].median==30 and sample.results[1].high==50)
 	assert(sample.results[2].sellers==1 and sample.results[2].low==1.5 and not sample.results[2].median)
 	assert(listings.compare(encoded,target,"Hardcore").matched==0)
+	local specialCaptureRow=row(26,"~price 1 chaos");specialCaptureRow.crucible={nodes={}}
 	local capture = {format="pob-public-stash-capture-v1",realm="pc",league="Covens",capturedAt=1700000000,pages={
 		{requestCursor="start",response={next_change_id="next",stashes={
 			stash(21,"Removed#0021",{row(21,"~price 1 chaos")}),
@@ -1438,6 +1463,7 @@ Item Level: 86
 		{requestCursor="later",response={next_change_id="end",stashes={
 			stash(23,"Emptied#0023",assert(json.decode("[]"))),
 			stash(25,"Added#0025",{row(25,"~price 55 chaos")}),
+			stash(26,"Special#0026",{specialCaptureRow}),
 		}}},
 		{requestCursor="end",response={next_change_id="end",stashes=assert(json.decode("[]"))}},
 	}}
@@ -1681,11 +1707,15 @@ local function checkReviewedRolloverControls()
 	assert(main.popups[1].title=="Last sync attempt")
 	harness:click("close")
 	harness:click("chooseLeague")
+	local waitingPopup=main.popups[1]
+	harness:resize(640,480);harness:frame()
+	assert(main.popups[1]==waitingPopup,"Resize must not discard a pending league request")
 	market.endpoint=endpoint.."changed/"
 	pending(reply)
 	assert(main.popups[1].title=="Choose league" and saved=="Retired League")
 	market.endpoint=endpoint
 	harness:click("close")
+	harness:resize(960,640);harness:frame()
 	harness:click("chooseLeague")
 	pending(reply)
 	assert(main.popups[1].title=="Choose PC trade league")
@@ -1710,3 +1740,69 @@ end
 
 checkReviewedRolloverControls()
 print("Native league selection and preview keep the current profile until explicit review approval")
+
+do
+	newBuild();main.popups={};reviewFixture=nil
+	local compact=headless.install({width=640,height=480});compact:bind(build)
+	require("Classes.LootFilterDailySyncControl").Open()
+	local controls=main.popups[1].controls
+	local function visibleControlsFit()
+		for key,control in pairs(controls) do if control:IsShown() then
+			local x,y=control:GetPos();local w,h=control:GetSize()
+			assert(x>=0 and y>=0 and x+w<=640 and y+h<=480,key.." leaves the compact window")
+		end end
+	end
+	assert(controls.target:IsShown() and not controls.observedStack:IsShown())
+	compact:text("target","C:/PoE/compact.filter")
+	visibleControlsFit()
+	if output then compact:frame():write(output.."/640-filter-sync-setup.json") end
+	compact:click("actionsPage")
+	assert(not controls.target:IsShown() and controls.observedStack:IsShown())
+	visibleControlsFit()
+	local _,bottom=controls.observedStack:GetPos();local _,buttonHeight=controls.observedStack:GetSize()
+	local _,helpTop=controls.backgroundHelp:GetPos()
+	assert(helpTop>=bottom+buttonHeight,"Background help overlaps the action buttons")
+	assert(StripEscapes(controls.backgroundHelp.list[1][1]):find("Windows.",1,true),"Background help must fit on the page")
+	if output then compact:frame():write(output.."/640-filter-sync-actions.json") end
+	compact:click("pickupPolicy")
+	assert(main.popups[1].title=="Pickup policy")
+	compact:click("cancel")
+	compact:click("setupPage")
+	assert(controls.target.buf=="C:/PoE/compact.filter","Page navigation lost the draft")
+	compact:click("close")
+	compact:restore()
+end
+
+do
+	newBuild();main.popups={};reviewFixture=nil
+	local resized=headless.install({width=960,height=640});resized:bind(build)
+	require("Classes.LootFilterDailySyncControl").Open()
+	resized:text("target","C:/PoE/resize-draft.filter")
+	local draft=main.popups[1].controls.target
+	main.popups[1]:SelectControl(main.popups[1].controls.target)
+	draft.buf="C:/PoE/resize-edited.filter";draft.caret=8;draft.sel=4;draft:AddUndoState()
+	local waitingPopup=main.popups[1]
+	sync.busy={};resized:resize(640,480);resized:frame()
+	assert(main.popups[1]==waitingPopup,"Resize must not discard a pending sync preview")
+	sync.busy=nil;resized:frame();resized:frame()
+	local controls=main.popups[1].controls
+	assert(#main.popups==1 and controls.actionsPage and controls.target.buf=="C:/PoE/resize-edited.filter")
+	assert(main.popups[1].selControl==controls.target,"Resize lost the focused draft field")
+	assert(controls.target.caret==8 and controls.target.sel==4,"Resize lost the selection")
+	controls.target:Undo();assert(controls.target.buf=="C:/PoE/resize-draft.filter","Resize lost undo history")
+	controls.target:Redo();assert(controls.target.buf=="C:/PoE/resize-edited.filter","Resize lost redo history")
+	resized:click("actionsPage")
+	resized:click("pickupPolicy");resized:text("campaign","1.5");resized:click("apply")
+	local x,y=controls.observedStack:GetPos();local w,h=controls.observedStack:GetSize()
+	assert(x>=0 and y>=0 and x+w<=640 and y+h<=480,"Resized action left the window")
+	resized:resize(960,640);resized:frame();resized:frame()
+	controls=main.popups[1].controls
+	assert(#main.popups==1 and not controls.actionsPage and controls.target.buf=="C:/PoE/resize-edited.filter")
+	resized:resize(640,480);resized:frame();resized:frame()
+	controls=main.popups[1].controls
+	assert(controls.observedStack:IsShown() and controls.target.buf=="C:/PoE/resize-edited.filter","Resize lost the selected page or draft")
+	resized:click("pickupPolicy")
+	assert(main.popups[1].controls.campaign.buf=="1.5","Resize lost the draft pickup policy")
+	resized:click("cancel")
+	resized:click("close");resized:restore()
+end

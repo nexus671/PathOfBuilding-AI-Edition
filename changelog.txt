@@ -1,6 +1,16 @@
+VERSION[2.69.0-ai.preview1291][2026/11/24]
+
+* Compare rolled rare armour and weapon asking prices in the market browser and AI tools.
+
+VERSION[2.69.0-ai.preview1290][2026/11/24]
+
+* Let AI tools compare equipped or copied jewellery against a local listing snapshot.
+* Keep daily filter sync usable in compact windows.
+* Keep the Genesis passive count visible in compact windows.
+
 VERSION[2.69.0-ai.preview1289][2026/11/24]
 
-* Compare rolled rare armour and weapon asking prices with sockets, quality and displayed properties.
+* Exclude unverified special item states from gear listing comparisons.
 
 VERSION[2.69.0-ai.preview1288][2026/11/24]
 
