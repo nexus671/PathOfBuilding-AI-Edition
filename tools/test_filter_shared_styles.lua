@@ -69,11 +69,14 @@ for _,size in ipairs({{640,480},{960,640},{1280,720}}) do
 	ui:text("search","FF0000FF");ui:click("choose");ui:click("remove");assert(#kept.sharedStyles==0,"Shared style editor did not remove the replacement")
 end
 ui:restore()
-newBuild();ui=require("Modules.HeadlessUI").install({width=1280,height=720});ui:bind(build)
-profile=filters.profile("workspace","Shared");profile.template="Show\n SetTextColor 255 0 0";build.savers.LootFilters:Upsert(profile)
-build.planningWorkspace=require("Modules.PlanningWorkspace").new(build);build.viewMode="PLANNER";build.planningWorkspace:Show("filters")
-ui:click("viewStyle");ui:click("sharedStyles");ui:text("search","FF0000FF");ui:click("choose");ui:text("target","00FF00FF");ui:click("keep")
-local function current() return build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1] end
-assert(current().sharedStyles[1].to=="00FF00FF");ui:click("undo");assert(not current().sharedStyles);ui:click("redo");assert(current().sharedStyles[1].to=="00FF00FF","Workspace undo/redo lost the replacement")
-ui:restore()
+for _,size in ipairs({{640,480},{960,640},{1280,720}}) do
+	newBuild();ui=require("Modules.HeadlessUI").install({width=size[1],height=size[2]});ui:bind(build)
+	profile=filters.profile("workspace","Shared");profile.template="Show\n SetTextColor 255 0 0";build.savers.LootFilters:Upsert(profile)
+	build.planningWorkspace=require("Modules.PlanningWorkspace").new(build);build.viewMode="PLANNER";build.planningWorkspace:Show("filters")
+	ui:click("viewStyle");if output then ui:frame():write(output.."/"..size[1].."-shared-style-workspace.json") end
+	ui:click("sharedStyles");ui:text("search","FF0000FF");ui:click("choose");ui:text("target","00FF00FF");ui:click("keep")
+	local function current() return build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1] end
+	assert(current().sharedStyles[1].to=="00FF00FF");ui:click("undo");assert(not current().sharedStyles);ui:click("redo");assert(current().sharedStyles[1].to=="00FF00FF","Workspace undo/redo lost the replacement")
+	ui:restore()
+end
 print("FILTER_SHARED_STYLES_OK")
