@@ -104,3 +104,20 @@ test('qualifies optional exchange feeds from the relay allowlist without repeati
   assert.equal((await qualifyCache(root,baseline)).status,'passed');
   assert.equal(baseline.requests.length,10);
 });
+
+test('counts only unique unambiguous stash quotes and requires consistent listing evidence',async()=>{
+  const priced={name:'Fixture jewel',detailsId:'known-variant',chaosValue:40,count:55,listingCount:31};
+  const thin={...priced,detailsId:'thin-variant'};
+  const conflicting={...priced,detailsId:'conflicting-variant',variant:'First roll'};
+  const differentMods={...priced,detailsId:'different-mods',explicitModifiers:[{text:'Fixture alpha'}]};
+  const f=fixture({
+    ForbiddenJewel:()=>response({lines:[priced,priced,thin,{...thin,count:4},conflicting,{...conflicting,variant:'Second roll'},
+      differentMods,{...differentMods,explicitModifiers:[{text:'Fixture beta'}]}]}),
+    ValdoMap:()=>response({lines:[{...priced,detailsId:'path/unstable'},{...conflicting,mapTier:16},{...conflicting,mapTier:17}]}),
+  });
+  const report=await qualifyCache(root,{...f,extra:['ForbiddenJewel','ValdoMap']});
+  assert.equal(report.status,'failed');
+  assert.deepEqual(report.probes.find(probe=>probe.name==='ForbiddenJewel'),
+    {name:'ForbiddenJewel',status:'passed',freshnessSeconds:37,priced:2,listed:1});
+  assert.match(report.probes.at(-1).reason,/No unambiguous priced stash variants/);
+});
