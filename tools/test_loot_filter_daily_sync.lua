@@ -2378,3 +2378,108 @@ end
 
 checkIndividualQuoteContinuity()
 print("Missing, thin, and ambiguous quotes retain only the exact previously verified lower cutoff")
+
+
+local function checkReviewedLeagueRollover()
+	local json = require("dkjson")
+	local service = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local oldTime, download = os.time, launch.DownloadPage
+	local clock, mode = oldTime(), "active"
+	os.time = function(date) return date and oldTime(date) or clock end
+	local id = service.createProfile("Reviewed rollover profile")
+	local live, fixed = dir.."/rollover.filter",dir.."/rollover-base.filter"
+	write(live,original)
+	write(fixed,original)
+	local settings = {profileId=id,hour=0,minute=15,protectionFile=protections}
+	service.configure(live,fixed,"Old League",settings)
+	local requests = {}
+	local leagues = '[{"id":"New League","name":"New Challenge League"},{"id":"Standard","name":"Standard"}]'
+	launch.DownloadPage = function(_,url,callback,options)
+		assert(options.followRedirects==false)
+		requests[#requests+1] = url
+		local date = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock)
+		if url:match("/leagues$") then
+			callback({header=date..(mode=="stale" and "\r\nAge: 4000" or "").."\r\n\r\n",
+				body=mode=="malformed" and leagues.."{}" or mode=="listed" and
+					'[{ "id":"New League","name":"New Challenge League" },{"id":"Old League","name":"Old League"}]' or leagues})
+			return
+		end
+		if url:find("league=Old League",1,true) and mode~="active" then
+			callback(nil,"Response code: 404")
+			return
+		end
+		local body = url:find("league=New League",1,true) and commodityBody:gsub("0%.21","0.6") or commodityBody
+		callback({header=date.."\r\n\r\n",body=body})
+	end
+	service.tick(clock,true,false,id)
+	local verified = read(live)
+	assert(verified~=original and service.configuration(id).lastSuccess==clock)
+
+	for _, failure in ipairs({"stale","malformed","listed","retired"}) do
+		mode,clock=failure,clock+1
+		local previousRequests=#requests
+		service.tick(clock,true,false,id)
+		local state = assert(service.configuration(id))
+		assert(#requests==previousRequests+2 and state.league=="Old League" and read(live)==verified)
+		local evidence = assert(service.publicStatus(clock,id).failedFeed)
+		assert(evidence.httpStatus==404)
+		if failure=="retired" then
+			assert(evidence.reason=="league_unavailable" and evidence.currentLeague.id=="New League" and evidence.verifiedAt==clock)
+			assert(json.decode(service.diagnosticReport(clock,id)).status.failedFeed.currentLeague.id=="New League")
+		else
+			assert(evidence.reason=="http_error" and not evidence.currentLeague)
+		end
+	end
+
+	settings.reviewLeague = true
+	local otherReceipt
+	service.preview(live,fixed,"Standard",settings,function(_,_,receipt) otherReceipt = receipt end)
+	assert(otherReceipt and service.configuration(id).league=="Old League" and read(live)==verified,service.status)
+	local function review()
+		local result
+		service.preview(live,fixed,"New League",settings,function(before, after, receipt)
+			assert(before==verified and after~=before)
+			result = receipt
+		end,function(message) error(message) end)
+		assert(result and read(live)==verified and service.configuration(id).league=="Old League",service.status)
+		return result
+	end
+	settings.expectedLeagueReview = review()
+	settings.minute = 16
+	assert(not pcall(service.configure,live,fixed,"New League",settings))
+	assert(service.configuration(id).league=="Old League" and read(live)==verified)
+	settings.minute,settings.expectedLeagueReview=15,nil
+
+	settings.expectedLeagueReview = review()
+	clock = settings.expectedLeagueReview.expiresAt + 1
+	assert(not pcall(service.configure,live,fixed,"New League",settings))
+	assert(service.configuration(id).league=="Old League" and read(live)==verified)
+	settings.expectedLeagueReview = nil
+
+	settings.expectedLeagueReview = review()
+	service.pause(true,id)
+	assert(not pcall(service.configure,live,fixed,"New League",settings))
+	assert(service.configuration(id).paused and read(live)==verified)
+	settings.expectedLeagueReview = nil
+
+	settings.expectedLeagueReview = review()
+	service.configure(live,fixed,"New League",settings)
+	local moved = service.configuration(id)
+	assert(moved.league=="New League" and moved.paused and not moved.lastSuccess and not moved.priceHistory)
+	assert(moved.minute==15 and not moved.cutoffContinuity and read(live)==verified and read(fixed)==original)
+	assert(not pcall(service.configure,live,fixed,"New League",settings))
+	settings.expectedLeagueReview,settings.expectedSavedLeague = nil,"Old League"
+	local staleSave, why = pcall(service.configure,live,fixed,"Old League",settings)
+	assert(not staleSave and tostring(why):find("The saved league changed",1,true))
+	assert(service.configuration(id).league=="New League" and read(live)==verified)
+	service.pause(false,id)
+	clock=clock+1
+	service.tick(clock,true,false,id)
+	local result = service.configuration(id)
+	assert(result.lastSuccess==clock and result.review.league=="New League" and result.review.protectedChecks==1)
+	assert(read(live)~=verified and read(fixed)==original)
+	os.time,launch.DownloadPage=oldTime,download
+end
+
+checkReviewedLeagueRollover()
+print("Retired league diagnosis, guarded rollover save, and a fresh new-league sync passed")

@@ -94,12 +94,34 @@ function Read-SyncProfiles {
     return $profiles
 }
 function Get-AdjustedCutoffs($review) {
-    $cutoffs = @{}
+    $cutoffs = New-Object 'System.Collections.Generic.Dictionary[string,int]' ([StringComparer]::Ordinal)
     foreach ($change in $review.changes) {
-        $key = $change.source + '|' + $change.name + '|' + ($change.classes -join ',') + '|' + $change.maps + '|' + $change.old
-        $cutoffs[$key] = $change.cutoff
+        if ($null -eq $change.cutoff -or $change.old -eq $change.cutoff) { continue }
+        $scope = $change.scope
+        if (-not $scope) { $scope = if ($change.maps) { 'maps' } else { 'all' } }
+        $conditions = @(
+            $change.name, (@($change.classes | Sort-Object) -join ','),
+            $scope, $change.old, $change.tier, $change.blighted, $change.ravaged,
+            $change.gemLevel, $change.gemQuality, $change.corrupted
+        )
+        $key = ConvertTo-Json -InputObject $conditions -Compress
+        if (-not $cutoffs.ContainsKey($key) -or $change.cutoff -gt $cutoffs[$key]) {
+            $cutoffs[$key] = [int]$change.cutoff
+        }
     }
-    return $cutoffs
+    return ,$cutoffs
+}
+function Count-ChangedCutoffs($before, $after) {
+    $old = Get-AdjustedCutoffs $before
+    $new = Get-AdjustedCutoffs $after
+    $count = 0
+    foreach ($key in $old.Keys) {
+        if (-not $new.ContainsKey($key) -or $old[$key] -ne $new[$key]) { $count++ }
+    }
+    foreach ($key in $new.Keys) {
+        if (-not $old.ContainsKey($key)) { $count++ }
+    }
+    return $count
 }
 function Show-SyncNotification([string]$text, [bool]$failed) {
     try {
@@ -131,29 +153,25 @@ if (-not $enabled -and -not $script:syncSettingsReadFailed) { exit 0 }
 # Let the native worker diagnose unreadable settings.
 if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { exit 1 }
 $process = Start-Process -FilePath $exe -WorkingDirectory $dir -ArgumentList '--loot-filter-sync-scheduled' -WindowStyle Hidden -Wait -PassThru
-$afterProfiles = Read-SyncProfiles
-$failures = 0
-$changed = 0
-foreach ($id in $afterProfiles.Keys) {
-    $after = $afterProfiles[$id]
-    $before = $beforeProfiles[$id]
-    if (-not $before -or -not $after.backgroundEnabled -or -not $after.backgroundNotifications -or
-        -not $after.enabled -or $after.paused -or $after.revision -ne $before.revision) { continue }
-    if ($process.ExitCode -ne 0 -and $after.lastFailure -and $after.lastFailure.message -ne $before.lastFailure.message) {
-        $failures++
-    } elseif ($after.current -ne $before.current -and $after.lastSuccess -ne $before.lastSuccess) {
-        $old = Get-AdjustedCutoffs $before.review
-        $new = Get-AdjustedCutoffs $after.review
-        foreach ($key in (@($old.Keys) + @($new.Keys) | Select-Object -Unique)) {
-            if ($old[$key] -ne $new[$key]) { $changed++ }
+try {
+    $afterProfiles = Read-SyncProfiles
+    $failures = 0
+    $changed = 0
+    foreach ($id in $afterProfiles.Keys) {
+        $after = $afterProfiles[$id]
+        $before = $beforeProfiles[$id]
+        if (-not $before -or -not $after.backgroundEnabled -or -not $after.backgroundNotifications -or
+            -not $after.enabled -or $after.paused -or $after.revision -ne $before.revision) { continue }
+        if ($process.ExitCode -ne 0 -and $after.lastFailure -and $after.lastFailure.message -ne $before.lastFailure.message) {
+            $failures++
+        } elseif ($after.current -ne $before.current -and $after.lastSuccess -ne $before.lastSuccess) {
+            $changed += Count-ChangedCutoffs $before.review $after.review
         }
     }
-}
-try {
     if ($failures -gt 0) { Show-SyncNotification 'A scheduled update failed. Review the last attempt in Daily price sync.' $true }
     elseif ($changed -ge 5) { Show-SyncNotification "$changed managed cutoffs changed after checking protected drops." $false }
 } catch {
-    # A disabled notification surface cannot change the sync result.
+    # Notification handling cannot change the native worker's result.
 }
 exit $process.ExitCode
 ]]
