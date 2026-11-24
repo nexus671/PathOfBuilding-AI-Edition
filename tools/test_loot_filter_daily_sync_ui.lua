@@ -266,7 +266,8 @@ local configMock, originalFetch = sync.configuration, launch.DownloadPage
 sync.configuration = function()
 	return {league="Covens", target=selected, enabled=true, hour=9, summary="Protected drops verified.",
 		review={checkedAt=reviewTime,changes={{name="Orb of Alteration",old=10,cutoff=6,price=0.21,volume=1000,maps=true,
-			source="Currency",priceId="orb-of-alteration"}},
+			source="Currency",priceId="orb-of-alteration"},
+			{name="Orb of Fusing",old=6,cutoff=0,retainedReason="Missing quote"}},
 			feeds={{category="Currency",age=128,revalidated=true}}}}
 end
 launch.DownloadPage = function(_, url, callback)
@@ -276,6 +277,12 @@ end
 require("Classes.LootFilterDailySyncControl").Open()
 feedUI:click("review")
 assert(main.popups[1].title=="Daily filter sync review")
+feedUI:text("search","Orb of Fusing")
+local retainedDetails = {}
+for _, entry in ipairs(main.popups[1].controls.details.list) do retainedDetails[#retainedDetails+1] = StripEscapes(entry[1] or "") end
+local retainedText = table.concat(retainedDetails," "):gsub("%s+"," ")
+assert(retainedText:find("Kept the last verified lower cutoff. Missing quote.",1,true))
+assert(not retainedText:find("chaos used",1,true))
 feedUI:text("search","Orb of Alteration")
 assert(main.popups[1].controls.details.list[4][1]:find("orb-of-alteration",1,true))
 feedUI:click("secondary")

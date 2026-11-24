@@ -1,6 +1,11 @@
-VERSION[2.68.1-ai.preview1256][2026/11/24]
+VERSION[2.68.1-ai.preview1257][2026/11/24]
 
 * Replace shared loot-filter colours and sounds.
+
+VERSION[2.68.1-ai.preview1256][2026/11/24]
+
+* Keep previously verified lower hide cutoffs when individual market quotes become unusable.
+* Align relay qualification with native exchange quote evidence.
 
 VERSION[2.68.1-ai.preview1255][2026/11/24]
 

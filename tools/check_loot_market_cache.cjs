@@ -5,6 +5,8 @@ const { requestKey, overviewRoute, ageSource, boundedBody, validatePayload } = r
 
 const coreFeeds = ['Currency', 'Oil', 'Omen', 'Essence', 'Thread', 'Fragment', 'Resonator', 'Artifact'];
 const positive = value => Number.isFinite(value) && value>0;
+const exchangeText = value => typeof value==='string' && Buffer.byteLength(value,'utf8')<=200
+  && /[^ ]/.test(value) && !/[\x00-\x1f\x7f]/.test(value);
 const stashIdentityFields = ['name','baseType','gemLevel','gemQuality','corrupted','variant','links','mapTier','chaosValue',
   'itemType','itemClass','levelRequired','stackSize','mapRegion','implicitModifiers','explicitModifiers','mutatedModifiers','metadata'];
 
@@ -52,7 +54,7 @@ function priceEvidence(payload, category, kind) {
   if (kind==='exchange') {
     const names = new Map();
     for (const item of payload.items) {
-      if (typeof item?.id!=='string' || typeof item.name!=='string' ||
+      if (!exchangeText(item?.id) || !exchangeText(item?.name) ||
           names.has(item.id) && names.get(item.id)!==item.name) {
         throw new Error('Invalid or conflicting exchange item ID');
       }
@@ -60,12 +62,14 @@ function priceEvidence(payload, category, kind) {
     }
     const candidates = new Map();
     for (const line of payload.lines) {
-      const name=names.get(line?.id);
-      if (!name || !positive(line.primaryValue) || !positive(line.volumePrimaryValue)) continue;
+      if (!exchangeText(line?.id)) throw new Error('Invalid exchange price line ID');
+      const name=names.get(line.id);
+      if (!name) continue;
       const prior=candidates.get(name);
-      if (prior===false || prior && (prior.id!==line.id || prior.primaryValue!==line.primaryValue)) {
+      if (!positive(line.primaryValue) || !positive(line.volumePrimaryValue) || prior===false ||
+          prior && (prior.id!==line.id || prior.primaryValue!==line.primaryValue)) {
         candidates.set(name,false);
-      } else if (!prior || line.volumePrimaryValue>prior.volumePrimaryValue) {
+      } else if (!prior || line.volumePrimaryValue<prior.volumePrimaryValue) {
         candidates.set(name,line);
       }
     }
