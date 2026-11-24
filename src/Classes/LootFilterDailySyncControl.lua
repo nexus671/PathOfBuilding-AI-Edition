@@ -343,12 +343,12 @@ local function editPickupPolicy(width, target, policy, save)
 	main:OpenPopup(width,402,"Pickup policy",controls,nil,nil,"cancel")
 end
 
-function M.Open(profileId, profileName)
+function M.Open(profileId, profileName, restored)
 	profileId, profileName = profileId or "default", profileName or "Default"
 	local ok, config = pcall(sync.configuration,profileId)
 	if not ok then main:OpenMessagePopup("Daily filter sync", ui.errorText(config)); return end
 	config = config or {}
-	local pickupPolicy = config.pickupPolicy or {}
+	local pickupPolicy = restored and restored.pickupPolicy or config.pickupPolicy or {}
 	local width = math.min(720, main.screenW - 40)
 	local c = {}
 	local buttonWidth = math.floor((width - 56) / 5)
@@ -893,8 +893,72 @@ function M.Open(profileId, profileName)
 			function(path) return sync.compareVerifiedObservedStackBatch(profileId,path) end,"Fixed baseline","Verified filter")
 	end)
 	c.observedStack.enabled = function() return not sync.busy and latestActionConfig().lastSuccess~=nil end
+	local popupHeight=578
+	local page=restored and restored.page or "Setup"
+	if main.screenH<600 then
+		popupHeight=math.max(400,main.screenH-40)
+		for key,control in pairs(c) do
+			if key~="close" then
+				local group=control.y>=350 and "Actions" or "Setup"
+				if group=="Actions" then control.y=control.y-330 end
+				control.shown=function() return page==group end
+			end
+		end
+		local half=math.floor((width-40)/2)
+		local function place(key,x,y,w) c[key].x,c[key].y,c[key].width=x,y,w end
+		place("background",16,140,half)
+		place("backgroundNotify",24+half,140,half)
+		place("pickupPolicy",16,174,half)
+		place("profiles",24+half,174,half)
+		place("backgroundStatus",16,208,half)
+		place("account",24+half,208,half)
+		local quarter=math.floor((width-56)/4)
+		for index,key in ipairs({"backupRetention","offlinePrices","lastAttempt","observedStack"}) do
+			place(key,16+(index-1)*(quarter+8),242,quarter)
+		end
+		place("backgroundHelp",16,280,width-32)
+		c.backgroundHelp.list=ui.rows({"Runs while you are signed in to Windows."},width-32,13)
+		place("close",width-132,popupHeight-48,116)
+		c.setupPage=new("ButtonControl"):ButtonControl(ui.anchor,{16,popupHeight-48,140,28},"Setup",function() page="Setup" end)
+		c.actionsPage=new("ButtonControl"):ButtonControl(ui.anchor,{164,popupHeight-48,140,28},"Actions",function() page="Actions" end)
+		c.setupPage.enabled=function() return page~="Setup" end
+		c.actionsPage.enabled=function() return page~="Actions" end
+	end
+	local draftFields={"target","baseline","league","time","targetValue","intervalDays","protectionFile"}
+	if restored then
+		for _,key in ipairs(draftFields) do
+			local saved=restored.fields[key]
+			if saved then
+				local field=c[key];field:SetText(saved.text)
+				field.caret,field.sel,field.undo,field.redo,field.lastUndoState=saved.caret,saved.sel,saved.undo,saved.redo,saved.lastUndoState
+			end
+		end
+	end
 	ui.style(c)
-	main:OpenPopup(width, 578, "Daily filter sync", c, nil, nil, "close")
+	local popup
+	popup=main:OpenPopup(width,popupHeight,"Daily filter sync",c,nil,nil,"close",nil,function()
+		local nextWidth=math.min(720,main.screenW-40)
+		local nextHeight=main.screenH<600 and math.max(400,main.screenH-40) or 578
+		if main.popups[1]~=popup or sync.busy or loadingLeagues or background.busy
+			or nextWidth==width and nextHeight==popupHeight then return end
+		local fields,focus={}
+		for _,key in ipairs(draftFields) do
+			local field=c[key]
+			fields[key]={text=field.buf,caret=field.caret,sel=field.sel,undo=field.undo,redo=field.redo,lastUndoState=field.lastUndoState}
+			if popup.selControl==field then focus=key end
+		end
+		local replacement=M.Open(profileId,profileName,{fields=fields,pickupPolicy=pickupPolicy,page=page,focus=focus})
+		if replacement then
+			for index,entry in ipairs(main.popups) do if entry==popup then table.remove(main.popups,index);break end end
+		end
+	end)
+	if restored and restored.focus and c[restored.focus]:IsShown() then
+		local field=c[restored.focus];local saved=restored.fields[restored.focus]
+		popup:SelectControl(field)
+		field.caret,field.sel=saved.caret,saved.sel
+		field:ScrollCaretIntoView()
+	end
+	return popup
 end
 
 return M

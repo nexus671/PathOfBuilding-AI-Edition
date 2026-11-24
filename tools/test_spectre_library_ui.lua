@@ -82,6 +82,31 @@ for _,size in ipairs({{640,480},{960,640},{1024,768},{1280,720}}) do
 	if controls.compactLibrary then
 		ui:click('save')
 		assert(#build.spectreList==1, 'Compact save did not keep the selected spectre')
+		local saved=build.spectreList[1]
+		build:OpenSpectreLibrary()
+		controls=main.popups[1].controls
+		ui:click('sortMonsterCheckboxShowAll')
+		local candidate
+		for _,id in ipairs(controls.source.list) do
+			if id~=saved and build.data.minions[id].monsterCategory=='Beast' then candidate=id; break end
+		end
+		assert(candidate, 'Expected a second beast for search and cancel')
+		local name=build.data.minions[candidate].name
+		controls.source.controls.searchText:SetText(name,true)
+		local function hasCandidate()
+			for _,id in ipairs(controls.source.list) do if id==candidate then return true end end
+			return false
+		end
+		assert(hasCandidate(), 'Name search should find the selected beast')
+		ui:click('sortMonsterCheckboxBeast')
+		assert(not hasCandidate(), 'Disabling a category must filter its search results')
+		ui:click('sortMonsterCheckboxBeast')
+		assert(hasCandidate(), 'Re-enabling a category must restore matching results')
+		controls.source.selValue=candidate
+		local x,y=controls.source.controls.add:GetPos();ui:clickAt(x+8,y+8)
+		assert(#controls.list.list==2, 'Could not add a searched spectre')
+		ui:click('cancel')
+		assert(#build.spectreList==1 and build.spectreList[1]==saved, 'Cancel must preserve the saved library')
 	end
 	ui:restore()
 end

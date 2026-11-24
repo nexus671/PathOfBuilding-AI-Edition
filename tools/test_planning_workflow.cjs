@@ -2000,6 +2000,35 @@ async function main(){
   const inventoryNotes=await queued('search_crafting_inventory',{baseRevision:context.revision,query:'not an observed craft',limit:1,offset:0},'inventorySearch');assert.equal(inventoryNotes.inventorySearch.total,120);assert.equal(inventoryNotes.inventorySearch.matches.length,1);
   const runningSearch=await call('search_crafting_inventory',{baseRevision:context.revision,query:'no matching modifier',limit:20});await host('tick',1);const searchProgress=await call('get_proposal_status');assert.equal(searchProgress.proposal.id,runningSearch.id);assert.equal(searchProgress.proposal.status,'calculating');
   const searchCancellation=await call('cancel_crafting_simulation',{requestId:runningSearch.id});await host('tick',1);const searchCancelled=await call('get_proposal_status');assert.equal(searchCancelled.proposal.id,searchCancellation.id);assert.equal(searchCancelled.proposal.status,'cancelled');assert.equal(searchCancelled.proposal.cancelledId,runningSearch.id);assert.equal((await call('get_build_context')).context.revision,context.revision);
+  const listingRing='Rarity: RARE\nReview Ring\nAmethyst Ring\nItem Level: 86\nImplicits: 1\n+23% to Chaos Resistance\n+79 to maximum Life';
+  await queued('propose_build',{mode:'edit',title:'Listing comparison ring',baseRevision:context.revision,operations:[{type:'equip_item',slot:'Ring 1',text:listingRing}]},'review');
+  await host('apply');context=(await call('get_build_context')).context;
+  const snapshotPath=path.join(directory,'gear-listings.json');
+  const listing={id:'1'.repeat(64),baseType:'Amethyst Ring',rarity:'Rare',identified:true,ilvl:86,note:'~price 10 chaos',implicitMods:[{description:'+23% to Chaos Resistance'}],explicitMods:[{description:'+79 to maximum Life'}]};
+  fs.writeFileSync(snapshotPath,JSON.stringify({next_change_id:'cursor',stashes:[{id:'2'.repeat(64),public:true,league:'Standard',accountName:'Seller#0001',items:[listing]}]}));
+  const snapshotBytes=fs.readFileSync(snapshotPath);
+  const listings=await queued('compare_gear_listings',{baseRevision:context.revision,slot:'Ring 1',snapshotPath,league:'Standard'},'gearListings');
+  assert.equal(listings.gearListings.comparison.matched,1);assert.equal(listings.gearListings.comparison.results[0].low,10);
+  assert.match(listings.gearListings.note,/not established/);
+  const copiedListings=await queued('compare_gear_listings',{baseRevision:context.revision,itemText:listingRing,snapshotPath,league:'Standard'},'gearListings');
+  assert.equal(copiedListings.gearListings.source,'copied item');assert.deepEqual(copiedListings.gearListings.comparison,listings.gearListings.comparison);
+  assert.deepEqual(fs.readFileSync(snapshotPath),snapshotBytes);assert.equal((await call('get_build_context')).context.revision,context.revision);
+  const captured={format:'pob-public-stash-capture-v1',realm:'pc',league:'Standard',capturedAt:1700000000,pages:[
+    {requestCursor:'start',response:{next_change_id:'next',stashes:[{id:'2'.repeat(64),public:true,league:'Standard',accountName:'Seller#0001',items:[listing]}]}},
+    {requestCursor:'next',response:{next_change_id:'end',stashes:[{id:'3'.repeat(64),public:true,league:'Standard',accountName:'Seller#0002',items:[{...listing,id:'4'.repeat(64),note:'~price 20 chaos'}]}]}}
+  ]};
+  fs.writeFileSync(snapshotPath,JSON.stringify(captured));
+  const captureBytes=fs.readFileSync(snapshotPath);
+  const capturedListings=await queued('compare_gear_listings',{baseRevision:context.revision,slot:'Ring 1',snapshotPath,league:'Standard'},'gearListings');
+  assert.equal(capturedListings.gearListings.comparison.matched,2);assert.equal(capturedListings.gearListings.comparison.capture.pages,2);
+  assert.deepEqual(fs.readFileSync(snapshotPath),captureBytes);assert.equal((await call('get_build_context')).context.revision,context.revision);
+  const twoStone=listingRing.replace('Amethyst Ring','Two-Stone Ring (Fire/Cold)').replace('+23% to Chaos Resistance','+15% to Fire and Cold Resistances');
+  const variant={...listing,baseType:'Two-Stone Ring',implicitMods:[{description:'+15% to Fire and Cold Resistances'}]};
+  fs.writeFileSync(snapshotPath,JSON.stringify({next_change_id:'cursor',stashes:[{id:'2'.repeat(64),public:true,league:'Standard',accountName:'Seller#0001',items:[variant]}]}));
+  const variantListings=await queued('compare_gear_listings',{baseRevision:context.revision,itemText:twoStone,snapshotPath,league:'Standard'},'gearListings');
+  assert.equal(variantListings.gearListings.comparison.matched,1);
+  const invalidListing=await queued('compare_gear_listings',{baseRevision:context.revision,slot:'Ring 1',snapshotPath:'relative.json',league:'Standard'},'failed');
+  assert.match(invalidListing.error,/absolute local JSON/);
   await host('quit');
   console.log('PLANNING_WORKFLOW_OK: real MCP stdio, native calculations, UI review, crafting simulation, Journey ranking, Atlas strategy, save/reopen, checkpoint undo and portable bundle import');
 }

@@ -152,6 +152,13 @@ local function baseTradeIdentity(baseName)
 	return displayName,match or false
 end
 
+function M.listingTargetForItem(item)
+	if not item or type(item.baseName)~="string" then return end
+	local baseName,implicit=baseTradeIdentity(item.baseName)
+	if implicit==false then return end
+	return require("Modules.LootFilterGearListings").target(item,baseName)
+end
+
 function M.buildTargets(build)
 	local targets, seen = {}, {}
 	local function add(target)

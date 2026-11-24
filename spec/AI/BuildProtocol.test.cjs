@@ -18,6 +18,22 @@ function fixture(t) {
     operations:[{type:'set_character',level:80,className:'Witch',ascendancy:'Elementalist'},{type:'set_skills',groups:[{gems:[{name:'Fireball'}]}]}]}};
 }
 
+test('queues an offline equipped or copied gear listing review', t => {
+  const f=fixture(t);
+  const args={baseRevision:f.state.revision,slot:'Ring 1',snapshotPath:'C:/PoE/listings.json',league:'Standard'};
+  const queued=f.call('compare_gear_listings',args);
+  assert.match(queued.instructions,/local snapshot/);
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.kind,'compare_gear_listings');assert.equal(request.snapshotPath,args.snapshotPath);assert.equal(request.slot,'Ring 1');
+  const copied=fixture(t);copied.call('compare_gear_listings',{baseRevision:copied.state.revision,itemText:'Rarity: RARE\nExample',snapshotPath:args.snapshotPath,league:args.league});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(copied.dir,'AI-build-request.json'))).itemText,'Rarity: RARE\nExample');
+  for (const invalid of [{...args,slot:'Helmet'},{...args,unexpected:true},{...args,snapshotPath:'x'.repeat(1025)}]) {
+    const other=fixture(t);assert.throws(()=>other.call('compare_gear_listings',invalid),/arguments/);
+  }
+  const both=fixture(t);assert.throws(()=>both.call('compare_gear_listings',{...args,baseRevision:both.state.revision,itemText:'item'}),/exactly one/);
+  const neither=fixture(t);assert.throws(()=>neither.call('compare_gear_listings',{baseRevision:neither.state.revision,snapshotPath:args.snapshotPath,league:args.league}),/exactly one/);
+});
+
 test('reads crafting collections larger than the old desktop context limit', t => {
   const f=fixture(t);
   f.captured.context.craftingProjects=Array.from({length:132},(_,i)=>({id:`guide-${i}`,title:`Guide ${i}`,simulatorExport:'x'.repeat(128000)}));
