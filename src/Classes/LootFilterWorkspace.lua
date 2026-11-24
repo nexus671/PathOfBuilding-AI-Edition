@@ -317,6 +317,7 @@ function M.Open(build,source,layout,controller)
 			{id="sampleSets",label="Saved example sets",details={"Keep exact test items with the build and reuse them after filter edits."}},
 			{id="palettes",label="Saved palettes",details={"Name and reuse whole-filter appearance snapshots."}},
 			{id="categoryStyles",label="Category appearance",details={"Change colours, fonts and alerts for selected item families while keeping rule priority."}},
+			{id="sharedStyles",label="Shared colours and sounds",details={"Replace a declared colour or sound wherever it recurs, preserving rule priority."}},
 			{id="dailySync",label="Daily price sync",details={"Set up the fixed baseline and update your local filter while PoB is open."}},
 			{id="marketBrowse",label="Browse market prices",details={"Inspect cards, maps, uniques, gems and crafting bases by league."}},
 			{id="economy",label="Review exchange prices",details={"Compare managed hides with current PC trade prices and export a candidate."}},
@@ -325,7 +326,7 @@ function M.Open(build,source,layout,controller)
 			{id="delete",label="Delete this profile",details={"This changes the working draft. Keep and Save to persist."}},
 		}
 		if not profile then for i=#choices,1,-1 do if choices[i].id~="new" and choices[i].id~="import" then table.remove(choices,i) end end end
-		local blocked={economy=not raw or not profile or profile.mode~="Normal",economyRules=not profile or profile.mode~="Normal"};if report and report.error then blocked.structure=true;blocked.categoryStyles=true;blocked.economy=true;for _,entry in ipairs(choices) do if blocked[entry.id] then entry.details[#entry.details+1]="Unavailable: resolve the compilation error in Overview or use Audit and update first." end end end
+		local blocked={economy=not raw or not profile or profile.mode~="Normal",economyRules=not profile or profile.mode~="Normal"};if report and report.error then blocked.structure=true;blocked.categoryStyles=true;blocked.sharedStyles=true;blocked.economy=true;for _,entry in ipairs(choices) do if blocked[entry.id] then entry.details[#entry.details+1]="Unavailable: resolve the compilation error in Overview or use Audit and update first." end end end
 		require("Classes.PlanningBrowserControl").Open("Filter profile tools",choices,{action="Open",canChoose=function(entry) return not blocked[entry.id] end,choose=function(entry)
 			main:ClosePopup()
 			if entry.id=="new" then profile=filters.profile(identifier(),"My loot filter");data.profiles[#data.profiles+1]=profile;data.activeId=profile.id;page="Overview";selected=nil;draft();reopen()
@@ -360,6 +361,7 @@ function M.Open(build,source,layout,controller)
 					reopen()
 				end)
 			elseif entry.id=="categoryStyles" and profile then require("Classes.LootFilterCategoryControl").Open(profile,replaceProfile)
+			elseif entry.id=="sharedStyles" and profile then require("Classes.LootFilterSharedStylesControl").Open(profile,replaceProfile)
 			elseif entry.id=="fileChanges" and profile then require("Classes.LootFilterDiffControl").Open(filters.find(saver.data,profile.id),profile)
 			elseif entry.id=="delete" and profile then for i,p in ipairs(data.profiles) do if p.id==profile.id then table.remove(data.profiles,i);break end end;profile=data.profiles[1];data.activeId=profile and profile.id or "";draft();reopen() end
 		end,closeOnChoose=false})
@@ -642,6 +644,7 @@ function M.Open(build,source,layout,controller)
 		button(c,"globalStyle",compactHeight and 32+sw or 292,compactHeight and 294 or 438,compactHeight and sw or 260,"Whole-filter appearance",function() require("Classes.LootFilterGlobalControl").Open(profile,function(next) profile.appearance=next.appearance;draft();reopen() end) end)
 		button(c,"savedPalettes",compactHeight and 16 or 568,compactHeight and 326 or 438,compactHeight and sw or math.min(260,w-584),"Saved palettes",function() collection("palettes") end)
 		button(c,"categoryStyles",compactHeight and 32+sw or 16,compactHeight and 326 or 478,compactHeight and sw or 260,"Category appearance",function() require("Classes.LootFilterCategoryControl").Open(profile,replaceProfile) end);c.categoryStyles.enabled=not report.error;c.categoryStyles.tooltipText="Resolve compilation errors in Overview before opening category styles."
+		if not compactHeight then button(c,"sharedStyles",292,478,260,"Shared colours and sounds",function() require("Classes.LootFilterSharedStylesControl").Open(profile,replaceProfile) end);c.sharedStyles.enabled=not report.error;c.sharedStyles.tooltipText="Replace a declared colour or sound wherever it recurs." end
 	end
 	if profile then
 		button(c,"undo",w-332,h-38,68,"Undo",function() local id=profile.id;data=history:step(true);profile=filters.find(data,id) or data.profiles[1];dirty=true;reopen() end);c.undo.enabled=#history.undo>0

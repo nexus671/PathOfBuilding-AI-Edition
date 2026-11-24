@@ -1,4 +1,4 @@
-arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true
+local output=arg[1];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true
 local shared=require("Modules.LootFilterSharedStyles")
 local raw=[[# untouched
 Show
@@ -28,4 +28,27 @@ assert(result:find('CustomAlertSound "C:\\sounds\\b.wav" 100',1,true),"Quoted cu
 assert(result:find('Import "other.filter"\n SetTextColor 255 0 0',1,true),"An import's contents were changed without loading it")
 assert(shared.apply(raw,{})==raw,"Empty mappings changed the filter")
 assert(not pcall(shared.validate,{{key="SetTextColor",from="FF0000FF",to="00FF00FF"},{key="SetTextColor",from="FF0000FF",to="FFFFFFFF"}}),"Duplicate sources were accepted")
+newBuild();local filters=require("Modules.LootFilters");local profile=filters.profile("shared","Shared styles")
+profile.template="Show\n SetTextColor 255 0 0\n PlayAlertSound 2 200";profile.sharedStyles={entries[1],entries[4]}
+local compiled=filters.compile(profile);assert(compiled:find("SetTextColor 0 255 0 255",1,true) and compiled:find("PlayAlertSound 6 200",1,true),"Compiled filter did not use shared styles")
+profile.appearance={textColor={255,255,255,255}};compiled=filters.compile(profile);assert(compiled:find("SetTextColor 255 255 255 255",1,true),"Whole-filter appearance must take precedence")
+local imported=copyTable(profile);imported.appearance=nil;imported.template='Import "linked.filter"\nShow';imported.importFiles={{name="linked.filter",text="Show\n SetTextColor 255 0 0"}}
+compiled=filters.compile(imported);assert(compiled:find("SetTextColor 0 255 0 255",1,true),"Loaded imports did not receive the shared replacement")
+imported.importFiles=nil;local report;compiled,report=filters.compile(imported);local warning=false;for _,diagnostic in ipairs(report.diagnostics) do if diagnostic.warning and diagnostic.warning:find("unresolved imported files",1,true) then warning=diagnostic.line~=nil end end;assert(warning,"Unresolved imports must report that replacements cannot change them")
+local ruthless=copyTable(profile);ruthless.mode="Ruthless";ruthless.sharedStyles={{key="SetTextColor",from="FF0000FF",to="00000000"}};assert(not pcall(filters.compile,ruthless),"Ruthless text opacity restriction was bypassed")
+build.savers.LootFilters:Upsert(profile);local xml={};build.savers.LootFilters:Save(xml)
+local restored=filters.new(build);restored:Load(xml);assert(restored.data.profiles[1].sharedStyles[1].from=="FF0000FF","Saved profile lost its shared styles")
+local collections=require("Modules.LootFilterCollections");profile.palettes={{id="p",title="Palette",theme="default",appearance={},sharedStyles=profile.sharedStyles}}
+local restoredPalette=collections.palette(profile,"p");assert(#restoredPalette.sharedStyles==2,"Palette lost its shared styles")
+local ui=require("Modules.HeadlessUI").install({width=640,height=480});ui:bind(build);local kept
+profile.sharedStyles=nil;profile.appearance=nil
+for _,size in ipairs({{640,480},{960,640},{1280,720}}) do
+	ui:resize(size[1],size[2]);require("Classes.LootFilterSharedStylesControl").Open(profile,function(value) kept=value end)
+	ui:text("search","FF0000FF");if output then ui:frame():write(output.."/"..size[1].."-shared-style-browser.json") end
+	ui:click("choose");ui:text("target","11223344");if output then ui:frame():write(output.."/"..size[1].."-shared-style-edit.json") end;ui:click("keep")
+	assert(kept and kept.sharedStyles[1].from=="FF0000FF" and kept.sharedStyles[1].to=="11223344","Shared style editor did not keep the chosen replacement")
+	require("Classes.LootFilterSharedStylesControl").Open(kept,function(value) kept=value end)
+	ui:text("search","FF0000FF");ui:click("choose");ui:click("remove");assert(#kept.sharedStyles==0,"Shared style editor did not remove the replacement")
+end
+ui:restore()
 print("FILTER_SHARED_STYLES_OK")

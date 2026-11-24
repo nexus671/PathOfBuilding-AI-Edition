@@ -79,6 +79,12 @@ function M.validate(data)
 		if p.appearance~=nil then
 			entry.appearance=require("Modules.LootFilterAppearanceSettings").validate(p.appearance)
 		end
+		if p.sharedStyles~=nil then
+			entry.sharedStyles=require("Modules.LootFilterSharedStyles").validate(p.sharedStyles)
+			if entry.mode=="Ruthless" then for _,style in ipairs(entry.sharedStyles) do
+				if style.key=="SetTextColor" then assert(tonumber(style.to:sub(7,8),16)>=80,"Ruthless text opacity must be at least 80") end
+			end end
+		end
 		if p.campaign~=nil then entry.campaign=require("Modules.LootFilterCampaign").validate(p.campaign) end
 		if p.sampleSets~=nil then entry.sampleSets=require("Modules.LootFilterCollections").sampleSets(p.sampleSets) end
 		if p.palettes~=nil then entry.palettes=require("Modules.LootFilterCollections").palettes(p.palettes) end
@@ -666,9 +672,13 @@ function M.compile(profile,includeParsed,previousBase)
 		base=require("Modules.LootFilterEconomy").addManagedSection(base,checked.economyRules)
 	end
 	output[#output+1]="\n# Pinned base filter\n"..base
-	local raw=require("Modules.LootFilterDecorators").apply(table.concat(output,"\n"),checked.appearance);assert(#raw<=M.limit,"Compiled filter exceeds 2 MiB")
+	local raw=require("Modules.LootFilterSharedStyles").apply(table.concat(output,"\n"),checked.sharedStyles)
+	raw=require("Modules.LootFilterDecorators").apply(raw,checked.appearance);assert(#raw<=M.limit,"Compiled filter exceeds 2 MiB")
 	if checked.mode=="Ruthless" then raw=raw:gsub("\n([ \t]*)Hide(%f[%W])","\n%1Minimal%2") end
 	local parsed=parser.parse(raw)
+	if checked.sharedStyles and #checked.sharedStyles>0 and #parsed.imports>0 then
+		parsed.diagnostics[#parsed.diagnostics+1]={line=parsed.imports[1].line,warning="Shared style replacements cannot change unresolved imported files."}
+	end
 	local suppliedImports={};for _,file in ipairs(checked.importFiles or {}) do suppliedImports[file.name]=true end
 	parsed.absentOptionalImports={};for _,name in ipairs(checked.absentOptionalImports or {}) do if not suppliedImports[name] then parsed.absentOptionalImports[name]=true end end
 	for _,rule in ipairs(parsed.rules) do for _,condition in ipairs(rule.conditions) do

@@ -1698,6 +1698,8 @@ async function main(){
   const collectiveDiagnostic=collectiveExport.report.diagnostics.find(entry=>entry.shadowedByLines?.length===2);
   assert.ok(collectiveDiagnostic);assert.match(collectiveDiagnostic.warning,/collectively/);
   const tested=await queued('test_loot_filter',{baseRevision:context.revision,profile:generated.profile,sample:{BaseType:'Iron Hat',Rarity:'Rare',ItemLevel:86}},'tested');assert.equal(tested.result.action,'Show');
+  const sharedProfile={...lootProfile,template:'Show\n SetTextColor 255 0 0\n PlayAlertSound 2 200',sharedStyles:[{key:'SetTextColor',from:'FF0000FF',to:'00FF00FF'},{key:'PlayAlertSound',from:'2',to:'6'}]};
+  const sharedResult=await queued('test_loot_filter',{baseRevision:context.revision,profile:sharedProfile,sample:{BaseType:'Iron Hat'}},'tested');assert.deepEqual(sharedResult.result.styles.SetTextColor,['0','255','0','255']);assert.deepEqual(sharedResult.result.styles.PlayAlertSound,['6','200']);
   const uncertainContinue={...lootProfile,template:'Show\n BaseType "Iron"\n Continue unexpected\nHide'};
   const uncertainContinueTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:uncertainContinue,sample:{BaseType:'Iron Hat'}},'tested');
   assert.equal(uncertainContinueTest.result.status,'unknown');assert.match(uncertainContinueTest.result.reasons[0],/Continue arguments/);
