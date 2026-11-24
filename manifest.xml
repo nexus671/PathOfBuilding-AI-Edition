@@ -3195,8 +3195,8 @@
 	<File name="Data/Crafting/GemSoulCores330.json" part="program" sha1="3e72815316e5ea26174bddddcae5bb84bb45cafb" />
 	<File name="Modules/CraftingBaseImplicit.lua" part="program" sha1="d664ebb4bb48c45004d487e16c898ac3746d94c4" />
 	<File name="Modules/UpdateNotes.lua" part="program" sha1="ba75d1adad6ec5129186dddef6b4e75e1a6f01f9" />
-	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="e2cad3f1a8d0f18a1f52fb8a0e486f002c6c9178" />
-	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="ca1ff3a417cf558f12efaf7c0f4bf881695c63e9" />
+	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="9f4fa2cd29104cec39f26e251a7d3fca8e5c6a39" />
+	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="c2eab6af7b8942326e7f1e278c14554b76b6ef83" />
 	<File name="Modules/LootFilterBackground.lua" part="program" sha1="2dcf95cb77c17cd9fe6ef9a4c8ca2f890ec05995" />
 	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="c4beda6d9d5b5197aaaa53215fb86b43e4b9a61c" />
 	<File name="Classes/LootFilterManagedEconomyControl.lua" part="program" sha1="3e64c1939f98910775acfe186ec1f8e5a7481d52" />

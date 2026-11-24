@@ -412,6 +412,7 @@ function M.rows(body, category, query, target, catalogue)
 		local variants = (unique or advisory) and variantEvidence(data.lines,advisoryCategories[category.id])
 		local uniqueEvidence = unique and uniqueBaseEvidence(data.lines,variants,catalogue)
 		local handled = {}
+		local partialRows = {}
 		for _, item in ipairs(data.lines) do
 			local extended = advisoryCategories[category.id]
 			local regularFeed = category.id=="SkillGem"
@@ -453,7 +454,7 @@ function M.rows(body, category, query, target, catalogue)
 				out[#out+1] = {
 					name=name, price=not conflicting and item.chaosValue or nil, identity=identity,
 					conflicting=conflicting, supported=supported or nil,
-					incomplete=advisory and (not identity or advisoryCategories[category.id] and not complete or gems[category.id]
+					incomplete=advisory and (not identity or advisoryCategories[category.id] and not complete or gems[category.id] and not partialGemMatch
 						and (not gemLevel or gemQuality==nil or corrupted==nil or regularFeed and not validGemTuple)) or nil,
 					base=type(base)=="string" and base or nil,
 					variant=type(variant)=="string" and variant or nil,
@@ -468,7 +469,11 @@ function M.rows(body, category, query, target, catalogue)
 					count=positive(item.count) and item.count or nil,
 					listings=positive(item.listingCount) and item.listingCount or nil,
 				}
+				if partialGemMatch then partialRows[#partialRows+1]=out[#out] end
 			end
+		end
+		if #partialRows>1 then
+			for _, row in ipairs(partialRows) do row.conflicting,row.price,row.supported=true,nil,nil end
 		end
 	end
 	table.sort(out,function(a,b)

@@ -768,7 +768,12 @@ do
 	local row={name="Cyclone",variant="power charge on critical",detailsId="cyclone-power-charge-on-critical",chaosValue=50,count=1,listingCount=1}
 	local function compare(value) return browser.rows(assert(json.encode({lines={value}})),{id="ImbuedGem"},"",target) end
 	local result=compare(row)[1]
-	assert(result.partialGemMatch and result.gemLevel==nil and result.gemQuality==nil and result.corrupted==nil and result.incomplete)
+	assert(result.partialGemMatch and result.gemLevel==nil and result.gemQuality==nil and result.corrupted==nil and not result.incomplete)
+	local duplicate={};for key,entry in pairs(row) do duplicate[key]=entry end
+	duplicate.detailsId="duplicate-id"
+	local conflicts=browser.rows(assert(json.encode({lines={row,duplicate}})),{id="ImbuedGem"},"",target)
+	assert(#conflicts==2)
+	for _, conflict in ipairs(conflicts) do assert(conflict.conflicting and not conflict.price and not conflict.supported) end
 	for _, patch in ipairs({{variant="Alternate Support"},{gemLevel=19},{gemQuality=19},{gemLevel="20"},{gemQuality=false},{corrupted="false"}}) do
 		local value={};for key,entry in pairs(row) do value[key]=entry end
 		for key,entry in pairs(patch) do value[key]=entry end
@@ -792,6 +797,7 @@ do
 	local detail=table.concat(shown," "):gsub("%s+"," ")
 	assert(detail:find("Advisory match: exact gem name and Imbued support",1,true),detail)
 	assert(detail:find("Not provided by this quote: level, quality, corruption",1,true),detail)
+	assert(not detail:find("lacks verifiable price ID",1,true),detail)
 	assert(detail:find("at least 20 consistent listings and observations",1,true),detail)
 	if output then marketUI:frame():write(output.."/"..reviewWidth.."-imbued-partial-advisory.json") end
 	launch.DownloadPage=originalMarketDownload

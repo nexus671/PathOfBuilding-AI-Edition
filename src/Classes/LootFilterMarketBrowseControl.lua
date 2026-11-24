@@ -126,7 +126,7 @@ local function open(build, managedTarget)
 				elseif row.ambiguous then price="Ambiguous exchange name"
 				else price=string.format("%.4g chaos estimated",row.price) end
 				local details={price,"Response age: "..math.ceil(age/60).." minutes"}
-				if comparable and not row.conflicting then
+				if comparable and not row.conflicting and not row.partialGemMatch then
 					details[#details+1] = comparable.details[#comparable.details]
 				end
 				if row.partialGemMatch and not row.conflicting then
