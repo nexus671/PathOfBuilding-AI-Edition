@@ -1393,10 +1393,18 @@ function buildMode:OnFrame(inputEvents)
 		return
 	end
 	local extra = m_max(0, main.screenW - 640) / 4
-	self.controls.classDrop.width = compactHeader() and m_min(85, 75 + extra) or 85
-	self.controls.ascendDrop.width = compactHeader() and m_min(120, 85 + extra) or 120
-	self.controls.secondaryAscendDrop.width = compactHeader() and m_min(160, 95 + extra) or 160
-	self.controls.buildLoadouts.width = compactHeader() and m_min(190, 125 + extra) or 190
+	local function fitHeaderDropdown(control, width, maximum)
+		local x = control:GetPos()
+		local limit = m_max(width, m_min(maximum, main.screenW - x))
+		if control.width ~= width or control.maxDroppedWidth ~= limit then
+			control.width, control.maxDroppedWidth = width, limit
+			control:CheckDroppedWidth(control.enableDroppedWidth)
+		end
+	end
+	fitHeaderDropdown(self.controls.classDrop, compactHeader() and m_min(85, 75 + extra) or 85, 300)
+	fitHeaderDropdown(self.controls.ascendDrop, compactHeader() and m_min(120, 85 + extra) or 120, 300)
+	fitHeaderDropdown(self.controls.secondaryAscendDrop, compactHeader() and m_min(160, 95 + extra) or 160, 360)
+	fitHeaderDropdown(self.controls.buildLoadouts, compactHeader() and m_min(190, 125 + extra) or 190, 300)
 
 	if self.abortSave and not launch.devMode then
 		self:CloseBuild()

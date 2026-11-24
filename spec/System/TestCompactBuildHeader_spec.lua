@@ -15,6 +15,11 @@ describe("Compact build header", function()
 				local b = boxes[j]
 				assert.is_false(a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h, a.key .. " overlaps " .. b.key .. " at " .. width)
 			end end
+			for _, key in ipairs({ "classDrop", "ascendDrop", "secondaryAscendDrop", "buildLoadouts" }) do
+				local control = build.controls[key]
+				local x = control:GetPos()
+				assert.is_true(x + control.droppedWidth <= width, key .. " menu is outside the window at " .. width)
+			end
 			local old = build.characterLevelAutoMode
 			ui:click("levelScalingButton")
 			assert.is_true(build.characterLevelAutoMode ~= old)
@@ -36,6 +41,8 @@ describe("Compact build header", function()
 		ui:resize(640, 480); ui:frame()
 		local _, compactY = build.controls.pointDisplay:GetPos()
 		assert.equal(32, compactY)
+		local loadouts = build.controls.buildLoadouts
+		assert.is_true(loadouts:GetPos() + loadouts.droppedWidth <= 640)
 		local old = build.characterLevelAutoMode
 		ui:click("levelScalingButton")
 		assert.is_true(build.characterLevelAutoMode ~= old)
