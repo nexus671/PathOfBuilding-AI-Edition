@@ -7,7 +7,7 @@ local visual=require("Modules.LootFilterVisuals")
 local M={}
 function M.Open(build,options)
 	options=options or {};local store=build.savers.CraftingProjects;local c={};local w,h=math.min(1080,main.screenW-40),math.min(720,main.screenH-60)
-	local left=math.floor((w-48)*0.46);local right=left+32;local compact=w<800;local panelHeight=h-(compact and 226 or 188);local selected,entries,removed;local thumbs={};local models={};local searchCache={};local pending
+	local left=math.floor((w-48)*0.46);local right=left+32;local compact=right<424;local panelHeight=h-(compact and 226 or 188);local selected,entries,removed;local thumbs={};local models={};local searchCache={};local pending
 	-- Reuse recent starting-item models while browsing snapshots. This
 	-- cache belongs to the open dialog and never limits the saved inventory.
 	local function itemModel(raw)

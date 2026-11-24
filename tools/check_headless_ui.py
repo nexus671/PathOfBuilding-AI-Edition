@@ -221,6 +221,10 @@ def main():
                                      env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-inventory-short-controls.log").write_text(short_inventory.stdout)
     assert short_inventory.returncode == 0, short_inventory.stdout
+    breakpoint_inventory = subprocess.run(lua_command + ["../tools/test_crafting_inventory_compact.lua", "-", "840", "600"], cwd=ROOT / "src",
+                                          env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-inventory-breakpoint-controls.log").write_text(breakpoint_inventory.stdout)
+    assert breakpoint_inventory.returncode == 0, breakpoint_inventory.stdout
     atlas_region_compact = subprocess.run(lua_command + ["../tools/test_atlas_regions_history_ui.lua", "-", "640"], cwd=ROOT / "src",
                                           env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-region-compact-controls.log").write_text(atlas_region_compact.stdout)

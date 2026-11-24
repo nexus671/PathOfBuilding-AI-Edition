@@ -1731,7 +1731,7 @@
 	<File name="Classes/CraftingGwennenControl.lua" part="program" sha1="1081aed164400e876a6ecd8cb7825c646e01e06a" />
 	<File name="Classes/CraftingRogControl.lua" part="program" sha1="54ccfdd2725fa8fca63a6e4f7063fa421eff721e" />
 	<File name="Classes/CraftingHistoryControl.lua" part="program" sha1="e5d93860b1f0b56531e3c581c95713d4ce1c9ad0" />
-	<File name="Classes/CraftingInventoryControl.lua" part="program" sha1="d107dfa2f995492393ade6ebb0fc71cbc66e5551" />
+	<File name="Classes/CraftingInventoryControl.lua" part="program" sha1="9276d0dd5f76efa29839827c1302ac71dc767d9c" />
 	<File name="Classes/CraftingItemComparisonControl.lua" part="program" sha1="e2a04459cde8751208135bfea6239dd98280bc81" />
 	<File name="Classes/CraftingItemEditorControl.lua" part="program" sha1="379ff05bfd841fdf8d1b625fb55af8f0c9e429a1" />
 	<File name="Classes/CraftingItemStatsControl.lua" part="program" sha1="1d86a65414a33ff8a7b663fce0d2f0a44b8cb72d" />
