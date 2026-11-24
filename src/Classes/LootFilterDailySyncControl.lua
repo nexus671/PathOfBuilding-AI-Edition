@@ -864,7 +864,13 @@ function M.Open(profileId, profileName, restored)
 	end
 	local draftFields={"target","baseline","league","time","targetValue","intervalDays","protectionFile"}
 	if restored then
-		for _,key in ipairs(draftFields) do if restored.fields[key]~=nil then c[key]:SetText(restored.fields[key]) end end
+		for _,key in ipairs(draftFields) do
+			local saved=restored.fields[key]
+			if saved then
+				local field=c[key];field:SetText(saved.text)
+				field.caret,field.sel,field.undo,field.redo,field.lastUndoState=saved.caret,saved.sel,saved.undo,saved.redo,saved.lastUndoState
+			end
+		end
 	end
 	ui.style(c)
 	local popup
@@ -874,13 +880,22 @@ function M.Open(profileId, profileName, restored)
 		if main.popups[1]~=popup or sync.busy or loadingLeagues or background.busy
 			or nextWidth==width and nextHeight==popupHeight then return end
 		local fields,focus={}
-		for _,key in ipairs(draftFields) do fields[key]=c[key].buf;if popup.selControl==c[key] then focus=key end end
+		for _,key in ipairs(draftFields) do
+			local field=c[key]
+			fields[key]={text=field.buf,caret=field.caret,sel=field.sel,undo=field.undo,redo=field.redo,lastUndoState=field.lastUndoState}
+			if popup.selControl==field then focus=key end
+		end
 		local replacement=M.Open(profileId,profileName,{fields=fields,pickupPolicy=pickupPolicy,page=page,focus=focus})
 		if replacement then
 			for index,entry in ipairs(main.popups) do if entry==popup then table.remove(main.popups,index);break end end
 		end
 	end)
-	if restored and restored.focus and c[restored.focus]:IsShown() then popup:SelectControl(c[restored.focus]) end
+	if restored and restored.focus and c[restored.focus]:IsShown() then
+		local field=c[restored.focus];local saved=restored.fields[restored.focus]
+		popup:SelectControl(field)
+		field.caret,field.sel=saved.caret,saved.sel
+		field:ScrollCaretIntoView()
+	end
 	return popup
 end
 

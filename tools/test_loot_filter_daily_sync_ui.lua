@@ -1562,24 +1562,29 @@ do
 	local resized=headless.install({width=960,height=640});resized:bind(build)
 	require("Classes.LootFilterDailySyncControl").Open()
 	resized:text("target","C:/PoE/resize-draft.filter")
+	local draft=main.popups[1].controls.target
 	main.popups[1]:SelectControl(main.popups[1].controls.target)
+	draft.buf="C:/PoE/resize-edited.filter";draft.caret=8;draft.sel=4;draft:AddUndoState()
 	local waitingPopup=main.popups[1]
 	sync.busy={};resized:resize(640,480);resized:frame()
 	assert(main.popups[1]==waitingPopup,"Resize must not discard a pending sync preview")
 	sync.busy=nil;resized:frame();resized:frame()
 	local controls=main.popups[1].controls
-	assert(#main.popups==1 and controls.actionsPage and controls.target.buf=="C:/PoE/resize-draft.filter")
+	assert(#main.popups==1 and controls.actionsPage and controls.target.buf=="C:/PoE/resize-edited.filter")
 	assert(main.popups[1].selControl==controls.target,"Resize lost the focused draft field")
+	assert(controls.target.caret==8 and controls.target.sel==4,"Resize lost the selection")
+	controls.target:Undo();assert(controls.target.buf=="C:/PoE/resize-draft.filter","Resize lost undo history")
+	controls.target:Redo();assert(controls.target.buf=="C:/PoE/resize-edited.filter","Resize lost redo history")
 	resized:click("actionsPage")
 	resized:click("pickupPolicy");resized:text("campaign","1.5");resized:click("apply")
 	local x,y=controls.observedStack:GetPos();local w,h=controls.observedStack:GetSize()
 	assert(x>=0 and y>=0 and x+w<=640 and y+h<=480,"Resized action left the window")
 	resized:resize(960,640);resized:frame();resized:frame()
 	controls=main.popups[1].controls
-	assert(#main.popups==1 and not controls.actionsPage and controls.target.buf=="C:/PoE/resize-draft.filter")
+	assert(#main.popups==1 and not controls.actionsPage and controls.target.buf=="C:/PoE/resize-edited.filter")
 	resized:resize(640,480);resized:frame();resized:frame()
 	controls=main.popups[1].controls
-	assert(controls.observedStack:IsShown() and controls.target.buf=="C:/PoE/resize-draft.filter","Resize lost the selected page or draft")
+	assert(controls.observedStack:IsShown() and controls.target.buf=="C:/PoE/resize-edited.filter","Resize lost the selected page or draft")
 	resized:click("pickupPolicy")
 	assert(main.popups[1].controls.campaign.buf=="1.5","Resize lost the draft pickup policy")
 	resized:click("cancel")
