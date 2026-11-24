@@ -1,9 +1,10 @@
 """Guard clipping and alpha composition in the headless visual renderer."""
 # cspell:ignore tobytes
 import hashlib
+from pathlib import Path
 import unittest
 
-from render_headless_ui import hidden_text, render
+from render_headless_ui import hidden_text, render, texture_region
 
 
 def rectangle(x, y, width, height, clip, color, order):
@@ -34,6 +35,10 @@ class HiddenTextTests(unittest.TestCase):
 
 
 class RectangleRenderingTests(unittest.TestCase):
+    def test_single_image_stack_draws_full_icon(self):
+        icon = Path(__file__).resolve().parents[1] / "src/Assets/monstercategory/categorybeasts.png"
+        self.assertEqual(texture_region(str(icon), None).tobytes(), texture_region(str(icon), (1,)).tobytes())
+
     def test_fractional_clipped_and_translucent_rectangles(self):
         frame = {"width": 80, "height": 80, "commands": [
             rectangle(3.25, 4.75, 24.5, 21.25, [0, 0, 80, 80], [.2, .7, .4, 1], 1),
