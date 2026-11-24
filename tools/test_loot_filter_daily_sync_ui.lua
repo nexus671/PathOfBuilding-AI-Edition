@@ -760,6 +760,73 @@ do
 	launch.DownloadPage = originalMarketDownload
 end
 
+-- Real-shaped Imbued rows compare only the verified gem/support dimensions.
+do
+	local browser=require("Modules.LootFilterMarketBrowse")
+	local json=require("dkjson")
+	local target={category="ImbuedGem",name="Cyclone",level=20,quality=20,imbuedSupport="Power Charge On Critical Support"}
+	local row={name="Cyclone",variant="power charge on critical",detailsId="cyclone-power-charge-on-critical",chaosValue=50,count=1,listingCount=1}
+	local function compare(value) return browser.rows(assert(json.encode({lines={value}})),{id="ImbuedGem"},"",target) end
+	local result=compare(row)[1]
+	assert(result.partialGemMatch and result.gemLevel==nil and result.gemQuality==nil and result.corrupted==nil and not result.incomplete)
+	local duplicate={};for key,entry in pairs(row) do duplicate[key]=entry end
+	duplicate.detailsId="duplicate-id"
+	local conflicts=browser.rows(assert(json.encode({lines={row,duplicate}})),{id="ImbuedGem"},"",target)
+	assert(#conflicts==2)
+	for _, conflict in ipairs(conflicts) do assert(conflict.conflicting and not conflict.price and not conflict.supported) end
+	for _, patch in ipairs({{variant="Alternate Support"},{gemLevel=19},{gemQuality=19},{gemLevel="20"},{gemQuality=false},{corrupted="false"}}) do
+		local value={};for key,entry in pairs(row) do value[key]=entry end
+		for key,entry in pairs(patch) do value[key]=entry end
+		assert(not pcall(compare,value))
+	end
+	row.gemLevel=20;assert(compare(row)[1].partialGemMatch)
+	row.gemQuality=20;row.variant="Alternate Support"
+	assert(not compare(row)[1].partialGemMatch) -- Existing complete alternate comparisons survive.
+	row.corrupted="false";assert(not pcall(compare,row));row.corrupted=nil
+	row.gemLevel=nil;row.gemQuality=nil;row.variant="Power Charge On Critical"
+	do
+		local function variant(id,level,quality,corrupted)
+			return {name="Cyclone",variant="Power Charge On Critical",detailsId=id,chaosValue=50,
+				count=40,listingCount=40,gemLevel=level,gemQuality=quality,corrupted=corrupted}
+		end
+		local variants={variant("unknown"),variant("corrupt",nil,nil,true),variant("uncorrupted",nil,nil,false),
+			variant("level-only",20,nil,false),variant("quality-only",nil,20,false),variant("complete",20,20,false)}
+		local function compareAll(lines)
+			local results=browser.rows(assert(json.encode({lines=lines})),{id="ImbuedGem"},"",target)
+			local indexed={};for _,value in ipairs(results) do indexed[value.identity]=value end
+			return indexed
+		end
+		local separate=compareAll(variants)
+		for _,value in ipairs(variants) do assert(separate[value.detailsId].price==50 and not separate[value.detailsId].conflicting) end
+		assert(separate.unknown.corrupted==nil and separate.corrupt.corrupted==true and separate.uncorrupted.corrupted==false)
+		assert(not separate.complete.partialGemMatch)
+		variants[#variants+1]=variant("duplicate-uncorrupted",nil,nil,false)
+		local grouped=compareAll(variants)
+		assert(grouped.uncorrupted.conflicting and grouped.uncorrupted.price==nil)
+		assert(grouped["duplicate-uncorrupted"].conflicting and grouped["duplicate-uncorrupted"].price==nil)
+		for _,id in ipairs({"unknown","corrupt","level-only","quality-only","complete"}) do
+			assert(grouped[id].price==50 and not grouped[id].conflicting,id)
+		end
+	end
+	local collection={skillsTab={socketGroupList={{imbuedSupport=target.imbuedSupport,gemList={{gemData={name="Cyclone",grantedEffect={support=false}},level=20,quality=20}}}}}}
+	main.popups={}
+	launch.DownloadPage=function(_,url,callback)
+		assert(url:find("type=ImbuedGem",1,true))
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT").."\r\n\r\n",body=assert(json.encode({lines={row}}))})
+	end
+	require("Classes.LootFilterMarketBrowseControl").Open(collection)
+	marketUI:text("league","Covens");marketUI:click("buildTarget");marketUI:text("search","Cyclone");marketUI:click("choose")
+	marketUI:click("get")
+	local shown={};for _,line in ipairs(main.popups[1].controls.details.list) do shown[#shown+1]=StripEscapes(line[1] or "") end
+	local detail=table.concat(shown," "):gsub("%s+"," ")
+	assert(detail:find("Advisory match: exact gem name and Imbued support",1,true),detail)
+	assert(detail:find("Not provided by this quote: level, quality, corruption",1,true),detail)
+	assert(not detail:find("lacks verifiable price ID",1,true),detail)
+	assert(detail:find("at least 20 consistent listings and observations",1,true),detail)
+	if output then marketUI:frame():write(output.."/"..reviewWidth.."-imbued-partial-advisory.json") end
+	launch.DownloadPage=originalMarketDownload
+end
+
 -- Exercise the exact publish workflow with a simulated account response.
 newBuild()
 main.popups = {}
