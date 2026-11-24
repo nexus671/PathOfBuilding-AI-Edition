@@ -132,6 +132,22 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	harness:click("copyReport")
 	assert(harness.clipboard == '{"version":1}' and main.popups[1].title == "Sync diagnostics")
 	harness:frame()
+	harness:click("close")
+	main.popups = {}
+	reviewFixture = {enabled=true,target=selected,lastSuccess=1795449900,lastFailure={
+		checkedAt=1795453500,message="C:/private/filter",
+		failedFeed={category="Scarab",reason="empty_response",httpStatus=200,rawError="C:/private/filter"},
+	}}
+	require("Classes.LootFilterDailySyncControl").Open()
+	harness:click("lastAttempt")
+	local attempt = main.popups[1]
+	local rows = attempt.controls.message.list
+	assert(attempt.title=="Last sync attempt" and attempt.width<=size[1]-40 and rows[2][1]:find("Scarab",1,true)
+		and rows[2][1]:find("HTTP 200",1,true))
+	assert(StripEscapes(rows[3][1])=="The feed returned no usable prices."
+		and rows[4][1]:find("Last verified refresh",1,true))
+	harness:frame()
+	reviewFixture = nil
 	print(string.format("Native setup and diagnostics controls passed at %dx%d.", unpack(size)))
 end
 
@@ -314,6 +330,35 @@ rulesUI:choose("class","Map Fragments","label")
 rulesUI:choose("exchangeCategory","Scarab","val")
 rulesUI:text("name","Harbinger Scarab")
 rulesUI:text("cutoff","4")
+do
+	local savedDownload = launch.DownloadPage
+	local requests, empty = 0, false
+	launch.DownloadPage = function(_, url, callback, opts)
+		requests = requests + 1
+		assert(url:find("league=Covens&type=Scarab",1,true) and opts.followRedirects==false)
+		local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\n\r\n",
+			body=empty and '{"core":{"primary":"chaos"},"items":[],"lines":[]}'
+				or '{"core":{"primary":"chaos"},"items":[{"id":"supported","name":"Harbinger Scarab"},{"id":"other","name":"harbinger scarab"}],'
+				..'"lines":[{"id":"supported","primaryValue":8,"volumePrimaryValue":400},{"id":"other","primaryValue":200,"volumePrimaryValue":400}]}'})
+	end
+	rulesUI:click("checkQuote")
+	assert(requests==0 and main.popups[1].controls.query.buf=="=Harbinger Scarab")
+	rulesUI:text("league","Covens")
+	rulesUI:click("get")
+	assert(requests==1)
+	local details = {}
+	for _, row in ipairs(main.popups[1].controls.details.list) do details[#details+1] = StripEscapes(row[1] or "") end
+	local shown = table.concat(details," ")
+	assert(shown:find("8 chaos",1,true) and shown:find("supported",1,true) and not shown:find("200 chaos",1,true))
+	rulesUI:click("close")
+	empty = true
+	rulesUI:click("get")
+	assert(requests==2 and main.popups[1].controls.status.label:find("no current price rows",1,true))
+	rulesUI:click("close")
+	assert(main.popups[1].title=="Edit managed price rule" and main.popups[1].controls.name.buf=="Harbinger Scarab")
+	launch.DownloadPage = savedDownload
+end
 rulesUI:click("save")
 rulesUI:text("search","Harbinger Scarab")
 rulesUI:click("choose")

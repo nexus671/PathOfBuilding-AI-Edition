@@ -49,6 +49,57 @@ local function marketName(value)
 	return type(value)=="string" and #value>0 and #value<=200 and not value:find("[%c]")
 end
 
+
+function M.managedTarget(rule)
+	local market = require("Modules.LootFilterEconomy")
+	local gemMarket = require("Modules.LootFilterGemMarket")
+	local entry = market.validateManagedRules({rule})[1]
+	local category = entry.exchangeCategory
+	local target = {managed=true,name=entry.name,details={}}
+	if entry.class=="Maps" then
+		category = entry.mapType
+		target.mapTier = entry.tier
+	elseif gemMarket.classes[entry.class] then
+		category = gemMarket.feed
+		target.key = gemMarket.key(entry.name,entry.gemLevel,entry.gemQuality,entry.corrupted)
+		target.level, target.quality, target.corrupted = entry.gemLevel,entry.gemQuality,entry.corrupted
+		target.details[1] = string.format("Level %d, %d%% quality, %s",entry.gemLevel,entry.gemQuality,entry.corrupted and "corrupted" or "uncorrupted")
+	elseif entry.class=="Divination Cards" then
+		category = "DivinationCard"
+	end
+	if not category then return nil end
+	target.category = category
+	return target
+end
+
+function M.managedQuote(body, target)
+	assert(target and target.managed, "Choose an exact managed rule")
+	local market = require("Modules.LootFilterEconomy")
+	assert(type(body)=="string" and #body<=market.maxFeedBytes(target.category), "Market response exceeds the size limit")
+	local payload, position = json.decode(body)
+	assert(type(payload)=="table" and type(payload.lines)=="table" and not body:sub(position):find("%S"), "Invalid market overview")
+	local requested = target.key and {[target.key]=true} or nil
+	local valid, quotes = pcall(market.quotes,body,target.category,requested)
+	if not valid then
+		local problem = tostring(quotes)
+		if maps.variants[target.category] and problem:match("Map feed has no identifiable tier%-wide prices$") then
+			return {state=#payload.lines==0 and "empty" or "missing"}
+		end
+		if problem:match("No priced exchange items$") or target.category=="SkillGem" and #payload.lines==0 then
+			return {state="empty"}
+		end
+		error(quotes,0)
+	end
+	local quote = quotes[target.key or target.name]
+	if quote==false then return {state="ambiguous"} end
+	if not quote then return {state="missing"} end
+	local supported = market.liquid(quote)
+	return {state=supported and "quoted" or "thin",row={name=target.name,price=quote.price,
+		identity=market.evidencePriceId(quote.providerId or quote.id),source=quote.source,volume=quote.volume,
+		supported=supported,liquidityUnit=quote.liquidityUnit,variant=quote.variant,mapTier=target.mapTier,
+		gemLevel=target.level,gemQuality=target.quality,corrupted=target.corrupted}}
+end
+
 local uniqueCategories = {
 	["Body Armour"]="UniqueArmour", Boots="UniqueArmour", Gloves="UniqueArmour", Helmet="UniqueArmour",
 	Shield="UniqueArmour", Quiver="UniqueArmour", Amulet="UniqueAccessory", Ring="UniqueAccessory",

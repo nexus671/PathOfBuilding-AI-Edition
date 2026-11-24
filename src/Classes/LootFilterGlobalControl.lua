@@ -43,7 +43,7 @@ function M.Open(profile,onKeep,options)
 		local example=filters.rule("example","Example",{'BaseType == "Iron Hat"'},nil,profile.theme)
 		local raw=require("Modules.LootFilterDecorators").apply(example.text,settings)
 		local styles=parser.parse(require("Modules.LootFilterDecorators").apply(raw,options.previewAppearance)).rules[1].styles
-		local x,y=self:GetPos();visual.floor(x,y,588,64);visual.chip(x,y,588,64,{BaseType="Crafting base"},{action="Show",styles=styles})
+		local x,y=self:GetPos();local width=self:GetSize();visual.floor(x,y,width,64);visual.chip(x,y,width,64,{BaseType="Crafting base"},{action="Show",styles=styles})
 	end
 	c.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,526,220,28},"Keep appearance",function()
 		for _,key in ipairs(colorKeys) do assert(c[key].buf=="" or appearance.fromHex(c[key].buf),"Enter a valid hex colour") end
@@ -52,7 +52,27 @@ function M.Open(profile,onKeep,options)
 	end)
 	c.reset=new("ButtonControl"):ButtonControl(ui.anchor,{252,526,180,28},"Restore original",function() local next=copyTable(profile);next.appearance=nil;onKeep(next);main:ClosePopup() end)
 	c.close=new("ButtonControl"):ButtonControl(ui.anchor,{448,526,156,28},"Cancel",function() main:ClosePopup() end)
-	ui.style(c,{keep=true});main:OpenPopup(620,574,options.title or "Whole-filter appearance",c,nil,nil,"close")
+	local w,h=620,574
+	if main.screenH<634 or main.screenW<660 then
+		w,h=math.min(w,main.screenW-40),math.min(h,main.screenH-60)
+		c.page=new("DropDownControl"):DropDownControl(ui.anchor,{16,24,160,26},{"Style","Colours"})
+		ui.tabs(c,c.page,{{"pageStyle","Style","Style"},{"pageColours","Colours","Colours"}},16,24,w-32)
+		c.help.y=60;c.help.width=w-32
+		local function page(key,name) c[key].shown=function() return c.page:GetSelValue()==name end end
+		local labelWidth=math.floor((w-32)*0.4)
+		for i,key in ipairs({"minimumFontSize","alertVolume","disableEffects","alertId","disableIcons"}) do
+			local y=108+(i-1)*36;c[key.."Label"].y=y;c[key].x=16+labelWidth;c[key].y=y-4;c[key].width=w-32-labelWidth;page(key.."Label","Style");page(key,"Style")
+		end
+		for i,key in ipairs(colorKeys) do
+			local y=108+(i-1)*42;c[key.."Label"].y=y;c[key].x=16+labelWidth;c[key].y=y-4;c[key].width=w-116-labelWidth;c[key.."Pick"].x=w-92;c[key.."Pick"].y=y-4
+			page(key.."Label","Colours");page(key,"Colours");page(key.."Pick","Colours")
+		end
+		c.colourHint.y=242;page("colourHint","Colours")
+		c.preview.y=h-128;c.preview.width=w-32
+		local footer=math.floor((w-44)/3)
+		for i,key in ipairs({"keep","reset","close"}) do c[key].x=16+(i-1)*(footer+6);c[key].y=h-44;c[key].width=footer end
+	end
+	ui.style(c,{keep=true});main:OpenPopup(w,h,options.title or "Whole-filter appearance",c,nil,nil,"close")
 	for _,control in pairs(c) do if control.anchor then control.anchor.other=main.popups[1] end end
 end
 return M

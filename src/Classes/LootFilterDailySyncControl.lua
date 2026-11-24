@@ -6,6 +6,63 @@ local appearance = require("Modules.LootFilterPriceAppearance")
 local json = require("dkjson")
 local M = {}
 
+local feedFailureDescriptions = {
+	access_denied = "The price provider denied access.",
+	rate_limited = "The price provider limited requests.",
+	provider_unavailable = "The price provider was unavailable.",
+	http_error = "The price provider returned an HTTP error.",
+	redirect = "The price feed redirected the request.",
+	transport_error = "PoB could not reach the price feed.",
+	stale = "The price feed was too old to use.",
+	invalid_response = "The response was invalid for this feed.",
+	empty_response = "The feed returned no usable prices.",
+	cooldown = "The provider cooldown exceeded this refresh window.",
+	timeout = "The price refresh ran out of time.",
+	league_unavailable = "The configured league is unavailable at the price provider.",
+	source_changed = "The configured price source changed.",
+}
+
+local function attemptTime(timestamp)
+	if type(timestamp)=="number" and timestamp>=0 and timestamp<=4102444800 then
+		return os.date("%Y-%m-%d %H:%M",timestamp)
+	end
+end
+
+local function showLastAttempt(profileId)
+	local ok, config = pcall(sync.configuration,profileId)
+	if not ok or not config then
+		main:OpenMessagePopup("Last sync attempt","Could not read this sync profile.")
+		return
+	end
+	local failure = type(config.lastFailure)=="table" and config.lastFailure
+	local lastSuccess = attemptTime(config.lastSuccess)
+	local details = {}
+	if failure then
+		local failedAt = attemptTime(failure.checkedAt)
+		details[1] = failedAt and "Refresh failed on "..failedAt or "The latest refresh failed."
+		local feed = sync.failedFeedEvidence(failure.failedFeed)
+		if feed then
+			local category = feed.category=="leagues" and "League list" or feed.category
+			details[#details+1] = category.." price feed"..(feed.httpStatus and " (HTTP "..feed.httpStatus..")" or "")
+			details[#details+1] = feedFailureDescriptions[feed.reason] or "The price feed check failed."
+		elseif type(failure.message)=="string" then
+			details[#details+1] = ui.fit(ui.errorText(failure.message),460,16)
+		end
+	elseif not lastSuccess then
+		details[1] = "This profile has no completed sync attempt."
+	end
+	if lastSuccess then details[#details+1] = "Last verified refresh on "..lastSuccess end
+	local width = math.min(520,main.screenW-40)
+	local contentHeight = #details*22
+	local controls = {}
+	ui.description(controls,"message",16,18,width-32,contentHeight,details,14)
+	controls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,contentHeight+24,120,28},"Close",function()
+		main:ClosePopup()
+	end)
+	ui.style(controls,{close=true})
+	main:OpenPopup(width,contentHeight+68,"Last sync attempt",controls,nil,nil,"close")
+end
+
 local function editPickupPolicy(width, target, policy, save)
 	local controls = {}
 	ui.label(controls,"campaignLabel",16,16,"Campaign chaos per stack",14)
@@ -549,6 +606,10 @@ function M.Open(profileId, profileName)
 		main:OpenPopup(popupWidth,204,"Offline prices",controls,nil,nil,"cancel")
 	end)
 	c.offlinePrices.enabled = function() return config.target~=nil and not sync.busy end
+	c.lastAttempt = new("ButtonControl"):ButtonControl(ui.anchor,{368,534,168,26},"Last attempt",function()
+		showLastAttempt(profileId)
+	end)
+	c.lastAttempt.enabled = function() return config.target~=nil end
 	ui.style(c)
 	main:OpenPopup(width, 578, "Daily filter sync", c, nil, nil, "close")
 end

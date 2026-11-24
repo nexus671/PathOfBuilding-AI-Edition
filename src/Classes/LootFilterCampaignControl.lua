@@ -33,7 +33,7 @@ function M.Open(build,value,onKeep,mode)
 			button(id,px,py,tile,"",function() selected[key][name]=not selected[key][name] or nil end);local control=c[id];control.height=38;control.planningFocusable=true;custom[id]=true;control.tooltipText=name.." | "..#(families[key][name] or {}).." bundled bases"
 			local path,iw,ih;local baseName=(families[key][name] or {})[1];if baseName then local base=data.itemBases[baseName];path,iw,ih=art.itemArt({baseName=baseName,type=base.type}) end
 			function control:Draw()
-				local x,y=self:GetPos();local active=selected[key][name];visual.box(x,y,tile,38,self.hasFocus and "^x83C8EF" or active and "^xC7AD74" or "^x3F566F");visual.box(x+1,y+1,tile-2,36,active and "^x302B20" or "^x192635")
+				local x,y=self:GetPos();local tile=self:GetSize();local active=selected[key][name];visual.box(x,y,tile,38,self.hasFocus and "^x83C8EF" or active and "^xC7AD74" or "^x3F566F");visual.box(x+1,y+1,tile-2,36,active and "^x302B20" or "^x192635")
 				if path then local scale=24/math.max(iw,ih);SetDrawColor(1,1,1);DrawImage(visual.image(path),x+6+(24-iw*scale)/2,y+7,iw*scale,ih*scale) end
 				visual.text(x+36,y+12,12,names[name] or name,active and "^xF3D89D" or "^xD5DEE8",tile-42)
 			end
@@ -117,6 +117,33 @@ function M.Open(build,value,onKeep,mode)
 	end)
 	c.starters.tooltipText="Replace weapon and armour selections with an editable starting set. Recipe and level settings stay unchanged."
 	button("close",w-156,h-42,140,"Cancel",function() main:ClosePopup() end)
+	if h<620 or w<900 then
+		-- Divide the dense editor into pages so every control remains reachable.
+		c.page=new("DropDownControl"):DropDownControl(ui.anchor,{16,24,200,26},{"Setup","Weapons","Armour","Recipes"})
+		ui.tabs(c,c.page,{{"pageSetup","Setup","Setup"},{"pageWeapons","Weapons","Weapons"},{"pageArmour","Armour","Armour"},{"pageRecipes","Recipes","Recipes"}},16,24,w-32)
+		local function page(key,name) c[key].shown=function() return c.page:GetSelValue()==name end end
+		page("help","Setup");c.help.y=62;c.help.width=w-32
+		page("enabled","Setup");c.enabled.x=16;c.enabled.y=124
+		for i,field in ipairs(fields) do
+			local x=16+(i-1)%2*math.floor((w-32)/2);local y=166+math.floor((i-1)/2)*62
+			local label,input=c[field[1].."Label"],c[field[1]];label.x=x;label.y=y;input.x=x;input.y=y+20;input.width=math.floor((w-48)/2)
+			page(field[1].."Label","Setup");page(field[1],"Setup")
+		end
+		page("equipped","Weapons");c.equipped.x=w-164;c.equipped.y=62;c.equipped.width=148
+		page("weaponsLabel","Weapons");c.weaponsLabel.x=16;c.weaponsLabel.y=70
+		page("defencesLabel","Armour");c.defencesLabel.x=16;c.defencesLabel.y=70
+		for _,group in ipairs({{"weapons",policy.weapons,"Weapons",3},{"defences",policy.defences,"Armour",2}}) do
+			local key,choices,name,cols=unpack(group);local tile=math.floor((w-32-(cols-1)*6)/cols)
+			for i in ipairs(choices) do local id=key..i;local control=c[id];control.x=16+(i-1)%cols*(tile+6);control.y=98+math.floor((i-1)/cols)*42;control.width=tile;page(id,name) end
+		end
+		page("recipesLabel","Recipes");c.recipesLabel.x=16;c.recipesLabel.y=70
+		local recipeWidth=math.floor((w-38)/2)
+		for i in ipairs(policy.recipes) do local id="recipe"..i;local control=c[id];control.x=16+(i-1)%2*(recipeWidth+6);control.y=98+math.floor((i-1)/2)*38;control.width=recipeWidth;control.height=30;page(id,"Recipes") end
+		page("rareSetSlots","Recipes");c.rareSetSlots.x=w-164;c.rareSetSlots.y=326;c.rareSetSlots.width=148;c.rareSetSlots.height=28
+		c.summary.shown=false
+		local footerWidth=math.floor((w-50)/4)
+		for i,entry in ipairs({{"keep","Keep"},{"reset","Remove"},{"starters","Starters"},{"close","Cancel"}}) do local control=c[entry[1]];control.x=16+(i-1)*(footerWidth+6);control.width=footerWidth;control.label=entry[2] end
+	end
 	ui.style(c,{keep=true},custom);for _,control in pairs(c) do control.layoutAudit="filter-campaign-policy" end;main:OpenPopup(w,h,"Campaign and base-family pickups",c,nil,nil,"close");return c
 end
 return M

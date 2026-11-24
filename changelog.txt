@@ -1,6 +1,15 @@
-VERSION[2.68.1-ai.preview1245][2026/11/23]
+VERSION[2.68.1-ai.preview1247][2026/11/23]
 
 * Open a larger Atlas tree in compact windows to inspect and edit routes.
+
+VERSION[2.68.1-ai.preview1246][2026/11/23]
+
+* Show the failed price feed and reason in daily sync and diagnostics.
+* Check the exact market quote from a managed price rule before saving it.
+
+VERSION[2.68.1-ai.preview1245][2026/11/23]
+
+* Keep campaign pickups, filter rules, drop testing and styling usable in smaller windows.
 
 VERSION[2.68.1-ai.preview1244][2026/11/23]
 

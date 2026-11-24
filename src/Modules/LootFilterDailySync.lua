@@ -301,6 +301,38 @@ local function finiteNumber(value)
 	if type(value) == "number" and value == value and value > -math.huge and value < math.huge then return value end
 end
 
+
+local failureCategories = {DivinationCard=true,SkillGem=true,leagues=true}
+for _, category in ipairs(market.exchangeCategories) do failureCategories[category] = true end
+for _, category in ipairs(require("Modules.LootFilterMapMarket").feeds) do failureCategories[category] = true end
+local failureReasons = {access_denied=true,rate_limited=true,provider_unavailable=true,http_error=true,redirect=true,
+	transport_error=true,stale=true,invalid_response=true,empty_response=true,cooldown=true,timeout=true,
+	league_unavailable=true,source_changed=true}
+function M.failedFeedEvidence(value)
+	if type(value)~="table" or not failureCategories[value.category] or not failureReasons[value.reason] then return nil end
+	local status = finiteNumber(value.httpStatus)
+	return {category=value.category,reason=value.reason,
+		httpStatus=status and status>=100 and status<=599 and status==math.floor(status) and status or nil}
+end
+
+local function feedFailure(category, reason, status)
+	return M.failedFeedEvidence({category=category,reason=reason,httpStatus=status})
+end
+
+local function requestFailure(category, status, message)
+	local reason = "http_error"
+	if message=="No data returned" then reason,status = "empty_response",200
+	elseif message=="Response exceeds the size limit" or status==304 then reason = "invalid_response"
+	elseif not status then
+		local text = tostring(message):lower()
+		reason = (text:find("timeout",1,true) or text:find("timed out",1,true)) and "timeout" or "transport_error"
+	elseif status==401 or status==403 then reason = "access_denied"
+	elseif status==429 then reason = "rate_limited"
+	elseif status>=500 then reason = "provider_unavailable"
+	elseif status>=300 and status<400 then reason = "redirect" end
+	return feedFailure(category,reason,status)
+end
+
 -- The AI bridge gets a bounded, path-free view. File names, local settings,
 -- protected sample definitions and transport errors stay on the desktop.
 local publicCache
@@ -321,6 +353,8 @@ function M.publicStatus(now, id)
 		backgroundNotifications=config.backgroundNotifications==true,
 		priceSource=market.endpoint==market.resolveEndpoint() and "direct" or market.endpoint and "shared_cache" or "unavailable",
 		providerWaitSeconds=providerWait>0 and providerWait or nil,
+		failedFeed=M.failedFeedEvidence(type(config.lastFailure)=="table" and config.lastFailure.failedFeed),
+		lastFailure=type(config.lastFailure)=="table" and finiteNumber(config.lastFailure.checkedAt) or nil,
 		latestChanges={},
 	}
 	if output.state == "enabled" and not sourceMatches(config) then
@@ -328,7 +362,6 @@ function M.publicStatus(now, id)
 	end
 	if output.state == "enabled" and type(config.lastFailure) == "table" then
 		output.state = "error"
-		output.lastFailure = config.lastFailure.checkedAt
 		output.warning = "Open the PoB Daily price sync dialog for the latest failure."
 	end
 	local timeValid, eligible = pcall(M.nextEligible,config,now)
@@ -1001,7 +1034,7 @@ function M.noteProviderLimit(response, status, now)
 	return M.providerWait(now)
 end
 
-local function rememberFailure(config, startedAt, message, id)
+local function rememberFailure(config, startedAt, message, id, failedFeed)
 	-- A failed attempt may race with another window. Only record it for
 	-- this configuration and preserve a newer successful or failed attempt.
 	pcall(function()
@@ -1018,6 +1051,7 @@ local function rememberFailure(config, startedAt, message, id)
 			current.lastFailure = {
 				startedAt=startedAt, checkedAt=os.time(),
 				message=tostring(message):gsub("[%c]", " "):sub(1,350),
+				failedFeed=M.failedFeedEvidence(failedFeed),
 			}
 			save(current,id)
 		end)
@@ -1114,20 +1148,21 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 	local endpoint = market.endpoint
 	local job, bodies, responses = {onFailure=onFailure,profileId=id}, {}, {}
 	M.busy, M.deadline = job, now + 300
-	local function finish(success, message)
+	local function finish(success, message, failedFeed)
 		M.busy = nil
 		M.status = success and message or ("Sync skipped: " .. tostring(message))
-		if not success and onFailure then onFailure(M.status) end
+		if not success and onFailure then onFailure(M.status,M.failedFeedEvidence(failedFeed)) end
 		if ConPrintf then ConPrintf("%s", M.status) end
 	end
-	local function diagnoseLeague(problem)
-		if market.endpoint ~= endpoint then finish(false,sourceChanged); return end
+	local function diagnoseLeague(problem, failedFeed)
+		if market.endpoint ~= endpoint then finish(false,sourceChanged,feedFailure(job.category,"source_changed")); return end
 		local time = os.time()
-		if time+15>=M.deadline or M.providerWait(time)>0 then finish(false,problem); return end
+		if time+15>=M.deadline or M.providerWait(time)>0 then finish(false,problem,failedFeed); return end
+		job.category, job.failedFeed = "leagues", nil
 		M.status = "Checking current PC trade league availability."
 		launch:DownloadPage(endpoint.."leagues",function(response,err)
 			if M.busy ~= job then return end
-			if market.endpoint ~= endpoint then finish(false,sourceChanged); return end
+			if market.endpoint ~= endpoint then finish(false,sourceChanged,feedFailure(job.category,"source_changed")); return end
 			local code = err and tonumber(err:match("^Response code: (%d+)$"))
 			M.noteProviderLimit(response,code,os.time())
 			if not err then
@@ -1135,23 +1170,25 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 					return market.tradeLeagues(M.fresh(response,os.time()))
 				end)
 				if valid and not leagues[config.league] then
-					finish(false,"The configured league is no longer listed by the price provider. Use Choose league to review available seasons. The existing filter was kept.")
+					finish(false,"The configured league is no longer listed by the price provider. Use Choose league to review available seasons. The existing filter was kept.",
+						feedFailure(failedFeed and failedFeed.category,"league_unavailable",failedFeed and failedFeed.httpStatus))
 					return
 				end
 			end
-			finish(false,problem)
+			finish(false,problem,failedFeed)
 		end,{followRedirects=false,timeout=15,maxBytes=65536,header="Accept: application/json"})
 	end
 	local function finishWithPrices(confirmation)
-		if market.endpoint ~= endpoint then finish(false,sourceChanged); return end
+		if market.endpoint ~= endpoint then finish(false,sourceChanged,feedFailure(job.category,"source_changed")); return end
 		local finishedAt = os.time()
 		local feeds = {}
 		for index, response in ipairs(responses) do
 			local age = response.initialAge + math.max(0, finishedAt - response.checkedAt)
-			if age > 3600 then finish(false,categories[index]..": snapshot expired before the refresh finished."); return end
+			if age > 3600 then finish(false,categories[index]..": snapshot expired before the refresh finished.",feedFailure(categories[index],"stale")); return end
 			feeds[index] = {category=categories[index],age=age,revalidated=response.revalidated}
 		end
-		finish(pcall(complete,bodies,feeds,confirmation))
+		local succeeded, result = pcall(complete,bodies,feeds,confirmation)
+		finish(succeeded,result)
 	end
 	local function confirmTightening()
 		local policy = config.pickupPolicy
@@ -1174,8 +1211,9 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 		end)
 	end
 	local function fetch(index, attempt)
-		if market.endpoint ~= endpoint then finish(false,sourceChanged); return end
+		if market.endpoint ~= endpoint then finish(false,sourceChanged,feedFailure(job.category,"source_changed")); return end
 		local category = categories[index]
+		job.category, job.failedFeed = category, nil
 		if not category then confirmTightening(); return end
 		M.status = "Fetching " .. config.league .. " prices: " .. category
 		local url = endpoint .. market.feedPath(config.league, category)
@@ -1186,7 +1224,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 		end
 		local wait = M.providerWait(time)
 		if wait>0 then
-			if time+wait+20>=M.deadline then finish(false,category..": provider cooldown extends beyond this refresh."); return end
+			if time+wait+20>=M.deadline then finish(false,category..": provider cooldown extends beyond this refresh.",feedFailure(category,"cooldown")); return end
 			defer(wait,category..": waiting for the provider cooldown.",function() fetch(index,attempt) end)
 			return
 		end
@@ -1199,19 +1237,21 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 		end
 		launch:DownloadPage(url, function(response, err)
 			if M.busy ~= job then return end
-			if market.endpoint ~= endpoint then finish(false,sourceChanged); return end
+			if market.endpoint ~= endpoint then finish(false,sourceChanged,feedFailure(job.category,"source_changed")); return end
 			time = os.time()
 			local status = err and tonumber(err:match("^Response code: (%d+)$"))
 			local providerDelay = M.noteProviderLimit(response,status,time)
 			if err == "Response code: 304" and cached and time >= cached.sourceAt and time-cached.sourceAt <= 3600 then
 				local valid, age = pcall(function() return responseAge(headers(response), time, time-cached.sourceAt) end)
-				if not valid then finish(false, category .. ": " .. tostring(age)); return end
+				if not valid then finish(false, category .. ": " .. tostring(age),feedFailure(category,"stale",304)); return end
 				cached.sourceAt = time-age
 				bodies[index], responses[index] = cached.body, {initialAge=age, checkedAt=time, revalidated=true}
 				fetch(index + 1, 1)
 				return
 			end
 			if err then
+				local failedFeed = requestFailure(category,status,err)
+				job.failedFeed = failedFeed
 				local retryable = status == 429 or status and status >= 500 and status <= 599 or not status
 				local delay = providerDelay or 5
 				if retryable and attempt < 2 and delay <= 90 and time + delay + 20 < M.deadline then
@@ -1219,18 +1259,23 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 					return
 				end
 				local problem = category .. ": " .. err
-				if index == 1 and status == 404 then diagnoseLeague(problem) else finish(false,problem) end
+				if index == 1 and status == 404 then diagnoseLeague(problem,failedFeed) else finish(false,problem,failedFeed) end
 				return
 			end
 			local fresh, data, age, tag = pcall(M.fresh, response, time)
-			if not fresh then finish(false, category .. ": " .. tostring(data)); return end
+			if not fresh then
+				local reason = tostring(data):find("stale",1,true) and "stale" or "invalid_response"
+				finish(false, category .. ": " .. tostring(data),feedFailure(category,reason,200)); return
+			end
 			local valid, why = pcall(market.quotes, data, category, gemRequests)
 			if not valid then
 				local problem = category .. ": " .. tostring(why)
-				if index == 1 and tostring(why):find("No priced exchange items",1,true) then
-					diagnoseLeague(problem)
+				local empty = tostring(why):find("No priced exchange items",1,true)
+				local failedFeed = feedFailure(category,empty and "empty_response" or "invalid_response",200)
+				if index == 1 and empty then
+					diagnoseLeague(problem,failedFeed)
 				else
-					finish(false,problem)
+					finish(false,problem,failedFeed)
 				end
 				return
 			end
@@ -1247,9 +1292,10 @@ function M.tick(now, force, scheduled, id)
 	if M.busy then
 		if now > M.deadline then
 			local onFailure = M.busy.onFailure
+			local failedFeed = feedFailure(M.busy.category,"timeout",M.busy.failedFeed and M.busy.failedFeed.httpStatus)
 			M.busy = nil
 			M.status = "Daily sync timed out. The existing filter was kept."
-			if onFailure then onFailure(M.status) end
+			if onFailure then onFailure(M.status,failedFeed) end
 		elseif M.busy.resumeAt and now >= M.busy.resumeAt then
 			local run = M.busy.resume
 			M.busy.resumeAt, M.busy.resume = nil, nil
@@ -1275,7 +1321,7 @@ function M.tick(now, force, scheduled, id)
 		M.status = config.lastFailure and failureStatus(config.lastFailure) or config.summary or enabledStatus(config)
 		return
 	end
-	local function onFailure(message) rememberFailure(config, now, message, id) end
+	local function onFailure(message, failedFeed) rememberFailure(config, now, message, id, failedFeed) end
 	if not market.endpoint then
 		M.status = "Sync skipped: "..market.endpointError
 		onFailure(M.status)

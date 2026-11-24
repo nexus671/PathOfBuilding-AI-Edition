@@ -1754,3 +1754,147 @@ local function checkManagedExchangeDailySync()
 end
 checkManagedExchangeDailySync()
 print("Optional Scarab and Allflame prices use verified daily sync, offline replay, safe failure retention and rollback")
+
+
+local function checkStructuredFeedFailures()
+	local realTime,realDownload,endpoint=os.time,launch.DownloadPage,market.endpoint
+	local json=require("dkjson")
+	local cases={
+		{mode="empty",category="Currency",reason="empty_response",status=200},
+		{mode="empty",category="Scarab",reason="empty_response",status=200},
+		{mode="invalid",category="Scarab",reason="invalid_response",status=200},
+		{mode="stale",category="Scarab",reason="stale",status=200},
+		{mode="denied",category="Scarab",reason="access_denied",status=403},
+		{mode="limited",category="Scarab",reason="rate_limited",status=429},
+		{mode="unavailable",category="Scarab",reason="provider_unavailable",status=503},
+		{mode="redirect",category="Scarab",reason="redirect",status=302},
+		{mode="transport",category="Scarab",reason="transport_error"},
+		{mode="retry",category="Scarab",reason="provider_unavailable",status=500},
+		{mode="timeout",category="Scarab",reason="timeout"},
+		{mode="uncached",category="Scarab",reason="invalid_response",status=304},
+		{mode="oversized",category="Scarab",reason="invalid_response"},
+		{mode="cooldown",category="Oil",reason="cooldown"},
+	}
+	local profile=assert(loadfile("Modules/LootFilterDailySync.lua"))().createProfile("Structured failure evidence")
+	for index,case in ipairs(cases) do
+		market.endpoint=endpoint.."test-feed-failure-"..index.."/"
+		local fixture=assert(loadfile("Modules/LootFilterDailySync.lua"))()
+		local id=profile
+		local live,fixed=dir.."/failure-"..index..".filter",dir.."/failure-fixed-"..index..".filter"
+		local raw=market.addManagedSection(original,{{name="Harbinger Scarab",class="Map Fragments",scope="maps",cutoff=6,exchangeCategory="Scarab"}})
+		write(live,raw);write(fixed,raw)
+		fixture.configure(live,fixed,"Covens",{profileId=id,hour=0,protectionFile=protections})
+		local clock,fail,attempts=realTime()+index*10000,false,0
+		os.time=function() return clock end
+		launch.DownloadPage=function(_,url,callback,params)
+			assert(params.followRedirects==false)
+			local date="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n"
+			if url:match("/leagues$") then callback({header=date,body='[{"id":"Covens","name":"Covens"}]'});return end
+			local category=url:match("type=([%w]+)$")
+			if fail and case.mode=="cooldown" and category=="Currency" then
+				fixture.noteProviderLimit({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 3600\r\n\r\n"},429,clock)
+			elseif fail and category==case.category then
+				attempts=attempts+1
+				if case.mode=="empty" then callback({header=date,body='{"core":{"primary":"chaos"},"items":[],"lines":[]}'});return
+				elseif case.mode=="invalid" then callback({header=date,body='{"core":'});return
+				elseif case.mode=="stale" then callback({header=date:gsub("\r\n\r\n","\r\nAge: 4001\r\n\r\n"),body=commodityBody});return
+				elseif case.mode=="timeout" then return
+				elseif case.mode=="oversized" then callback(nil,"Response exceeds the size limit");return
+				elseif case.mode=="transport" then callback(nil,"Private transport https://private.example.test C:/private/filter");return
+				else
+					local status=case.status
+					local hold=(status==429 or status==503) and "Retry-After: 120\r\n" or ""
+					callback({header="HTTP/1.1 "..status.." Error\r\n"..hold.."\r\n",body="private provider detail"},"Response code: "..status);return
+				end
+			end
+			local body=category=="Scarab" and '{"core":{"primary":"chaos"},"items":[{"id":"scarab","name":"Harbinger Scarab"}],"lines":[{"id":"scarab","primaryValue":0.3,"volumePrimaryValue":1000}]}' or commodityBody
+			callback({header=date,body=body})
+		end
+		fixture.tick(clock,true,false,id)
+		local verified=fixture.configuration(id)
+		assert(verified.lastSuccess==clock,fixture.status)
+		local output,review=read(live),assert(json.encode(verified.review))
+		fail,clock=true,clock+2
+		fixture.tick(clock,true,false,id)
+		if fixture.busy then clock=clock+(case.mode=="timeout" and 301 or 5);fixture.tick(clock) end
+		assert(not fixture.busy,case.mode)
+		local failed=fixture.configuration(id)
+		assert(failed.lastSuccess==verified.lastSuccess and read(live)==output and json.encode(failed.review)==review,case.mode)
+		local feed=assert(failed.lastFailure.failedFeed,case.mode)
+		assert(feed.category==case.category and feed.reason==case.reason and feed.httpStatus==case.status,case.mode.." "..json.encode(feed))
+		if case.mode=="transport" or case.mode=="retry" then assert(attempts==2) end
+		local public=fixture.publicStatus(clock+1,id)
+		assert(public.state=="error" and json.encode(public.failedFeed)==json.encode(feed))
+		assert(not json.encode(public):find("private",1,true))
+		local restarted=assert(loadfile("Modules/LootFilterDailySync.lua"))()
+		assert(restarted.publicStatus(clock+2,id).failedFeed.reason==case.reason)
+		fixture.pause(true,id)
+		local paused=fixture.publicStatus(clock+3,id)
+		assert(paused.state=="paused" and paused.failedFeed.reason==case.reason and paused.lastFailure==failed.lastFailure.checkedAt)
+		fixture.disable(id)
+		local disabled=fixture.publicStatus(clock+4,id)
+		assert(disabled.state=="disabled" and disabled.failedFeed.reason==case.reason and disabled.lastFailure==failed.lastFailure.checkedAt)
+	end
+	os.time,launch.DownloadPage,market.endpoint=realTime,realDownload,endpoint
+	local clean=sync.failedFeedEvidence({category="Currency",reason="access_denied",httpStatus=403,raw="C:/private"})
+	assert(clean.category=="Currency" and clean.httpStatus==403 and not clean.raw)
+	assert(not sync.failedFeedEvidence({category="C:/private",reason="timeout"}))
+	assert(not sync.failedFeedEvidence({category="Currency",reason="private detail"}))
+	assert(not sync.failedFeedEvidence("legacy message"))
+	assert(not sync.failedFeedEvidence({category="Currency",reason="timeout",httpStatus=403.5}).httpStatus)
+end
+checkStructuredFeedFailures()
+print("Failed feed evidence survives restart, covers retries and timeouts, preserves verified output, and excludes private errors")
+
+
+local function checkExactManagedQuoteInspection()
+	local browse=require("Modules.LootFilterMarketBrowse")
+	local json=require("dkjson")
+	local function exchange(name,price,volume)
+		return assert(json.encode({core={primary="chaos"},items={{id="exact-id",name=name}},
+			lines={{id="exact-id",primaryValue=price or 3,volumePrimaryValue=volume or 1000}}}))
+	end
+	local scarab=assert(browse.managedTarget({name="Harbinger Scarab",class="Map Fragments",scope="maps",cutoff=6,exchangeCategory="Scarab"}))
+	assert(scarab.managed and scarab.category=="Scarab" and scarab.name=="Harbinger Scarab")
+	local quote=browse.managedQuote(exchange("Harbinger Scarab"),scarab)
+	assert(quote.state=="quoted" and quote.row.identity=="exact-id" and quote.row.source=="Scarab")
+	assert(browse.managedQuote(exchange("harbinger scarab"),scarab).state=="missing")
+	assert(browse.managedQuote(exchange("Harbinger Scarab",3,1),scarab).state=="thin")
+	assert(browse.managedQuote('{"core":{"primary":"chaos"},"items":[],"lines":[]}',scarab).state=="empty")
+	local ambiguous='{"core":{"primary":"chaos"},"items":[{"id":"a","name":"Harbinger Scarab"},{"id":"b","name":"Harbinger Scarab"}],"lines":[{"id":"a","primaryValue":3,"volumePrimaryValue":1000},{"id":"b","primaryValue":5,"volumePrimaryValue":1000}]}'
+	assert(browse.managedQuote(ambiguous,scarab).state=="ambiguous")
+	assert(not browse.managedTarget({name="Orb of Alteration",class="Stackable Currency",scope="maps",cutoff=6}))
+	local card=browse.managedTarget({name="The Doctor",class="Divination Cards",scope="maps"})
+	assert(card.category=="DivinationCard" and browse.managedQuote(exchange("The Doctor",3,499),card).state=="thin")
+	local ember=browse.managedTarget({name="Allflame Ember of Abyss",class="Embers of the Allflame",scope="maps",exchangeCategory="AllflameEmber"})
+	assert(ember.category=="AllflameEmber" and browse.managedQuote(exchange("Allflame Ember of Abyss"),ember).state=="quoted")
+	local map=browse.managedTarget({class="Maps",tier=16,mapType="Map"})
+	local mapRow={name="Map (Tier 16)",detailsId="tier-16-exact",chaosValue=3,count=30,listingCount=30}
+	quote=browse.managedQuote(assert(json.encode({lines={mapRow}})),map)
+	assert(quote.state=="quoted" and quote.row.mapTier==16 and quote.row.identity=="tier-16-exact")
+	mapRow.name="Map (Tier 15)"
+	assert(browse.managedQuote(assert(json.encode({lines={mapRow}})),map).state=="missing")
+	assert(browse.managedQuote('{"lines":[]}',map).state=="empty")
+	local blighted=browse.managedTarget({class="Maps",tier=16,mapType="BlightedMap"})
+	assert(blighted.category=="BlightedMap" and browse.managedQuote(assert(json.encode({lines={mapRow}})),blighted).state=="missing")
+	local gem=browse.managedTarget({name="Arc",class="Skill Gems",scope="maps",gemLevel=20,gemQuality=20,corrupted=false})
+	local gemRow={name="Arc",detailsId="arc-exact",gemLevel=20,gemQuality=20,corrupted=false,chaosValue=5,count=50,listingCount=50}
+	local function gemResult(row) return browse.managedQuote(assert(json.encode({lines={row}})),gem) end
+	quote=gemResult(gemRow)
+	assert(quote.state=="quoted" and quote.row.identity=="arc-exact" and quote.row.corrupted==false and quote.row.gemLevel==20)
+	for key,value in pairs({gemLevel=19,gemQuality=19,corrupted=true,name="Arc of Surging"}) do
+		local row={}
+		for field,entry in pairs(gemRow) do row[field]=entry end
+		row[key]=value
+		assert(gemResult(row).state=="missing",key)
+	end
+	gemRow.variant="Imbued"
+	assert(gemResult(gemRow).state=="ambiguous")
+	gemRow.variant=nil;gemRow.count=1
+	assert(gemResult(gemRow).state=="thin")
+	assert(browse.managedQuote('{"lines":[]}',gem).state=="empty")
+	assert(not pcall(browse.managedQuote,'{"lines":[]} trailing',gem))
+	assert(not pcall(browse.managedQuote,'{"core":{"primary":"divine"},"items":[],"lines":[]}',scarab))
+end
+checkExactManagedQuoteInspection()
+print("Managed quote inspection uses exact exchange, card, map, gem and Allflame identities with shared liquidity checks")

@@ -68,28 +68,40 @@ local function edit(rules, index, save)
 		c.scope:SetSel(1)
 		updateHelp()
 	end
-	c.save = new("ButtonControl"):ButtonControl(ui.anchor,{16,252,140,28},"Save rule",function()
-		local nextRules = copyTable(rules)
+	local function readRule()
 		local kind = c.class:GetSelValueByKey("label")
+		local name = c.name.buf:match("^%s*(.-)%s*$")
+		local scope = c.scope:GetSelValueByKey("val")
 		if isMap() then
-			nextRules[index] = {class=kind,tier=tonumber(c.name.buf),mapType=c.scope:GetSelValueByKey("val")}
+			return {class=kind,tier=tonumber(name),mapType=scope}
 		elseif isGem() then
-			nextRules[index] = {class=kind,name=c.name.buf:match("^%s*(.-)%s*$"),scope=c.scope:GetSelValueByKey("val"),
+			return {class=kind,name=name,scope=scope,
 				gemLevel=tonumber(c.gemLevel.buf),gemQuality=tonumber(c.gemQuality.buf),corrupted=c.corruption.selIndex==2}
 		elseif itemFeed() then
-			nextRules[index] = {name=c.name.buf:match("^%s*(.-)%s*$"),class=kind,scope=c.scope:GetSelValueByKey("val"),
-				exchangeCategory=itemFeed()}
-		else
-			local feed = isCommodity() and c.exchangeCategory:GetSelValueByKey("val")
-			nextRules[index] = {name=c.name.buf:match("^%s*(.-)%s*$"),class=kind,scope=c.scope:GetSelValueByKey("val"),
-				cutoff=c.cutoff.buf ~= "" and (tonumber(c.cutoff.buf) or -1) or nil,
-				exchangeCategory=feed and feed~="" and feed or nil}
+			return {name=name,class=kind,scope=scope,exchangeCategory=itemFeed()}
 		end
+		local feed = isCommodity() and c.exchangeCategory:GetSelValueByKey("val")
+		return {name=name,class=kind,scope=scope,cutoff=c.cutoff.buf ~= "" and (tonumber(c.cutoff.buf) or -1) or nil,
+			exchangeCategory=feed and feed~="" and feed or nil}
+	end
+	c.save = new("ButtonControl"):ButtonControl(ui.anchor,{16,252,140,28},"Save rule",function()
+		local nextRules = copyTable(rules)
+		nextRules[index] = readRule()
 		local ok, result = pcall(economy.validateManagedRules,nextRules)
 		if not ok then main:OpenMessagePopup("Managed price rules",ui.errorText(result)); return end
 		main:ClosePopup()
 		save(result)
 	end)
+	c.checkQuote = new("ButtonControl"):ButtonControl(ui.anchor,{164,252,math.min(150,width-312),28},"Check quote",function()
+		local rule = readRule()
+		if isCommodity() and not rule.cutoff then rule.cutoff = 1 end
+		local browser = require("Classes.LootFilterMarketBrowseControl")
+		local ok, problem = pcall(browser.OpenForManagedRule,rule)
+		if not ok then ui.errorPopup("Check managed price",problem) end
+	end)
+	c.checkQuote.enabled = function()
+		return c.name.buf:match("%S") and (not isCommodity() or c.exchangeCategory:GetSelValueByKey("val")~="")
+	end
 	c.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,252,120,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(c)
 	main:OpenPopup(width,296,"Edit managed price rule",c,nil,nil,"close")

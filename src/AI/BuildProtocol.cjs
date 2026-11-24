@@ -27,6 +27,9 @@ const lootExchangeCategory={enum:['Currency','Fragment','Runegraft','AllflameEmb
   'EnshroudingCrystal','Artifact','Oil','DeliriumOrb','Scarab','Astrolabe','Thread','Fossil','Resonator','Essence']};
 // Divination cards, ordinary and blight map variants, and regular gems.
 const lootMaxFeedCount=lootExchangeCategory.enum.length+5;
+const lootFailureCategories=new Set([...lootExchangeCategory.enum,'DivinationCard','Map','BlightedMap','BlightRavagedMap','SkillGem','leagues']);
+const lootFailureReasons=new Set(['access_denied','rate_limited','provider_unavailable','http_error','redirect','transport_error',
+  'stale','invalid_response','empty_response','cooldown','timeout','league_unavailable','source_changed']);
 const lootEconomyStackRule=object({...lootEconomyStackFields,class:{enum:['Stackable Currency','Map Fragments','Misc Map Items','Delve Stackable Socketable Currency']},exchangeCategory:lootExchangeCategory},['name','class','scope']);
 const lootEconomyCardRule=object({...lootEconomyStackFields,class:{const:'Divination Cards'}},['name','class','scope']);
 const lootEconomyEmberRule=object({name:lootEconomyStackFields.name,class:{const:'Embers of the Allflame'},
@@ -138,7 +141,7 @@ const readOnly = {readOnlyHint:true,destructiveHint:false,idempotentHint:true,op
 const tools = [
   {name:'measure_journey_upgrades',description:'Calculate each planned wishlist target against the exact current native build without applying it. Targets come from exact item text or linked crafting targets. Poll get_proposal_status for measured deltas, constraints and ratios per supplied resource. No currency conversion or measured benefit is assumed.',inputSchema:object({baseRevision:string(40)},['baseRevision']),annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}},
   {name:'get_build_journey',description:'Read the saved roadmap, gear wishlist, leveling guide, actual resource ledger, reservations and explained next actions. Prices are user supplied. No live inventory or currency conversion is inferred.',inputSchema:object({}),annotations:readOnly},
-  {name:'get_loot_sync_status',description:'Read the last captured desktop loot filter sync status, last successful run and up to 40 cutoff changes. This reads no arbitrary files and exposes no local paths. It does not request prices or publish a filter.',inputSchema:object({}),annotations:readOnly},
+  {name:'get_loot_sync_status',description:'Read the captured desktop loot filter sync status, failed price feed, last successful run and up to 40 cutoff changes. This reads no arbitrary files and exposes no local paths. It does not request prices or publish a filter.',inputSchema:object({}),annotations:readOnly},
   {name:'get_loot_sync_diff',description:'Read the stored cutoff decisions comparing the fixed baseline with the last verified filter output, including quote volumes and bounded samples for each class and area. Unknown sample outcomes include beforeMissing or afterMissing when known filter properties are absent; other uncertainty may have no listed properties. Read-only and path-free. Paginated up to 50 changes at a time.',inputSchema:object({offset:integer(0,250),limit:integer(1,50)}),annotations:readOnly},
   {name:'get_loot_filters',description:'Read kept build-owned loot-filter profiles and personal rules. Bundled NeverSink templates are pinned; there is no live economy feed. Use native preview tools to test rules before proposing changes.',inputSchema:object({}),annotations:readOnly},
   {name:'propose_loot_filters',description:'Propose replacement loot-filter profiles for native desktop review. Read and preserve existing profiles first. Apply keeps the candidate; build Save persists it. This tool never exports files or publishes account filters.',inputSchema:object({title:string(120),baseRevision:string(40),filters:lootFilters},['title','baseRevision','filters']),annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}},
@@ -324,7 +327,15 @@ function createBridge(reportPath, clientName = () => "MCP client") {
       return {revision:current.revision,project:{id:project.id,title:project.title,slot:project.slot},item,warning:captured.context.craftingWarning,limitations:['Saved states are modeled or supplied data, not proof of an in-game item or recipe.']};
     }
     if (name === 'get_build_journey') return {revision:current.revision,journey:captured.context.journey,budget:captured.context.journeyBudget,nextActions:captured.context.nextActions,warning:captured.context.journeyWarning};
-    if (name === 'get_loot_sync_status') return {heartbeat:current.heartbeat,status:current.lootSyncStatus ?? {configured:false,state:'unavailable'}};
+    if (name === 'get_loot_sync_status') {
+      const {failedFeed,...status}=current.lootSyncStatus ?? {configured:false,state:'unavailable'};
+      if (lootFailureCategories.has(failedFeed?.category) && lootFailureReasons.has(failedFeed.reason)) {
+        const {category,reason,httpStatus}=failedFeed;
+        status.failedFeed={category,reason};
+        if (Number.isInteger(httpStatus) && httpStatus>=100 && httpStatus<=599) status.failedFeed.httpStatus=httpStatus;
+      }
+      return {heartbeat:current.heartbeat,status};
+    }
     if (name === 'get_loot_sync_diff') {
       const snapshot = current.lootSyncDiff;
       if (!snapshot) return {heartbeat:current.heartbeat,available:false,changes:[]};

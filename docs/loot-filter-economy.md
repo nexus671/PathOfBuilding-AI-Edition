@@ -54,6 +54,8 @@ If a sync target was edited outside PoB, **External edits** compares the live fi
 
 **Copy diagnostics** exports a JSON report with recent run times, verified response ages, and available quote and simulated drop details. The report excludes local file paths and protected sample definitions.
 
+**Last attempt** shows the feed, failure reason, and HTTP status when a price request stops a refresh. It also shows the time of the last verified refresh. The diagnostic report and read-only AI status include the same bounded feed evidence.
+
 **Last review**, **Copy diagnostics**, and the read-only AI diff include the provider price ID for changed rules when the feed supplies an ID. The AI diff includes the protected check count and the freshness of every requested feed. For an unchanged managed rule, Last review shows the selected feed when a quote is missing or ambiguous.
 
 ## Optional background sync on Windows
@@ -75,6 +77,8 @@ Select **Use with next update**, then **Preview changes** to check the resulting
 ## Managed exchange feeds
 
 In **Managed price rules**, enter an exact commodity name, its filter class, scope, and baseline stack cutoff. Choose **Exchange feed** for a category such as Scarabs, Fossils, or Tattoos. PoB matches the name within that feed and uses its own price history. **Default exchange feeds** keeps the usual lookup for existing rules.
+
+Use **Check quote** in the rule editor to open a read-only lookup for the selected feed and exact item or variant. Choose the intended league before requesting prices. The lookup shows the current quote and liquidity evidence without saving the rule or publishing a filter.
 
 Choose **Embers of the Allflame** for an exact ember. PoB uses its per-item quote and can remove the baseline hide. An exported fixed baseline carries these feed selections into daily sync. Each explicit extra category is fetched once per refresh. If a required feed is unavailable or stale, daily sync keeps the last verified output. Missing, ambiguous, or thin item quotes keep their baseline rules. [Market API reference](https://poe.ninja/docs/api)
 
