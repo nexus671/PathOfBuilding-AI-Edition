@@ -178,7 +178,7 @@ if ($actualHash -cne $argumentHash) { exit 13 }
 $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 try {
     $actual = $task.Principal.UserId
-    if ($actual -notlike 'S-1-*') {
+    if (-not $actual.StartsWith('S-1-')) {
         $actual = ([System.Security.Principal.NTAccount]::new($actual)).Translate([System.Security.Principal.SecurityIdentifier]).Value
     }
 } catch { exit 14 }
