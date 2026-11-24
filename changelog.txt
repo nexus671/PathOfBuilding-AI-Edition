@@ -1,8 +1,13 @@
-VERSION[2.69.0-ai.preview1283][2026/11/24]
+VERSION[2.69.0-ai.preview1284][2026/11/24]
 
 * Compare recorded loot stacks by item class and area level.
 * Flag uncertain filter comparisons and show their warnings.
 * Show matching rule order for recorded stack comparisons.
+
+VERSION[2.69.0-ai.preview1283][2026/11/24]
+
+* Explain duplicate and incompatible crafting target alternatives before adding them.
+* Wrap crafting target descriptions to fit compact windows.
 
 VERSION[2.69.0-ai.preview1282][2026/11/24]
 
