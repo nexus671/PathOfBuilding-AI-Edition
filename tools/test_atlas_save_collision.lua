@@ -36,3 +36,11 @@ otherUI:click('new');planning.newId=nextId
 assert(other.cache.atlas.layout.snapshot().id=='atlas-'..string.rep('b',12),'New plan reused a session draft ID')
 assert(other.atlasDrafts[reserved.id] and other.atlasDrafts[reserved.id].plan.title=='Reserved draft','Creating a plan replaced another draft')
 otherUI:restore();print('ATLAS_SESSION_DRAFT_ID_OK')
+-- Restoring a recovered new draft must retain its new-record status.
+newBuild();main.popups={};local recoveryUI=require('Modules.HeadlessUI').install({width=960,height=640});recoveryUI:bind(build)
+local before=require('Modules.PlanningWorkspace').new(build);build.planningWorkspace=before;build.viewMode='PLANNER';before:Show('atlas');recoveryUI:text('title','Recovered draft')
+local beforeLayout=before.cache.atlas.layout;local saved=recovery.clean('atlas',{plan=beforeLayout.snapshot(),view=beforeLayout.viewState()});local taken=saved.plan.id
+local external=copyTable(saved.plan);external.title='Existing after restart';build.savers.AtlasPlans:Upsert(external)
+local after=require('Modules.PlanningWorkspace').new(build);build.planningWorkspace=after;after.drafts.atlas=saved;after.atlasDrafts[taken]=saved;after:Show('atlas');recoveryUI:click('keep')
+local restored=build.savers.AtlasPlans.plans;assert(#restored==2 and restored[1].title=='Existing after restart' and restored[2].title=='Recovered draft' and restored[2].id~=taken,'Recovered draft replaced the saved plan')
+recoveryUI:restore();print('ATLAS_RECOVERY_COLLISION_OK')
