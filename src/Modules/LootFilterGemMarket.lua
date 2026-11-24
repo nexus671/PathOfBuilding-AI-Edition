@@ -35,7 +35,8 @@ function M.variant(row)
 		and (row.baseType==nil or row.baseType=="" or row.baseType==row.name)
 	local kind = type(row.metadata)=="table" and row.metadata.gemKind
 	if kind=="transfigured" or kind=="imbued" then regular=false end
-	return key, quality, corrupted, key and regular and (not labeled or row.variant==canonical) or false
+	local validTuple = key and (not labeled or row.variant==canonical) or false
+	return key, quality, corrupted, validTuple and regular or false, validTuple
 end
 
 local allowed = {

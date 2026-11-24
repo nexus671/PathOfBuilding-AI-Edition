@@ -98,7 +98,7 @@ In **Managed price rules**, select **Skill Gems** or **Support Gems**. Enter the
 
 A quote needs a stable price ID, at least 20 observations and at least 20 listings. Invalid or conflicting identities, a missing exact variant, and thin listings keep the baseline hide. Daily profiles with managed gem rules additionally require a fresh `SkillGem` overview. If the feed is unavailable, the profile keeps its last verified output. Other profiles continue using their existing feeds. Enable gem rules when your market source can serve the stash category reliably. [Item filter reference](https://www.pathofexile.com/item-filter/about) · [Market API reference](https://poe.ninja/docs/api)
 
-PoB checks the provider label against the gem fields. For example, `20/20c` must agree with level 20, 20% quality and explicit corruption. An omitted quality or corruption field can represent zero quality or an uncorrupted gem when the label agrees.
+PoB checks the provider label against the gem fields. For example, `20/20c` must agree with level 20, 20% quality and explicit corruption. An omitted quality or corruption field can represent zero quality or an uncorrupted gem when the label agrees. The read-only build-item browser also compares named transfigured gems when the provider supplies matching evidence.
 
 ## Named sync profiles
 

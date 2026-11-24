@@ -1603,6 +1603,22 @@ local function checkManagedGemPrices()
 		for _,kind in ipairs({"transfigured","imbued"}) do
 			local value=row("20",nil,nil);value.metadata={gemKind=kind};assert(quote(value)==false)
 		end
+		-- Read-only build comparisons include named transfigured gems, while
+		-- their complete typed/canonical tuples remain excluded from managed rules.
+		for _, labeled in ipairs({false,true}) do
+			local value=row(labeled and "20" or nil,0,false)
+			if labeled then value.gemQuality,value.corrupted=nil,nil end
+			value.name="Arc of Surging";value.metadata={gemKind="transfigured"};value.TransfiguredGem=true
+			local target={name=value.name,level=20,quality=0}
+			local function compared() return browser.rows(assert(json.encode({lines={value}})),{id="SkillGem"},"",target) end
+			local shown=compared()[1]
+			assert(shown and shown.gemQuality==0 and shown.corrupted==false and not shown.incomplete)
+			local key,_,_,regular,validTuple=gems.variant(value)
+			assert(validTuple and not regular and gems.quotes(assert(json.encode({lines={value}})),{[key]=true})[key]==false)
+			value.variant="20/0"
+			assert(not pcall(compared))
+			assert(browser.rows(assert(json.encode({lines={value}})),{id="SkillGem"},"=Arc of Surging")[1].incomplete)
+		end
 		local invalid=row("20",nil,nil);invalid.detailsId="bad/id";assert(quote(invalid)==false)
 		local good,bad=row("20",nil,nil),row("20/0",0,false)
 		local key=gems.key("Arc",20,0,false)
