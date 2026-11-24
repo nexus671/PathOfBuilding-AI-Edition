@@ -3195,7 +3195,7 @@
 	<File name="Data/Crafting/GemSoulCores330.json" part="program" sha1="3e72815316e5ea26174bddddcae5bb84bb45cafb" />
 	<File name="Modules/CraftingBaseImplicit.lua" part="program" sha1="d664ebb4bb48c45004d487e16c898ac3746d94c4" />
 	<File name="Modules/UpdateNotes.lua" part="program" sha1="ba75d1adad6ec5129186dddef6b4e75e1a6f01f9" />
-	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="0a9c965f3e362461b77e4ca6b3ed022a60e9d074" />
+	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="6be233a8d4096745b207e4b92734f67d134e19b6" />
 	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="dd2ddec74f6771e298f352d3de9be689286714f1" />
 	<File name="Modules/LootFilterBackground.lua" part="program" sha1="d80487b2fe4825109212d7672c3e8881564c15bd" />
 	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="9101b199044399546f6d9014d28d2efa8fe50f80" />
