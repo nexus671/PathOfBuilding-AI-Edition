@@ -5,7 +5,7 @@ local validate = require("Modules.LootFilterSyncValidation")
 local offline = require("Modules.LootFilterOfflinePrices")
 local M = { status = "Daily sync is disabled." }
 local volumeLimit = 2 * 1024 * 1024
-local polls, nextSweep, rateLimitUntil = {}, 0, 0
+local polls, nextSweep = {}, 0
 local function nowText(now) return os.date("%Y-%m-%d %H:%M", now) end
 
 local function readWithLimit(path, limit)
@@ -284,9 +284,13 @@ end
 function M.nextEligible(config, now)
 	if not config or not config.enabled or config.paused then return nil end
 	local scheduled = scheduledAt(config, now)
-	return nowText(math.max(now, scheduled, rateLimitUntil, retryAfter(config), config.providerRetryAfter or 0))
+	return nowText(math.max(now + M.providerWait(now), scheduled, retryAfter(config), config.providerRetryAfter or 0))
 end
 
+
+local function finiteNumber(value)
+	if type(value) == "number" and value == value and value > -math.huge and value < math.huge then return value end
+end
 
 -- The AI bridge gets a bounded, path-free view. File names, local settings,
 -- protected sample definitions and transport errors stay on the desktop.
@@ -298,6 +302,7 @@ function M.publicStatus(now, id)
 	if not ok then return {configured=false,state="settings_error"} end
 	if not config then return {configured=false,state="unconfigured"} end
 	local review = type(config.review)=="table" and config.review or {}
+	local providerWait = math.max(M.providerWait(now),(finiteNumber(config.providerRetryAfter) or 0)-now)
 	local output = {
 		configured=true,
 		state=M.busy and M.busy.profileId == id and "running" or not config.enabled and "disabled" or config.paused and "paused" or "enabled",
@@ -305,6 +310,8 @@ function M.publicStatus(now, id)
 		lastSuccess=type(config.lastSuccess)=="number" and config.lastSuccess or nil,
 		backgroundEnabled=config.backgroundEnabled==true,
 		backgroundNotifications=config.backgroundNotifications==true,
+		priceSource=market.endpoint==market.resolveEndpoint() and "direct" or market.endpoint and "shared_cache" or "unavailable",
+		providerWaitSeconds=providerWait>0 and providerWait or nil,
 		latestChanges={},
 	}
 	if output.state == "enabled" and type(config.lastFailure) == "table" then
@@ -331,10 +338,6 @@ end
 
 local function safeText(value, limit)
 	if type(value) == "string" and #value <= limit and not value:find("[%c/\\]") then return value end
-end
-
-local function finiteNumber(value)
-	if type(value) == "number" and value == value and value > -math.huge and value < math.huge then return value end
 end
 
 local function publicImpactSample(sample)
@@ -922,8 +925,53 @@ function M.fresh(response, now)
 	return response.body, resident, tag
 end
 
+local provider
+local maxProviderHold = 7*86400
+
+local function providerState()
+	local directory = main and main.userPath
+	if not provider or provider.endpoint~=market.endpoint or provider.directory~=directory then
+		provider = {endpoint=market.endpoint,directory=directory,untilAt=0}
+		if type(directory)=="string" and directory~="" and market.endpoint then
+			provider.path = directory.."LootFilterProviderCooldown-"..sha(market.endpoint)..".json"
+		end
+	end
+	return provider
+end
+
+local function readProviderHold(path,now)
+	local ok, raw = pcall(readWithLimit,path,512)
+	local hold = ok and raw and json.decode(raw)
+	if type(hold)~="table" then return 0 end
+	local observed, expires = finiteNumber(hold.observed),finiteNumber(hold.expires)
+	if not observed or not expires or observed>now+300 or expires<=now
+		or expires-observed<15 or expires-observed>maxProviderHold then return 0 end
+	return expires
+end
+
+local function persistProviderHold(state,now)
+	local pending = state.pending
+	if not pending or not state.path then return end
+	if pending.expires<=now then state.pending=nil; return end
+	local release = platform().acquire(state.path..".lock")
+	local ok = pcall(function()
+		local shared = readProviderHold(state.path,now)
+		state.untilAt = math.max(state.untilAt,shared)
+		if pending.expires>shared then put(state.path,assert(json.encode(pending))) end
+	end)
+	release()
+	if ok then state.pending = nil end
+end
+
 function M.providerWait(now)
-	return math.max(0,rateLimitUntil-now)
+	local state = providerState()
+	-- Pending writes survive short lock contention for the lifetime of this process.
+	pcall(persistProviderHold,state,now)
+	if state.path then
+		local ok, shared = pcall(readProviderHold,state.path,now)
+		if ok then state.untilAt=math.max(state.untilAt,shared) end
+	end
+	return math.max(0,state.untilAt-now)
 end
 
 function M.noteProviderLimit(response, status, now)
@@ -932,8 +980,11 @@ function M.noteProviderLimit(response, status, now)
 	local value = ok and values["retry-after"]
 	local seconds = value and value:match("^%d+$") and finiteNumber(tonumber(value))
 	local retryDate = value and not seconds and httpDate(value)
-	local delay = math.max(15,math.min(seconds or (retryDate and retryDate-now) or 60,7*86400))
-	rateLimitUntil = math.max(rateLimitUntil,now+delay)
+	local delay = math.max(15,math.min(seconds or (retryDate and retryDate-now) or 60,maxProviderHold))
+	local state = providerState()
+	local expires = now+delay
+	state.untilAt = math.max(state.untilAt,expires)
+	if not state.pending or expires>state.pending.expires then state.pending={observed=now,expires=expires} end
 	return M.providerWait(now)
 end
 
@@ -946,8 +997,10 @@ local function rememberFailure(config, startedAt, message, id)
 			if not current or current.revision ~= config.revision or not current.enabled or current.paused
 				or current.lastSuccess and current.lastSuccess >= startedAt
 				or current.lastFailure and current.lastFailure.startedAt > startedAt then return end
-			if rateLimitUntil > os.time() then
-				current.providerRetryAfter = math.max(current.providerRetryAfter or 0, rateLimitUntil)
+			local finishedAt = os.time()
+			local wait = M.providerWait(finishedAt)
+			if wait>0 then
+				current.providerRetryAfter = math.max(current.providerRetryAfter or 0,finishedAt+wait)
 			end
 			current.lastFailure = {
 				startedAt=startedAt, checkedAt=os.time(),
@@ -1177,11 +1230,11 @@ function M.tick(now, force, scheduled, id)
 		end
 		return
 	end
-	if now < rateLimitUntil then
+	if not force and now < (polls[id] or 0) then return end
+	if M.providerWait(now)>0 then
 		if force then M.status = "Waiting before contacting the exchange again." end
 		return
 	end
-	if not force and now < (polls[id] or 0) then return end
 	polls[id] = now + 60
 	local ok, config = pcall(get,id)
 	if not ok then M.status = tostring(config); return end
@@ -1227,7 +1280,7 @@ end
 
 function M.dueProfiles(now, scheduled)
 	local due = {}
-	if now < rateLimitUntil then return due end
+	if M.providerWait(now)>0 then return due end
 	for _, entry in ipairs(M.profiles()) do
 		local ok, config = pcall(get,entry.id)
 		if ok and config and (not scheduled or config.backgroundEnabled) and now >= (polls[entry.id] or 0) and M.isDue(config,now) then
@@ -1261,11 +1314,13 @@ function M.preview(target, baselineFile, league, options, callback, onFailure)
 	assert(not M.busy, "Wait for the current sync to finish")
 	assert(not launch.noSSL, "Enable HTTPS certificate verification in PoB")
 	assert(market.endpoint,market.endpointError)
-	assert(os.time() >= rateLimitUntil, "Wait before contacting the rate-limited exchange again")
+	assert(M.providerWait(os.time())==0, "Wait before contacting the rate-limited exchange again")
 	local config, original, baseline = prepare(target, baselineFile, league, options)
 	local now = os.time()
 	local id = options and options.profileId or "default"
 	local found, saved = pcall(get,id)
+	local savedHold = found and saved and finiteNumber(saved.providerRetryAfter)
+	assert(not savedHold or now>=savedHold,"Wait before contacting the rate-limited exchange again")
 	local history = found and saved and saved.league == config.league and saved.baselineHash == config.baselineHash and saved.priceHistory
 	local day = history and os.date("%Y-%m-%d", now) or nil
 	fetchPrices(config, baseline, now, function(bodies, _, confirmation)

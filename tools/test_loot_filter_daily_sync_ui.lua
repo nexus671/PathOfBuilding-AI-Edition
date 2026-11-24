@@ -692,6 +692,8 @@ do
 	local ui = headless.install({width=720,height=600})
 	ui:bind(build)
 	local oldTime, oldDownload = os.time, launch.DownloadPage
+	local oldDirectory = main.userPath
+	main.userPath = output and output.."/" or nil
 	local time, requests = os.time(), 0
 	os.time = function() return time end
 	launch.DownloadPage = function(_,url,callback)
@@ -729,5 +731,6 @@ do
 	ui:click("get")
 	assert(requests==3 and main.popups[1].controls.status.label:find("Could not verify",1,true))
 	os.time, launch.DownloadPage = oldTime, oldDownload
+	main.userPath = oldDirectory
 end
 print("Manual price review and league selection honor the same provider cooldown as sync")
