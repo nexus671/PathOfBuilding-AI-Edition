@@ -247,7 +247,7 @@ local revisionCounter=0
 local function newRevision(previous)
 	for _=1,32 do
 		revisionCounter=revisionCounter+1
-		local candidate=sha(tostring({})..":"..tostring(os.time())..":"..revisionCounter)
+		local candidate=sha(tostring({})..":"..tostring(os.time())..":"..revisionCounter..":"..tostring(previous or ""))
 		if candidate~=previous then return candidate end
 	end
 	error("Could not create a new sync revision. Try again.")
