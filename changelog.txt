@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1263][2026/11/24]
+
+* Show why a shared price cache rejected an invalid or stale feed.
+
 VERSION[2.68.1-ai.preview1262][2026/11/24]
 
 * Retain the last verified loot filter when a market price collection contains malformed rows.
