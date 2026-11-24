@@ -1394,10 +1394,10 @@ Item Level: 86
 			stash(24,"Added#0024",{row(24,"~price 45 chaos")}),
 		}}},
 		{requestCursor="later",response={next_change_id="end",stashes={
-			stash(23,"Emptied#0023",setmetatable({}, {__jsontype="array"})),
+			stash(23,"Emptied#0023",assert(json.decode("[]"))),
 			stash(25,"Added#0025",{row(25,"~price 55 chaos")}),
 		}}},
-		{requestCursor="end",response={next_change_id="end",stashes=setmetatable({}, {__jsontype="array"})}},
+		{requestCursor="end",response={next_change_id="end",stashes=assert(json.decode("[]"))}},
 	}}
 	local bundled=assert(json.encode(capture))
 	local combined=listings.compare(bundled,target,"Covens")
