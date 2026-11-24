@@ -7,6 +7,15 @@ local first=sim.rollRange(regen,function() return 0.001 end);assert(first==0)
 local middle=sim.rollRange(regen,function() return 0.5 end);assert(math.abs(middle-177/354)<1e-10)
 assert(sim.baseRollValue(regen,middle)==5.1)
 assert(sim.rollRange(regen,function() return 0.9999 end)==1)
+for _,case in ipairs({{"LifeRegenerationEssence2",121,300,2,5},{"LifeRegenerationEssence7",1801,2400,30,40}}) do
+ local mod=assert(model.byId[case[1]])
+ for _,draw in ipairs({0,0.25,0.5,0.999999}) do
+  local range=sim.rollRange(mod,function() return draw end)
+  local actual=(case[4]+range*(case[5]-case[4]))*60
+  local expected=case[2]+math.floor(draw*(case[3]-case[2]+1))
+  assert(math.abs(actual-expected)<1e-7,case[1].." did not sample the pinned raw tick")
+ end
+end
 local regenState=copyTable(model.initial);regenState.rarity="RARE";regenState.affixes={{id="LifeRegeneration2",range=0.5}}
 local divined=sim.perform(raw,{method="divine"},7,regenState);local reroll=divined.state.affixes[1].range
 assert(math.abs(reroll*354-math.floor(reroll*354+0.5))<1e-8,"Divine reroll must retain a raw per-minute tick")
