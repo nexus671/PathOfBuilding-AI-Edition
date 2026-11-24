@@ -1,4 +1,4 @@
-local json = require("dkjson")
+local marketJSON = require("Modules.LootFilterMarketJSON")
 local M = {
 	feed = "SkillGem",
 	maxBytes = 12*1024*1024,
@@ -60,12 +60,10 @@ end
 -- Keep only exact requested quotes so an entire stash overview never enters price history.
 function M.quotes(body,requested)
 	assert(type(body)=="string" and #body<=M.maxBytes,"Invalid gem market response size")
-	local data, position = json.decode(body)
-	assert(type(data)=="table" and type(data.lines)=="table" and #data.lines>0
-		and not body:sub(position):find("%S"),"Invalid gem market overview")
+	local data = marketJSON.decode(body, {"lines"})
+	assert(data and #data.lines>0,"Invalid gem market overview")
 	local ids, result = {}, {}
 	for _, row in ipairs(data.lines) do
-		assert(type(row)=="table","Invalid gem market entry")
 		local key = M.key(row.name,row.gemLevel,row.gemQuality,row.corrupted)
 		local id = text(row.detailsId) and row.detailsId
 		local volume = positive(row.count) and positive(row.listingCount) and math.min(row.count,row.listingCount)

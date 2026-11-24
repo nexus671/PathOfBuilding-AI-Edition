@@ -1862,6 +1862,7 @@ local function checkStructuredFeedFailures()
 		{mode="empty",category="Currency",reason="empty_response",status=200},
 		{mode="empty",category="Scarab",reason="empty_response",status=200},
 		{mode="invalid",category="Scarab",reason="invalid_response",status=200},
+		{mode="partial",category="Scarab",reason="invalid_response",status=200},
 		{mode="stale",category="Scarab",reason="stale",status=200},
 		{mode="denied",category="Scarab",reason="access_denied",status=403},
 		{mode="limited",category="Scarab",reason="rate_limited",status=429},
@@ -1869,6 +1870,14 @@ local function checkStructuredFeedFailures()
 		{mode="redirect",category="Scarab",reason="redirect",status=302},
 		{mode="transport",category="Scarab",reason="transport_error"},
 		{mode="retry",category="Scarab",reason="provider_unavailable",status=500},
+		{mode="relay",detail="stale",category="Scarab",reason="stale",status=502},
+		{mode="relay",detail="invalid_response",category="Scarab",reason="invalid_response",status=502},
+		{mode="relay",detail="oversized",category="Scarab",reason="invalid_response",status=502},
+		{mode="relay",detail="C:/private/filter",category="Scarab",reason="provider_unavailable",status=502},
+		{mode="relay",detail="stale\r\nX-PoB-Market-Failure: oversized",category="Scarab",reason="provider_unavailable",status=502},
+		{mode="relay",detail="stale",category="Scarab",reason="provider_unavailable",status=503},
+		{mode="relay",interim=true,category="Scarab",reason="provider_unavailable",status=502},
+		{mode="relay",detail="stale",direct=true,category="Scarab",reason="provider_unavailable",status=502},
 		{mode="timeout",category="Scarab",reason="timeout"},
 		{mode="uncached",category="Scarab",reason="invalid_response",status=304},
 		{mode="oversized",category="Scarab",reason="invalid_response"},
@@ -1876,7 +1885,7 @@ local function checkStructuredFeedFailures()
 	}
 	local profile=assert(loadfile("Modules/LootFilterDailySync.lua"))().createProfile("Structured failure evidence")
 	for index,case in ipairs(cases) do
-		market.endpoint=endpoint.."test-feed-failure-"..index.."/"
+		market.endpoint=case.direct and market.resolveEndpoint(nil) or endpoint.."test-feed-failure-"..index.."/"
 		local fixture=assert(loadfile("Modules/LootFilterDailySync.lua"))()
 		local id=profile
 		local live,fixed=dir.."/failure-"..index..".filter",dir.."/failure-fixed-"..index..".filter"
@@ -1896,6 +1905,9 @@ local function checkStructuredFeedFailures()
 				attempts=attempts+1
 				if case.mode=="empty" then callback({header=date,body='{"core":{"primary":"chaos"},"items":[],"lines":[]}'});return
 				elseif case.mode=="invalid" then callback({header=date,body='{"core":'});return
+				elseif case.mode=="partial" then
+					callback({header=date,body='{"core":{"primary":"chaos"},"items":[{"id":"scarab","name":"Harbinger Scarab"}],"lines":[{"id":"scarab","primaryValue":0.05,"volumePrimaryValue":1000},null,{"id":"scarab","primaryValue":0.4,"volumePrimaryValue":1000}]}'})
+					return
 				elseif case.mode=="stale" then callback({header=date:gsub("\r\n\r\n","\r\nAge: 4001\r\n\r\n"),body=commodityBody});return
 				elseif case.mode=="timeout" then return
 				elseif case.mode=="oversized" then callback(nil,"Response exceeds the size limit");return
@@ -1903,7 +1915,9 @@ local function checkStructuredFeedFailures()
 				else
 					local status=case.status
 					local hold=(status==429 or status==503) and "Retry-After: 120\r\n" or ""
-					callback({header="HTTP/1.1 "..status.." Error\r\n"..hold.."\r\n",body="private provider detail"},"Response code: "..status);return
+					local evidence=case.detail and "X-PoB-Market-Failure: "..case.detail.."\r\n" or ""
+					local interim=case.interim and "HTTP/1.1 200 Connection established\r\nX-PoB-Market-Failure: stale\r\n\r\n" or ""
+					callback({header=interim.."HTTP/1.1 "..status.." Error\r\n"..hold..evidence.."\r\n",body="private provider detail"},"Response code: "..status);return
 				end
 			end
 			local body=category=="Scarab" and '{"core":{"primary":"chaos"},"items":[{"id":"scarab","name":"Harbinger Scarab"}],"lines":[{"id":"scarab","primaryValue":0.3,"volumePrimaryValue":1000}]}' or commodityBody
@@ -1944,6 +1958,37 @@ local function checkStructuredFeedFailures()
 end
 checkStructuredFeedFailures()
 print("Failed feed evidence survives restart, covers retries and timeouts, preserves verified output, and excludes private errors")
+
+local function checkMarketCollectionContracts()
+	local browse = require("Modules.LootFilterMarketBrowse")
+	local name = "Added Cold Damage Support"
+	local gem = '{"detailsId":"added-cold-damage-support","name":"'..name..'","gemLevel":20,"gemQuality":20,"corrupted":false,"chaosValue":15,"count":40,"listingCount":35,"variant":null,"baseType":null}'
+	local map = '{"name":"Map (Tier 16)","detailsId":"tier-16-map","mapTier":16,"chaosValue":10,"count":40,"listingCount":35,"baseType":null}'
+	local league = '{"id":"Covens","name":"Covens of Umbra"}'
+	local commodity = '{"id":"alt","primaryValue":0.2,"volumePrimaryValue":400}'
+	local item = '{"id":"alt","name":"Orb of Alteration","icon":null}'
+	local stash = {id="SkillGem",feed="stash"}
+	local function overview(lines) return '{"lines":'..lines..'}' end
+	local function exchange(items,lines) return '{"core":{"primary":"chaos"},"items":'..items..',"lines":'..lines..'}' end
+	local function verify(parser,row)
+		parser("["..row.."]")
+		for _, bad in ipairs({"[null,"..row.."]","["..row..",null,"..row.."]","["..row..",null]","["..row..",[]]","["..row..",false]","{\"1\":"..row.."}"}) do
+			assert(not pcall(parser,bad),bad)
+		end
+	end
+	verify(function(list) return market.quotes(exchange(list,"["..commodity.."]"),"Currency") end,item)
+	verify(function(list) return market.quotes(exchange("["..item.."]",list),"Currency") end,commodity)
+	verify(function(list) return market.quotes(overview(list),"Map") end,map)
+	local gemKey = require("Modules.LootFilterGemMarket").key(name,20,20,false)
+	verify(function(list) return market.quotes(overview(list),"SkillGem",{[gemKey]=true}) end,gem)
+	local valid = market.quotes(overview("["..gem.."]"),"SkillGem",{[gemKey]=true})
+	assert(valid[gemKey].price==15)
+	verify(function(list) return browse.rows(overview(list),stash,"",nil) end,gem)
+	assert(not pcall(browse.rows,overview("["..gem.."]").."{}",stash,""))
+	verify(market.tradeLeagues,league)
+end
+checkMarketCollectionContracts()
+print("Market decoders reject malformed rows in exchange, map, gem, stash and league collections")
 
 
 local function checkExactManagedQuoteInspection()
@@ -2383,7 +2428,8 @@ print("Missing, thin, and ambiguous quotes retain only the exact previously veri
 local function checkReviewedLeagueRollover()
 	local json = require("dkjson")
 	local service = assert(loadfile("Modules/LootFilterDailySync.lua"))()
-	local oldTime, download = os.time, launch.DownloadPage
+	local oldTime, download, endpoint = os.time, launch.DownloadPage, market.endpoint
+	market.endpoint = "https://league-review.example.test/"
 	local clock, mode = oldTime(), "active"
 	os.time = function(date) return date and oldTime(date) or clock end
 	local id = service.createProfile("Reviewed rollover profile")
@@ -2399,6 +2445,10 @@ local function checkReviewedLeagueRollover()
 		requests[#requests+1] = url
 		local date = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock)
 		if url:match("/leagues$") then
+			if mode=="relay failure" then
+				callback({header="HTTP/1.1 502 Error\r\nX-PoB-Market-Failure: stale\r\n\r\n"},"Response code: 502")
+				return
+			end
 			callback({header=date..(mode=="stale" and "\r\nAge: 4000" or "").."\r\n\r\n",
 				body=mode=="malformed" and leagues.."{}" or mode=="listed" and
 					'[{ "id":"New League","name":"New Challenge League" },{"id":"Old League","name":"Old League"}]' or leagues})
@@ -2432,6 +2482,13 @@ local function checkReviewedLeagueRollover()
 	end
 
 	settings.reviewLeague = true
+	mode = "relay failure"
+	local failure, requested = nil, #requests
+	service.preview(live,fixed,"New League",settings,function() error("Unexpected approved rollover") end,
+		function(_, evidence) failure=evidence end)
+	assert(failure and failure.category=="leagues" and failure.httpStatus==502 and failure.reason=="stale")
+	assert(#requests==requested+1 and read(live)==verified and service.configuration(id).league=="Old League")
+	mode = "retired"
 	local otherReceipt
 	service.preview(live,fixed,"Standard",settings,function(_,_,receipt) otherReceipt = receipt end)
 	assert(otherReceipt and service.configuration(id).league=="Old League" and read(live)==verified,service.status)
@@ -2478,7 +2535,7 @@ local function checkReviewedLeagueRollover()
 	local result = service.configuration(id)
 	assert(result.lastSuccess==clock and result.review.league=="New League" and result.review.protectedChecks==1)
 	assert(read(live)~=verified and read(fixed)==original)
-	os.time,launch.DownloadPage=oldTime,download
+	os.time,launch.DownloadPage,market.endpoint=oldTime,download,endpoint
 end
 
 checkReviewedLeagueRollover()
