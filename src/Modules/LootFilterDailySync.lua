@@ -620,6 +620,7 @@ function M.adoptExternalEdits(id, reviewed)
 		assert(read(config.target) == latest.after, "Filter changed after the review")
 		config.baseline, config.baselineHash, config.current = path, key, sha(latest.after)
 		config.day, config.review, config.lastSuccess, config.lastFailure = nil, nil, nil, nil
+		config.cutoffContinuity = nil
 		config.revision = newRevision()
 		config.summary = "Adopted the reviewed edits into the fixed baseline. The next refresh will use fresh prices."
 		save(config,id)
@@ -689,12 +690,13 @@ local function offlineDays(value)
 	return value==1 or value==3 or value==7
 end
 
-local function verifiedContinuity(review)
-	return review and review.continuityVersion==1 and review.continuity or nil
+local function verifiedContinuity(config)
+	local stored = config.cutoffContinuity
+	return type(stored)=="table" and stored.version==1 and stored.cuts or nil
 end
 
 local function cutoffContinuity(config, targetValue, pickupPolicy)
-	local continuity = verifiedContinuity(config.review)
+	local continuity = verifiedContinuity(config)
 	if not continuity or targetValue~=config.targetValue then return nil end
 	local encode = require("Modules.PlanningData").encodeExact
 	if encode(market.pickupPolicy(targetValue,pickupPolicy)) == encode(market.pickupPolicy(config.targetValue,config.pickupPolicy)) then
@@ -770,8 +772,12 @@ function M.configure(target, baselineFile, league, options)
 		nextConfig.backupLimit = current and current.backupLimit
 		nextConfig.offlinePriceDays = current and current.offlinePriceDays
 		if current and current.baselineHash == nextConfig.baselineHash then
-			if current.league == nextConfig.league and current.marketSourceHash == nextConfig.marketSourceHash then nextConfig.priceHistory = current.priceHistory end
+			local sameMarket = current.league == nextConfig.league and current.marketSourceHash == nextConfig.marketSourceHash
+			if sameMarket then nextConfig.priceHistory = current.priceHistory end
 			if current.target == nextConfig.target and current.current == nextConfig.current and not current.pending then
+				if sameMarket and cutoffContinuity(current,nextConfig.targetValue,nextConfig.pickupPolicy) then
+					nextConfig.cutoffContinuity = current.cutoffContinuity
+				end
 				nextConfig.backupRecords = backupRecords(current)
 				if nextConfig.backupLimit then nextConfig.backup, nextConfig.history = current.backup, current.history end
 			end
@@ -871,7 +877,7 @@ local function finishRestore(config, digest, undo)
 	if undo then records[undo] = os.time() end
 	config.current, config.pending, config.backup = digest, nil, undo
 	config.pendingRestore = nil
-	config.summary, config.review = restoreSummary, nil
+	config.summary, config.review, config.cutoffContinuity = restoreSummary, nil, nil
 	config.revision = newRevision()
 end
 
@@ -1120,7 +1126,7 @@ local function prepareRefreshState(current, digest, refresh, replaced)
 	result.priceHistory, result.marketSourceHash = refresh.priceHistory, refresh.sourceHash
 	result.summary = string.format("%s: %d price decisions from the baseline. Protected drops verified.", nowText(checkedAt), count)
 	result.lastSuccess, result.lastFailure, result.providerRetryAfter = checkedAt, nil, nil
-	result.review = review
+	result.review, result.cutoffContinuity = review, refresh.cutoffContinuity
 	local evidence = assert(json.encode(review))
 	result.history = {{checkedAt=checkedAt, adjustments=count, backup=review.backup,
 		oldest=math.max(unpack(review.ages)), reviewKey=sha(evidence)}}
@@ -1189,7 +1195,7 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		verifyUnmanagedRules(original, baseline)
 		local sameSource = current.marketSourceHash == config.marketSourceHash
 		local history = sameSource and current.priceHistory or nil
-		local continuity = sameSource and before==current.current and verifiedContinuity(current.review) or nil
+		local continuity = sameSource and before==current.current and verifiedContinuity(current) or nil
 		local candidate, _, changes, skipped, snapshots, protectedChecks, nextContinuity = validate(
 			baseline, bodies, false, current.targetValue, current.protections, history, day, now, current.pickupPolicy, confirmation, continuity)
 		keepExpected(candidate)
@@ -1197,8 +1203,9 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		local ages = {}
 		for index, feed in ipairs(feeds) do ages[index] = feed.age end
 		local refresh = {day=day,sourceHash=config.marketSourceHash or sha(market.endpoint),priceHistory=snapshots,
+			cutoffContinuity=next(nextContinuity) and {version=1,cuts=nextContinuity} or nil,
 			review={changes=changes,skipped=skipped,checkedAt=now,backup=current.backup,ages=ages,feeds=feeds,
-				league=current.league,protectedChecks=protectedChecks,continuityVersion=1,continuity=nextContinuity}}
+				league=current.league,protectedChecks=protectedChecks}}
 		local replaced = candidate ~= original
 		if replaced then refresh.review.backup = before end
 		local completed, raw, evidence = prepareRefreshState(current,digest,refresh,replaced)

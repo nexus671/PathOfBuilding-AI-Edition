@@ -2316,7 +2316,7 @@ local function checkIndividualQuoteContinuity()
 	end
 	service.tick(clock,true,false,id)
 	local initial = service.configuration(id)
-	assert(initial.review and initial.review.continuity and initial.review.protectedChecks==1,service.status)
+	assert(initial.review and initial.cutoffContinuity and initial.review.protectedChecks==1,service.status)
 	assert(decisions(initial.review.changes)["Orb of Fusing"].cutoff==0)
 	local firstOutput = read(live)
 
@@ -2349,12 +2349,30 @@ local function checkIndividualQuoteContinuity()
 	service.tick(clock,true,false,id)
 	assert(read(live)==output and decisions(service.configuration(id).review.changes).Arc.retainedReason)
 
+	-- Saving an unchanged pickup policy with a new schedule keeps verified visibility.
+	options.hour = 8
+	service.configure(live,fixed,"Covens",options)
+	assert(service.configuration(id).cutoffContinuity and read(live)==output)
+	clock = clock+1
+	service.tick(clock,true,false,id)
+	assert(read(live)==output and decisions(service.configuration(id).review.changes).Arc.retainedReason)
+
 	mode,clock = "cheap",clock+1
 	service.tick(clock,true,false,id)
 	assert(read(live):find('"Orb of Fusing"',1,true) and not decisions(service.configuration(id).review.changes)["Orb of Fusing"])
 	mode,clock = "missing",clock+1
 	service.tick(clock,true,false,id)
 	assert(read(live):find('"Orb of Fusing"',1,true) and not decisions(service.configuration(id).review.changes)["Orb of Fusing"])
+
+	mode,clock = "liquid",clock+1
+	service.tick(clock,true,false,id)
+	assert(service.configuration(id).cutoffContinuity and not read(live):find('"Orb of Fusing"',1,true))
+	options.targetValue = 2
+	service.configure(live,fixed,"Covens",options)
+	assert(not service.configuration(id).cutoffContinuity)
+	mode,clock = "missing",clock+1
+	service.tick(clock,true,false,id)
+	assert(read(live):find('"Orb of Fusing"',1,true))
 	os.time,launch.DownloadPage = oldTime,oldDownload
 end
 
