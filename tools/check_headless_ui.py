@@ -107,6 +107,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_crafting_guide_ui.lua")
     sources.append(ROOT / "tools/test_crafting_compact_ui.lua")
     sources.append(ROOT / "tools/test_crafting_compact_jewel_ui.lua")
+    sources.append(ROOT / "tools/test_crafting_compact_wizard_ui.lua")
     sources.append(ROOT / "tools/test_journey_crafting_guide_ui.lua")
     sources.append(ROOT / "tools/test_flask_enchant_ui.lua")
     sources.append(ROOT / "tools/test_unique_flask_enchant_ui.lua")
@@ -412,6 +413,10 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-compact-jewel.log").write_text(compact_jewel.stdout)
     assert compact_jewel.returncode == 0, compact_jewel.stdout
+    compact_wizard = subprocess.run(lua_command + ["../tools/test_crafting_compact_wizard_ui.lua", str(frames)], cwd=ROOT / "src",
+                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-compact-wizard.log").write_text(compact_wizard.stdout)
+    assert compact_wizard.returncode == 0, compact_wizard.stdout
     journey_guide = subprocess.run(lua_command + ["../tools/test_journey_crafting_guide_ui.lua", str(frames)], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "journey-crafting-guide-controls.log").write_text(journey_guide.stdout)
@@ -486,7 +491,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2612, f"Expected 2612 UI frames, found {len(paths)}"
+    assert len(paths) == 2617, f"Expected 2617 UI frames, found {len(paths)}"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):
