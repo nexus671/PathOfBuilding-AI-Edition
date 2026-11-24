@@ -123,13 +123,21 @@ end
 
 local function verifyCoverage(current, previous)
 	if #previous < 2 then return end
-	local recent = countLiquidQuotes(previous[1].values)
-	local older = countLiquidQuotes(previous[2].values)
+	local dailyCounts = {}
+	for index, entry in ipairs(previous) do
+		dailyCounts[index] = countLiquidQuotes(entry.values)
+	end
 	local latest = countLiquidQuotes(current)
 	local function check(source, minimum, fraction, description)
-		local reference = math.min(recent[source] or 0, older[source] or 0)
-		assert(reference < minimum or (latest[source] or 0) >= reference * fraction,
-			source .. " feed has fewer than " .. description .. " of its usual liquid quotes. The existing filter was kept.")
+		local counts = {}
+		for index, day in ipairs(dailyCounts) do counts[index] = day[source] or 0 end
+		table.sort(counts)
+		local reference = counts[math.ceil(#counts / 2)]
+		local available = latest[source] or 0
+		if reference >= minimum and available < reference * fraction then
+			error(string.format("%s feed has fewer than %s of its usual liquid quotes (%d available, recent median %d). The existing filter was kept.",
+				source, description, available, reference))
+		end
 	end
 	for _, source in ipairs(M.exchangeCategories) do check(source,20,0.25,"a quarter") end
 	check("DivinationCard",20,0.25,"a quarter")
