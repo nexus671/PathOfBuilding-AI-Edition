@@ -172,14 +172,28 @@ local function compareObservedStack(compare, compareBatch, beforeLabel, afterLab
 		describeObservedOutcome(details,beforeLabel,before)
 		describeObservedOutcome(details,afterLabel,after)
 		local resultControls = {}
+		local visual = require("Modules.LootFilterVisuals")
+		local itemClass = controls.class:GetSelValueByKey("class") or require("Modules.LootFilterLibrary").baseClass(name)
+		local item = {BaseType=name,Class=itemClass,Rarity="Normal"}
+		resultControls.preview = new("Control"):Control(ui.anchor,{16,16,width-32,78})
+		function resultControls.preview:Draw()
+			local x,y=self:GetPos();local w,h=self:GetSize();local half=w/2
+			visual.floor(x,y,w,h,"Dark")
+			local function side(offset,heading,result)
+				local uncertain=result.action=="Unknown" or #(result.reasons or {})>0
+				visual.text(x+offset+6,y+4,12,heading.." | "..result.action..(uncertain and " (review)" or ""),"^xA6B3C6",half-12)
+				visual.chip(x+offset,y+20,half,h-20,item,result,false)
+			end
+			side(0,beforeLabel,before);side(half,afterLabel,after)
+		end
 		local rows = ui.rows(details,width-48,14)
 		local height = 0
 		for _, row in ipairs(rows) do height=height+row.height end
-		local detailsHeight = math.min(height+8,math.max(80,main.screenH-120))
-		resultControls.details = new("TextListControl"):TextListControl(ui.anchor,{16,16,width-32,detailsHeight},nil,rows)
-		resultControls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,detailsHeight+28,120,28},"Close",function() main:ClosePopup() end)
+		local detailsHeight = math.min(height+8,math.max(80,main.screenH-208))
+		resultControls.details = new("TextListControl"):TextListControl(ui.anchor,{16,104,width-32,detailsHeight},nil,rows)
+		resultControls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,detailsHeight+116,120,28},"Close",function() main:ClosePopup() end)
 		ui.style(resultControls)
-		main:OpenPopup(width,detailsHeight+72,"Observed stack result",resultControls,nil,nil,"close")
+		main:OpenPopup(width,detailsHeight+160,"Observed stack result",resultControls,nil,nil,"close")
 	end
 	controls.test = new("ButtonControl"):ButtonControl(ui.anchor,{16,206,column,28},"Compare filters",run)
 	controls.importStacks = new("ButtonControl"):ButtonControl(ui.anchor,{24+column,206,column,28},"Compare file",function()

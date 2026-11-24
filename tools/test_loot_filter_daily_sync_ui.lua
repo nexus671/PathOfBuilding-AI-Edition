@@ -211,6 +211,10 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 		and shown:find("Alert sound: 2 250",1,true) and shown:find("Drop sound disabled",1,true),shown)
 	local x,y=compared.controls.close:GetPos();local w,h=compared.controls.close:GetSize()
 	assert(x>=0 and y>=0 and x+w<=size[1] and y+h<=size[2],"Long comparison must keep Close on screen")
+	harness:frame()
+	local previewLabels={}
+	for _,command in ipairs(harness.commands) do if command.kind=="text" then previewLabels[StripEscapes(command.text)]=true end end
+	assert(previewLabels["Fixed baseline | Hide"] and previewLabels["Verified filter | Show"],"Preview must identify both filter outcomes")
 	if output then harness:frame():write(output.."/"..size[1].."-observed-stack-review.json") end
 	sync.compareObservedStack,sync.status=originalStack,previousStatus
 	reviewFixture = nil
