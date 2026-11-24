@@ -67,6 +67,57 @@ local function showLastAttempt(profileId)
 	main:OpenPopup(width,contentHeight+68,"Last sync attempt",controls,nil,nil,"close")
 end
 
+local function compareObservedStack(profileId)
+	local width = math.min(540,main.screenW-40)
+	local controls = {}
+	local function input(key,label,x,y,w,limit)
+		ui.label(controls,key.."Label",x,y,label,14)
+		controls[key] = new("EditControl"):EditControl(ui.anchor,{x,y+20,w,26},"",nil,nil,limit)
+	end
+	input("name","Exact item name",16,16,width-32,200)
+	local column = math.floor((width-48)/3)
+	input("size","Stack size",16,76,column,5)
+	input("area","Area level",24+column,76,column,3)
+	input("level","Item level (optional)",32+2*column,76,column,3)
+	ui.label(controls,"classLabel",16,136,"Item class",14)
+	local choices = {{label="Automatic from item name"}}
+	for _, class in ipairs(market.managedClasses) do
+		if market.stackClass(class) then choices[#choices+1]={label=class,class=class} end
+	end
+	controls.class = new("DropDownControl"):DropDownControl(ui.anchor,{16,156,width-32,26},choices)
+	local function run()
+		local name = controls.name.buf:match("^%s*(.-)%s*$")
+		local level
+		if controls.level.buf~="" then level=tonumber(controls.level.buf) or false end
+		local ok,before,after = pcall(sync.compareObservedStack,profileId,name,
+			tonumber(controls.size.buf),tonumber(controls.area.buf),level,controls.class:GetSelValueByKey("class"))
+		if not ok then main:OpenMessagePopup("Test observed stack",ui.errorText(before)); return end
+		local details = {string.format("%s × %d in area level %d",name,tonumber(controls.size.buf),tonumber(controls.area.buf))}
+		for _, pair in ipairs({{"Fixed baseline",before},{"Verified filter",after}}) do
+			local result = pair[2]
+			details[#details+1] = pair[1].." · "..result.action..(result.line and (" at line "..result.line) or "")
+			if result.action=="Unknown" then
+				local missing = require("Modules.LootFilterParser").safeMissingProperties(result.missingProperties)
+				details[#details+1] = missing and ("Needs "..table.concat(missing,", ")..".") or "A filter rule or included file could not be verified."
+			elseif result.action=="Show" and result.styles.MinimapIcon then
+				details[#details+1] = "Minimap marker: "..table.concat(result.styles.MinimapIcon," ")
+			end
+		end
+		local resultControls = {}
+		local rows = ui.rows(details,width-48,14)
+		local height = 0
+		for _, row in ipairs(rows) do height=height+row.height end
+		resultControls.details = new("TextListControl"):TextListControl(ui.anchor,{16,16,width-32,height+8},nil,rows)
+		resultControls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,height+36,120,28},"Close",function() main:ClosePopup() end)
+		ui.style(resultControls)
+		main:OpenPopup(width,height+80,"Observed stack result",resultControls,nil,nil,"close")
+	end
+	controls.test = new("ButtonControl"):ButtonControl(ui.anchor,{16,206,150,28},"Compare filters",run)
+	controls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,206,120,28},"Close",function() main:ClosePopup() end)
+	ui.style(controls,{test=true})
+	main:OpenPopup(width,252,"Test observed stack",controls,nil,"name","close")
+end
+
 local function editItemCap(width, target, caps, selected, save)
 	local controls = {}
 	ui.label(controls,"itemLabel",16,20,"Exact managed item name",14)
@@ -663,7 +714,8 @@ function M.Open(profileId, profileName)
 		require("Classes.LootFilterSyncAccountControl").Open(profileId)
 	end)
 	c.account.enabled = function() return not sync.busy end
-	c.backupRetention = new("ButtonControl"):ButtonControl(ui.anchor,{16,534,168,26},"Backup retention",function()
+	local fourth = math.floor((width-50)/4)
+	c.backupRetention = new("ButtonControl"):ButtonControl(ui.anchor,{16,534,fourth,26},"Backup retention",function()
 		local saved, latest = pcall(sync.configuration,profileId)
 		if not saved or not latest then main:OpenMessagePopup("Backup retention","Could not read this sync profile."); return end
 		local controls = {}
@@ -691,7 +743,7 @@ function M.Open(profileId, profileName)
 		main:OpenPopup(popupWidth,188,"Backup retention",controls,nil,"count","cancel")
 	end)
 	c.backupRetention.enabled = function() return config.target ~= nil and not sync.busy end
-	c.offlinePrices = new("ButtonControl"):ButtonControl(ui.anchor,{192,534,168,26},"Offline prices",function()
+	c.offlinePrices = new("ButtonControl"):ButtonControl(ui.anchor,{22+fourth,534,fourth,26},"Offline prices",function()
 		local saved, latest = pcall(sync.configuration,profileId)
 		if not saved or not latest then main:OpenMessagePopup("Offline prices","Could not read this sync profile."); return end
 		local controls = {}
@@ -729,10 +781,14 @@ function M.Open(profileId, profileName)
 		main:OpenPopup(popupWidth,204,"Offline prices",controls,nil,nil,"cancel")
 	end)
 	c.offlinePrices.enabled = function() return config.target~=nil and not sync.busy end
-	c.lastAttempt = new("ButtonControl"):ButtonControl(ui.anchor,{368,534,168,26},"Last attempt",function()
+	c.lastAttempt = new("ButtonControl"):ButtonControl(ui.anchor,{28+2*fourth,534,fourth,26},"Last attempt",function()
 		showLastAttempt(profileId)
 	end)
 	c.lastAttempt.enabled = function() return config.target~=nil end
+	c.observedStack = new("ButtonControl"):ButtonControl(ui.anchor,{34+3*fourth,534,fourth,26},"Test observed stack",function()
+		compareObservedStack(profileId)
+	end)
+	c.observedStack.enabled = function() return config.lastSuccess~=nil and not sync.busy end
 	ui.style(c)
 	main:OpenPopup(width, 578, "Daily filter sync", c, nil, nil, "close")
 end

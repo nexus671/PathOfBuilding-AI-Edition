@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1274][2026/11/24]
+
+* Compare an observed stack against the fixed baseline and the latest verified filter.
+
 VERSION[2.69.0-ai.preview1273][2026/11/24]
 
 * Search official trade from the market browser using a crafting base and its known item level.

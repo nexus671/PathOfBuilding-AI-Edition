@@ -560,6 +560,32 @@ function M.verifiedOutput(id)
 	return raw, {digest=config.current, revision=config.revision, realm=config.realm or "pc", checkedAt=config.lastSuccess}
 end
 
+function M.compareObservedStack(id, name, size, area, itemLevel, itemClass)
+	local function whole(value, maximum)
+		return type(value)=="number" and value>=1 and value<=maximum and value==math.floor(value)
+	end
+	assert(type(name)=="string" and #name<=200 and name:match("%S") and not name:find("[%c%^]"), "Enter an exact item name")
+	assert(whole(size,10000), "Enter a whole stack size from 1 to 10,000")
+	assert(whole(area,100), "Enter an area level from 1 to 100")
+	assert(itemLevel==nil or whole(itemLevel,100), "Enter a whole item level from 1 to 100 or leave it blank")
+	local library = require("Modules.LootFilterLibrary")
+	local knownClass = library.baseClass(name)
+	assert(not (knownClass and itemClass) or knownClass==itemClass, "The selected class differs from this item's known class")
+	itemClass = itemClass or knownClass
+	assert(market.stackClass(itemClass), "Choose a supported stackable item and class")
+
+	local config = assert(get(id), "Enable and run daily sync first")
+	local raw, verified = M.verifiedOutput(id)
+	assert(config.revision==verified.revision, "The sync profile changed. Run the comparison again")
+	local baseline = assert(read(config.baseline), "Baseline filter is missing")
+	assert(sha(baseline)==config.baselineHash, "Baseline checksum changed")
+	local parser = require("Modules.LootFilterParser")
+	local properties = library.baseProperties(name,"Normal")
+	local item = {BaseType=name,Class=itemClass,StackSize=size,AreaLevel=area,ItemLevel=itemLevel,Rarity="Normal",
+		DropLevel=properties.DropLevel,Width=properties.Width,Height=properties.Height}
+	return parser.simulate(parser.parse(baseline),item),parser.simulate(parser.parse(raw),item)
+end
+
 function M.externalDiff(id)
 	local config = assert(get(id), "No saved sync setup")
 	assert(not M.busy, "Wait for the current sync to finish")
