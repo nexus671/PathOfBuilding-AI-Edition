@@ -35,10 +35,16 @@ end
 
 local function showListingSample(target, league, sample)
 	local details = {
-		league .. " | Local public stash snapshot",
+		league .. " | Local public stash listing sample",
 		string.format("%d same-base listings checked | %d matching rolls",sample.inspected,sample.matched),
 		string.format("%d matching listings with a supported asking price",sample.priced),
 	}
+	local capture = sample.capture
+	if capture then
+		details[#details+1] = "Declared PC capture | "..os.date("!%Y-%m-%d %H:%M UTC",capture.capturedAt)
+		details[#details+1] = string.format("Pages: %d | Stash updates: %d | Withdrawals: %d",capture.pages,capture.updated,capture.withdrawn)
+		if capture.conflicts>0 then details[#details+1]=string.format("%d conflicting stash changes excluded",capture.conflicts) end
+	end
 	if sample.ambiguous>0 then details[#details+1]=string.format("%d conflicting listing IDs excluded",sample.ambiguous) end
 	for _, row in ipairs(sample.results) do
 		if row.sellers>0 then
@@ -50,7 +56,8 @@ local function showListingSample(target, league, sample)
 			details[#details+1] = row.currency..estimate.." | "..range.." | "..sellers..note
 		end
 	end
-	details[#details+1] = "Asking prices from this file. Realm, age and completed sales are unverified."
+	details[#details+1] = capture and "Asking prices from a partial stream. Live availability and sales are unverified."
+		or "Asking prices from this file. Realm, age and completed sales are unverified."
 	showMarketDetails({label=target.label,details=details},"Comparable asking prices")
 end
 
