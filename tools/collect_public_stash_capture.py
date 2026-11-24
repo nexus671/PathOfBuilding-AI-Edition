@@ -1,5 +1,5 @@
 """Collect a bounded PC listing capture from GGG on an authorized backend."""
-# cspell:ignore lexists urlencode
+# cspell:ignore lexists newurl urlencode
 
 import argparse
 from datetime import datetime, timezone
@@ -187,6 +187,8 @@ def main():
             raise ValueError(f"Set {TOKEN_VARIABLE} from the authorized server secret store")
         if os.path.lexists(args.output):
             raise ValueError("The capture output already exists")
+        if not args.output.parent.is_dir():
+            raise ValueError("The capture output folder does not exist")
         agent = identification(args.client_id, args.contact)
         cursor = args.cursor if args.cursor is not None else capture_start(args.resume_from, args.league)
         opener = build_opener(RejectRedirects())
