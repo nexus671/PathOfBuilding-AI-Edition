@@ -47,7 +47,7 @@ test('includes bounded relay diagnostics while qualifying actual feed responses'
   const f=fixture({health:()=>response({
     status:'ready',cached:2,pending:0,cachedBytes:500,serviceable:1,hits:8,requests:5,
     rejections:{client:2,queue:0,cooldown:1,unexpected:'private metadata'},
-    provider:{state:'degraded',lastValidatedAt:now-1000,cooldownSeconds:0,successes:4,failures:1,
+    provider:{state:'degraded',lastValidatedAt:now-1000,cooldownSeconds:0,cooldownPersistence:'ready',successes:4,failures:1,
       lastFailure:{at:now,reason:'invalid_response',httpStatus:200,message:'private provider body'}},
     unexpected:'private host',
   })});
@@ -56,11 +56,21 @@ test('includes bounded relay diagnostics while qualifying actual feed responses'
   assert.deepEqual(report.probes[0],{
     name:'Cache health',status:'passed',cached:2,pending:0,cachedBytes:500,serviceable:1,hits:8,requests:5,
     rejections:{client:2,queue:0,cooldown:1},
-    provider:{state:'degraded',lastValidatedAt:now-1000,cooldownSeconds:0,successes:4,failures:1,
+    provider:{state:'degraded',lastValidatedAt:now-1000,cooldownSeconds:0,cooldownPersistence:'ready',successes:4,failures:1,
       lastFailure:{at:now,reason:'invalid_response',httpStatus:200}},
   });
   assert.equal(f.requests.length,10);
   assert.doesNotMatch(JSON.stringify(report),/private/);
+});
+
+test('stops qualification when the configured relay cannot persist cooldown',async()=>{
+  const f=fixture({health:()=>response({
+    status:'ready',cached:5,pending:0,provider:{state:'cooldown',cooldownPersistence:'error'},
+  })});
+  const report=await qualifyCache(root,f);
+  assert.equal(report.status,'failed');
+  assert.deepEqual(f.requests,['health']);
+  assert.equal(report.probes[0].reason,'Provider cooldown state is unavailable');
 });
 
 test('stops on throttling and reports retry timing',async()=>{

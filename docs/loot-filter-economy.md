@@ -135,6 +135,8 @@ Configure the final HTTPS URL. PoB rejects redirects for economy feeds and prese
 
 The operator runs `node tools/serve_loot_market_cache.cjs` with `POB_MARKET_UPSTREAM_AGENT` set to the application's descriptive User-Agent and contact. It binds to loopback on port 9410 by default. Publish that service through the deployment's HTTPS reverse proxy by stripping the configured path prefix. Restrict the proxy to the intended audience and use `/health` from monitoring to inspect pending work, cache hits, coalesced requests and failures.
 
+For a single relay process, set `POB_MARKET_COOLDOWN_FILE` to a dedicated file in a private, writable state directory retained across restarts. The relay creates the file when needed and saves the upstream retry deadline before replying to a rate limit or service outage. Keep the file with the relay instance. It contains only a deadline, and prices are still cached in memory.
+
 The service accepts only the app's public economy routes and active leagues. It coalesces requests, bounds the upstream queue, respects provider caching, and preserves origin age and retry timing. Throttled, stale, oversized and malformed data go through the app's existing checks before any filter is published. The operator needs to qualify the deployed host with the provider and verify fresh responses from that host before enabling distribution. [poe.ninja API guidelines](https://poe.ninja/docs/api)
 
 When the configured shared cache rejects an upstream response, **Last attempt** can distinguish a stale feed from an invalid or oversized response alongside HTTP 502. Older caches can still report a generic provider error.
@@ -146,6 +148,8 @@ Polling **/health** reads the current process without fetching prices. A top-lev
 **cached** counts stored entries, including ones due for revalidation. **serviceable** counts entries the relay can serve immediately and **cachedBytes** measures the stored response bodies. Client rejections, refreshes refused by the queue, and refreshes stopped by cooldown have separate counters. The existing rejected count measures HTTP responses, including clients sharing a refresh. A failed validation can carry an upstream HTTP 200 when the response body is unusable. The numbers reset on process restart. The endpoint exposes aggregate diagnostics without league names, request URLs, or upstream response bodies.
 
 Monitor repeated degraded results, cooldowns, and queue rejections during the pilot. Use the qualification command to verify each required feed.
+
+With cooldown persistence enabled, `provider.cooldownPersistence` reports `ready` or `error`. The qualification tool fails on a persistence error. Restore the state directory and let the running relay report `ready` before restarting it. The relay honors its in-memory deadline and waits for a successful write before resuming upstream requests.
 
 Run the cache probe after configuring HTTPS and before pointing scheduled clients at the service.
 

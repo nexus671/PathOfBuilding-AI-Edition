@@ -1,6 +1,9 @@
 'use strict';
 
 const { createServer } = require('node:http');
+const { randomUUID } = require('node:crypto');
+const { closeSync, fstatSync, lstatSync, openSync, readSync, renameSync, rmSync, writeFileSync } = require('node:fs');
+const { resolve } = require('node:path');
 const { setTimeout: delay } = require('node:timers/promises');
 
 const upstreamBase = 'https://poe.ninja/poe1/api/economy/';
@@ -14,6 +17,7 @@ const stash = new Set(['Wombgift', 'Corpse', 'Viscera', 'Incubator', 'UniqueWeap
 const stashLimit = 12 * 1024 * 1024;
 const cacheLimit = 48 * 1024 * 1024;
 const freshestAge = 3600;
+const maxRetrySeconds = 7 * 86400;
 const leaguePattern = /^[\w -]{1,80}$/;
 const providerFailureReasons = Object.freeze(['rate_limited','unavailable','access_denied','http_error','stale',
   'invalid_response','oversized','transport','timeout']);
@@ -81,7 +85,47 @@ function responsePolicy(headers, previous) {
 function retrySeconds(headers, now) {
   const raw = headers.get('retry-after') || '';
   const requested = /^\d+$/.test(raw) ? Number(raw) : Math.ceil((Date.parse(raw) - now) / 1000);
-  return Math.max(15, Math.min(Number.isFinite(requested) ? requested : 60, 7 * 86400));
+  return Math.max(15, Math.min(Number.isFinite(requested) ? requested : 60, maxRetrySeconds));
+}
+
+function openCooldownState(file, now) {
+  const path = resolve(file);
+  function save(until) {
+    const temporary = path + '.' + randomUUID() + '.tmp';
+    try {
+      writeFileSync(temporary, String(until)+'\n', { flag:'wx',mode:0o600,flush:true });
+      renameSync(temporary,path);
+    } finally {
+      rmSync(temporary,{force:true});
+    }
+  }
+  try {
+    let fd;
+    try {
+      if (!lstatSync(path).isFile()) throw new Error('Invalid cooldown record');
+      fd = openSync(path,'r');
+    }
+    catch (error) { if (error.code!=='ENOENT') throw error; }
+    let until = 0;
+    if (fd!==undefined) {
+      try {
+        const value = Buffer.alloc(24);
+        const info = fstatSync(fd);
+        if (!info.isFile() || info.size>value.length) throw new Error('Invalid cooldown record');
+        const count = readSync(fd,value,0,value.length,0);
+        const text = value.subarray(0,count).toString('utf8');
+        until = Number(text);
+        if (!Number.isSafeInteger(until) || until<0 || text!==String(until)+'\n'
+            || until>now+maxRetrySeconds*1000) throw new Error('Invalid cooldown deadline');
+      } finally {
+        closeSync(fd);
+      }
+    }
+    save(until);
+    return { until,save };
+  } catch {
+    throw new Error('Cannot open the market cooldown state. Check its format and state directory.');
+  }
 }
 
 async function boundedBody(response, limit) {
@@ -122,17 +166,28 @@ function validatePayload(value, kind) {
   return null;
 }
 
-function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs = 1000 } = {}) {
+function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs = 1000, cooldownFile } = {}) {
   if (!agent || agent.length > 250 || /[^ -~]/.test(agent)) throw new Error('Set a descriptive market User-Agent including an operator contact');
   const cache = new Map();
   const running = new Map();
   let size = 0;
-  let retryAt = 0;
+  const cooldown = cooldownFile ? openCooldownState(cooldownFile,now()) : null;
+  let retryAt = cooldown?.until ?? 0;
+  let cooldownPersistence = cooldown ? 'ready' : null;
   let nextAt = 0;
   let queue = Promise.resolve();
   const stats = { hits: 0, requests: 0, coalesced: 0, rejected: 0 };
   const provider = { state:'idle',lastValidatedAt:null,lastFailure:null,successes:0,failures:0 };
   const rejections = { client:0,queue:0,cooldown:0 };
+
+  function persistCooldown() {
+    try {
+      cooldown.save(retryAt);
+      cooldownPersistence = 'ready';
+    } catch {
+      cooldownPersistence = 'error';
+    }
+  }
 
   function health() {
     const at = now();
@@ -140,7 +195,8 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
     for (const entry of cache.values()) if (entry.validUntil>at) serviceable++;
     const cooldownSeconds = Math.max(0,Math.ceil((retryAt-at)/1000));
     return {status:'ready',cached:cache.size,pending:running.size,...stats,cachedBytes:size,serviceable,
-      provider:{...provider,state:cooldownSeconds>0 ? 'cooldown' : provider.state,cooldownSeconds},rejections:{...rejections}};
+      provider:{...provider,state:cooldownSeconds>0 ? 'cooldown' : provider.state,cooldownSeconds,
+        ...(cooldownPersistence ? { cooldownPersistence } : {})},rejections:{...rejections}};
   }
 
   function validated() {
@@ -171,6 +227,13 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
       rejections.cooldown++;
       throw new MarketError(429,'Provider cooldown',Math.ceil((retryAt-queuedAt)/1000));
     }
+    if (cooldownPersistence==='error') {
+      persistCooldown();
+      if (cooldownPersistence==='error') {
+        rejections.cooldown++;
+        throw new MarketError(503,'Provider cooldown state is unavailable',60);
+      }
+    }
     const sendAt = Math.max(queuedAt,nextAt);
     if (sendAt>=deadline) {
       rejections.queue++;
@@ -198,6 +261,7 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
       if (response.status === 429 || response.status === 503) {
         const seconds = retrySeconds(response.headers,at);
         retryAt = at + seconds * 1000;
+        if (cooldown) persistCooldown();
         throw new MarketError(response.status,'Provider temporarily unavailable',seconds,response.status===429 ? 'rate_limited' : 'unavailable');
       }
       const policy = responsePolicy(response.headers,response.status===304 ? prior : undefined);
@@ -316,7 +380,8 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
 if (require.main === module) {
   const port = Number(process.env.POB_MARKET_CACHE_PORT || 9410);
   if (!Number.isInteger(port) || port<1 || port>65535) throw new Error('Choose a valid cache port');
-  createMarketCache({ agent:process.env.POB_MARKET_UPSTREAM_AGENT }).listen(port,'127.0.0.1',() => {
+  createMarketCache({ agent:process.env.POB_MARKET_UPSTREAM_AGENT,
+    cooldownFile:process.env.POB_MARKET_COOLDOWN_FILE }).listen(port,'127.0.0.1',() => {
     process.stdout.write(`PoB market cache listening on 127.0.0.1:${port}\n`);
   });
 }
