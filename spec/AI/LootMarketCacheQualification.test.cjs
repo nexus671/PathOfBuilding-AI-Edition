@@ -93,7 +93,7 @@ test('reports incomplete currency and optional gem evidence, stale data, and pro
   const probes=Object.fromEntries(report.probes.map(probe=>[probe.name,probe]));
   assert.match(probes.Currency.reason,/liquid Orb/);
   assert.match(probes.Oil.reason,/stale/);
-  assert.match(probes.SkillGem.reason,/explicit level/);
+  assert.match(probes.SkillGem.reason,/consistent level/);
   assert.equal(probes.ImbuedGem.httpStatus,403);
 });
 
@@ -106,6 +106,38 @@ test('does not qualify regular gems from transfigured or ambiguous names alone',
   const report=await qualifyCache(root,{...f,extra:['SkillGem']});
   assert.equal(report.status,'failed');
   assert.match(report.probes.at(-1).reason,/unambiguous/);
+});
+
+test('qualifies canonical gem labels while rejecting conflicting or incomplete rows',async()=>{
+  const legacy=gems.lines[0];
+  const canonical=[
+    {...legacy,variant:'20/20',corrupted:undefined},
+    {...legacy,detailsId:'arc-20',variant:'20',gemQuality:undefined,corrupted:undefined},
+    {...legacy,detailsId:'arc-20-20c',variant:'20/20c',corrupted:true},
+  ];
+  const valid=fixture({SkillGem:()=>response({lines:canonical})});
+  const accepted=await qualifyCache(root,{...valid,extra:['SkillGem']});
+  assert.equal(accepted.status,'passed');
+  assert.equal(accepted.probes.at(-1).exactGemQuotes,3);
+
+  const invalid=fixture({SkillGem:()=>response({lines:[
+    {...canonical[0],variant:'20/20c'},
+    {...canonical[1],variant:'20/20'},
+    {...canonical[2],variant:'20/20c',imbued:true},
+    {...legacy,name:'Ice Nova',detailsId:'ice-nova-20-20',variant:'20/20',transfiguredGem:true},
+    {...legacy,name:'Arc of Surging',detailsId:'arc-of-surging-20-20',variant:'20/20',metadata:{gemKind:'transfigured'}},
+    {...legacy,name:'Cleave',detailsId:'cleave-20-20',variant:'20/20',corrupted:'false'},
+  ]})});
+  const rejected=await qualifyCache(root,{...invalid,extra:['SkillGem']});
+  assert.equal(rejected.status,'failed');
+  assert.match(rejected.probes.at(-1).reason,/unambiguous/);
+
+  const conflict=fixture({SkillGem:()=>response({lines:[
+    canonical[0],{...canonical[0],detailsId:'invalid/id'},
+  ]})});
+  const ambiguous=await qualifyCache(root,{...conflict,extra:['SkillGem']});
+  assert.equal(ambiguous.status,'failed');
+  assert.match(ambiguous.probes.at(-1).reason,/unambiguous/);
 });
 
 
