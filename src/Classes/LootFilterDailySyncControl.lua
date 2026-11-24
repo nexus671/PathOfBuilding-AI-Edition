@@ -71,14 +71,68 @@ local function showLastAttempt(profileId)
 	main:OpenPopup(width,contentHeight+68,"Last sync attempt",controls,nil,nil,"close")
 end
 
+local observedStyles = {
+	{"MinimapIcon","Minimap marker"}, {"PlayEffect","Beam"},
+	{"SetTextColor","Text color (RGBA)"}, {"SetBorderColor","Border color (RGBA)"},
+	{"SetBackgroundColor","Background color (RGBA)"}, {"SetFontSize","Font size"},
+	{"PlayAlertSound","Alert sound"}, {"PlayAlertSoundPositional","Positional alert sound"},
+	{"CustomAlertSound","Custom alert sound"}, {"CustomAlertSoundOptional","Optional custom alert sound"},
+	{"DisableDropSound","Drop sound disabled"}, {"EnableDropSound","Drop sound enabled"},
+	{"DisableDropSoundIfAlertSound","Drop sound disabled with alert"}, {"EnableDropSoundIfAlertSound","Drop sound enabled with alert"},
+}
+
 local function describeObservedOutcome(details, label, result)
 	details[#details+1] = label.." | "..result.action..(result.line and (" at line "..result.line) or "")
+	if #(result.matches or {})>1 then
+		local lines={}
+		for index=1,math.min(#result.matches,20) do lines[#lines+1]=tostring(result.matches[index]) end
+		details[#details+1] = "Matched lines in order: "..table.concat(lines,", ")..(#result.matches>20 and ", ..." or "")
+	end
 	if result.action=="Unknown" then
 		local missing = require("Modules.LootFilterParser").safeMissingProperties(result.missingProperties)
 		details[#details+1] = missing and ("Needs "..table.concat(missing,", ")..".") or "A filter rule or included file could not be verified."
-	elseif (result.action=="Show" or result.action=="Minimal") and result.styles.MinimapIcon then
-		details[#details+1] = "Minimap marker: "..table.concat(result.styles.MinimapIcon," ")
+	elseif result.action=="Show" or result.action=="Minimal" then
+		for _,style in ipairs(observedStyles) do
+			local values=(result.styles or {})[style[1]]
+			if values then
+				local value=table.concat(values," "):gsub("[%c%^]"," ")
+				details[#details+1] = style[2]..(value~="" and (": "..value) or "")
+			end
+		end
 	end
+	for index,reason in ipairs(result.reasons or {}) do
+		if index>3 then details[#details+1]="Additional filter warnings omitted.";break end
+		details[#details+1] = tostring(reason):gsub("[%c%^]"," ")
+	end
+end
+
+local function showObservedComparison(item,before,after,beforeLabel,afterLabel)
+	local width=math.min(540,main.screenW-40)
+	local details={string.format("%s, stack of %d, area level %d",item.BaseType,item.StackSize,item.AreaLevel)}
+	if item.ItemLevel then details[#details+1]="Item level: "..item.ItemLevel end
+	describeObservedOutcome(details,beforeLabel,before)
+	describeObservedOutcome(details,afterLabel,after)
+	local resultControls={}
+	local visual=require("Modules.LootFilterVisuals")
+	resultControls.preview=new("Control"):Control(ui.anchor,{16,16,width-32,78})
+	function resultControls.preview:Draw()
+		local x,y=self:GetPos();local w,h=self:GetSize();local half=w/2
+		visual.floor(x,y,w,h,"Dark")
+		local function side(offset,heading,result)
+			local uncertain=result.action=="Unknown" or #(result.reasons or {})>0
+			visual.text(x+offset+6,y+4,12,heading.." | "..result.action..(uncertain and " (review)" or ""),"^xA6B3C6",half-12)
+			visual.chip(x+offset,y+20,half,h-20,item,result,false)
+		end
+		side(0,beforeLabel,before);side(half,afterLabel,after)
+	end
+	local rows=ui.rows(details,width-48,14)
+	local height=0
+	for _,row in ipairs(rows) do height=height+row.height end
+	local detailsHeight=math.min(height+8,math.max(80,main.screenH-208))
+	resultControls.details=new("TextListControl"):TextListControl(ui.anchor,{16,104,width-32,detailsHeight},nil,rows)
+	resultControls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-136,detailsHeight+116,120,28},"Close",function() main:ClosePopup() end)
+	ui.style(resultControls)
+	main:OpenPopup(width,detailsHeight+160,"Observed stack result",resultControls,nil,nil,"close")
 end
 
 local function compareStackFile(compare, beforeLabel, afterLabel)
@@ -91,7 +145,20 @@ local function compareStackFile(compare, beforeLabel, afterLabel)
 				summary.units,summary.units==1 and "item" or "items"),
 			"Became visible: "..summary.shown, "Became hidden: "..summary.hidden,
 			"Same visibility: "..summary.unchanged, "Unresolved: "..summary.unknown,
+			"Counts describe only this file; they do not estimate drop rates.",
 		}}}
+		local function addGroups(groups,category,prefix)
+			for _,group in ipairs(groups or {}) do
+				local label=prefix..tostring(group.key)
+				entries[#entries+1]={id=category..":"..group.key,label=label,category=category,details={
+					label, string.format("%d stacks, %d items",group.count,group.units),
+					"Became visible: "..group.shown, "Became hidden: "..group.hidden,
+					"Same visibility: "..group.unchanged, "Unresolved: "..group.unknown,
+				}}
+			end
+		end
+		addGroups(summary.byClass,"By item class","")
+		addGroups(summary.byArea,"By area level","Area level ")
 		for index, row in ipairs(rows) do
 			local item = row.item
 			local label = string.format("%s | Stack %d | Area %d",item.BaseType,item.StackSize,item.AreaLevel)
@@ -99,9 +166,13 @@ local function compareStackFile(compare, beforeLabel, afterLabel)
 			if item.ItemLevel then details[#details+1] = "Item level: "..item.ItemLevel end
 			describeObservedOutcome(details,beforeLabel,row.before)
 			describeObservedOutcome(details,afterLabel,row.after)
-			entries[#entries+1] = {id=tostring(index),label=label,category=outcomes[row.group],details=details}
+			entries[#entries+1] = {id=tostring(index),label=label,category=outcomes[row.group],details=details,observation=row}
 		end
-		require("Classes.PlanningBrowserControl").Open("Recorded stack comparison",entries)
+		require("Classes.PlanningBrowserControl").Open("Recorded stack comparison",entries,{
+			action="Preview labels",closeOnChoose=false,
+			canChoose=function(entry) return entry.observation~=nil end,
+			choose=function(entry) local row=entry.observation;showObservedComparison(row.item,row.before,row.after,beforeLabel,afterLabel) end,
+		})
 	end,{title="Choose stack observation file",itemLabel="JSON",accept=function(name) return name:lower():match("%.json$") end})
 end
 
@@ -130,17 +201,8 @@ local function compareObservedStack(compare, compareBatch, beforeLabel, afterLab
 		local ok,before,after = pcall(compare,name,
 			tonumber(controls.size.buf),tonumber(controls.area.buf),level,controls.class:GetSelValueByKey("class"))
 		if not ok then main:OpenMessagePopup("Test observed stack",ui.errorText(before)); return end
-		local details = {string.format("%s, stack of %d, area level %d",name,tonumber(controls.size.buf),tonumber(controls.area.buf))}
-		describeObservedOutcome(details,beforeLabel,before)
-		describeObservedOutcome(details,afterLabel,after)
-		local resultControls = {}
-		local rows = ui.rows(details,width-48,14)
-		local height = 0
-		for _, row in ipairs(rows) do height=height+row.height end
-		resultControls.details = new("TextListControl"):TextListControl(ui.anchor,{16,16,width-32,height+8},nil,rows)
-		resultControls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,height+36,120,28},"Close",function() main:ClosePopup() end)
-		ui.style(resultControls)
-		main:OpenPopup(width,height+80,"Observed stack result",resultControls,nil,nil,"close")
+		local itemClass = controls.class:GetSelValueByKey("class") or require("Modules.LootFilterLibrary").baseClass(name)
+		showObservedComparison({BaseType=name,Class=itemClass,Rarity="Normal",StackSize=tonumber(controls.size.buf),AreaLevel=tonumber(controls.area.buf),ItemLevel=level},before,after,beforeLabel,afterLabel)
 	end
 	controls.test = new("ButtonControl"):ButtonControl(ui.anchor,{16,206,column,28},"Compare filters",run)
 	controls.importStacks = new("ButtonControl"):ButtonControl(ui.anchor,{24+column,206,column,28},"Compare file",function()

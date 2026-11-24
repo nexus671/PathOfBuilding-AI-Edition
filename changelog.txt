@@ -1,3 +1,12 @@
+VERSION[2.69.0-ai.preview1286][2026/11/24]
+
+* Compare recorded loot stacks by item class and area level.
+* Flag uncertain filter comparisons and show their warnings.
+* Show matching rule order for recorded stack comparisons.
+* Show colors, beams and sounds in observed stack reviews.
+* Preview observed loot labels side by side.
+* Open label previews from recorded stack files.
+
 VERSION[2.69.0-ai.preview1285][2026/11/24]
 
 * Compare rare jewellery rolls and asking prices from a local public stash snapshot.
