@@ -216,7 +216,7 @@ function M.buildTargets(build)
 				if category=="BaseType" then baseName,implicit=baseTradeIdentity(item.baseName) end
 				local itemLevel = item.itemLevel
 				if category~="BaseType" or implicit==false or not positive(itemLevel) or itemLevel>100 or itemLevel~=math.floor(itemLevel) then itemLevel=nil end
-				local listingItem = itemLevel and require("Modules.LootFilterGearListings").target(item)
+				local listingItem = itemLevel and require("Modules.LootFilterGearListings").target(item,baseName)
 				add({name=baseName,category=category,baseTarget=true,itemLevel=itemLevel,baseImplicit=implicit or nil,
 					listingItem=listingItem,listingSlot=listingItem and slot.slotName or nil,
 					baseVariant=baseName~=item.baseName and item.baseName or nil,

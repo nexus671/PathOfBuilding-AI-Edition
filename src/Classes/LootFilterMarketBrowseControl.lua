@@ -50,7 +50,7 @@ local function showListingSample(target, league, sample)
 			details[#details+1] = row.currency..estimate.." | "..range.." | "..sellers..note
 		end
 	end
-	details[#details+1] = "Asking prices from this file. Listing age and sale price are unknown."
+	details[#details+1] = "Asking prices from this file. Realm, age and completed sales are unverified."
 	showMarketDetails({label=target.label,details=details},"Comparable asking prices")
 end
 

@@ -20,46 +20,62 @@ local function hasEntries(value)
 	return type(value)=="table" and next(value)~=nil
 end
 
-local function modKey(text, flags)
+local function modKey(text, flags, enchant, legacy)
 	if type(text)~="string" or #text>1200 or not text:find("%S") then return end
 	text = text:gsub("%s+"," "):match("^%s*(.-)%s*$")
 	if text:find("[%c{}]") or text:find("%([%-]?[%d.]+%-%-?[%d.]+%)") then return end
 	if flags.vestigial or flags.rareonly or flags.mutated or flags.desecrated then return end
-	return (flags.fractured and "f" or "-") .. (flags.crafted and "c" or "-") .. text
+	return ((flags.fractured or legacy=="fractured") and "f" or "-")
+		.. ((not enchant and (flags.crafted or legacy=="crafted")) and "c" or "-") .. text
 end
 
-local function modList(mods, build)
-	if mods==nil then return "" end
-	if type(mods)~="table" then return end
-	local values = {}
-	for position, mod in ipairs(mods) do
+local function addMods(values, mods, build, enchant, legacy)
+	if mods==nil then return true end
+	if type(mods)~="table" then return false end
+	local count = 0
+	for _, mod in ipairs(mods) do
 		if not build and type(mod)=="string" then mod={description=mod} end
-		if type(mod)~="table" or mod.disabled or mod.custom or mod.variant then return end
+		if type(mod)~="table" or mod.disabled or mod.custom or mod.variant then return false end
 		local flags = build and mod or mod.flags or {}
-		if type(flags)~="table" then return end
-		local key = modKey(build and mod.line or mod.description, flags)
-		if not key then return end
-		values[position]=key
+		local text = build and mod.line or mod.description
+		if type(flags)~="table" or type(text)~="string" or #text>1200 or not text:find("%S") then return false end
+		for line in text:gmatch("[^\r\n]+") do
+			local key = modKey(line,flags,enchant,legacy)
+			if not key then return false end
+			values[#values+1]=key
+		end
+		count=count+1
 	end
 	for key in pairs(mods) do
-		if type(key)~="number" or key<1 or key>#values or key~=math.floor(key) then return end
+		if type(key)~="number" or key<1 or key>count or key~=math.floor(key) then return false end
+	end
+	return true
+end
+
+local function modList(item, channel, build)
+	local values = {}
+	local field = build and channel.build or channel.listing
+	if not addMods(values,item[field],build,channel.listing=="enchantMods") then return end
+	if not build and channel.listing=="explicitMods" then
+		if hasEntries(item.mutatedMods) or not addMods(values,item.craftedMods,false,false,"crafted")
+			or not addMods(values,item.fracturedMods,false,false,"fractured") then return end
 	end
 	table.sort(values)
 	return table.concat(values,"\0")
 end
 
-function M.target(item)
+function M.target(item, publicBase)
 	if item.rarity~="RARE" or not jewellery[item.type] or not item.base or item.unidentifiedMarker
 		or type(item.itemLevel)~="number" or item.itemLevel<1 or item.itemLevel>100 or item.itemLevel~=math.floor(item.itemLevel)
-		or item.variant or item.mirrored or item.twiceCorrupted or item.talismanTier or item.memoryStrands
+		or item.variant or item.mirrored or item.twiceCorrupted or item.talismanTier or item.memoryStrands or item.intangibility
 		or (item.catalyst or 0)>0 or (item.catalystQuality or 0)>0 or (item.quality or 0)>0
 		or (item.base.socketLimit or 0)>0 or hasEntries(item.sockets) or hasEntries(item.scourgeModLines)
 		or hasEntries(item.crucibleModLines) then return end
-	local target = {base=item.baseName,level=item.itemLevel}
+	local target = {base=publicBase or item.baseName,level=item.itemLevel}
 	for _, key in ipairs(conditions) do target[key]=item[key]==true end
 	for key in pairs(influences) do target[key]=item[key]==true end
 	for _, channel in ipairs(channels) do
-		local mods=modList(item[channel.build],true)
+		local mods=modList(item,channel,true)
 		if mods==nil then return end
 		target[channel.listing]=mods
 	end
@@ -76,7 +92,7 @@ local function sameItem(item, target)
 		or hasEntries(item.veiledMods) or hasEntries(item.grantedSkills) then return false end
 	for _, property in ipairs(type(item.properties)=="table" and item.properties or {}) do
 		if type(property)~="table" or type(property.name)~="string" or property.name:find("Quality",1,true)
-			or property.name:find("Talisman",1,true) then return false end
+			or property.name:find("Talisman",1,true) or property.name:find("Intangibility",1,true) then return false end
 	end
 	for _, key in ipairs(conditions) do
 		if (item[key]==true)~=target[key] then return false end
@@ -90,7 +106,7 @@ local function sameItem(item, target)
 		if (item[listing]==true or active[listing]==true)~=target[build] then return false end
 	end
 	for _, channel in ipairs(channels) do
-		if modList(item[channel.listing])~=target[channel.listing] then return false end
+		if modList(item,channel,false)~=target[channel.listing] then return false end
 	end
 	return true
 end

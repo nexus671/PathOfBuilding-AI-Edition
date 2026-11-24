@@ -1353,6 +1353,7 @@ Item Level: 86
 		return {id=string.format("%064x",id),accountName=seller,items=items,stash=note,league="Covens",public=true}
 	end
 	local low, early, high = row(1,"~price 20 chaos"),row(2,"~price 10 chaos"),row(3,"~b/o 30 chaos")
+	early.explicitMods={{description="+41% to Cold Resistance\n+79 to maximum Life"}}
 	local wrongRoll, wrongLevel, wrongState, wrongChannel = row(4,"~price 1 chaos"),row(5,"~price 2 chaos"),row(6,"~price 3 chaos"),row(7,"~price 4 chaos")
 	wrongRoll.explicitMods[2].description="+78 to maximum Life"
 	wrongLevel.ilvl=85
@@ -1360,10 +1361,13 @@ Item Level: 86
 	wrongChannel.explicitMods[1].flags={crafted=true}
 	local other = stash(7,"Other Realm#0000",{row(11,"~price 1 chaos")})
 	other.league="Standard"
+	local wrongIntangibility, wrongLegacy = row(15,"~price 1 chaos"),row(16,"~price 1 chaos")
+	wrongIntangibility.properties={{name="Intangibility",values={{"20%",0}}}}
+	wrongLegacy.craftedMods={"+18% to Lightning Resistance"}
 	local div=row(8,"~price 1.5 divine")
 	local duplicate=row(9,"~price 1 chaos")
 	local page={next_change_id="cursor",stashes={
-		stash(1,"One#0001",{low,early,wrongRoll,wrongLevel,wrongState,wrongChannel}),
+		stash(1,"One#0001",{low,early,wrongRoll,wrongLevel,wrongState,wrongChannel,wrongIntangibility,wrongLegacy}),
 		stash(2,"Two#0002",{high,div,duplicate}),
 		stash(3,"Three#0003",{row(10),row(9,"~price 60 chaos")},"~b/o 50 chaos"),
 		stash(4,"Four#0004",{row(12,"~price 1/5 chaos"),row(13,"unpriced")},"~b/o 4 chaos"),
@@ -1372,12 +1376,39 @@ Item Level: 86
 	local json=require("dkjson")
 	local encoded=assert(json.encode(page))
 	local sample=listings.compare(encoded,target,"Covens")
-	assert(sample.inspected==12 and sample.matched==7 and sample.priced==5 and sample.ambiguous==1)
+	assert(sample.inspected==14 and sample.matched==7 and sample.priced==5 and sample.ambiguous==1)
 	assert(sample.results[1].sellers==3 and sample.results[1].low==10 and sample.results[1].median==30 and sample.results[1].high==50)
 	assert(sample.results[2].sellers==1 and sample.results[2].low==1.5 and not sample.results[2].median)
 	assert(listings.compare(encoded,target,"Hardcore").matched==0)
 	assert(not pcall(listings.compare,'{"stashes":{},"next_change_id":"x"}',target,"Covens"))
 	assert(not pcall(listings.compare,string.rep(" ",4*1024*1024+1),target,"Covens"))
+	do
+		local advanced=new("Item"):Item(raw:gsub("Item Level: 86","Item Level: 86\nIntangibility: 20%%"))
+		assert(advanced.intangibility==20 and not listings.target(advanced))
+		local amuletRaw=raw:gsub("Amethyst Ring","Agate Amulet"):gsub("+23%% to Chaos Resistance","+20 to Strength and Intelligence")
+		amuletRaw=amuletRaw:gsub("%-%-%-%-%-%-%-%-\n%+20 to Strength","--------\nAllocates Charisma (enchant)\n--------\n+20 to Strength")
+		local amulet=new("Item"):Item(amuletRaw)
+		assert(amulet.enchantModLines[1] and amulet.enchantModLines[1].crafted)
+		local listed=row(17,"~price 50 chaos")
+		listed.baseType="Agate Amulet"
+		listed.enchantMods={"Allocates Charisma"}
+		listed.implicitMods={{description="+20 to Strength and Intelligence"}}
+		local samplePage={next_change_id="cursor",stashes={stash(18,"Seller#0018",{listed})}}
+		assert(listings.compare(json.encode(samplePage),assert(listings.target(amulet)),"Covens").matched==1)
+		local variantRaw=raw:gsub("Amethyst Ring","Two-Stone Ring (Fire/Cold)")
+			:gsub("+23%% to Chaos Resistance","+15%% to Fire and Cold Resistances")
+		local variant=new("Item"):Item(variantRaw)
+		local buildTargets=require("Modules.LootFilterMarketBrowse").buildTargets({itemsTab={orderedSlots={{slotName="Ring 1"}},
+			items={variant},activeItemSet={["Ring 1"]={selItemId=1}}}})
+		local variantTarget=assert(buildTargets[1] and buildTargets[1].listingItem)
+		assert(variantTarget.base=="Two-Stone Ring")
+		listed.baseType="Two-Stone Ring"
+		listed.enchantMods=nil
+		listed.implicitMods={{description="+15% to Fire and Cold Resistances"}}
+		assert(listings.compare(json.encode(samplePage),variantTarget,"Covens").matched==1)
+		listed.implicitMods[1].description="+15% to Cold and Lightning Resistances"
+		assert(listings.compare(json.encode(samplePage),variantTarget,"Covens").matched==0)
+	end
 	local path=os.tmpname()..".json"
 	local file=assert(io.open(path,"wb"))
 	assert(file:write(encoded));assert(file:close())
@@ -1407,7 +1438,7 @@ Item Level: 86
 	local details=table.concat(rows," ")
 	assert(details:find("7 matching rolls",1,true) and details:find("Median 30",1,true),details)
 	assert(details:find("Range 10 to 50",1,true) and details:find("Ask 1.5 | 1 seller",1,true),details)
-	assert(details:find("Listing age and sale price are unknown.",1,true),details)
+	assert(details:find("Realm, age and completed sales are unverified.",1,true),details)
 	assert(not details:find("One#0001",1,true))
 	if output then gearUI:frame():write(output.."/gear-listing-snapshot.json") end
 	launch.DownloadPage=oldDownload
