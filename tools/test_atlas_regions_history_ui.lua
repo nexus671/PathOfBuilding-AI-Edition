@@ -1,4 +1,5 @@
 local output,width=arg[1],tonumber(arg[2]) or 960;arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true;newBuild()
+if output=="-" then output=nil end
 local ui=require("Modules.HeadlessUI").install({width=width,height=width==960 and 640 or 768});ui:bind(build)
 local input={{mechanic="Blight",maps={{name="Beach Map",freeThreads=2},{name="Strand Map",freeThreads=3}}},{mechanic="Breach",maps={{name="beach map",freeThreads=4},{name="Dunes Map",freeThreads=1}}}}
 local kept;local controls=require("Classes.AtlasRegionsControl").Open({shapedRegions=input},function(value) kept=value end)
