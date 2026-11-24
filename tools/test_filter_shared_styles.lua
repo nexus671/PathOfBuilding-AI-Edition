@@ -35,6 +35,11 @@ assert(groupedResult:find("SetTextColor 0 255 0 255",1,true) and groupedResult:f
 assert(groupedResult:find("SetBorderColor 0 0 255 255",1,true),"Specific replacement must take precedence over the shared group")
 assert(groupedResult:find("PlayAlertSound 6 100",1,true) and groupedResult:find("PlayAlertSoundPositional 6 200",1,true),"Shared alert did not preserve positional mode and volume")
 local preview=require("Classes.LootFilterSharedStylesControl").previewStyles
+local borderOnly=shared.list('Show\n SetBorderColor 255 0 0');local groupRow;for _,row in ipairs(borderOnly) do if row.key=="Colour" then groupRow=row end end
+assert(groupRow and groupRow.types.SetBorderColor and not groupRow.types.SetTextColor,"Shared inventory lost actual colour uses")
+local borderPreview=preview({},groupRow,"00FF00FF");assert(table.concat(borderPreview.SetBorderColor,",")=="0,255,0,255" and table.concat(borderPreview.SetTextColor,",")=="255,235,175,255","Grouped preview did not retain the actual border-only use")
+local positionalOnly=shared.list('Show\n PlayAlertSoundPositional 2 100');local alertRow;for _,row in ipairs(positionalOnly) do if row.key=="AlertSound" then alertRow=row end end
+local positionalPreview=preview({},alertRow,"6");assert(positionalPreview.PlayAlertSoundPositional and not positionalPreview.PlayAlertSound,"Grouped preview lost positional sound mode")
 local previewProfile={sharedStyles={{key="SetTextColor",from="FF0000FF",to="0000FFFF"}}}
 local shown=preview(previewProfile,{key="Colour",value="FF0000FF"},"00FF00FF");assert(table.concat(shown.SetTextColor,",")=="0,0,255,255","Preview ignored a more specific replacement")
 previewProfile.appearance={textColor={255,255,255,255},alertId=8,alertVolume=50}

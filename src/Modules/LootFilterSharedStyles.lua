@@ -75,7 +75,7 @@ local function visit(raw,callback)
 end
 function M.list(raw)
 	local counts={};visit(raw,function(key,value)
-		for _,kind in ipairs({key,group(key)}) do local id=kind.."\0"..value;local row=counts[id];if row then row.count=row.count+1 else counts[id]={key=kind,value=value,count=1} end end
+		for _,kind in ipairs({key,group(key)}) do local id=kind.."\0"..value;local row=counts[id];if row then row.count=row.count+1 else row={key=kind,value=value,count=1,types={}};counts[id]=row end;row.types[key]=true end
 	end)
 	local rows={};for _,row in pairs(counts) do rows[#rows+1]=row end
 	table.sort(rows,function(a,b) return a.key==b.key and a.value<b.value or a.key<b.key end);return rows

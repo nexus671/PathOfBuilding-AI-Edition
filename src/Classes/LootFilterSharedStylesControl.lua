@@ -7,11 +7,13 @@ local M={}
 local names={Colour="Any colour",AlertSound="Any numbered alert",CustomSound="Any custom sound",SetTextColor="Text colour",SetBorderColor="Border colour",SetBackgroundColor="Background colour",PlayAlertSound="Alert sound",PlayAlertSoundPositional="Positional alert",CustomAlertSound="Custom sound",CustomAlertSoundOptional="Optional custom sound"}
 local function isColour(key) return key=="Colour" or key=="SetTextColor" or key=="SetBorderColor" or key=="SetBackgroundColor" end
 function M.previewStyles(profile,row,target)
-	local key=row.key=="Colour" and "SetTextColor" or row.key=="AlertSound" and "PlayAlertSound" or row.key=="CustomSound" and "CustomAlertSound" or row.key
+	local key=row.key=="Colour" and "SetTextColor" or row.key=="AlertSound" and (row.types and row.types.PlayAlertSoundPositional and not row.types.PlayAlertSound and "PlayAlertSoundPositional" or "PlayAlertSound") or row.key=="CustomSound" and (row.types and row.types.CustomAlertSoundOptional and not row.types.CustomAlertSound and "CustomAlertSoundOptional" or "CustomAlertSound") or row.key
 	local rows={"Show"}
 	if isColour(key) then
 		local colours={SetTextColor="255 235 175 255",SetBorderColor="105 195 245 255",SetBackgroundColor="20 30 45 255"}
-		local rgba=assert(appearance.fromHex(row.value),"Invalid source colour");colours[key]=table.concat(rgba," ")
+		local rgba=assert(appearance.fromHex(row.value),"Invalid source colour");local value=table.concat(rgba," ")
+		local used=false;if row.key=="Colour" and row.types then for _,style in ipairs({"SetTextColor","SetBorderColor","SetBackgroundColor"}) do if row.types[style] then colours[style]=value;used=true end end end
+		if not used then colours[key]=value end
 		for _,style in ipairs({"SetTextColor","SetBorderColor","SetBackgroundColor"}) do rows[#rows+1]=" "..style.." "..colours[style] end
 		rows[#rows+1]=" SetFontSize 32"
 	else
