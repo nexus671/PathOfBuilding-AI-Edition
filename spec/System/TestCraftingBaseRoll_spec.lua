@@ -61,6 +61,18 @@ describe("Crafting modifier base-roll targets",function()
 		local result=sim.perform(rawJewel,{method="divine"},7,state);local tick=result.state.affixes[1].range*54
 		assert.is_true(math.abs(tick-math.floor(tick+0.5))<1e-8)
 	end)
+	it("samples rounded Essence regeneration endpoints from their raw bounds",function()
+		local model=sim.model(raw)
+		for _,case in ipairs({{"LifeRegenerationEssence2",121,300,2,5},{"LifeRegenerationEssence7",1801,2400,30,40}}) do
+			local mod=assert(model.byId[case[1]])
+			for _,draw in ipairs({0,0.25,0.5,0.999999}) do
+				local range=sim.rollRange(mod,function() return draw end)
+				local actual=(case[4]+range*(case[5]-case[4]))*60
+				local expected=case[2]+math.floor(draw*(case[3]-case[2]+1))
+				assert.is_true(math.abs(actual-expected)<1e-7)
+			end
+		end
+	end)
 	it("samples pinned per-minute percentage regeneration rolls",function()
 		for _,case in ipairs({{"Rarity: NORMAL\nHubris Circlet\nItem Level: 86\nCrusader Item","EnergyShieldRegenInfluence1"},{"Rarity: NORMAL\nPlate Vest\nItem Level: 86\nElder Item","LifeRegenerationRatePercentUber1"}}) do
 			local model=sim.model(case[1]);local mod=assert(model.byId[case[2]]);assert.is_true(math.abs(sim.rollRange(mod,function() return 0.04 end)-1/30)<1e-9)
