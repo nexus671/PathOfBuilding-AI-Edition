@@ -50,8 +50,13 @@ local function edit(profile,row,onKeep)
 		return true
 	end
 	if isColour(row.key) then
+		local cachedValue,cachedStyles
 		c.preview=new("Control"):Control(ui.anchor,{16,222,w-32,54})
-		function c.preview:Draw() local x,y=self:GetPos();local width=self:GetSize();local styles=valid() and M.previewStyles(profile,row,c.target.buf) or {};visual.floor(x,y,width,54);visual.chip(x,y,width,54,{BaseType="Example item"},{action="Show",styles=styles}) end
+		function c.preview:Draw()
+			local x,y=self:GetPos();local width=self:GetSize();local value=c.target.buf
+			if cachedValue~=value then cachedValue=value;cachedStyles=valid() and M.previewStyles(profile,row,value) or {} end
+			visual.floor(x,y,width,54);visual.chip(x,y,width,54,{BaseType="Example item"},{action="Show",styles=cachedStyles})
+		end
 	else
 		c.previewSound=new("ButtonControl"):ButtonControl(ui.anchor,{16,226,160,28},"Preview sound",function() local _,message=require("Modules.LootFilterAudio").play(M.previewStyles(profile,row,c.target.buf));main:OpenMessagePopup("Sound preview",message) end);c.previewSound.enabled=valid
 	end

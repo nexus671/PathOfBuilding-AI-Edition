@@ -63,7 +63,11 @@ profile.sharedStyles=nil;profile.appearance=nil
 for _,size in ipairs({{640,480},{960,640},{1280,720}}) do
 	ui:resize(size[1],size[2]);require("Classes.LootFilterSharedStylesControl").Open(profile,function(value) kept=value end)
 	ui:text("search","FF0000FF");if output then ui:frame():write(output.."/"..size[1].."-shared-style-browser.json") end
-	ui:click("choose");ui:text("target","11223344");if output then ui:frame():write(output.."/"..size[1].."-shared-style-edit.json") end;ui:click("keep")
+	ui:click("choose");local editor=require("Classes.LootFilterSharedStylesControl");local original=editor.previewStyles;local calls=0
+	editor.previewStyles=function(...) calls=calls+1;return original(...) end
+	ui:text("target","11223344");ui:frame();ui:frame();assert(calls==1,"An unchanged preview was recomputed")
+	ui:text("target","55667788");ui:frame();assert(calls==2,"Editing the replacement did not refresh the preview")
+	editor.previewStyles=original;ui:text("target","11223344");if output then ui:frame():write(output.."/"..size[1].."-shared-style-edit.json") end;ui:click("keep")
 	assert(kept and kept.sharedStyles[1].from=="FF0000FF" and kept.sharedStyles[1].to=="11223344","Shared style editor did not keep the chosen replacement")
 	require("Classes.LootFilterSharedStylesControl").Open(kept,function(value) kept=value end)
 	ui:text("search","FF0000FF");ui:click("choose");ui:click("remove");assert(#kept.sharedStyles==0,"Shared style editor did not remove the replacement")
