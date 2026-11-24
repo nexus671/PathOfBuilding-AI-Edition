@@ -19,7 +19,7 @@ for _,size in ipairs({{960,640},{1024,768},{1280,720}}) do
  assert(text:find('Jewellery: Attribute',1,true) and text:find('Random Catalyst',1,true) and text:find('Unknown catalyst quality type',1,true),'Jewellery groups not displayed')
  if output then ui:frame():write(output..'/'..size[1]..'-jewellery-vendor.json') end
  main.popups={};local saved;local panel=require('Classes.LootFilterCampaignControl').Open(build,nil,function(value) saved=value end,'Normal')
- ui:click('recipe11');if output then ui:frame():write(output..'/'..size[1]..'-jewellery-filter-policy.json') end;ui:click('keep')
+ if panel.page then ui:click('pageRecipes') end;ui:click('recipe11');if output then ui:frame():write(output..'/'..size[1]..'-jewellery-filter-policy.json') end;ui:click('keep')
  assert(saved and saved.recipes[1]=='Quality jewellery','Quality jewellery pickup was not saved')
  local filters=require('Modules.LootFilters');local p=filters.profile('jewel-quality','Jewellery','campaign');p.template='Hide';p.campaign=saved
  local sample={Class='Rings',BaseType='Gold Ring',Rarity='Rare',Quality=20,AreaLevel=40}
