@@ -111,6 +111,15 @@ python tools/build_public_stash_capture.py --league Covens --captured-at 1795545
 
 Replace the example cursors, time, league and paths with the recorded values. The first page must return `cursor-b` in this example. PoB rejects gaps, cycles, a different league, and a non-PC capture. A later public change replaces the earlier tab. A withdrawal removes the tab. The reader accepts a 16 MiB capture or a 4 MiB single page. Capture metadata is declared by the recorder. A capture covers only the recorded stream window and cannot confirm full market coverage, live availability, or sales.
 
+<!-- cspell:ignore psapi -->
+An authorized backend can use `tools/collect_public_stash_capture.py` to produce the same file directly. Start with a cursor from the approved PC stream. Configure `POB_GGG_PUBLIC_STASH_TOKEN` through the backend secret store with that backend's `service:psapi` access, and supply the registered application ID and public contact email. The desktop market browser opens the resulting file without taking the credential. [GGG authorization and service scopes](https://www.pathofexile.com/developer/docs/authorization#scopes)
+
+```powershell
+python tools/collect_public_stash_capture.py --league Covens --client-id your-app --contact ops@example.com --cursor known-cursor covens-capture.json
+```
+
+Use `--resume-from covens-capture.json` in place of `--cursor` for the next run, and choose a new output name. A successful run prints its page count, next cursor, stop reason, and any wait requested by GGG. Exit code 75 reports a provider cooldown in JSON on stderr and publishes no capture. Schedule another run only after that wait. Collection time records when the tool pulled the pages. It does not establish the age of the original listings. The API stream is delayed, and a known cursor can refer to historical changes. [GGG Public Stashes reference](https://www.pathofexile.com/developer/docs/reference#public-stashes)
+
 Use **Check quote** in the rule editor to open a read-only lookup for the selected feed and exact item or variant. Choose the intended league before requesting prices. The lookup shows the current quote and liquidity evidence without saving the rule or publishing a filter.
 
 Choose **Embers of the Allflame** for an exact ember. PoB uses its per-item quote and can remove the baseline hide. An exported fixed baseline carries these feed selections into daily sync. Each explicit extra category is fetched once per refresh. If a required feed is unavailable, stale, or contains malformed rows, daily sync keeps the last verified output. Missing, ambiguous, or thin item quotes keep their baseline rules. [Market API reference](https://poe.ninja/docs/api)
