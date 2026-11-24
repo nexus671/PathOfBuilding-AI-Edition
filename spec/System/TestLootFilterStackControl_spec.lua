@@ -94,6 +94,17 @@ describe("Stack style preview",function()
   assert.is_true(found)
  end)
 
+ it("does not promise a tier preview if another tier is invalid",function()
+  local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
+  local p=filters.profile("preview","Preview")
+  local source=editing.newTier("low","Low");source.items={"Chaos Orb"}
+  local target=editing.newTier("other","Other")
+  local invalid=editing.newTier("invalid","Invalid");invalid.stackRules={{minimum=5,styleTierId="missing"}}
+  p.tiers={source,target,invalid};require("Classes.LootFilterStackControl").Open(p,"low",function() end);ui:frame()
+  local found;for _,command in ipairs(ui.commands) do if command.kind=="text" and command.text=="Style preview" then found=true end end
+  assert.is_true(found)
+ end)
+
  it("uses the full tier preview for a continuing target",function()
   local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
   local p=filters.profile("preview","Preview");local source=editing.newTier("low","Low");source.items={"Chaos Orb"}
