@@ -121,32 +121,47 @@ local function countLiquidQuotes(values)
 	return counts
 end
 
-local function verifyCoverage(current, previous)
+function M.coverageFailure(source, available, reference)
+	local minimum, divisor, description = 20, 4, "a quarter"
+	if maps.variants[source] then
+		minimum, divisor, description = 4, 2, "half"
+	elseif not exchangeCategories[source] and source~="DivinationCard" then
+		return
+	end
+	if type(available)~="number" or type(reference)~="number" or reference~=math.floor(reference)
+		or available~=math.floor(available) or reference<minimum or reference>1000000
+		or available<0 or available*divisor>=reference then return end
+	return {category=source,reason="coverage_drop",availableQuotes=available,usualQuotes=reference}, description
+end
+
+local function verifyCoverage(current, previous, onCoverageFailure)
 	if #previous < 2 then return end
 	local dailyCounts = {}
 	for index, entry in ipairs(previous) do
 		dailyCounts[index] = countLiquidQuotes(entry.values)
 	end
 	local latest = countLiquidQuotes(current)
-	local function check(source, minimum, fraction, description)
+	local function check(source)
 		local counts = {}
 		for index, day in ipairs(dailyCounts) do counts[index] = day[source] or 0 end
 		table.sort(counts)
 		local reference = counts[math.ceil(#counts / 2)]
 		local available = latest[source] or 0
-		if reference >= minimum and available < reference * fraction then
+		local failure, description = M.coverageFailure(source,available,reference)
+		if failure then
+			if onCoverageFailure then onCoverageFailure(failure) end
 			error(string.format("%s feed has fewer than %s of its usual liquid quotes (%d available, recent median %d). The existing filter was kept.",
 				source, description, available, reference))
 		end
 	end
-	for _, source in ipairs(M.exchangeCategories) do check(source,20,0.25,"a quarter") end
-	check("DivinationCard",20,0.25,"a quarter")
-	for _, source in ipairs(maps.feeds) do check(source,4,0.5,"half") end
+	for _, source in ipairs(M.exchangeCategories) do check(source) end
+	check("DivinationCard")
+	for _, source in ipairs(maps.feeds) do check(source) end
 end
 
 -- A price increase only loosens a hide once it is supported by recent history.
 -- A current lower quote still takes effect immediately against the fixed baseline.
-function M.remember(quotes, history, day, now)
+function M.remember(quotes, history, day, now, onCoverageFailure)
 	local previous, snapshot = {}, {day=day, time=now, values={}}
 	local seen = {[day]=true}
 	for _, entry in ipairs(history or {}) do
@@ -176,7 +191,7 @@ function M.remember(quotes, history, day, now)
 			adjusted[name] = quote
 		end
 	end
-	verifyCoverage(snapshot.values, previous)
+	verifyCoverage(snapshot.values, previous, onCoverageFailure)
 	table.insert(previous, 1, snapshot)
 	return adjusted, previous
 end

@@ -1,12 +1,16 @@
-VERSION[2.69.0-ai.preview1283][2026/11/24]
+VERSION[2.69.0-ai.preview1284][2026/11/24]
 
 * Show full crafting target modifier names on hover.
 * Make planner errors clearer in AI tools.
 
-VERSION[2.69.0-ai.preview1282][2026/11/24]
+VERSION[2.69.0-ai.preview1283][2026/11/24]
 
 * Explain duplicate and incompatible crafting target alternatives before adding them.
 * Wrap crafting target descriptions to fit compact windows.
+
+VERSION[2.69.0-ai.preview1282][2026/11/24]
+
+* Show the available and typical quote counts when price sync rejects a thin feed.
 
 VERSION[2.69.0-ai.preview1281][2026/11/24]
 
