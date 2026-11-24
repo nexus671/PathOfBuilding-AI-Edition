@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1254][2026/11/24]
+
+* Keep previously verified lower hide cutoffs when individual market quotes become unusable.
+
 VERSION[2.68.1-ai.preview1253][2026/11/23]
 
 * Defer additional slow loot filter profiles before the Windows task reaches its execution limit.

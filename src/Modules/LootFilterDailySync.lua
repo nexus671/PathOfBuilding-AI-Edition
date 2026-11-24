@@ -439,7 +439,9 @@ function M.publicDiff(now, id)
 			local samples={};if type(change.samples)=="table" then for index,entry in ipairs(change.samples) do if index>20 then break end;samples[#samples+1]=publicImpactSample(entry) end end
 			changes[#changes+1] = {
 				item=item, source=safeText(change.source,40), priceId=market.evidencePriceId(change.priceId), previousCutoff=change.old,
-				proposedCutoff=change.cutoff, quotedPrice=finiteNumber(change.currentPrice or change.price),
+				proposedCutoff=change.cutoff,
+				retainedReason=safeText(change.retainedReason,100),
+				quotedPrice=finiteNumber(change.currentPrice or change.price),
 				priceUsed=finiteNumber(change.price), volume=finiteNumber(change.volume), confirmedPrice=finiteNumber(change.confirmedPrice),
 				liquidityUnit=safeText(change.liquidityUnit,40),
 				gemLevel=finiteNumber(change.gemLevel),gemQuality=finiteNumber(change.gemQuality),corrupted=corruption,
@@ -687,6 +689,19 @@ local function offlineDays(value)
 	return value==1 or value==3 or value==7
 end
 
+local function verifiedContinuity(review)
+	return review and review.continuityVersion==1 and review.continuity or nil
+end
+
+local function cutoffContinuity(config, targetValue, pickupPolicy)
+	local continuity = verifiedContinuity(config.review)
+	if not continuity or targetValue~=config.targetValue then return nil end
+	local encode = require("Modules.PlanningData").encodeExact
+	if encode(market.pickupPolicy(targetValue,pickupPolicy)) == encode(market.pickupPolicy(config.targetValue,config.pickupPolicy)) then
+		return continuity
+	end
+end
+
 function M.setOfflinePriceDays(id, days, revision)
 	assert(not M.busy, "Wait for the current sync to finish")
 	assert(days==0 or offlineDays(days), "Choose 0, 1, 3, or 7 days")
@@ -715,8 +730,9 @@ function M.previewOffline(now, id, settings)
 		local value = settings.targetValue
 		if value==nil then value=config.targetValue end
 		assert(type(value)=="number" and value>0 and value<=1000, "Enter a stack target above 0 and up to 1,000 chaos")
+		local policy = settings.pickupPolicy or config.pickupPolicy
 		local candidate = validate(baseline,bodies,false,value,config.protections,config.priceHistory,
-			header.day,header.checkedAt,settings.pickupPolicy or config.pickupPolicy,header.confirmation)
+			header.day,header.checkedAt,policy,header.confirmation,cutoffContinuity(config,value,policy))
 		return {before=original,after=candidate,age=age,checkedAt=header.checkedAt}
 	end)
 end
@@ -1171,16 +1187,18 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		local baseline = assert(read(current.baseline), "Baseline filter is missing")
 		assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
 		verifyUnmanagedRules(original, baseline)
-		local history = current.marketSourceHash == config.marketSourceHash and current.priceHistory or nil
-		local candidate, _, changes, skipped, snapshots, protectedChecks = validate(
-			baseline, bodies, false, current.targetValue, current.protections, history, day, now, current.pickupPolicy, confirmation)
+		local sameSource = current.marketSourceHash == config.marketSourceHash
+		local history = sameSource and current.priceHistory or nil
+		local continuity = sameSource and before==current.current and verifiedContinuity(current.review) or nil
+		local candidate, _, changes, skipped, snapshots, protectedChecks, nextContinuity = validate(
+			baseline, bodies, false, current.targetValue, current.protections, history, day, now, current.pickupPolicy, confirmation, continuity)
 		keepExpected(candidate)
 		local digest = sha(candidate)
 		local ages = {}
 		for index, feed in ipairs(feeds) do ages[index] = feed.age end
 		local refresh = {day=day,sourceHash=config.marketSourceHash or sha(market.endpoint),priceHistory=snapshots,
 			review={changes=changes,skipped=skipped,checkedAt=now,backup=current.backup,ages=ages,feeds=feeds,
-				league=current.league,protectedChecks=protectedChecks}}
+				league=current.league,protectedChecks=protectedChecks,continuityVersion=1,continuity=nextContinuity}}
 		local replaced = candidate ~= original
 		if replaced then refresh.review.backup = before end
 		local completed, raw, evidence = prepareRefreshState(current,digest,refresh,replaced)
@@ -1520,10 +1538,15 @@ function M.preview(target, baselineFile, league, options, callback, onFailure)
 	local found, saved = pcall(get,id)
 	local savedHold = found and saved and finiteNumber(saved.providerRetryAfter)
 	assert(not savedHold or now>=savedHold,"Wait before contacting the rate-limited exchange again")
-	local history = found and saved and saved.league == config.league and saved.baselineHash == config.baselineHash and saved.marketSourceHash == config.marketSourceHash and saved.priceHistory
+	local matching = found and saved and saved.league == config.league and saved.baselineHash == config.baselineHash
+		and saved.marketSourceHash == config.marketSourceHash
+	local history = matching and saved.priceHistory
+	local continuity = matching and not saved.pending and saved.target==config.target and saved.current==config.current
+		and cutoffContinuity(saved,config.targetValue,config.pickupPolicy) or nil
 	local day = history and os.date("%Y-%m-%d", now) or nil
 	fetchPrices(config, baseline, now, function(bodies, _, confirmation)
-		local candidate = validate(baseline,bodies,false,config.targetValue,config.protections,history,day,now,config.pickupPolicy,confirmation)
+		local candidate = validate(baseline,bodies,false,config.targetValue,config.protections,
+			history,day,now,config.pickupPolicy,confirmation,continuity)
 		callback(original, candidate)
 		return "Preview complete. Review the proposed filter before enabling sync."
 	end, onFailure, id)

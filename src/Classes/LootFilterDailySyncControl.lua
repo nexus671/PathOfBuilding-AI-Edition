@@ -289,11 +289,13 @@ function M.Open(profileId, profileName)
 			end
 			for i, change in ipairs(review.changes or {}) do
 				local scope = change.scope == "campaign" and " in campaign areas" or change.maps and " in maps" or ""
-				local details = {
-					string.format("Hide up to %d → %d%s", change.old, change.cutoff, scope),
-					string.format("%.4g chaos used | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
-					string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
-				}
+				local details = {string.format("Hide up to %d → %d%s", change.old, change.cutoff, scope)}
+				if change.retainedReason then
+					details[#details+1] = "Kept the last verified lower cutoff. "..change.retainedReason.."."
+				else
+					details[#details+1] = string.format("%.4g chaos used | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume")
+					details[#details+1] = string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0)
+				end
 				local priceId = market.evidencePriceId(change.priceId)
 				if priceId then
 					details[#details+1] = string.format("Price ID (%s) · %s",change.source or "market",priceId)
@@ -321,7 +323,8 @@ function M.Open(profileId, profileName)
 					end end
 				end
 				if #samples == 0 then details[#details+1] = "Sample result unavailable." end
-				entries[#entries+1] = {id="change-"..i,label=change.name,category="Changed",details=details,decision=change}
+				entries[#entries+1] = {id="change-"..i,label=change.name,
+					category=change.retainedReason and "Retained" or "Changed",details=details,decision=change}
 			end
 			for i, item in ipairs(review.skipped or {}) do
 				local details = {item.reason}
@@ -352,7 +355,7 @@ function M.Open(profileId, profileName)
 					label="Compare GGG trades",
 					canRun=function(entry)
 						local change = entry.decision
-						return not waiting and change and not change.tier and exchange.itemId(change.name)
+						return not waiting and change and not change.retainedReason and not change.tier and exchange.itemId(change.name)
 							and league and type(review.checkedAt)=="number"
 					end,
 					run=function(entry)

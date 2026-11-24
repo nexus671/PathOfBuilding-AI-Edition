@@ -2251,3 +2251,112 @@ end
 
 checkScheduledWorkerBudget()
 print("Windows task budget defers slow profiles and completes each on later triggers")
+
+
+local function checkIndividualQuoteContinuity()
+	local json = require("dkjson")
+	local module = "Modules/LootFilterDailySync.lua"
+	local service = assert(loadfile(module))()
+	local oldDownload, oldTime = launch.DownloadPage, os.time
+	local clock, mode = oldTime(), "liquid"
+	os.time = function(date) return date and oldTime(date) or clock end
+	local id = service.createProfile("Individual quote continuity")
+	local live, fixed = dir.."/quote-continuity.filter",dir.."/quote-continuity-fixed.filter"
+	local grouped = original:gsub('"Orb of Alteration"','"Orb of Alteration" "Orb of Fusing" "Orb of Transmutation"',1)
+	local raw = market.addManagedSection(grouped,{
+		{name="The Doctor",class="Divination Cards",scope="all"},
+		{class="Maps",tier=16,mapType="Map"},
+		{name="Arc",class="Skill Gems",scope="maps",gemLevel=20,gemQuality=20,corrupted=false},
+		{name="Arc",class="Skill Gems",scope="maps",gemLevel=20,gemQuality=20,corrupted=true},
+	})
+	write(live,raw)
+	write(fixed,raw)
+	local options = {profileId=id,hour=0,targetValue=1,protectionFile=protections}
+	service.configure(live,fixed,"Covens",options)
+	service.setOfflinePriceDays(id,1,service.configuration(id).revision)
+	local function exchange(rows)
+		local names, quotes = {}, {}
+		for index, row in ipairs(rows) do
+			names[index] = {id=row[1],name=row[2]}
+			quotes[index] = {id=row[1],primaryValue=row[3],volumePrimaryValue=row[4] or 1000}
+		end
+		return assert(json.encode({core={primary="chaos"},items=names,lines=quotes}))
+	end
+	local auxiliary = exchange({{"auxiliary","Auxiliary token",1}})
+	launch.DownloadPage = function(_,url,callback)
+		local category = assert(url:match("type=(%w+)$"))
+		local body
+		if category=="Currency" then
+			local rows = {{"alt","Orb of Alteration",0.21},{"trans","Orb of Transmutation",mode=="liquid" and 0.01 or 0.5}}
+			if mode~="missing" then rows[#rows+1] = {"fusing","Orb of Fusing",mode=="liquid" and 1.3 or 0.01} end
+			body = exchange(rows)
+		elseif category=="DivinationCard" then
+			body = exchange({{"doctor","The Doctor",mode=="cheap" and 0.1 or 8,mode=="missing" and 1 or 1000}})
+		elseif category=="Map" then
+			local rows = {{name="Map (Tier 15)",detailsId="tier-15",chaosValue=1,count=50,listingCount=50}}
+			if mode~="missing" then
+				rows[#rows+1] = {name="Map (Tier 16)",detailsId="tier-16",chaosValue=mode=="cheap" and 0.1 or 8,count=50,listingCount=50}
+			end
+			body = assert(json.encode({lines=rows}))
+		elseif category=="SkillGem" then
+			local rows = {{name="Arc",detailsId="corrupted-arc",gemLevel=20,gemQuality=20,corrupted=true,chaosValue=0.1,count=50,listingCount=50}}
+			rows[#rows+1] = {name="Arc",detailsId="regular-arc",gemLevel=20,gemQuality=20,corrupted=false,chaosValue=mode=="cheap" and 0.1 or 8,count=50,listingCount=50}
+			if mode=="missing" then
+				rows[#rows+1] = {name="Arc",detailsId="competing-arc",gemLevel=20,gemQuality=20,corrupted=false,chaosValue=0.1,count=50,listingCount=50}
+			end
+			body = assert(json.encode({lines=rows}))
+		else body = auxiliary end
+		local date = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n"
+		callback({header=date,body=body})
+	end
+	local function decisions(changes)
+		local result = {}
+		for _, value in ipairs(changes) do result[value.name or value.item] = value end
+		return result
+	end
+	service.tick(clock,true,false,id)
+	local initial = service.configuration(id)
+	assert(initial.review and initial.review.continuity and initial.review.protectedChecks==1,service.status)
+	assert(decisions(initial.review.changes)["Orb of Fusing"].cutoff==0)
+	local firstOutput = read(live)
+
+	mode,clock = "missing",clock+1
+	-- A matching read-only review and the scheduled publish agree.
+	local proposed
+	service.preview(live,fixed,"Covens",options,function(_,candidate) proposed = candidate end)
+	assert(proposed and read(live)==firstOutput)
+	service.tick(clock,true,false,id)
+	local retained = service.configuration(id)
+	local byName = decisions(retained.review.changes)
+	assert(retained.lastSuccess==clock and retained.review.protectedChecks==1)
+	for _,name in ipairs({"Orb of Fusing","The Doctor","Map (Tier 16)","Arc"}) do
+		local value = assert(byName[name],name)
+		assert(value.cutoff==0 and value.retainedReason and not value.price and not value.currentPrice and not value.volume)
+	end
+	assert(byName.Arc.corrupted==false and byName.Arc.gemQuality==20)
+	assert(byName["Orb of Transmutation"].cutoff==1 and not byName["Orb of Transmutation"].retainedReason)
+	local output = read(live)
+	assert(output==proposed and output~=firstOutput and read(fixed)==raw)
+	local offline = assert(service.previewOffline(clock,id,{targetValue=1,pickupPolicy={}}))
+	assert(offline.after==output and offline.before==output)
+	local changedPolicy = service.previewOffline(clock,id,{targetValue=2})
+	assert(changedPolicy.after:find('"Orb of Fusing"',1,true))
+	local bridge = decisions(assert(service.publicDiff(clock,id)).changes)
+	assert(bridge["Orb of Fusing"].retainedReason and not bridge["Orb of Fusing"].quotedPrice)
+	-- A restarted worker retains the same visibility without an older price.
+	clock = clock+1
+	service = assert(loadfile(module))()
+	service.tick(clock,true,false,id)
+	assert(read(live)==output and decisions(service.configuration(id).review.changes).Arc.retainedReason)
+
+	mode,clock = "cheap",clock+1
+	service.tick(clock,true,false,id)
+	assert(read(live):find('"Orb of Fusing"',1,true) and not decisions(service.configuration(id).review.changes)["Orb of Fusing"])
+	mode,clock = "missing",clock+1
+	service.tick(clock,true,false,id)
+	assert(read(live):find('"Orb of Fusing"',1,true) and not decisions(service.configuration(id).review.changes)["Orb of Fusing"])
+	os.time,launch.DownloadPage = oldTime,oldDownload
+end
+
+checkIndividualQuoteContinuity()
+print("Missing, thin, and ambiguous quotes retain only the exact previously verified lower cutoff")
