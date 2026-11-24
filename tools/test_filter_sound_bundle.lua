@@ -8,6 +8,10 @@ local variantBytes,variantCount=zip.soundBundleVariants(profile,'audio.filter',d
 f=assert(io.open(dir..'/sound-variants-check.zip','wb'));f:write(variantBytes);f:close()
 local bytes,count=zip.soundBundle(profile,'audio.filter',raw,dir);assert(count==2 and bytes:sub(1,4)=='PK\3\4')
 f=assert(io.open(dir..'/sound-bundle-check.zip','wb'));f:write(bytes);f:close()
+local shared=filters.profile('shared-sound','Shared sound');shared.template='Show\n CustomAlertSound "bundle-test.wav" 200';shared.sharedStyles={{key='CustomSound',from='bundle-test.wav',to='bundle-test.ogg'}}
+local sharedRaw=filters.compile(shared);assert(sharedRaw:find('CustomAlertSound "bundle-test.ogg" 200',1,true))
+local sharedBytes,sharedCount=zip.soundBundle(shared,'shared.filter',sharedRaw,dir);assert(sharedCount==1)
+f=assert(io.open(dir..'/shared-style-sound-check.zip','wb'));f:write(sharedBytes);f:close()
 assert(not pcall(zip.soundBundle,profile,'audio.filter','Show\n CustomAlertSound "missing.wav"',dir))
 assert(not pcall(zip.soundBundle,profile,'audio.filter','Show\n CustomAlertSoundOptional "missing.wav"',dir))
 local _,absoluteCount=zip.soundBundle(profile,'audio.filter','Show\n CustomAlertSound "'..source..'"',dir);assert(absoluteCount==1)

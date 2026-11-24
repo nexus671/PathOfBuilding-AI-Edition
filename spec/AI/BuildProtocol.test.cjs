@@ -232,12 +232,13 @@ test('returns every requested feed in a full economy audit',t=>{
 
 test('queues loot-filter generation, evaluation and reviewed profiles without writing exports', t => {
   const f=fixture(t);const profile={id:'maps',title:'Map pickups',preset:'early_maps',strictness:2,trackBuildPickups:true,economyRules:[{name:'Orb of Alteration',class:'Stackable Currency',scope:'maps',cutoff:6},{name:'Harbinger Scarab',class:'Map Fragments',scope:'maps',cutoff:5,exchangeCategory:'Scarab'},{name:'Blighted Map (Tier 16)',class:'Maps',scope:'maps',tier:16,mapType:'BlightedMap'},{name:'Arc',class:'Skill Gems',scope:'maps',gemLevel:20,gemQuality:0,corrupted:false}],manualGuideReviews:[{projectId:'helmet',signature:'a'.repeat(40)}],rules:[{id:'base',title:'Craft base',text:'Show\n BaseType == "Iron Hat"',enabled:true}]};
+  profile.sharedStyles=Array.from({length:600},(_,i)=>({key:'Colour',from:i.toString(16).toUpperCase().padStart(8,'0'),to:'FFFFFFFF'}));
   const filters={schemaVersion:1,activeId:'maps',profiles:[profile]};f.captured.context.lootFilters=filters;f.write('context',f.captured);
   assert.deepEqual(f.call('get_loot_filters',{}).filters,filters);
   for(const name of ['generate_loot_filter','test_loot_filter','export_loot_filter']) {
     f.call(name,{baseRevision:f.state.revision,profile,...(name==='test_loot_filter'?{sample:{BaseType:'Iron Hat',Fated:false,UnidentifiedItemTier:3}}:{})});
     const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,name);
-    assert.equal(request.profile.id,'maps');assert.equal(request.profile.trackBuildPickups,true);assert.deepEqual(request.profile.manualGuideReviews,profile.manualGuideReviews);assert.deepEqual(request.profile.economyRules,profile.economyRules);assert.equal(request.path,undefined);fs.rmSync(path.join(f.dir,'AI-build-request.json'));
+    assert.equal(request.profile.id,'maps');assert.equal(request.profile.trackBuildPickups,true);assert.deepEqual(request.profile.sharedStyles,profile.sharedStyles);assert.deepEqual(request.profile.manualGuideReviews,profile.manualGuideReviews);assert.deepEqual(request.profile.economyRules,profile.economyRules);assert.equal(request.path,undefined);fs.rmSync(path.join(f.dir,'AI-build-request.json'));
   }
   f.call('propose_loot_filters',{title:'Pickups',baseRevision:f.state.revision,filters});
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.proposal.operations[0].type,'set_loot_filters');
