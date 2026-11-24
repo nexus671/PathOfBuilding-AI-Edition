@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1275][2026/11/24]
+
+* Test an observed stack against a price preview before saving any changes.
+
 VERSION[2.69.0-ai.preview1274][2026/11/24]
 
 * Compare an observed stack against the fixed baseline and the latest verified filter.
