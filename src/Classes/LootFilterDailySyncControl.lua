@@ -237,6 +237,10 @@ function M.Open(profileId, profileName)
 					string.format("%.4g chaos used | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
 					string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
 				}
+				local priceId = market.evidencePriceId(change.priceId)
+				if priceId then
+					details[#details+1] = string.format("Price ID (%s) · %s",change.source or "market",priceId)
+				end
 				if change.gemLevel then
 					details[#details+1] = string.format("Level %d, %d%% quality, %s",change.gemLevel,change.gemQuality,
 						change.corrupted and "corrupted" or "uncorrupted")
@@ -264,6 +268,7 @@ function M.Open(profileId, profileName)
 			end
 			for i, item in ipairs(review.skipped or {}) do
 				local details = {item.reason}
+				if item.source then details[#details+1] = "Price feed · "..item.source end
 				if item.gemLevel then
 					details[#details+1] = string.format("Level %d, %d%% quality, %s",item.gemLevel,item.gemQuality,
 						item.corrupted and "corrupted" or "uncorrupted")

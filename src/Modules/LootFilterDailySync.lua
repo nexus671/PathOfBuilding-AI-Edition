@@ -380,7 +380,7 @@ function M.publicDiff(now, id)
 			if type(change.corrupted)=="boolean" then corruption=change.corrupted end
 			local samples={};if type(change.samples)=="table" then for index,entry in ipairs(change.samples) do if index>20 then break end;samples[#samples+1]=publicImpactSample(entry) end end
 			changes[#changes+1] = {
-				item=item, source=safeText(change.source,40), previousCutoff=change.old,
+				item=item, source=safeText(change.source,40), priceId=market.evidencePriceId(change.priceId), previousCutoff=change.old,
 				proposedCutoff=change.cutoff, quotedPrice=finiteNumber(change.currentPrice or change.price),
 				priceUsed=finiteNumber(change.price), volume=finiteNumber(change.volume), confirmedPrice=finiteNumber(change.confirmedPrice),
 				liquidityUnit=safeText(change.liquidityUnit,40),
@@ -392,13 +392,13 @@ function M.publicDiff(now, id)
 	end
 	local ages = {}
 	for index, age in ipairs(type(review.ages) == "table" and review.ages or {}) do
-		if index > 20 then break end
+		if index > market.maxFeedCount then break end
 		local standardAge = finiteNumber(age)
 		if standardAge and standardAge >= 0 and standardAge <= 3600 then ages[#ages+1] = standardAge end
 	end
 	local feeds = {}
 	for index, feed in ipairs(type(review.feeds) == "table" and review.feeds or {}) do
-		if index > 20 then break end
+		if index > market.maxFeedCount then break end
 		local category = type(feed) == "table" and safeText(feed.category,40)
 		local age = category and finiteNumber(feed.age)
 		if age and age >= 0 and age <= 3600 then
@@ -1105,7 +1105,12 @@ local function storeFeed(url, entry)
 end
 
 local function fetchPrices(config, baseline, now, complete, onFailure, id)
-	local categories, gemRequests = market.feedCategories(baseline)
+	local validFeedList, categories, gemRequests = pcall(market.feedCategories, baseline)
+	if not validFeedList then
+		M.status = "Sync skipped: " .. tostring(categories)
+		if onFailure then onFailure(M.status) end
+		return
+	end
 	local endpoint = market.endpoint
 	local job, bodies, responses = {onFailure=onFailure,profileId=id}, {}, {}
 	M.busy, M.deadline = job, now + 300

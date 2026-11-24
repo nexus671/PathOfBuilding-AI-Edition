@@ -88,6 +88,7 @@ assert(sync.status:find("Protected drops verified",1,true) and read(target):find
 assert(calls==9 and not sync.configuration().lastFailure)
 local sample = sync.configuration().review.changes[1].sample
 assert(sample.action=="Show" and sample.count==5)
+assert(sync.configuration().review.changes[1].priceId=="alt")
 local exposed = sync.publicStatus(now)
 assert(exposed.state=="enabled" and exposed.adjustmentCount==1 and exposed.latestChanges[1].proposedCutoff==4)
 local payload=require("dkjson").encode(exposed)
@@ -771,7 +772,7 @@ local mapBodies = {}
 for index, category in ipairs(feedKinds) do mapBodies[index] = stash[category] or commodityBody end
 local promoted, mapCount, mapChanges, mapSkips = validate(mapBase,mapBodies,false,1,mapSamples,nil,nil,nil,{maps=5})
 assert(mapCount==1 and mapChanges[1].name=="Map (Tier 16)" and mapChanges[1].liquidityUnit=="listing samples")
-assert(mapChanges[1].sample.before=="Hide" and mapChanges[1].sample.action=="Show")
+assert(mapChanges[1].sample.before=="Hide" and mapChanges[1].sample.action=="Show" and mapChanges[1].priceId=="ordinary-16")
 assert(#mapSkips==3 and mapSkips[1].reason:find("Ambiguous",1,true) and mapSkips[3].reason:find("floor",1,true))
 assert(not pcall(validate,mapBase,missing,false,1,mapSamples))
 write(target,mapBase)
@@ -1427,6 +1428,8 @@ local function checkManagedGemPrices()
 	local actual = market.quotes(overview,"SkillGem",requests)
 	assert(actual[gems.key("Arc",20,20,false)].price==50)
 	assert(not actual[gems.key("Arc",20,19,true)])
+	local rememberedGems=market.remember(actual,{},"gem identity day",now)
+	assert(rememberedGems[gems.key("Arc",20,20,false)].providerId=="arc-exact")
 	assert(actual[gems.key("Fireball",20,20,false)]==false)
 	local reused = overview:gsub("arc%-corrupt%-19","arc-exact")
 	assert(market.quotes(reused,"SkillGem",requests)[gems.key("Arc",20,20,false)]==false)
@@ -1453,7 +1456,7 @@ local function checkManagedGemPrices()
 	local decision
 	for _, change in ipairs(state.review.changes) do if change.gemLevel then decision=change end end
 	assert(decision and decision.name=="Arc" and decision.gemLevel==20 and decision.gemQuality==20 and decision.corrupted==false)
-	assert(decision.sample.before=="Hide" and decision.sample.action=="Show")
+	assert(decision.sample.before=="Hide" and decision.sample.action=="Show" and decision.priceId=="arc-exact")
 	local function testItem(candidate,name,quality,corrupted,imbued,transfigured,area)
 		local parser = require("Modules.LootFilterParser")
 		return parser.simulate(parser.parse(candidate),{
@@ -1604,3 +1607,150 @@ local function checkMarketSourceBinding()
 end
 checkMarketSourceBinding()
 print("Daily profiles bind verified sources, reset changed or legacy histories, and stop mismatched asynchronous requests")
+
+
+local function checkManagedExchangeSelections()
+	local core={}
+	for _,category in ipairs(market.categories) do core[category]=true end
+	assert(#market.exchangeCategories==18 and #market.categories==8 and market.maxFeedCount==23)
+	assert(market.evidencePriceId("harbinger-scarab_1.0")=="harbinger-scarab_1.0")
+	for _,id in ipairs({"",string.rep("a",201),"internal\0composite","C:/private/id","quote name"}) do
+		assert(not market.evidencePriceId(id))
+	end
+	assert(not market.evidencePriceId(false))
+	for _,category in ipairs(market.exchangeCategories) do
+		local entry={name="Fixture "..category,class="Stackable Currency",scope="maps",cutoff=6,exchangeCategory=category}
+		assert(market.validateManagedRules({entry})[1].exchangeCategory==category)
+		local raw=market.addManagedSection(original,{entry})
+		local feeds=market.feedCategories(raw)
+		assert(#feeds==(core[category] and 8 or 9))
+		local occurrences=0
+		for _,feed in ipairs(feeds) do if feed==category then occurrences=occurrences+1 end end
+		assert(occurrences==1 and raw:find("# PoB economy: exchange "..category.."\nHide",1,true))
+	end
+	for _,invalid in ipairs({
+		{name="Fixture",class="Stackable Currency",scope="all",cutoff=6,exchangeCategory="Invented"},
+		{name="Fixture",class="Divination Cards",scope="all",exchangeCategory="DivinationCard"},
+		{name="Arc",class="Skill Gems",scope="all",gemLevel=20,gemQuality=20,corrupted=false,exchangeCategory="Currency"},
+		{name="Harbinger Scarab",class="Stackable Currency",scope="all",cutoff=6,exchangeCategory="Scarab"},
+		{name="Allflame Ember of Abyss",class="Embers of the Allflame",scope="all",cutoff=1,exchangeCategory="AllflameEmber"},
+		{name="Allflame Ember of Abyss",class="Embers of the Allflame",scope="all"},
+	}) do assert(not pcall(market.validateManagedRules,{invalid})) end
+	local entry={name="Harbinger Scarab",class="Map Fragments",scope="all",cutoff=6,exchangeCategory="Scarab"}
+	local raw=market.addManagedSection(original,{entry})
+	local quotes={}
+	local function merge(category,price,name,id)
+		market.merge(quotes,{[name or "Harbinger Scarab"]={id=id or "scarab",price=price,volume=1000,source=category}},category)
+	end
+	merge("Currency",0.01)
+	merge("Scarab",0.3)
+	assert(quotes["Harbinger Scarab"].source=="Currency")
+	local after,changes=market.review(raw,quotes,1)
+	assert(#changes==1 and changes[1].source=="Scarab" and changes[1].cutoff==3 and changes[1].priceId=="scarab")
+	assert(after:find("# PoB economy: exchange Scarab\nHide",1,true) and #market.feedCategories(after)==9)
+	local second=market.review(after,quotes,1)
+	assert(second==after)
+	local remembered,snapshots=market.remember(quotes,{},"source day",now)
+	assert(snapshots[1].values["Currency:scarab"]==0.01 and snapshots[1].values["Scarab:scarab"]==0.3)
+	assert(market.review(raw,remembered,1)==after)
+	local missing,missingChanges,missingSkips=market.review(raw,{["Harbinger Scarab"]={id="wrong",price=100,volume=1000,source="Currency"}},1)
+	assert(missing==raw and #missingChanges==0 and missingSkips[1].source=="Scarab" and not missingSkips[1].priceId)
+	local _,_,ambiguousSkips=market.review(raw,{["\0Scarab:Harbinger Scarab"]=false},1)
+	assert(ambiguousSkips[1].source=="Scarab" and ambiguousSkips[1].reason=="Ambiguous price mapping" and not ambiguousSkips[1].priceId)
+	local _,_,unchanged=market.review(raw,{["\0Scarab:Harbinger Scarab"]={id="scarab-stable",price=0.01,volume=1000,source="Scarab"}},1)
+	assert(unchanged[1].source=="Scarab" and unchanged[1].priceId=="scarab-stable")
+	quotes={};merge("Scarab",2)
+	local removed,removedChanges=market.review(raw,quotes,1)
+	assert(#removedChanges==1 and not removed:find("# PoB economy: exchange Scarab",1,true) and #market.feedCategories(removed)==8)
+	assert(market.review(removed,quotes,1)==removed)
+	for _,broken in ipairs({
+		raw:gsub("exchange Scarab","exchange Invented"),
+		raw:gsub("exchange Scarab\nHide","exchange Scarab\n\nHide"),
+		raw:gsub("exchange Scarab\nHide","exchange Scarab\n# Different rule\nHide"),
+		raw:gsub("exchange Scarab\nHide","exchange Scarab\nShow"),
+	}) do
+		assert(not pcall(market.feedCategories,broken))
+		assert(not pcall(market.review,broken,quotes,1))
+	end
+	local allflame=market.addManagedSection(original,{{name="Allflame Ember of Abyss",class="Embers of the Allflame",
+		scope="maps",exchangeCategory="AllflameEmber"}})
+	local emberRule=require("Modules.LootFilterParser").parse(allflame).rules[2]
+	assert(emberRule.conditions[1].values[1]=="Embers of the Allflame")
+	for _,condition in ipairs(emberRule.conditions) do assert(condition.keyword~="StackSize") end
+	quotes={};merge("AllflameEmber",0.1,"Allflame Ember of Abyss","allflame")
+	assert(market.review(allflame,quotes,1,{caps={["Allflame Ember of Abyss"]=10}})==allflame)
+	quotes={};merge("AllflameEmber",3,"Allflame Ember of Abyss","allflame")
+	local shown,allflameChanges=market.review(allflame,quotes,1,{highlightChaos=2,strongHighlightChaos=4})
+	assert(#allflameChanges==1 and allflameChanges[1].cutoff==0 and not allflameChanges[1].highlights)
+	assert(not shown:find("# PoB economy: exchange AllflameEmber",1,true) and #market.feedCategories(shown)==8)
+
+	local allRules={}
+	for _,category in ipairs(market.exchangeCategories) do
+		allRules[#allRules+1]={name="Fixture "..category,class="Stackable Currency",scope="all",cutoff=6,exchangeCategory=category}
+	end
+	allRules[#allRules+1]={name="Fixture Card",class="Divination Cards",scope="all"}
+	for _,category in ipairs(require("Modules.LootFilterMapMarket").feeds) do
+		allRules[#allRules+1]={class="Maps",tier=16,mapType=category}
+	end
+	allRules[#allRules+1]={name="Arc",class="Skill Gems",scope="all",gemLevel=20,gemQuality=20,corrupted=false}
+	local allFeeds=market.feedCategories(market.addManagedSection(original,allRules))
+	assert(#allFeeds==23)
+	local bodies,feeds={},{}
+	for index,category in ipairs(allFeeds) do bodies[index]=category;feeds[index]={category=category,age=0} end
+	local state={league="Covens",baselineHash="fixed",current="verified",lastSuccess=now,offlinePriceDays=1}
+	local offline=require("Modules.LootFilterOfflinePrices")
+	local packed=offline.encode(state,bodies,feeds,now,now,os.date("%Y-%m-%d",now))
+	local decoded=offline.decode(packed,state,allFeeds,now)
+	assert(#decoded==23 and decoded[23]==allFeeds[23])
+end
+checkManagedExchangeSelections()
+print("Explicit exchange selections bind exact adjacent rules, isolate category prices, preserve rewrite metadata, and support Allflame embers")
+
+
+local function checkManagedExchangeDailySync()
+	local fixture=assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local id=fixture.createProfile("Optional exchange refresh")
+	local live,fixed=dir.."/selected-exchange.filter",dir.."/selected-exchange-fixed.filter"
+	local raw=market.addManagedSection(original,{
+		{name="Harbinger Scarab",class="Map Fragments",scope="maps",cutoff=6,exchangeCategory="Scarab"},
+		{name="Allflame Ember of Abyss",class="Embers of the Allflame",scope="maps",exchangeCategory="AllflameEmber"},
+	})
+	write(live,raw);write(fixed,raw)
+	fixture.configure(live,fixed,"Covens",{profileId=id,hour=0,protectionFile=protections})
+	fixture.setOfflinePriceDays(id,1,fixture.configuration(id).revision)
+	local sent,denied={},false
+	local savedDownload=launch.DownloadPage
+	launch.DownloadPage=function(_,url,callback,params)
+		assert(params.followRedirects==false)
+		local category=assert(url:match("type=([%w]+)$"))
+		sent[#sent+1]=category
+		local body=commodityBody
+		if category=="Scarab" then
+			if denied then callback(nil,"Response code: 403");return end
+			body='{"core":{"primary":"chaos"},"items":[{"id":"harbinger","name":"Harbinger Scarab"}],"lines":[{"id":"harbinger","primaryValue":0.3,"volumePrimaryValue":1000}]}'
+		elseif category=="AllflameEmber" then
+			body='{"core":{"primary":"chaos"},"items":[{"id":"abyss","name":"Allflame Ember of Abyss"}],"lines":[{"id":"abyss","primaryValue":3,"volumePrimaryValue":1000}]}'
+		end
+		callback({header=header,body=body})
+	end
+	fixture.tick(now,true,false,id)
+	local state=fixture.configuration(id)
+	assert(#sent==10 and state.lastSuccess==now and state.review.protectedChecks==1,fixture.status)
+	local diff=fixture.publicDiff(now,id)
+	local identities={}
+	for _,change in ipairs(diff.changes) do identities[change.source]=change.priceId end
+	assert(identities.Scarab=="harbinger" and identities.AllflameEmber=="abyss" and identities.Currency=="alt")
+	local output=read(live)
+	assert(output~=raw and output:find("# PoB economy: exchange Scarab",1,true))
+	assert(not output:find("# PoB economy: exchange AllflameEmber",1,true))
+	local replay=fixture.previewOffline(os.time(),id)
+	assert(replay.after==output and replay.before==output and #sent==10)
+	denied=true
+	fixture.tick(now+1,true,false,id)
+	assert(read(live)==output and fixture.configuration(id).lastSuccess==now and fixture.configuration(id).lastFailure.message:find("403",1,true))
+	fixture.rollback(id)
+	assert(read(live)==raw and fixture.configuration(id).paused)
+	launch.DownloadPage=savedDownload
+end
+checkManagedExchangeDailySync()
+print("Optional Scarab and Allflame prices use verified daily sync, offline replay, safe failure retention and rollback")
