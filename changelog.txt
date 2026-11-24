@@ -1,4 +1,4 @@
-VERSION[2.69.0-ai.preview1284][2026/11/24]
+VERSION[2.69.0-ai.preview1285][2026/11/24]
 
 * Compare recorded loot stacks by item class and area level.
 * Flag uncertain filter comparisons and show their warnings.
@@ -6,6 +6,11 @@ VERSION[2.69.0-ai.preview1284][2026/11/24]
 * Show colors, beams and sounds in observed stack reviews.
 * Preview observed loot labels side by side.
 * Open label previews from recorded stack files.
+
+VERSION[2.69.0-ai.preview1284][2026/11/24]
+
+* Show full crafting target modifier names on hover.
+* Make planner errors clearer in AI tools.
 
 VERSION[2.69.0-ai.preview1283][2026/11/24]
 

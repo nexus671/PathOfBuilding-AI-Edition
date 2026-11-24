@@ -459,6 +459,11 @@ function Panel.Open(build,project,layout)
 	end)
 	label(controls,"targetLabel",16,262,"Target modifier (add several for AND conditions)")
 	controls.target=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,282,416,24},{})
+	controls.target.tooltipFunc=function(tooltip,where,index,entry)
+		tooltip:Clear()
+		if not entry or not entry.label then return end
+		for _,row in ipairs(ui.rows({entry.label},math.min(460,main.screenW-60),14)) do tooltip:AddLine(14,row[1]) end
+	end
 	local targetModel,targetState,targetBeastKey
 	local alternativeReason
 	refreshTargetOptions=function()

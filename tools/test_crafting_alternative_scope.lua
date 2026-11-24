@@ -12,13 +12,20 @@ local explicit,other,implicit
 for index,entry in ipairs(controls.target.list) do
 	if entry.label:match('^Prefix |') or entry.label:match('^Suffix |') then
 		if not explicit then explicit=index elseif not other and entry.val~=controls.target.list[explicit].val then other=index end
-	elseif entry.label:match('^Exarch |') or entry.label:match('^Eater |') or entry.label:match('^Corrupted |') then implicit=implicit or index end
+	elseif entry.label:match('^Exarch |') or entry.label:match('^Eater |') or entry.label:match('^Corrupted |') then
+		if not implicit or #entry.label>#controls.target.list[implicit].label then implicit=index end
+	end
 end
 assert(explicit and other and implicit, 'Expected explicit and implicit target choices')
 controls.target:SetSel(explicit);ui:click('addTarget')
 assert(not controls.alternative:IsEnabled() and controls.alternative.tooltipText():find('already',1,true), 'Duplicate target should be explained')
 controls.target:SetSel(implicit)
 assert(not controls.alternative:IsEnabled() and controls.alternative.tooltipText():find('same',1,true), 'Mixed scope should be explained')
+local selected=controls.target:GetSelValue();local x,y=controls.target:GetPos();ui.cursorX,ui.cursorY=x+8,y+8
+ui:frame()
+local tooltip={};for _,line in ipairs(controls.target.tooltip.lines) do tooltip[#tooltip+1]=StripEscapes(line.text or '') end
+local shown=table.concat(tooltip,' '):gsub('%s+','')
+assert(shown==StripEscapes(selected.label):gsub('%s+',''), 'Full selected modifier is not available on hover')
 if output then ui:frame():write(output..'/'..width..'-crafting-alternative-scope.json') end
 controls.target:SetSel(other)
 assert(controls.alternative:IsEnabled(), 'A distinct modifier in the same scope should be available')
