@@ -171,6 +171,15 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 		and rows[4][1]:find("Last verified refresh",1,true))
 	harness:frame()
 	harness:click("close")
+	reviewFixture.lastFailure.failedFeed={category="Currency",reason="coverage_drop",availableQuotes=3,usualQuotes=24}
+	harness:click("lastAttempt")
+	local coverageRows=main.popups[1].controls.message.list
+	assert(coverageRows[2][1]:find("Currency price feed",1,true))
+	assert(coverageRows[3][1]:find("PoB kept the verified filter.",1,true))
+	assert(coverageRows[4][1]:find("3 available, 24 recent median",1,true))
+	assert(coverageRows[5][1]:find("Last verified refresh",1,true))
+	harness:frame()
+	harness:click("close")
 	local originalStack=sync.compareObservedStack
 	local previousStatus, verifiedFixture=sync.status, reviewFixture
 	main.popups={}
