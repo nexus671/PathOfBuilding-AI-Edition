@@ -27,7 +27,9 @@ test('queues an offline equipped or copied gear listing review', t => {
   assert.equal(request.kind,'compare_gear_listings');assert.equal(request.snapshotPath,args.snapshotPath);assert.equal(request.slot,'Ring 1');
   const copied=fixture(t);copied.call('compare_gear_listings',{baseRevision:copied.state.revision,itemText:'Rarity: RARE\nExample',snapshotPath:args.snapshotPath,league:args.league});
   assert.equal(JSON.parse(fs.readFileSync(path.join(copied.dir,'AI-build-request.json'))).itemText,'Rarity: RARE\nExample');
-  for (const invalid of [{...args,slot:'Helmet'},{...args,unexpected:true},{...args,snapshotPath:'x'.repeat(1025)}]) {
+  const armour=fixture(t);armour.call('compare_gear_listings',{...args,baseRevision:armour.state.revision,slot:'Body Armour'});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(armour.dir,'AI-build-request.json'))).slot,'Body Armour');
+  for (const invalid of [{...args,slot:'Flask 1'},{...args,unexpected:true},{...args,snapshotPath:'x'.repeat(1025)}]) {
     const other=fixture(t);assert.throws(()=>other.call('compare_gear_listings',invalid),/arguments/);
   }
   const both=fixture(t);assert.throws(()=>both.call('compare_gear_listings',{...args,baseRevision:both.state.revision,itemText:'item'}),/exactly one/);

@@ -2027,6 +2027,20 @@ async function main(){
   fs.writeFileSync(snapshotPath,JSON.stringify({next_change_id:'cursor',stashes:[{id:'2'.repeat(64),public:true,league:'Standard',accountName:'Seller#0001',items:[variant]}]}));
   const variantListings=await queued('compare_gear_listings',{baseRevision:context.revision,itemText:twoStone,snapshotPath,league:'Standard'},'gearListings');
   assert.equal(variantListings.gearListings.comparison.matched,1);
+  const armourText='Rarity: RARE\nReview Armour\nVaal Regalia\nQuality: +20%\nEnergy Shield: 190\nSockets: B-B-B-B-R-G\nItem Level: 86\n+70 to maximum Life';
+  await queued('propose_build',{mode:'edit',title:'Listing comparison armour',baseRevision:context.revision,operations:[{type:'equip_item',slot:'Body Armour',text:armourText}]},'review');
+  await host('apply');context=(await call('get_build_context')).context;
+  const armourAsk={...listing,baseType:'Vaal Regalia',implicitMods:undefined,explicitMods:[{description:'+70 to maximum Life'}],
+    sockets:'B-B-B-B-R-G'.split('-').map(sColour=>({sColour,group:0})),properties:[{name:'Quality',values:[['+20%',0]]},{name:'Energy Shield',values:[['190',0]]}]};
+  const shorter={...armourAsk,id:'5'.repeat(64),sockets:armourAsk.sockets.map((socket,i)=>({...socket,group:i===5?1:0}))};
+  fs.writeFileSync(snapshotPath,JSON.stringify({next_change_id:'cursor',stashes:[{id:'2'.repeat(64),public:true,league:'Standard',accountName:'Seller#0001',items:[armourAsk,shorter]}]}));
+  const armourListings=await queued('compare_gear_listings',{baseRevision:context.revision,slot:'Body Armour',snapshotPath,league:'Standard'},'gearListings');
+  const copiedArmour=await queued('compare_gear_listings',{baseRevision:context.revision,itemText:armourText,snapshotPath,league:'Standard'},'gearListings');
+  assert.equal(armourListings.gearListings.comparison.matched,1);
+  assert.deepEqual(armourListings.gearListings.equipment,copiedArmour.gearListings.equipment);
+  assert.equal(armourListings.gearListings.equipment.sockets,'B-B-B-B-R-G');
+  assert.equal(armourListings.gearListings.equipment.properties['Energy Shield'],190);
+  assert.equal((await call('get_build_context')).context.revision,context.revision);
   const invalidListing=await queued('compare_gear_listings',{baseRevision:context.revision,slot:'Ring 1',snapshotPath:'relative.json',league:'Standard'},'failed');
   assert.match(invalidListing.error,/absolute local JSON/);
   await host('quit');
