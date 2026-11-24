@@ -1,6 +1,11 @@
 -- Native Atlas plans use pinned GGG data, independently of character passives.
 -- cspell:ignore jsontype
 local json = require("dkjson")
+local function decodeJSON(raw)
+	local value,position,err=json.decode(raw)
+	assert(value and position and not raw:sub(position):find("%S"),err or "Invalid Atlas JSON")
+	return value
+end
 local M = {versions={"3.27.0","3.27.0-ruthless","3.28.0j","3.28.0j-ruthless","3.29.1","3.29.1-ruthless","3.29.3","3.29.3-ruthless","3.30.0-preview","3.30.0-preview-ruthless","3.30.0c","3.30.0c-ruthless"},cache={}}
 function M.is330(version) return type(version)=="string" and version:match("^3%.30%.0")~=nil end
 -- The pinned preview snapshot is byte-identical to GGG's 3.30.0 release
@@ -504,7 +509,7 @@ function M.import(raw,version,id,title,budget)
 	text(raw,2*1024*1024,"Atlas import")
 	raw=raw:match("^%s*(.-)%s*$")
 	if raw:match("^%s*{") then
-		local decoded=assert(json.decode(raw),"Invalid Atlas JSON")
+		local decoded=decodeJSON(raw)
 		assert(decoded.schemaVersion == 1,"Unsupported Atlas export version")
 		local plan=M.validate(decoded.atlasPlan); plan.id=id or plan.id; plan.title=title or plan.title
 		return M.validate(plan)
@@ -562,7 +567,7 @@ function M.new(build)
 		local ok,plans=pcall(function()
 			local raw=table.concat(xml); assert(#raw <= 2*1024*1024,"Atlas metadata too large")
 			if not raw:match("%S") then return {} end
-			local decoded=assert(json.decode(raw)); assert(decoded.schemaVersion == 1); array(decoded.plans,math.huge,"saved Atlas plans")
+			local decoded=decodeJSON(raw); assert(decoded.schemaVersion == 1); array(decoded.plans,math.huge,"saved Atlas plans")
 			local result,ids={},{}
 			for _,plan in ipairs(decoded.plans) do local entry=M.validate(plan); assert(not ids[entry.id]); ids[entry.id]=true; result[#result+1]=entry end
 			return result

@@ -1,3 +1,8 @@
+VERSION[2.68.1-ai.preview1238][2026/11/23]
+
+* Preserve damaged planning data, improve bundle recovery, and fit build reviews in small windows.
+* Keep loot-filter views and navigation usable in smaller windows, including search text.
+
 VERSION[2.68.1-ai.preview1237][2026/11/23]
 
 * Inspect and repair the Windows background task from daily sync.

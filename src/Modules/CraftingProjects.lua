@@ -205,10 +205,14 @@ end
 function M.new(build)
 	local self = {projects={},build=build}
 	function self:Load(xml)
+		for _,entry in ipairs(xml) do if type(entry)~="string" then
+			self.unreadable=copyTable(xml);self.warning="Crafting metadata could not be read. It is preserved unchanged when saving.";return
+		end end
 		local raw = table.concat(xml)
 		if raw:match("^%s*$") then return end
 		local ok,projects = pcall(function()
-			local decoded = assert(json.decode(raw,1,json.null),"Invalid crafting project data")
+			local decoded,position,err = json.decode(raw,1,json.null)
+			assert(decoded and position and not raw:sub(position):find("%S"),err or "Invalid crafting project data")
 			assert(decoded.schemaVersion == 1 and type(decoded.projects) == "table" and decoded.projects ~= json.null,"Unsupported crafting project data")
 			local meta=getmetatable(decoded.projects)
 			assert(not meta or meta.__jsontype ~= "object","Crafting projects must be an array")
@@ -220,7 +224,8 @@ function M.new(build)
 		if ok then self.projects=projects else self.unreadable=raw; self.warning="Crafting metadata could not be read. It is preserved unchanged when saving." end
 	end
 	function self:Save(xml)
-		if self.unreadable then xml[#xml+1]=self.unreadable
+		if type(self.unreadable)=="table" then for _,entry in ipairs(self.unreadable) do xml[#xml+1]=type(entry)=="table" and copyTable(entry) or entry end
+		elseif self.unreadable then xml[#xml+1]=self.unreadable
 		elseif #self.projects > 0 then xml[#xml+1]=require("Modules.PlanningData").encodeExact({schemaVersion=1,projects=self.projects}) end
 	end
 	function self:Upsert(project)

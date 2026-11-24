@@ -1,8 +1,11 @@
 local output=arg[1];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true
 local UI=require("Modules.HeadlessUI");local bundles=require("Modules.PlanningBundle");local bridge=require("Modules.DesktopBuildBridge")
-for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
+for _,size in ipairs({{1280,720},{1024,768},{960,640},{720,600},{640,480}}) do
 	newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build)
 	local valid=bundles.export(build);require("Classes.PlanningToolsControl").Bundle(build);local controls=main.popups[1].controls
+	ui:frame()
+	local lastRight=0
+	for _,key in ipairs({"export","paste","review","close"}) do local x=controls[key]:GetPos();local width=controls[key]:GetSize();assert(x>=lastRight,"Overlapping bundle controls: "..key);lastRight=x+width end
 	ui.clipboard=valid;ui:click("paste");assert(controls.review:IsEnabled(),"Valid bundle was not available for review")
 	ui.clipboard=valid.." \r\n\t";ui:click("paste");assert(controls.review:IsEnabled(),"Trailing whitespace should be accepted")
 	ui.clipboard=valid.."{}";ui:click("paste");assert(#main.popups==2 and not controls.review:IsEnabled(),"Extra data after a bundle must be rejected")
@@ -20,6 +23,24 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(#main.popups==2 and ui.clipboard=="clipboard sentinel" and controls.review:IsEnabled(),"Oversized export lost the clipboard or previous review")
 		main:ClosePopup()
 	end
+	if size[1]<=720 then
+		bridge.prepared=nil
+		ui:click("review")
+		local proposal=main.popups[1].controls;assert(proposal.constraintCheck,tostring(size[1]).." "..tostring(main.popups[1].title));ui:frame()
+		local x=proposal.constraintCheck:GetPos();local w=proposal.constraintCheck:GetSize();local nextX=proposal.toggleMetrics:GetPos()
+		assert(x+w<=nextX,"Overlapping proposal controls")
+		assert(not proposal.candidateTitle:IsShown(),"Proposal title overlaps compact tabs")
+	end
 	ui:restore();main.popups={}
+end
+do
+	newBuild();main.popups={};local ui=UI.install({width=640,height=480});ui:bind(build)
+	bridge.configure({goal="balanced",minimums={LifeUnreserved=1000000}})
+	local prepared=bridge.prepare(build,{mode="edit",title="Level update",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}})
+	bridge.prepared=prepared;require("Classes.BuildProposalControl").Review();ui:frame()
+	assert(main.popups[1].controls.constraintCheck.label=="Check constraints","Compact proposal must show unmet constraints")
+	if output then ui:frame():write(output.."/640-proposal-real-metrics.json") end
+	ui:click("toggleMetrics");if output then ui:frame():write(output.."/640-proposal-all-metrics.json") end
+	ui:restore();main.popups={};bridge.prepared=nil
 end
 print("PLANNING_BUNDLE_ERRORS_OK")

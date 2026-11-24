@@ -10,8 +10,9 @@ function M.new(build)
 	self.nav=new("ControlHost"):ControlHost()
 	local anchor=new("Control"):Control(nil,{0,0,0,0})
 	anchor.x=function() return self.viewport.x end;anchor.y=function() return self.viewport.y end
+	local function pageWidth() return math.min(102,math.floor((self.viewport.width-32-80-46-76-56)/5)) end
 	for index,page in ipairs({"ai","atlas","crafting","journey","filters"}) do
-		local control=new("ButtonControl"):ButtonControl({"TOPLEFT",anchor,"TOPLEFT"},{112+(index-1)*110,10,102,28},pages[page],function() self:Show(page) end)
+		local control=new("ButtonControl"):ButtonControl({"TOPLEFT",anchor,"TOPLEFT"},{function() return 104+(index-1)*(pageWidth()+8) end,10,pageWidth,28},pages[page],function() self:Show(page) end)
 		control.locked=function() return self.page==page end
 		control.tooltipText="Alt+"..index.." | Tab: move focus | Enter: activate"
 		self.nav.controls["nav_"..page]=require("Modules.PlanningUI").styleButton(control)
@@ -19,12 +20,12 @@ function M.new(build)
 	self.nav.controls.nav_build=require("Modules.PlanningUI").styleButton(new("ButtonControl"):ButtonControl({"TOPLEFT",anchor,"TOPLEFT"},{16,10,80,28},"< Build",function()
 		build:SelectControl(nil);build.viewMode=build.plannerPreviousMode or "TREE"
 	end))
-	self.nav.controls.nav_text=require("Modules.PlanningUI").styleButton(new("ButtonControl"):ButtonControl({"TOPLEFT",anchor,"TOPLEFT"},{664,10,54,28},"Aa",function()
+	self.nav.controls.nav_text=require("Modules.PlanningUI").styleButton(new("ButtonControl"):ButtonControl({"TOPLEFT",anchor,"TOPLEFT"},{function() return 104+5*(pageWidth()+8) end,10,46,28},"Aa",function()
 		for page in pairs(self.cache) do self:Remember(page) end
 		main.planningTextLarge=not main.planningTextLarge;self.cache={};self:Show(self.page)
 	end))
 	self.nav.controls.nav_text.tooltipText="Toggle normal / large planning text"
-	self.nav.controls.nav_tools=require("Modules.PlanningUI").styleButton(new("ButtonControl"):ButtonControl({"TOPLEFT",anchor,"TOPLEFT"},{726,10,80,28},"Tools",function() require("Classes.PlanningToolsControl").Open(build) end))
+	self.nav.controls.nav_tools=require("Modules.PlanningUI").styleButton(new("ButtonControl"):ButtonControl({"TOPLEFT",anchor,"TOPLEFT"},{function() return 158+5*(pageWidth()+8) end,10,76,28},"Tools",function() require("Classes.PlanningToolsControl").Open(build) end))
 	self.nav.controls.nav_tools.label=function() return require("Modules.PlanningRecovery").hasPending(build) and "Tools *" or "Tools" end
 	self.nav.controls.nav_tools.tooltipText="Planning tools and local draft recovery. * means an earlier session has a draft to review."
 	-- Planning keeps file actions in the native header; character editing stays
