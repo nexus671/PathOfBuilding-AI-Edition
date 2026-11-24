@@ -15,7 +15,7 @@ local function openExactBase(target,league)
 	OpenURL(url)
 end
 
-local function showManagedQuote(entry)
+local function showMarketDetails(entry, title)
 	local width = math.min(500,main.screenW-40)
 	local lines = {entry.label}
 	for _, detail in ipairs(entry.details) do lines[#lines+1] = detail end
@@ -30,7 +30,28 @@ local function showManagedQuote(entry)
 		end),
 	}
 	ui.style(controls,{close=true})
-	main:OpenPopup(width,height,"Exact market quote",controls,nil,nil,"close")
+	main:OpenPopup(width,height,title,controls,nil,nil,"close")
+end
+
+local function showListingSample(target, league, sample)
+	local details = {
+		league .. " | Local public stash snapshot",
+		string.format("%d same-base listings checked | %d matching rolls",sample.inspected,sample.matched),
+		string.format("%d matching listings with a supported asking price",sample.priced),
+	}
+	if sample.ambiguous>0 then details[#details+1]=string.format("%d conflicting listing IDs excluded",sample.ambiguous) end
+	for _, row in ipairs(sample.results) do
+		if row.sellers>0 then
+			local range = row.low==row.high and string.format("Ask %.4g",row.low)
+				or string.format("Range %.4g to %.4g",row.low,row.high)
+			local estimate = row.median and string.format(" | Median %.4g",row.median) or ""
+			local sellers = row.sellers==1 and "1 seller" or (row.sellers.." sellers")
+			local note = row.median and "" or " (three needed for a median)"
+			details[#details+1] = row.currency..estimate.." | "..range.." | "..sellers..note
+		end
+	end
+	details[#details+1] = "Asking prices from this file. Realm, age and completed sales are unverified."
+	showMarketDetails({label=target.label,details=details},"Comparable asking prices")
 end
 
 local function open(build, managedTarget)
@@ -53,8 +74,11 @@ local function open(build, managedTarget)
 	controls.category.selFunc = clearTarget
 	controls.query.changeFunc = clearTarget
 	local buildTargets = build and browse.buildTargets(build) or {}
-	local canSearchBase
-	for _, entry in ipairs(buildTargets) do if entry.itemLevel then canSearchBase=true; break end end
+	local canSearchBase, canInspectGear
+	for _, entry in ipairs(buildTargets) do
+		canSearchBase = canSearchBase or entry.itemLevel~=nil
+		canInspectGear = canInspectGear or entry.listingItem~=nil
+	end
 	if #buildTargets>0 then
 		controls.buildTarget = new("ButtonControl"):ButtonControl(ui.anchor,{162,282,152,28},"From build",function()
 			require("Classes.PlanningBrowserControl").Open("Compare a build item",buildTargets,{
@@ -67,6 +91,7 @@ local function open(build, managedTarget)
 					target = entry
 					status(entry.imbuedSupport and "Comparing gem and support; listed level or quality must agree."
 						or entry.level and string.format("Matching level %g and %g%% quality.",entry.level,entry.quality)
+						or entry.listingItem and "Choose a league and a public stash JSON file to compare rolls."
 						or entry.itemLevel and ("Build item level "..entry.itemLevel..". Enter a league to search exact listings.")
 						or entry.details[1])
 				end,
@@ -81,6 +106,20 @@ local function open(build, managedTarget)
 			openExactBase(target,league)
 		end)
 		controls.exactBase.enabled=function() return not busy and target and target.itemLevel~=nil end
+	end
+	if canInspectGear then
+		controls.listingSample=new("ButtonControl"):ButtonControl(ui.anchor,{220,320,192,28},"Compare listing file",function()
+			local league=controls.league.buf:match("^%s*(.-)%s*$")
+			if not league:match("^[%w _-]+$") then status("Enter the trade league ID for the listing file."); return end
+			local selected=target
+			require("Classes.LootFilterFileBrowser").Open(nil,function(path)
+				local ok,sample=pcall(require("Modules.LootFilterGearListings").compareFile,path,selected.listingItem,league)
+				if ok then showListingSample(selected,league,sample)
+				else ui.errorPopup("Comparable asking prices",sample) end
+			end,{title="Choose a public stash JSON file",itemLabel="Snapshot",category="Snapshots",
+				accept=function(name) return name:lower():match("%.json$")~=nil end})
+		end)
+		controls.listingSample.enabled=function() return not busy and target and target.listingItem~=nil end
 	end
 	controls.get=new("ButtonControl"):ButtonControl(ui.anchor,{16,282,138,28},"Show prices",function()
 		if busy then return end
@@ -206,7 +245,7 @@ local function open(build, managedTarget)
 				finish(managedState=="thin" and "The exact managed quote has insufficient market volume." or "Showing "..#entries.." of "..#rows.." matches.")
 				if managedState then
 					table.insert(entries[1].details,1,category.label.." in "..league)
-					showManagedQuote(entries[1])
+					showMarketDetails(entries[1],"Exact market quote")
 				else
 					local options
 					if comparable and comparable.itemLevel then
