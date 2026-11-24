@@ -177,6 +177,10 @@ end
 newBuild();main.popups={};local reviewUI=headless.install({width=reviewWidth,height=reviewWidth==720 and 600 or 640});reviewUI:bind(build)
 reviewFixture={hour=9,minute=15,enabled=true,summary='Review ready',history={},review={changes={{name='Orb of Alteration',old=6,cutoff=4,price=.2,volume=1000,samples={{area=83,count=5,class='Stackable Currency',before='Unknown',action='Unknown',beforeMissing={'DropLevel','C:/private/filter'},afterMissing={'ItemLevel'}}}}},skipped={}}}
 reviewFixture.review.changes[2]={name='Orb of Chance',old=6,cutoff=4,price=.2,volume=1000,samples={{area=83,count=5,class='Stackable Currency',before='Hide',action='Unknown'}}}
+reviewFixture.review.changes[3]={name="Map (Tier 16)",old=1,cutoff=0,price=8,volume=40,scope="maps",maps=true,samplesLimited=true,
+	samples={{area=83,count=1,class="Maps",rarity="Normal",before="Hide",beforeLine=21,action="Show",line=29},
+		{area=83,count=1,class="Maps",rarity="Rare",before="Hide",beforeLine=21,action="Hide",line=26}}}
+reviewFixture.review.changes[4]={name="Blighted Map (Tier 16)",old=1,cutoff=0,price=12,volume=40,samplesLimited=true}
 reviewFixture.review.protectedChecks=600
 require('Classes.LootFilterDailySyncControl').Open();reviewUI:click('review')
 local statusRows = {}
@@ -194,6 +198,18 @@ for _, row in ipairs(main.popups[1].controls.details.list) do
 end
 local reason = table.concat(generic," "):gsub("%s+"," ")
 assert(reason:find("preview cannot resolve a filter rule or included file",1,true),"Other uncertainty was not explained")
+local function impactText(query)
+	reviewUI:text("search",query)
+	local lines={}
+	for _, row in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+	return table.concat(lines," "):gsub("%s+"," ")
+end
+local mapProof=impactText("Map (Tier 16)")
+assert(mapProof:find("Normal Maps",1,true) and mapProof:find("Rare Maps",1,true)
+	and mapProof:find("baseline line 21",1,true) and mapProof:find("result line 26",1,true))
+assert(mapProof:find("still hidden",1,true) and mapProof:find("Some cases were omitted",1,true))
+if output then reviewUI:frame():write(output.."/"..reviewWidth.."-filter-map-rarity-impact.json") end
+assert(impactText("Blighted Map"):find("No samples for this decision",1,true))
 reviewUI:click('close');main.popups={};reviewFixture=nil
 
 do
