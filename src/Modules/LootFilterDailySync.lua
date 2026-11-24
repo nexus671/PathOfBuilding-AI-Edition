@@ -243,8 +243,10 @@ function M.profiles()
 	return result
 end
 
+local revisionCounter=0
 local function newRevision()
-	return sha(tostring({})..tostring(os.time()))
+	revisionCounter=revisionCounter+1
+	return sha(tostring({})..":"..tostring(os.time())..":"..revisionCounter)
 end
 
 function M.createProfile(name)
@@ -254,11 +256,15 @@ function M.createProfile(name)
 	return lockSettings(function()
 		local profiles = M.profiles()
 		assert(#profiles < 25, "Up to 25 sync profiles are supported")
+		local usedIds={}
 		for _, other in ipairs(profiles) do
 			assert(other.name:lower() ~= name:lower(), "A profile with that name already exists")
+			usedIds[other.id]=true
 		end
 		table.remove(profiles, 1)
-		local id = newRevision()
+		local id
+		for _=1,32 do local candidate=newRevision();if not usedIds[candidate] then id=candidate;break end end
+		assert(id,"Could not create a unique sync profile ID. Try again.")
 		profiles[#profiles+1] = {id=id,name=name}
 		put(registryPath(),assert(json.encode(profiles)))
 		return id

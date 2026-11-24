@@ -44,6 +44,23 @@ write(protections,'[{"BaseType":"Cord Belt","Rarity":"Magic"}]')
 main = {userPath=dir.."/"}
 function urlEncode(value) return value end
 local sync = require("Modules.LootFilterDailySync")
+do
+	local previousPath,previousSha=main.userPath,package.loaded.sha1
+	local isolated=dir.."/profile-id-collision"
+	assert(require("lfs").mkdir(isolated))
+	main.userPath=isolated.."/"
+	local calls=0
+	package.loaded.sha1=function() calls=calls+1;return string.rep(calls<=2 and "a" or "b",40) end
+	local fixture=assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local first=fixture.createProfile("First")
+	local second=fixture.createProfile("Second")
+	assert(first~=second and calls==3,"A colliding profile ID must be retried")
+	local before=read(main.userPath.."LootFilterSyncProfiles.json")
+	local ok=pcall(fixture.createProfile,"Third")
+	assert(not ok and read(main.userPath.."LootFilterSyncProfiles.json")==before,"Repeated collisions must leave the registry unchanged")
+	assert(#fixture.profiles()==3,"Both distinct profiles must remain readable")
+	package.loaded.sha1,main.userPath=previousSha,previousPath
+end
 local now = os.time()
 local header = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",now).."\r\nAge: 5\r\n\r\n"
 local calls, stale = 0, true
