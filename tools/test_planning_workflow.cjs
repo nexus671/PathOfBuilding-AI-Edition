@@ -153,7 +153,7 @@ async function main(){
   const mirrorRaw='Rarity: NORMAL\nIron Hat\nItem Level: 86\nQuality: 20\nSockets: R-G B';
   const mirrored=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:mirrorRaw,action:{method:'mirror'},seed:1},'crafted');
   assert.equal(mirrored.nativeCrafting.state.mirrored,true);assert.notEqual(mirrored.nativeCrafting.originalState.mirrored,true);assert.match(mirrored.nativeCrafting.itemText,/Mirrored/);assert.doesNotMatch(mirrored.nativeCrafting.originalItemText,/Mirrored/);assert.equal(mirrored.nativeCrafting.priceKey,'mirror');
-  const mirrorAgain=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:mirrorRaw,initialState:mirrored.nativeCrafting.state,action:{method:'mirror'},seed:1},'failed');assert.match(mirrorAgain.error,/Mirrored/);
+  const mirrorAgain=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:mirrorRaw,initialState:mirrored.nativeCrafting.state,action:{method:'mirror'},seed:1},'failed');assert.match(mirrorAgain.error,/Mirrored/);assert.doesNotMatch(mirrorAgain.error,/\.lua:\d+:/i);
   const ambiguousApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:ambiguousGilded,action:{method:'vaal'},seed:1},'failed');assert.match(ambiguousApply.error,/cannot be identified/);
   const gildedUnchanged=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedBaseRaw,action:{method:'vaal'},seed:3},'crafted');
   assert.ok(gildedUnchanged.nativeCrafting.state.vendorImplicit);assert.equal(gildedUnchanged.nativeCrafting.state.corruptedImplicits,undefined);
@@ -1450,7 +1450,7 @@ async function main(){
   assert.equal(nightmareCopy.mapData.state.tier,17);assert.deepEqual(nightmareCopy.mapData.state.selected,['MapUberModCurses']);
   const matchingMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',relatedTo:'MapMonsterFireDamageMapWorlds'},'mapData');
   assert.equal(matchingMap.mapData.relatedTo,'MapMonsterFireDamageMapWorlds');assert.ok(matchingMap.mapData.candidates.some(entry=>entry.id==='MapMonsterFireDamage3MapWorlds'));assert.ok(matchingMap.mapData.candidates.every(entry=>!entry.id.includes('ColdDamage')));assert.match(matchingMap.mapData.note,/do not prove identical/);
-  const unknownRelated=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,relatedTo:'not-a-map-mod'},'failed');assert.match(unknownRelated.error,/Unknown reference map modifier/);
+  const unknownRelated=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,relatedTo:'not-a-map-mod'},'failed');assert.match(unknownRelated.error,/Unknown reference map modifier/);assert.doesNotMatch(unknownRelated.error,/\.lua:\d+:/i);
   const mapMods=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:2,quality:{kind:'Pack Size',value:20}},'mapData');
   assert.equal(mapMods.mapData.candidates.length,2);assert.equal(mapMods.mapData.nextOffset,2);assert.match(mapMods.mapData.note,/not outcome probabilities/);
   assert.equal(mapMods.mapData.summary.estimatedTotals.packSize.min,10);

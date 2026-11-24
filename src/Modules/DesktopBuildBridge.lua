@@ -3,6 +3,7 @@ local json = require("dkjson")
 local sha1 = require("sha1")
 local insights = require("Modules.BuildInsights")
 local M = { enabled=false, history={}, undo={}, plan={goal="balanced"} }
+local function readableError(value) return require("Modules.PlanningUI").errorDetails(value) end
 local metrics = { "LifeUnreserved", "EnergyShield", "ManaUnreserved", "CombinedDPS", "FullDPS", "TotalEHP", "PhysicalMaximumHitTaken", "ChaosMaximumHitTaken", "RecoverySimulationSurvivalChance", "RecoverySimulationDamageDPS", "RecoverySimulationAttackUptime", "ManaRegen", "Speed", "EffectiveMovementSpeedMod", "FireResist", "ColdResist", "LightningResist", "ChaosResist", "Str", "Dex", "Int" }
 
 local function capture(build,treeOnly)
@@ -514,7 +515,7 @@ function M.calculateBatch(build, request)
 			summary.status="calculated"; summary.level=prepared.candidate.characterLevel
 			results[#results+1] = summary
 		else
-			results[#results+1] = {title=entry.title,status="failed",error=tostring(prepared):match("^[^\n]+")}
+			results[#results+1] = {title=entry.title,status="failed",error=readableError(prepared)}
 		end
 	end
 	local ranking = { }
@@ -618,7 +619,7 @@ function M.poll(build, force)
 				local impact=require("Modules.LootFilterImpact");return impact.page(impact.prepare(before,after),request.samples,0,50,checkpoint)
 			end,function(result)
 				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh loot-filter context."}) else publish("tested",{comparison=result}) end
-			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Filter comparison slice")
+			end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end,"Filter comparison slice")
 			job.requestId=request.id;publish("calculating",{});return
 		end
 		if request.kind=="generate_loot_filter" or request.kind=="test_loot_filter" or request.kind=="test_loot_filter_examples" or request.kind=="test_loot_filter_scene" or request.kind=="export_loot_filter" then
@@ -639,7 +640,7 @@ function M.poll(build, force)
 					return filters.simulateExamples(profile,request.sampleSetId,request.offset,request.limit,checkpoint)
 				end,function(result)
 					if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh loot-filter context."}) else publish("tested",{examples=result}) end
-				end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Filter example evaluation slice")
+				end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end,"Filter example evaluation slice")
 				job.requestId=request.id;publish("calculating",{});return
 			elseif request.kind=="generate_loot_filter" then
 				local rules,warnings=filters.generate(build,profile);profile.rules=rules;profile.trackBuildPickups=true;M.status={id=request.id,status="generated",profile=profile,warnings=warnings}
@@ -695,7 +696,7 @@ function M.poll(build, force)
 				return result
 			end,function(result)
 				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh map context."}) else publish("mapData",{mapData=result}) end
-			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Map modifier inspection slice")
+			end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end,"Map modifier inspection slice")
 			job.requestId=request.id;publish("calculating",{});return
 		end
 		if request.kind == "atlasSearch" or request.kind == "atlasConnect" or request.kind == "atlasTransition" or request.kind == "atlasThreads" or request.kind == "atlasRegionRun" then
@@ -776,7 +777,7 @@ function M.poll(build, force)
 					routes[#routes+1]={name=entry.name,kind=entry.kind,savedStartDiffers=startDiffers,savedGoalDiffers=goalDiffers,result=ok and result or nil,error=not ok and require("Modules.PlanningUI").errorText(result) or nil}
 				end
 				return {projectId=request.projectId,referenceName=chosen[1].name,referenceKind=chosen[1].kind,settings={trials=trials,maxActions=budget,seed=options.seed or 104729},routes=routes,notes={"All routes use the reference starting state and final targets; their own step conditions remain unchanged.","Sampling intervals do not include model uncertainty; no route is ranked automatically."}}
-			end,function(result) publish("crafted",{craftingComparison=result}) end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end)
+			end,function(result) publish("crafted",{craftingComparison=result}) end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end)
 			job.requestId=request.id;return
 		end
 		if request.kind == "craftAction" or request.kind == "craftSimulate" or request.kind == "craftCalculate" or request.kind == "craftOptimize" then
@@ -824,7 +825,7 @@ function M.poll(build, force)
 					if alternative then result.savedAlternative={projectId=request.projectId,name=alternative.name} end
 					if primary then result.savedPrimary={projectId=request.projectId} end
 					return result
-				end,function(result) publish("crafted",{nativeCrafting=result}) end,function(message) publish("failed",{error=require("Modules.PlanningUI").errorText(message)}) end,function(progress) publish("calculating",{progress=progress}) end)
+				end,function(result) publish("crafted",{nativeCrafting=result}) end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end)
 				job.requestId=request.id
 			else
 				local result=simulator.perform(raw,request.action,request.seed,request.initialState,build.spec.treeVersion)
@@ -845,7 +846,7 @@ function M.poll(build, force)
 				return require("Modules.CraftingInventory").search(projects,request.query,request.offset,request.limit,checkpoint)
 			end,function(result)
 				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh crafting context."}) else publish("inventorySearch",{inventorySearch=result}) end
-			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Crafting inventory search slice")
+			end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end,"Crafting inventory search slice")
 			job.requestId=request.id;publish("calculating",{});return
 		end
 		if request.kind == "craftUnlockReview" then
@@ -863,7 +864,7 @@ function M.poll(build, force)
 				return require("Modules.CraftingUnlockTasks").review(build,project.id,sim.context(model,state),project.nativeRecipe and project.nativeRecipe.steps or {})
 			end,function(result)
 				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh crafting context."}) else publish("craftUnlocks",{craftUnlocks=result}) end
-			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Craft unlock review slice")
+			end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end,"Craft unlock review slice")
 			job.requestId=request.id;publish("calculating",{});return
 		end
 		if request.kind == "craftInspect" then
@@ -957,7 +958,7 @@ function M.poll(build, force)
 		M.publishState()
 	end)
 	if not ok then
-		M.lastError = tostring(err):match("^[^\n]+")
+		M.lastError = readableError(err)
 		M.status = {id=requestId,status="failed",error=M.lastError}
 		pcall(M.publishState)
 	end

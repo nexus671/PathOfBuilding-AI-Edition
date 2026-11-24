@@ -1,7 +1,7 @@
 VERSION[2.69.0-ai.preview1283][2026/11/24]
 
 * Show full crafting target modifier names on hover.
-* Make crafting simulation errors clearer in AI tools.
+* Make planner errors clearer in AI tools.
 
 VERSION[2.69.0-ai.preview1282][2026/11/24]
 
