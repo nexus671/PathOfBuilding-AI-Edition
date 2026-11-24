@@ -1657,7 +1657,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("next");for _=1,3 do ui:click("c6remove") end
 		local controls=main.popups[1].controls
 		assert(controls.c1key and controls.conditionCount.label()=="^76 conditions" and not controls.previous:IsShown(),"Deleting a condition left the page empty or the count stale")
-		ui:click("keepRule");assert(#require("Modules.LootFilterParser").parse(saved.text).rules[1].conditions==6,"Condition paging changed saved conditions")
+		assert(not controls.keepRule.enabled(),"Empty conditions should not be saved");ui:click("cancel")
 	end
 	do
 		local saved;local raw='Hide\n HasExplicitMod >=2 == "Polar" "Shocking"'

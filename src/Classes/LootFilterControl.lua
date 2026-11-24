@@ -53,7 +53,7 @@ function M.Conditions(rule,save,mode)
 	for _,condition in ipairs(conditions) do local known=false;for _,k in ipairs(keywords) do if k==condition.keyword then known=true end end;if not known then keywords[#keywords+1]=condition.keyword end end
 	ui.label(c,"nameLabel",16,28,"Rule name",14);c.title=new("EditControl"):EditControl(ui.anchor,{16,50,w-200,26},rule.title,nil,nil,160)
 	c.action=new("DropDownControl"):DropDownControl(ui.anchor,{w-168,50,152,26},parser.actionChoices(mode,block.action));c.action:SelByValue(block.action)
-	ui.description(c,"hint",16,88,w-32,42,{"All conditions must match. Add values in quotes for names with spaces. A filter cannot inspect unidentified explicit modifiers."},14)
+	ui.description(c,"hint",16,88,w-32,42,{"All conditions must match. Enter a value for each condition; use quotes for names with spaces. Unidentified explicit modifiers cannot be inspected."},14)
 	c.hint.shown=function() return not parser.actionReason(mode,c.action:GetSelValue()) end
 	ui.label(c,"modeNotice",16,88,"",14);c.modeNotice.label=function() local reason=parser.actionReason(mode,c.action:GetSelValue());return reason and "^xFFD27F"..reason or "" end
 	c.action.tooltipText=function() return parser.actionReason(mode,c.action:GetSelValue()) or "Choose how matching drops are displayed." end
@@ -81,7 +81,7 @@ function M.Conditions(rule,save,mode)
 	ui.label(c,"themeLabel",16,styleY-24,"Label style",14)
 	c.theme=new("DropDownControl"):DropDownControl(ui.anchor,{16,styleY,160,26},{"Keep original","Gold / cyan","High contrast"})
 	c.sound=new("DropDownControl"):DropDownControl(ui.anchor,{188,styleY,164,26},{"Keep sound","Silent","Alert 2","Alert 6"})
-	button(c,"addCondition",16,actionY,140,"Add condition",function() conditions[#conditions+1]={keyword="BaseType",operator="==",values={"Iron Hat"}};offset=math.max(1,#conditions-rows+1);drawConditions() end)
+	button(c,"addCondition",16,actionY,140,"Add condition",function() conditions[#conditions+1]={keyword="BaseType",operator="==",values={}};offset=math.max(1,#conditions-rows+1);drawConditions() end)
 	button(c,"previous",168,actionY,60,"<",function() offset=math.max(1,offset-rows);drawConditions() end)
 	button(c,"next",240,actionY,60,">",function() offset=math.min(math.max(1,#conditions-rows+1),offset+rows);drawConditions() end)
 	c.previous.shown=function() return #conditions>rows end;c.previous.enabled=function() return offset>1 end
@@ -109,8 +109,15 @@ function M.Conditions(rule,save,mode)
 		save(nextRule);main:ClosePopup()
 	end) end)
 	button(c,"cancel",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
-	c.keepRule.enabled=function() return not parser.actionReason(mode,c.action:GetSelValue()) end
-	c.keepRule.tooltipText=function() return parser.actionReason(mode,c.action:GetSelValue()) or "Keep this rule's conditions." end
+	local function keepReason()
+		local reason=parser.actionReason(mode,c.action:GetSelValue());if reason then return reason end
+		for _,condition in ipairs(conditions) do
+			if condition.invalid then return "Close every quoted condition value." end
+			if #condition.values==0 then return "Enter a value for every condition." end
+		end
+	end
+	c.keepRule.enabled=function() return not keepReason() end
+	c.keepRule.tooltipText=function() return keepReason() or "Keep this rule's conditions." end
 	drawConditions();ui.style(c,{keepRule=true});main:OpenPopup(w,h,"Loot filter rule",c,nil,"title","cancel");dialog=main.popups[1]
 end
 function M.EditRule(rule,save,mode)

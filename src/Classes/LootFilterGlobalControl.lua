@@ -28,16 +28,21 @@ function M.Open(profile,onKeep,options)
 	setting("alertId",218,"Alert identity",alerts)
 	setting("disableIcons",260,"Minimap icons",{{label="Keep original icons",val=false},{label="Disable icons",val=true}})
 	local colorKeys={"textColor","borderColor","backgroundColor"}
+	local overriddenColours={}
 	for i,key in ipairs(colorKeys) do
 		local y=302+(i-1)*42;ui.label(c,key.."Label",16,y,({"Text colour","Border colour","Background colour"})[i],14)
 		c[key]=new("EditControl"):EditControl(ui.anchor,{268,y-4,252,28},appearance.hex(settings[key]),nil,nil,9,function(value) if value=="" then settings[key]=nil else local color=appearance.fromHex(value);if color then settings[key]=color end end end);c[key].placeholder="Keep original / hex RGBA"
+		if options.previewAppearance and options.previewAppearance[key] then
+			overriddenColours[#overriddenColours+1]=({"text","border","background"})[i]
+			c[key].tooltipText="The whole-filter colour overrides this category's colour in the preview and exported filter."
+		end
 		c[key.."Pick"]=new("ButtonControl"):ButtonControl(ui.anchor,{528,y-4,76,28},"Pick",function()
 			local initial=appearance.fromHex(c[key].buf) or settings[key]
 			if not initial then local styles=parser.parse(filters.rule("example","Example",{},nil,profile.theme).text).rules[1].styles;local style=({textColor="SetTextColor",borderColor="SetBorderColor",backgroundColor="SetBackgroundColor"})[key];initial=appearance.rgba(style,styles[style]) end
 			require("Classes.ColourPickerControl").Open(initial,function(colour) c[key]:SetText(appearance.hex(colour),true) end,{title=({textColor="Text colour",borderColor="Border colour",backgroundColor="Background colour"})[key],minimumAlpha=key=="textColor" and profile.mode=="Ruthless" and 80 or 0})
 		end)
 	end
-	ui.label(c,"colourHint",16,414,"Hex: RRGGBB or RRGGBBAA; FF is opaque. Overrides replace tier colours.",12)
+	ui.label(c,"colourHint",16,414,#overriddenColours>0 and ("Whole-filter overrides: "..table.concat(overriddenColours,", ")..". Hex: RRGGBB or RRGGBBAA.") or "Hex: RRGGBB or RRGGBBAA; FF is opaque. Overrides replace tier colours.",12)
 	c.preview=new("Control"):Control(ui.anchor,{16,440,588,64})
 	function c.preview:Draw()
 		local example=filters.rule("example","Example",{'BaseType == "Iron Hat"'},nil,profile.theme)
