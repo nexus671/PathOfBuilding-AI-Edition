@@ -21,10 +21,18 @@ describe("Petrification Statue", function()
 			for _, active in ipairs(build.calcsTab.mainEnv.player.activeSkillList) do
 				if active.activeEffect.grantedEffect.id == "SummonPetrificationStatue" then
 					found = active.activeEffect.level
+					assert.equal(4, active.skillData.duration)
+					assert.equal(30, active.skillData.cooldown)
 				end
 			end
 			assert.equal(1, found)
+			runCallback("OnFrame")
+			local warning = table.concat(build.controls.warnings.lines, "\n")
+			assert.matches("Petrification Statue's enemy slow and petrification are not included", warning)
 			build.itemsTab.slots[case[1]].selItemId = 0
+			build.buildFlag = true
+			runCallback("OnFrame")
+			assert.is_nil(table.concat(build.controls.warnings.lines, "\n"):find("Petrification Statue", 1, true))
 		end
 	end)
 
