@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.69.0-ai.preview1280" />
+	<Version number="2.69.0-ai.preview1281" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="0011cfe9e8bd8d9b4e174ca7c0185ae538bb41a5" />
+	<File name="changelog.txt" part="default" sha1="fdbf9e67816afda9ab9d05f7c025bcdd7409e092" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
@@ -1635,7 +1635,7 @@
 	<File name="Classes/GemQualityPlanControl.lua" part="program" sha1="8ad6cbdcb855c80692d4eb7ee37fb643d37b0e23" />
 	<File name="Classes/GemSelectControl.lua" part="program" sha1="cd84459eebd4fb985b8b41ecbfeaada706fea93c" />
 	<File name="Classes/GemTooltip.lua" part="program" sha1="aa0ce7d2eb619fc6b6e55aec9767320bee187343" />
-	<File name="Classes/GenesisPlannerControl.lua" part="program" sha1="5400215c41051057e0501317bb0ef2b01e3c6bfa" />
+	<File name="Classes/GenesisPlannerControl.lua" part="program" sha1="fb292ca5cefd68996d1a6ddbb57b34e0e96ffbb6" />
 	<File name="Classes/ImportTab.lua" part="program" sha1="6b81f9ee1e6858b353c8f8a35ac84f937e85a1f3" />
 	<File name="Classes/Item.lua" part="program" sha1="6f9419c75bc6bb23a2fc0631318d41dd36076693" />
 	<File name="Classes/ItemDBControl.lua" part="program" sha1="5f0cf80bcfec3ab29b421d9829562ee5dd147b6a" />

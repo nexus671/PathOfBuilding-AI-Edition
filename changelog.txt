@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1281][2026/11/24]
+
+* Keep the Genesis passive count visible in compact windows.
+
 VERSION[2.69.0-ai.preview1280][2026/11/24]
 
 * Compare a file of recorded stacks against current and proposed filter rules.
