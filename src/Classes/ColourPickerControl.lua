@@ -87,6 +87,17 @@ function M.Open(initial,onKeep,options)
 	c.hex.enterFunc=keep;for _,key in ipairs(keys) do c[key].enterFunc=keep end
 	button("keep",16,514,220,"Keep colour",keep);c.keep.enabled=valid
 	button("cancel",w-156,514,140,"Cancel",function() main:ClosePopup() end)
+	if main.screenH<620 or main.screenW<700 then
+		w,h=math.min(w,main.screenW-40),math.min(h,main.screenH-60)
+		c.help.shown=false;c.wheelValues.shown=false;c.presetLabel.shown=false;c.status.shown=false
+		c.wheel.y=64;c.value.y=64;c.alpha.y=64;c.value.x=280;c.alpha.x=316;c.valueLabel.x=276;c.valueLabel.y=48;c.alphaLabel.x=312;c.alphaLabel.y=48
+		local right=math.max(352,w-260)
+		c.previewLabel.x=right;c.previewLabel.y=48;c.preview.x=right;c.preview.y=68
+		c.hexLabel.x=right;c.hexLabel.y=154;c.hex.x=right;c.hex.y=176
+		for i,key in ipairs(keys) do local y=210+(i-1)*34;c[key.."Label"].x=right;c[key.."Label"].y=y;c[key].x=right+128;c[key].y=y-4 end
+		for i in ipairs(presets) do c["preset"..i].y=h-80 end
+		c.keep.y=h-44;c.cancel.x=w-156;c.cancel.y=h-44
+	end
 	ui.style(c,{keep=true},custom);for _,control in pairs(c) do control.layoutAudit="colour-picker" end;main:OpenPopup(w,h,options.title or "Choose colour",c,"keep","hex","cancel");return c
 end
 return M

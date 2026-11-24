@@ -6,7 +6,7 @@
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="537b01569293e347ea126ebd7d841b3e59f7c790" />
+	<File name="changelog.txt" part="default" sha1="07e517e8dbae1461eb8e09214f2adb1b645a225c" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1714,7 +1714,7 @@
 	<File name="Classes/CalcSectionControl.lua" part="program" sha1="ace88981a36381c6ccecbdb76ee1b9b04d1afeaf" />
 	<File name="Classes/CalcsTab.lua" part="program" sha1="7290661fb80361f13d1a52b09a12533f5bced504" />
 	<File name="Classes/CheckBoxControl.lua" part="program" sha1="021e4ea29d62a600ab14e69e6ed0ad33832d78ab" />
-	<File name="Classes/ColourPickerControl.lua" part="program" sha1="c635b032cb53d0770a68b2f2e64f0fcd19f6a256" />
+	<File name="Classes/ColourPickerControl.lua" part="program" sha1="19b0a3fade49e7b2c89bd6e3d5370b049801b3a5" />
 	<File name="Classes/CompareBuySimilar.lua" part="program" sha1="90fb7ce125b2c5e8df8f741b644127a6ec3c4773" />
 	<File name="Classes/CompareCalcsHelpers.lua" part="program" sha1="61d00298ee05ed78238cf16b575fff0526b2342b" />
 	<File name="Classes/CompareEntry.lua" part="program" sha1="13c14eac4521a3717fa8f0a51d0a83994167ed3e" />
@@ -1779,7 +1779,7 @@
 	<File name="Classes/LootFilterImpactControl.lua" part="program" sha1="5e4bfcc865fc859ffa4627a64e31305430685f4e" />
 	<File name="Classes/LootFilterEffectsControl.lua" part="program" sha1="391eb996755e44f326950cbf0c23bfeed6383729" />
 	<File name="Classes/LootFilterFileBrowser.lua" part="program" sha1="8ee03d60d0aebdb49587330e7ddb369a796bcbf3" />
-	<File name="Classes/LootFilterGlobalControl.lua" part="program" sha1="f040b676a7067c2e933478996bd347c3521db19e" />
+	<File name="Classes/LootFilterGlobalControl.lua" part="program" sha1="2d7df847c948536e9563d4abc57e44e8b082ac78" />
 	<File name="Classes/LootFilterImportControl.lua" part="program" sha1="44045791e679f8228ac858e0fd1c9b3947ed2c15" />
 	<File name="Classes/LootFilterModuleControl.lua" part="program" sha1="8b1822a802967708f03ae5091752c06876637186" />
 	<File name="Classes/LootFilterSceneControl.lua" part="program" sha1="1bc33be06c10aa0659eb9448fe517848cd6cbf75" />

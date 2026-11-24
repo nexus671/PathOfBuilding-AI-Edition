@@ -1,6 +1,6 @@
 VERSION[2.68.1-ai.preview1241][2026/11/23]
 
-* Keep campaign filter pickup controls usable in smaller windows.
+* Keep campaign pickups and filter appearance controls usable in smaller windows.
 
 VERSION[2.68.1-ai.preview1240][2026/11/23]
 
