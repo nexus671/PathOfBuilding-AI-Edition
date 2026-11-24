@@ -87,7 +87,7 @@ function M.apply(raw,entries)
 		local target=lookup[key.."\0"..value] or lookup[group(key).."\0"..value];if not target then return end
 		local prefix=line:match("^%s*") or "";local values={}
 		if colours[key] then for i=1,8,2 do values[#values+1]=tostring(tonumber(target:sub(i,i+1),16)) end
-		else values[1]=(key=="CustomAlertSound" or key=="CustomAlertSoundOptional") and target~="None" and ('"'..target..'"') or target;if target~="None" then for i=3,#tokens do values[#values+1]=quoted[i] and ('"'..tokens[i]..'"') or tokens[i] end end end
+		else values[1]=(key=="CustomAlertSound" or key=="CustomAlertSoundOptional") and ('"'..target..'"') or target;if target~="None" then for i=3,#tokens do values[#values+1]=quoted[i] and ('"'..tokens[i]..'"') or tokens[i] end end end
 		local suffix=comment(line);return prefix..key.." "..table.concat(values," ")..(suffix and " "..suffix or "")
 	end)
 end

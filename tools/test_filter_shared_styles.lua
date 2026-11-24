@@ -27,7 +27,7 @@ assert(result:find("PlayAlertSound 6 200 # alert",1,true),"Alert volume or comme
 assert(result:find('CustomAlertSound "C:\\sounds\\b.wav" 100',1,true),"Quoted custom sound was not preserved")
 assert(result:find('Import "other.filter"\n SetTextColor 255 0 0',1,true),"An import's contents were changed without loading it")
 local silent=shared.apply(raw,{{key="PlayAlertSound",from="2",to="None"},{key="CustomAlertSound",from="C:\\sounds\\a#1.wav",to="None"}})
-assert(silent:find("PlayAlertSound None # alert",1,true) and silent:find("CustomAlertSound None",1,true),"Muting shared sounds must remove their volume and preserve comments")
+assert(silent:find("PlayAlertSound None # alert",1,true) and silent:find('CustomAlertSound "None"',1,true),"Muting shared sounds must remove their volume, quote custom None and preserve comments")
 assert(shared.apply(raw,{})==raw,"Empty mappings changed the filter")
 local grouped='Show\n SetTextColor 255 0 0\n SetBorderColor 255 0 0\n SetBackgroundColor 255 0 0 255\n PlayAlertSound 2 100\n PlayAlertSoundPositional 2 200'
 local groupedResult=shared.apply(grouped,{{key="Colour",from="FF0000FF",to="00FF00FF"},{key="SetBorderColor",from="FF0000FF",to="0000FFFF"},{key="AlertSound",from="2",to="6"}})
