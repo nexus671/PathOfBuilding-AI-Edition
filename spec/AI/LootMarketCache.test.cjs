@@ -212,3 +212,148 @@ test('relays all 29 documented stash item categories without changing their resp
   assert.equal((await cache.request('/stash/current/item/overview?league=Covens&type=InventedType')).status,400);
   assert.equal(cache.requests.length,30);
 });
+
+
+test('health stays local and reports cache serviceability separately from client rejection',async t=>{
+  const cache=await fixture(t,(path,options,{now})=>snapshot(path==='/leagues' ? leagueBody : priceBody,now));
+  const health=async()=>await (await cache.request('/health')).json();
+  const idle=await health();
+  assert.equal(idle.status,'ready');
+  assert.deepEqual(idle.provider,{state:'idle',lastValidatedAt:null,lastFailure:null,successes:0,failures:0,cooldownSeconds:0});
+  assert.equal(idle.cachedBytes,0);
+  assert.equal(idle.serviceable,0);
+  assert.equal(cache.requests.length,0);
+  assert.equal((await cache.request('/private?league=SecretLeague&token=private')).status,404);
+  assert.equal((await cache.request('/health',{method:'POST'})).status,405);
+  const rejected=await health();
+  assert.deepEqual(rejected.rejections,{client:2,queue:0,cooldown:0});
+  assert.equal(rejected.provider.failures,0);
+  assert.equal(cache.requests.length,0);
+  assert.equal((await cache.request(currencyPath)).status,200);
+  const ready=await health();
+  assert.equal(ready.provider.state,'ready');
+  assert.equal(ready.provider.successes,2);
+  assert.equal(ready.provider.failures,0);
+  assert.equal(ready.requests,2);
+  assert.equal(ready.serviceable,2);
+  assert.equal(ready.cachedBytes,Buffer.byteLength(leagueBody)+Buffer.byteLength(priceBody));
+  for (let index=0;index<3;index++) await health();
+  assert.equal(cache.requests.length,2);
+  cache.advance(301000);
+  const expired=await health();
+  assert.equal(expired.cached,2);
+  assert.equal(expired.cachedBytes,ready.cachedBytes);
+  assert.equal(expired.serviceable,0);
+  assert.equal(cache.requests.length,2);
+  assert.doesNotMatch(JSON.stringify(expired),/Covens|SecretLeague|poe.ninja|private|User-Agent|local fixture/);
+});
+
+for (const status of [429,503]) {
+  test('health reports upstream '+status+' separately from cooldown preemption and recovers on valid304',async t=>{
+    let mode='good';
+    const cache=await fixture(t,(path,options,{now})=>{
+      if (path==='/leagues') return snapshot(leagueBody,now);
+      if (mode==='limited') return new Response('private provider body',{status,headers:{'retry-after':'90'}});
+      if (options.headers['If-None-Match']) return new Response(null,{status:304,headers:{date:new Date(now).toUTCString()}});
+      return snapshot(priceBody,now,{etag:'"receipt"'});
+    });
+    assert.equal((await cache.request(currencyPath)).status,200);
+    cache.advance(301000);
+    mode='limited';
+    assert.equal((await cache.request(currencyPath)).status,status);
+    const limited=await (await cache.request('/health')).json();
+    assert.equal(limited.provider.state,'cooldown');
+    assert.equal(limited.provider.cooldownSeconds,90);
+    assert.equal(limited.provider.successes,3);
+    assert.equal(limited.provider.failures,1);
+    assert.equal(limited.provider.lastFailure.httpStatus,status);
+    assert.equal(limited.provider.lastFailure.reason,status===429 ? 'rate_limited' : 'unavailable');
+    const attempts=cache.requests.length;
+    assert.equal((await cache.request(oilPath)).status,429);
+    const held=await (await cache.request('/health')).json();
+    assert.equal(held.rejections.cooldown,1);
+    assert.equal(held.provider.failures,1);
+    assert.equal(cache.requests.length,attempts);
+    cache.advance(91000);
+    mode='good';
+    const response=await cache.request(currencyPath);
+    assert.equal(response.status,200);
+    assert.equal(await response.text(),priceBody);
+    const recovered=await (await cache.request('/health')).json();
+    assert.equal(recovered.provider.state,'ready');
+    assert.equal(recovered.provider.successes,4);
+    assert.equal(recovered.provider.failures,1);
+    assert.equal(recovered.provider.cooldownSeconds,0);
+    assert.ok(recovered.provider.lastValidatedAt>recovered.provider.lastFailure.at);
+    assert.deepEqual(recovered.provider.lastFailure,limited.provider.lastFailure);
+    assert.equal(recovered.serviceable,2);
+    assert.doesNotMatch(JSON.stringify(recovered),/Covens|poe.ninja|private|receipt|fixture/);
+  });
+}
+
+test('health uses fixed upstream failure classes without exposing response bodies or transport details',async t=>{
+  const cases=[
+    {reason:'invalid_response',status:200,reply:now=>snapshot('{"lines":',now)},
+    {reason:'invalid_response',status:200,reply:now=>snapshot('{"lines":[]}',now)},
+    {reason:'stale',status:200,reply:now=>snapshot(priceBody,now,{age:'3601'})},
+    {reason:'oversized',status:200,reply:now=>snapshot(' '.repeat(2*1024*1024+1),now)},
+    {reason:'access_denied',status:403,reply:()=>new Response('private body',{status:403})},
+    {reason:'unavailable',status:500,reply:()=>new Response('private body',{status:500})},
+    {reason:'invalid_response',status:304,reply:()=>new Response(null,{status:304})},
+    {reason:'transport',reply:()=>{throw new Error('private host https://private.example.test token=secret');}},
+    {reason:'timeout',reply:()=>{throw Object.assign(new Error('private timeout'),{name:'TimeoutError'});}},
+    {reason:'transport',reply:()=>{throw null;}},
+    {reason:'transport',reply:()=>{throw undefined;}},
+  ];
+  for (const item of cases) {
+    const cache=await fixture(t,(path,options,{now})=>path==='/leagues' ? snapshot(leagueBody,now) : item.reply(now));
+    const response=await cache.request(currencyPath);
+    assert.ok(response.status>=400);
+    const health=await (await cache.request('/health')).json();
+    assert.equal(health.provider.state,'degraded');
+    assert.deepEqual(health.provider.lastFailure,{at:Date.UTC(2026,10,23),reason:item.reason,
+      ...(item.status===undefined ? {} : {httpStatus:item.status})});
+    assert.equal(health.provider.successes,1);
+    assert.equal(health.provider.failures,1);
+    assert.deepEqual(health.rejections,{client:0,queue:0,cooldown:0});
+    assert.equal(health.requests,2);
+    assert.equal(cache.requests.length,2);
+    assert.doesNotMatch(JSON.stringify(health),/Covens|poe.ninja|private|token|secret|fixture/);
+  }
+});
+
+test('health separates queue capacity from actual upstream attempts',async t=>{
+  let release, started;
+  const held=new Promise(resolve=>{release=resolve;});
+  const active=new Promise(resolve=>{started=resolve;});
+  const cache=await fixture(t,async(path,options,{now})=>{
+    if (path==='/leagues') return snapshot(leagueBody,now);
+    started();await held;
+    return snapshot(priceBody,now);
+  });
+  await cache.request('/leagues');
+  const categories=['Currency','Oil','Omen','Essence','Thread','Fragment','Resonator','Artifact','Fossil','Scarab','Tattoo','Runegraft'];
+  const clients=Promise.all(categories.map(type=>cache.request('/exchange/current/overview?league=Covens&type='+type)));
+  await active;
+  let health;
+  try {
+    for (let attempt=0;attempt<30;attempt++) {
+      health=await (await cache.request('/health')).json();
+      if (health.pending===12) break;
+    }
+    assert.equal(health.pending,12);
+    assert.equal(health.requests,2);
+    assert.equal(health.provider.successes,1);
+    assert.equal(health.provider.failures,0);
+    assert.equal((await cache.request('/exchange/current/overview?league=Covens&type=Astrolabe')).status,503);
+    health=await (await cache.request('/health')).json();
+    assert.deepEqual(health.rejections,{client:0,queue:1,cooldown:0});
+    assert.equal(health.provider.failures,0);
+    assert.equal(health.requests,2);
+  } finally {release();}
+  assert.ok((await clients).every(response=>response.status===200));
+  const completed=await (await cache.request('/health')).json();
+  assert.equal(completed.requests,13);
+  assert.equal(completed.provider.successes,13);
+  assert.equal(completed.provider.failures,0);
+});

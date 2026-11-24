@@ -129,6 +129,14 @@ The operator runs `node tools/serve_loot_market_cache.cjs` with `POB_MARKET_UPST
 
 The service accepts only the app's public economy routes and active leagues. It coalesces requests, bounds the upstream queue, respects provider caching, and preserves origin age and retry timing. Throttled, stale, oversized and malformed data go through the app's existing checks before any filter is published. The operator needs to qualify the deployed host with the provider and verify fresh responses from that host before enabling distribution. [poe.ninja API guidelines](https://poe.ninja/docs/api)
 
+### Monitor the relay
+
+Polling **/health** reads the current process without fetching prices. A top-level **ready** status means the relay can answer HTTP requests. **provider.state** reports whether the relay has yet to contact the provider (**idle**), last validated a response (**ready**), last failed a validation (**degraded**), or is waiting out a provider cooldown (**cooldown**). The receipt includes the remaining cooldown, aggregate attempts, and numeric timestamps and fixed reason codes for the last outcomes.
+
+**cached** counts stored entries, including ones due for revalidation. **serviceable** counts entries the relay can serve immediately and **cachedBytes** measures the stored response bodies. Client rejections, refreshes refused by the queue, and refreshes stopped by cooldown have separate counters. The existing rejected count measures HTTP responses, including clients sharing a refresh. A failed validation can carry an upstream HTTP 200 when the response body is unusable. The numbers reset on process restart. The endpoint exposes aggregate diagnostics without league names, request URLs, or upstream response bodies.
+
+Monitor repeated degraded results, cooldowns, and queue rejections during the pilot. Use the qualification command to verify each required feed.
+
 Run the cache probe after configuring HTTPS and before pointing scheduled clients at the service.
 
 ```sh
@@ -136,3 +144,10 @@ node tools/check_loot_market_cache.cjs https://prices.example.test/pob-market/ C
 ```
 
 The league defaults to the current PC trade league. Omit the third argument to check only the eight core feeds. Add supported exchange or stash category names to qualify their availability. The read-only command reports cache health, source age, quote evidence and HTTP failures. For exchange quotes, matching duplicate rows use the lowest quoted volume. Conflicting or invalid observations cannot qualify the currency reference. For stash feeds it counts each unambiguous price ID once and reports how many have at least 20 observations and 20 listings. Use PoB's **Preview changes** against the intended baseline to check exact matches and protected drops before enabling sync.
+
+### Stage the relay rollout
+
+1. Arrange production hosting and confirm the allowed integration with the provider. Run the loopback relay behind the deployment's TLS reverse proxy and configure its descriptive User-Agent and operator contact.
+2. Run the qualification command from the intended client network. Request the eight core feeds and the optional categories the pilot profile uses. Keep the report with the source version and the time of the check.
+3. On one copied or test profile, run **Preview changes** and one due refresh from the pinned baseline. Verify the output, protected drops, and rollback. If the pilot uses Windows background sync, confirm the task uses the same HTTPS endpoint.
+4. Observe the pilot before pointing additional profiles at the relay. On repeated failures, stop expanding the rollout and keep each client's last verified output. Respect the provider's retry window. Resume after qualification passes from the deployed host.
