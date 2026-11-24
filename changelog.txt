@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1266][2026/11/24]
+
+* Fit crafting inventory actions in smaller windows.
+
 VERSION[2.68.1-ai.preview1265][2026/11/24]
 
 * Review market filter outcomes for Normal, Magic, and Rare maps separately.
