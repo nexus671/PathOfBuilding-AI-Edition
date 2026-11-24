@@ -243,8 +243,14 @@ function M.profiles()
 	return result
 end
 
-local function newRevision()
-	return sha(tostring({})..tostring(os.time()))
+local revisionCounter=0
+local function newRevision(previous)
+	for _=1,32 do
+		revisionCounter=revisionCounter+1
+		local candidate=sha(tostring({})..":"..tostring(os.time())..":"..revisionCounter..":"..tostring(previous or ""))
+		if candidate~=previous then return candidate end
+	end
+	error("Could not create a new sync revision. Try again.")
 end
 
 function M.createProfile(name)
@@ -254,11 +260,15 @@ function M.createProfile(name)
 	return lockSettings(function()
 		local profiles = M.profiles()
 		assert(#profiles < 25, "Up to 25 sync profiles are supported")
+		local usedIds={}
 		for _, other in ipairs(profiles) do
 			assert(other.name:lower() ~= name:lower(), "A profile with that name already exists")
+			usedIds[other.id]=true
 		end
 		table.remove(profiles, 1)
-		local id = newRevision()
+		local id
+		for _=1,32 do local candidate=newRevision();if not usedIds[candidate] then id=candidate;break end end
+		assert(id,"Could not create a unique sync profile ID. Try again.")
 		profiles[#profiles+1] = {id=id,name=name}
 		put(registryPath(),assert(json.encode(profiles)))
 		return id
@@ -754,7 +764,7 @@ function M.adoptExternalEdits(id, reviewed)
 		config.baseline, config.baselineHash, config.current = path, key, sha(latest.after)
 		config.day, config.review, config.lastSuccess, config.lastFailure = nil, nil, nil, nil
 		config.cutoffContinuity = nil
-		config.revision = newRevision()
+		config.revision = newRevision(config.revision)
 		config.summary = "Adopted the reviewed edits into the fixed baseline. The next refresh will use fresh prices."
 		save(config,id)
 		return config
@@ -805,7 +815,7 @@ function M.setBackground(enabled, previousRevision, id)
 		local config = assert(get(id), "Enable daily sync first")
 		assert(config.revision == previousRevision, "Daily sync settings changed in another PoB window. Try again.")
 		config.backgroundEnabled = enabled
-		config.revision = newRevision()
+		config.revision = newRevision(config.revision)
 		save(config,id)
 	end)
 end
@@ -843,7 +853,7 @@ function M.setOfflinePriceDays(id, days, revision)
 	lockSettings(function()
 		local config = assert(get(id), "Enable daily sync first")
 		assert(config.revision==revision, "Daily sync settings changed. Reopen offline prices.")
-		config.offlinePriceDays, config.revision = days>0 and days or nil, newRevision()
+		config.offlinePriceDays, config.revision = days>0 and days or nil, newRevision(config.revision)
 		save(config,id)
 	end)
 end
@@ -949,7 +959,7 @@ function M.configure(target, baselineFile, league, options)
 				if nextConfig.backupLimit then nextConfig.backup, nextConfig.history = current.backup, current.history end
 			end
 		end
-		nextConfig.revision = newRevision()
+		nextConfig.revision = newRevision(current and current.revision)
 		if not read(nextConfig.baseline) then put(nextConfig.baseline, baseline) end
 		assert(read(nextConfig.baseline) == baseline, "Stored baseline does not match")
 		keepExpected(original)
@@ -1014,7 +1024,7 @@ function M.setBackupLimit(id, limit, revision)
 	lockSettings(function()
 		local config = assert(get(id), "Enable daily sync first")
 		assert(config.revision == revision, "Daily sync settings changed. Reopen backup retention.")
-		config.backupLimit, config.revision = limit>0 and limit or nil, newRevision()
+		config.backupLimit, config.revision = limit>0 and limit or nil, newRevision(config.revision)
 		config.retentionSkipped = nil
 		save(config,id)
 	end)
@@ -1046,7 +1056,7 @@ local function finishRestore(config, digest, undo)
 	config.current, config.pending, config.backup = digest, nil, undo
 	config.pendingRestore = nil
 	config.summary, config.review, config.cutoffContinuity = restoreSummary, nil, nil
-	config.revision = newRevision()
+	config.revision = newRevision(config.revision)
 end
 
 function M.backups(id)
