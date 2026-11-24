@@ -712,6 +712,71 @@ launch.DownloadPage = originalMarketDownload
 print("Unique market review includes competing variants for the selected base")
 
 do
+	main.popups = {}
+	local baseUI=headless.install({width=reviewWidth,height=reviewWidth==720 and 600 or 640})
+	baseUI:bind(build)
+	local originalOpenURL=OpenURL
+	local opened
+	OpenURL=function(url) opened=url end
+	local collection={itemsTab={
+		orderedSlots={{slotName="Ring 1"},{slotName="Ring 2"},{slotName="Ring 3"}},
+		activeItemSet={["Ring 1"]={selItemId=1},["Ring 2"]={selItemId=2},["Ring 3"]={selItemId=3}},
+		items={{baseName="Unset Ring",type="Ring",rarity="RARE",itemLevel=84},
+			{baseName="Unset Ring",type="Ring",rarity="RARE",itemLevel=86},
+			{baseName="Moonstone Ring",type="Ring",rarity="RARE",itemLevel="85"}},
+	}}
+	local function checkUrl(league,level)
+		local prefix="https://www.pathofexile.com/trade/search/"..urlEncode(league).."/"
+		assert(opened and opened:sub(1,#prefix)==prefix,tostring(opened))
+		local json=require("dkjson")
+		local payload=assert(json.decode(require("Classes.TradeHelpers").B64GzipDecode(opened:sub(#prefix+1))))
+		local filter=payload.filters.misc_filters.filters.ilvl
+		assert(payload.type=="Unset Ring" and filter.min==level and filter.max==level)
+	end
+	launch.DownloadPage=function(_,url,callback)
+		local date=os.date("!%a, %d %b %Y %H:%M:%S GMT")
+		local body
+		if url:find("type=BaseType",1,true) then
+			assert(url:find("league=Covens%20of%20Umbra",1,true))
+			body='{"lines":[{"name":"Unset Ring","variant":"Elder","detailsId":"unset-ring-85-elder","levelRequired":85,"chaosValue":15,"count":45,"listingCount":50}]}'
+		else
+			assert(url:match("leagues$"))
+			body='[{"id":"Covens of Umbra","name":"Covens of Umbra"}]'
+		end
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\n\r\n",body=body})
+	end
+	require("Classes.LootFilterMarketBrowseControl").Open(collection)
+	baseUI:click("buildTarget")
+	baseUI:text("search","Moonstone Ring")
+	baseUI:click("choose")
+	assert(not main.popups[1].controls.exactBase:IsEnabled())
+	baseUI:click("buildTarget")
+	baseUI:text("search","Item level 86")
+	baseUI:click("choose")
+	assert(main.popups[1].controls.exactBase:IsEnabled())
+	baseUI:text("league","https://wrong.example")
+	baseUI:click("exactBase")
+	assert(opened==nil)
+	baseUI:text("league","Covens")
+	baseUI:click("exactBase")
+	checkUrl("Covens",86)
+	baseUI:text("league","")
+	baseUI:click("get")
+	assert(main.popups[1].title=="Crafting bases market prices")
+	local lines={}
+	for _, row in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+	local details=table.concat(lines," "):gsub("%s+"," ")
+	assert(details:find("Build item level: 86",1,true) and details:find("Unverified provider level: 85",1,true),details)
+	assert(not details:find("Required character level",1,true),details)
+	if output then baseUI:frame():write(output.."/"..reviewWidth.."-filter-exact-base-trade.json") end
+	baseUI:click("secondary")
+	checkUrl("Covens of Umbra",86)
+	launch.DownloadPage,OpenURL=originalMarketDownload,originalOpenURL
+	marketUI=headless.install({width=960,height=640})
+	marketUI:bind(build)
+end
+
+do
 	local collection = {
 		skillsTab={socketGroupList={{gemList={
 			{gemData=data.gems["Metadata/Items/Gems/SkillGemSupportAddedFireDamage"],level=20,quality=0,enabled=true},

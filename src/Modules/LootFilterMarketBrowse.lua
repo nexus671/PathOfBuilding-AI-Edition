@@ -130,7 +130,8 @@ function M.buildTargets(build)
 	local targets, seen = {}, {}
 	local function add(target)
 		if not marketName(target.name) then return end
-		local key = table.concat({target.category,target.name,target.level or "",target.quality or "",target.imbuedSupport or ""},"\0")
+		local key = table.concat({target.category,target.name,target.level or "",target.quality or "",
+			target.imbuedSupport or "",target.itemLevel or ""},"\0")
 		if not seen[key] then
 			seen[key] = true
 			target.id = tostring(#targets+1)
@@ -184,7 +185,11 @@ function M.buildTargets(build)
 			elseif item.rarity~="UNIQUE" then
 				local cluster = item.type=="Jewel" and (item.baseName=="Large Cluster Jewel" or item.baseName=="Medium Cluster Jewel" or item.baseName=="Small Cluster Jewel")
 				local baseCategory = ({Viscera="Viscera",Flask="Flask"})[item.type]
-				add({name=item.baseName,category=baseCategory or cluster and "ClusterJewel" or "BaseType",baseTarget=true,label=label.." | "..item.baseName,
+				local category = baseCategory or cluster and "ClusterJewel" or "BaseType"
+				local itemLevel = item.itemLevel
+				if category~="BaseType" or not positive(itemLevel) or itemLevel>100 or itemLevel~=math.floor(itemLevel) then itemLevel=nil end
+				add({name=item.baseName,category=category,baseTarget=true,itemLevel=itemLevel,
+					label=label.." | "..item.baseName..(itemLevel and (" | Item level "..itemLevel) or ""),
 					details={"Compare this crafting base. The equipped modifiers have their own value."}})
 			end
 		end
@@ -204,7 +209,7 @@ local function providerText(value, limit)
 	return text:match("%S") and text or nil
 end
 
-local function providerEvidence(item)
+local function providerEvidence(item,category)
 	local details, complete = {}, true
 	local function text(field,label,limit)
 		if item[field]==nil or item[field]=="" then return end
@@ -220,7 +225,7 @@ local function providerEvidence(item)
 	end
 	text("itemType","Item type: ",100)
 	number("itemClass","Provider rarity class: ",20)
-	number("levelRequired","Required character level: ",100)
+	number("levelRequired",category=="BaseType" and "Unverified provider level: " or "Required character level: ",100)
 	number("stackSize","Maximum stack size: ",1000000000)
 	text("mapRegion","Map region: ",100)
 	for _, field in ipairs({"implicitModifiers","explicitModifiers","mutatedModifiers"}) do
@@ -448,7 +453,7 @@ function M.rows(body, category, query, target, catalogue)
 				local conflicting = evidence and evidence.conflicting
 				local supported = variants and identity and supportedVolume(item) and evidence and evidence.supported and not conflicting
 				if regularFeed and not validGemTuple then supported=false end
-				local details,complete = providerEvidence(item)
+				local details,complete = providerEvidence(item,category.id)
 				if extended and (item.baseType~=nil and item.baseType~="" and not base or item.variant~=nil and item.variant~="" and not variant) then complete,supported=false,false end
 				if advisoryId then handled[advisoryId] = true end
 				out[#out+1] = {
