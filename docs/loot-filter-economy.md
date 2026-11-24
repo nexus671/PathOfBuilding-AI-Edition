@@ -151,6 +151,8 @@ node tools/check_loot_market_cache.cjs https://prices.example.test/pob-market/ C
 
 The league defaults to the current PC trade league. Omit the third argument to check only the eight core feeds. Add supported exchange or stash category names to qualify their availability. The read-only command reports cache health, source age, quote evidence and HTTP failures. For exchange quotes, matching duplicate rows use the lowest quoted volume. Conflicting or invalid observations cannot qualify the currency reference. For stash feeds it counts each unambiguous price ID once and reports how many have at least 20 observations and 20 listings. Use PoB's **Preview changes** against the intended baseline to check exact matches and protected drops before enabling sync.
 
+For `Map`, `BlightedMap`, and `BlightRavagedMap`, check `exactMapTiers` for the tiers backed by a liquid, unambiguous tier-wide quote. A map feed needs at least one such tier to pass. `ImbuedGem` reports `advisoryGemQuotes` for listing-backed gem and support combinations. Exact managed gem rules use the separate `SkillGem` check.
+
 ### Stage the relay rollout
 
 1. Arrange production hosting and confirm the allowed integration with the provider. Run the loopback relay behind the deployment's TLS reverse proxy and configure its descriptive User-Agent and operator contact.
