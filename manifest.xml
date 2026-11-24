@@ -2106,7 +2106,7 @@
 	<File name="Modules/GemQualityPlan.lua" part="program" sha1="fa12e64e1168c57976a6e2b718a6b30545a27e84" />
 	<File name="Modules/GenesisPlanner.lua" part="program" sha1="14ef6d29220456d78d1034816d57b7042042ec38" />
 	<File name="Modules/HeadlessCompression.lua" part="program" sha1="16a42bf407eb777602f9b03b5c8466188a04ee58" />
-	<File name="Modules/HeadlessUI.lua" part="program" sha1="db32c34280d09fc174bb1ef3dbe80ba61337ff80" />
+	<File name="Modules/HeadlessUI.lua" part="program" sha1="6a54836db34827ed3d90d7147ad133ff37db254f" />
 	<File name="Modules/ItemSlotHelper.lua" part="program" sha1="4b7d441f9ade5d57c413aa1f8f8067b654cfb927" />
 	<File name="Modules/ItemTools.lua" part="program" sha1="62fa758105b259225f7227aba60857f0e45c5fa8" />
 	<File name="Modules/JourneyUpgrades.lua" part="program" sha1="bb121d8115f693518ae9431fefff305fdb46878f" />

@@ -26,6 +26,7 @@ describe("Headless text cursor", function()
 		assert.equal(3, DrawStringCursorIndex(16, "VAR", "a\nbc", 0, 17))
 		assert.equal(2, DrawStringCursorIndex(16, "VAR", "aéz", width + 1, 0))
 		assert.equal(5, DrawStringCursorIndex(16, "VAR", "aéz", 1000, 0))
+		assert.equal(50001, DrawStringCursorIndex(16, "VAR", string.rep("a", 50000), 1000000, 0))
 		main.popups = { }; ui:restore()
 	end)
 

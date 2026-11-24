@@ -87,13 +87,18 @@ function M.install(options)
 			if (y or 0)<=lineY or not newline then
 				local line=text:sub(start,finish);local index,width=1,0
 				while index<=#line do
-					local _,length=escape(line:sub(index))
+					local byte=line:byte(index);local length
+					if byte==94 then local _,found=escape(line:sub(index,index+7));length=found end
 					if length then index=index+length
 					else
-						local char=line:sub(index):match("^[\194-\244][\128-\191]*") or line:sub(index,index)
+						local last=index
+						if byte>=194 and byte<=244 then
+							while last<#line and line:byte(last+1)>=128 and line:byte(last+1)<=191 do last=last+1 end
+						end
+						local char=line:sub(index,last)
 						width=width+measure(height,name,char)
 						if x<=width then return start+index-1 end
-						index=index+#char
+						index=last+1
 					end
 				end
 				return start+#line
