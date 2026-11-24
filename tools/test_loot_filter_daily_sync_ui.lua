@@ -1382,6 +1382,41 @@ Item Level: 86
 	assert(sample.results[1].sellers==3 and sample.results[1].low==10 and sample.results[1].median==30 and sample.results[1].high==50)
 	assert(sample.results[2].sellers==1 and sample.results[2].low==1.5 and not sample.results[2].median)
 	assert(listings.compare(encoded,target,"Hardcore").matched==0)
+	local capture = {format="pob-public-stash-capture-v1",realm="pc",league="Covens",capturedAt=1700000000,pages={
+		{requestCursor="start",response={next_change_id="next",stashes={
+			stash(21,"Removed#0021",{row(21,"~price 1 chaos")}),
+			stash(22,"Updated#0022",{row(22,"~price 15 chaos")}),
+			stash(23,"Emptied#0023",{row(23,"~price 30 chaos")}),
+		}}},
+		{requestCursor="next",response={next_change_id="later",stashes={
+			{id=string.format("%064x",21),public=false},
+			stash(22,"Updated#0022",{row(22,"~price 25 chaos")}),
+			stash(24,"Added#0024",{row(24,"~price 45 chaos")}),
+		}}},
+		{requestCursor="later",response={next_change_id="end",stashes={
+			stash(23,"Emptied#0023",setmetatable({}, {__jsontype="array"})),
+			stash(25,"Added#0025",{row(25,"~price 55 chaos")}),
+		}}},
+		{requestCursor="end",response={next_change_id="end",stashes=setmetatable({}, {__jsontype="array"})}},
+	}}
+	local bundled=assert(json.encode(capture))
+	local combined=listings.compare(bundled,target,"Covens")
+	assert(combined.matched==3 and combined.results[1].low==25 and combined.results[1].median==45 and combined.results[1].high==55)
+	assert(combined.capture.pages==4 and combined.capture.updated==2 and combined.capture.withdrawn==1)
+	assert(not pcall(listings.compare,bundled,target,"Standard"))
+	capture.realm="xbox"
+	assert(not pcall(listings.compare,json.encode(capture),target,"Covens"))
+	capture.realm="pc"
+	capture.pages[2].requestCursor="missing"
+	assert(not pcall(listings.compare,json.encode(capture),target,"Covens"))
+	capture.pages[2].requestCursor="next"
+	capture.pages[2].response.next_change_id="start"
+	assert(not pcall(listings.compare,json.encode(capture),target,"Covens"))
+	capture.pages[2].response.next_change_id="later"
+	capture.pages[3].response.stashes[1].items={bad="shape"}
+	assert(not pcall(listings.compare,json.encode(capture),target,"Covens"))
+	capture.capturedAt=os.time()+86400
+	assert(not pcall(listings.compare,json.encode(capture),target,"Covens"))
 	assert(not pcall(listings.compare,'{"stashes":{},"next_change_id":"x"}',target,"Covens"))
 	assert(not pcall(listings.compare,string.rep(" ",4*1024*1024+1),target,"Covens"))
 	do
@@ -1443,6 +1478,17 @@ Item Level: 86
 	assert(details:find("Realm, age and completed sales are unverified.",1,true),details)
 	assert(not details:find("One#0001",1,true))
 	if output then gearUI:frame():write(output.."/gear-listing-snapshot.json") end
+	gearUI:click("close")
+	file=assert(io.open(path,"wb"))
+	assert(file:write(bundled));assert(file:close())
+	gearUI:click("listingSample")
+	local captureDetails={}
+	for _, line in ipairs(main.popups[1].controls.details.list) do captureDetails[#captureDetails+1]=StripEscapes(line[1] or "") end
+	local summary=table.concat(captureDetails," ")
+	assert(summary:find("Declared PC capture",1,true) and summary:find("Median 45",1,true),summary)
+	assert(summary:find("Pages: 4 | Stash updates: 2 | Withdrawals: 1",1,true),summary)
+	assert(summary:find("partial stream",1,true),summary)
+	if output then gearUI:frame():write(output.."/gear-listing-capture.json") end
 	launch.DownloadPage=oldDownload
 	require("Classes.LootFilterFileBrowser").Open=originalPicker
 	os.remove(path)

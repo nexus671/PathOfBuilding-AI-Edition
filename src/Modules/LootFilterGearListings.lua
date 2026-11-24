@@ -2,7 +2,9 @@
 local marketJSON = require("Modules.LootFilterMarketJSON")
 local M = {}
 
-local maxBytes = 4 * 1024 * 1024
+local maxPageBytes = 4 * 1024 * 1024
+local maxBytes = 16 * 1024 * 1024
+local captureFormat = "pob-public-stash-capture-v1"
 local jewellery = {Amulet=true, Ring=true, Belt=true}
 local channels = {
 	{build="enchantModLines", listing="enchantMods"},
@@ -122,28 +124,94 @@ local function askingPrice(note)
 	if price and price>0 and price<math.huge and currencies[unit] then return unit,price end
 end
 
+local function validCursor(value)
+	return type(value)=="string" and #value<=512 and #value>0 and not value:find("[%s%c]")
+end
+
+local function applyPage(stashes, latest, evidence, league)
+	local entries = {}
+	for _, stash in ipairs(stashes) do
+		local id = validID(stash.id) and stash.id:lower()
+		if evidence then
+			assert(id and type(stash.public)=="boolean","A capture page contains an invalid stash change")
+			if stash.public and stash.league==league then
+				assert(marketJSON.objectRows(stash.items),"A public stash change is missing its item array")
+			end
+		end
+		if id then
+			if entries[id]~=nil then entries[id]=false
+			else entries[id]=stash end
+		end
+	end
+	for id, stash in pairs(entries) do
+		if evidence then
+			if not stash then
+				evidence.conflicts=evidence.conflicts+1
+			elseif latest[id] and (not stash.public or stash.league~=league) then
+				evidence.withdrawn=evidence.withdrawn+1
+			elseif latest[id] then
+				evidence.updated=evidence.updated+1
+			end
+		end
+		latest[id] = stash and stash.public==true and stash.league==league and stash or nil
+	end
+end
+
+local function readStashes(raw, league)
+	assert(type(raw)=="string" and #raw<=maxBytes,"The listing file must be at most 16 MiB")
+	local document=assert(marketJSON.decode(raw),"Expected a public stash page or PoB listing capture")
+	local latest = {}
+	if document.format==nil then
+		assert(#raw<=maxPageBytes,"A single public stash page must be at most 4 MiB")
+		assert(marketJSON.objectRows(document.stashes) and validCursor(document.next_change_id),
+			"Expected a public stash API page with a stash array and cursor")
+		applyPage(document.stashes,latest,nil,league)
+		return latest
+	end
+	assert(document.format==captureFormat,"Unsupported listing capture format")
+	assert(document.realm=="pc","This listing comparison requires a PC capture")
+	assert(document.league==league,"The capture league does not match the selected league")
+	local capturedAt = document.capturedAt
+	assert(type(capturedAt)=="number" and capturedAt==math.floor(capturedAt)
+		and capturedAt>=1577836800 and capturedAt<=os.time(),"The capture requires a valid UTC capture timestamp")
+	local pages = document.pages
+	assert(marketJSON.objectRows(pages) and #pages>=1 and #pages<=32,"A capture requires 1 to 32 stash pages")
+	local evidence = {realm=document.realm,capturedAt=capturedAt,pages=#pages,withdrawn=0,updated=0,conflicts=0}
+	local visited, expected = {}, nil
+	for index, entry in ipairs(pages) do
+		local request, page = entry.requestCursor, entry.response
+		assert(validCursor(request) and (not expected or request==expected) and not visited[request],
+			"The capture pages do not follow consecutive request cursors")
+		visited[request]=true
+		assert(type(page)=="table" and validCursor(page.next_change_id) and marketJSON.objectRows(page.stashes),
+			"A capture page is missing its stash array or next cursor")
+		local terminal = #page.stashes==0 and index==#pages
+		assert(not visited[page.next_change_id] or terminal and page.next_change_id==request,
+			"The capture contains a cursor cycle")
+		assert(#page.stashes>0 or terminal,"An empty stash page must be the last page")
+		applyPage(page.stashes,latest,evidence,league)
+		expected=page.next_change_id
+	end
+	return latest,evidence
+end
+
 function M.compare(raw, target, league)
 	assert(target,"Choose an identified rare ring, amulet, or belt with comparable rolls")
 	assert(type(league)=="string" and #league<=80 and league:match("^[%w _-]+$") and league:find("%S"),"Enter the trade league ID")
-	assert(type(raw)=="string" and #raw<=maxBytes,"The public stash file must be at most 4 MiB")
-	local page=assert(marketJSON.decode(raw,{"stashes"}),"Expected a public stash API page with a stashes array")
-	assert(type(page.next_change_id)=="string" and #page.next_change_id>0,"The public stash page is missing its cursor")
-	local stashCounts, listings = {}, {}
-	for _, stash in ipairs(page.stashes) do
-		if validID(stash.id) then stashCounts[stash.id]=(stashCounts[stash.id] or 0)+1 end
-	end
-	for _, stash in ipairs(page.stashes) do
-		if stash.public==true and stash.league==league and validID(stash.id) and stashCounts[stash.id]==1
-			and type(stash.accountName)=="string" and #stash.accountName<=128 and stash.accountName:find("%S")
+	local stashes, capture = readStashes(raw,league)
+	local listings = {}
+	for _, stash in pairs(stashes) do
+		if type(stash.accountName)=="string" and #stash.accountName<=128 and stash.accountName:find("%S")
 			and type(stash.items)=="table" then
 			local seller = stash.accountName:lower()
 			for _, item in ipairs(stash.items) do
 				if type(item)=="table" and item.baseType==target.base and (item.league==nil or item.league==league)
 					and validID(item.id) then
-					if listings[item.id]~=nil then
-						listings[item.id]=false
+					local id = item.id:lower()
+					if listings[id]~=nil then
+						listings[id]=false
 					else
-						listings[item.id]={item=item,seller=seller,stashNote=stash.stash}
+						listings[id]={item=item,seller=seller,stashNote=stash.stash}
 					end
 				end
 			end
@@ -180,7 +248,7 @@ function M.compare(raw, target, league)
 		end
 		results[#results+1]=summary
 	end
-	return {inspected=inspected,matched=matched,priced=priced,ambiguous=ambiguous,results=results}
+	return {inspected=inspected,matched=matched,priced=priced,ambiguous=ambiguous,results=results,capture=capture}
 end
 
 function M.compareFile(path, target, league)

@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1286][2026/11/24]
+
+* Compare gear listings across captured stash pages and apply later tab changes.
+
 VERSION[2.69.0-ai.preview1285][2026/11/24]
 
 * Compare rare jewellery rolls and asking prices from a local public stash snapshot.
