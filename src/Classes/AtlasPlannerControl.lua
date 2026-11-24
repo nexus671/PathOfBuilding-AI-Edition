@@ -166,7 +166,15 @@ function Canvas:OnFocusLost() self.drag=nil end
 function Panel.Open(build,source,layout)
 	local store=build.savers.AtlasPlans
 	local version=atlas.defaultVersion(build.spec.treeVersion)
-	local draft=copyTable(source or store.plans[1] or {id=require("Modules.PlanningData").newId("atlas-",store.plans,12),title="New Atlas plan",version=version,budget=atlas.tree(version).maxPoints,nodes={},notes=""})
+	local function newAtlasId()
+		local used={};for _,plan in ipairs(store.plans) do used[#used+1]=plan end
+		if layout and layout.atlasDrafts then for _,entry in ipairs(layout.atlasDrafts()) do if entry.plan then used[#used+1]=entry.plan end end end
+		return require("Modules.PlanningData").newId("atlas-",used,12)
+	end
+	local draft=copyTable(source or store.plans[1] or {id=newAtlasId(),title="New Atlas plan",version=version,budget=atlas.tree(version).maxPoints,nodes={},notes=""})
+	local newDraft=true
+	for _,plan in ipairs(store.plans) do if plan.id==draft.id then newDraft=false;break end end
+	if layout and layout.restore and type(layout.restore.newDraft)=="boolean" then newDraft=layout.restore.newDraft end
 	local width=layout and layout.width or math.min(1180,main.screenW-40); local height=layout and layout.height or math.min(820,main.screenH-50)
 	local inspector=math.max(260,math.min(width-600,layout and (layout.inspectorWidth or layout.restore and layout.restore.inspectorWidth) or 260))
 	local graphWidth=width-inspector-48; local graphHeight=height-262; local side=graphWidth+32
@@ -563,11 +571,23 @@ function Panel.Open(build,source,layout)
 	controls.url=button(280,height-104,120,"Official link",function() Copy(atlas.url(current())); main:OpenMessagePopup("Atlas link copied","Official Atlas URLs do not carry patch versions or Genesis allocations. Use Copy plan to preserve both.") end)
 	controls.url.enabled=function() return not hasMissingChoices end
 	controls.url.tooltipFunc=function(tooltip) tooltip:AddLine(14,hasMissingChoices and "Choose an effect for each allocated choice node before sharing an official link." or "Copy an official Atlas link. Copy plan also preserves the version and Genesis allocations.") end
-	controls.keep=button(16,height-42,160,"Keep plan",function() store:Upsert(current());if layout then controls.status.label="^7Plan kept. Save the build to persist it." else main:ClosePopup() end end)
+	controls.keep=button(16,height-42,160,"Keep plan",function()
+		local plan=current();local oldId=plan.id
+		if newDraft then
+			for _,saved in ipairs(store.plans) do if saved.id==plan.id then plan.id=newAtlasId();break end end
+		end
+		store:Upsert(plan)
+		if plan.id~=oldId then
+			draft.id=plan.id;ui.discard(build,"atlas",oldId)
+			if layout and layout.rekeyAtlasDraft then layout.rekeyAtlasDraft(oldId,plan.id) end
+		end
+		newDraft=false
+		if layout then controls.status.label="^7Plan kept. Save the build to persist it." else main:ClosePopup() end
+	end)
 	controls.keep.label=function() return (controls.canvas.routeOverlay or grantSteps) and "Keep current plan" or "Keep plan" end
 	controls.keep.tooltipText=function() return grantSteps and "Keeps the destination draft, not the step preview." or controls.canvas.routeOverlay and "Keeps the current draft, not the route preview. Open Targets to apply the preview first." or "Keep this plan in the build. Save the build to persist it." end
 	controls.library=button(188,height-42,120,"Saved plans",function() Panel.Library(build,layout) end)
-	controls.new=button(320,height-42,120,"New plan",function() local plan={id=require("Modules.PlanningData").newId("atlas-",store.plans,12),title="New Atlas plan",version=draft.version,budget=atlas.tree(draft.version).maxPoints,nodes={},notes=""};if layout and layout.navigate then layout.navigate("atlas",plan) else if not layout then main:ClosePopup() end;Panel.Open(build,plan,layout) end end)
+	controls.new=button(320,height-42,120,"New plan",function() local plan={id=newAtlasId(),title="New Atlas plan",version=draft.version,budget=atlas.tree(draft.version).maxPoints,nodes={},notes=""};if layout and layout.navigate then layout.navigate("atlas",plan) else if not layout then main:ClosePopup() end;Panel.Open(build,plan,layout) end end)
 	openStages=function(view)
 		require("Classes.AtlasPlanningControl").Open(build,current(),function(plan) stageResume=nil;change(plan) end,function(steps,saved,initial,budget,warning)
 			stageResume=saved;grantWarning=warning;clearRouteOverlay();controls.canvas.comparison=nil;controls.page:SelByValue("Tree");grantSteps=copyTable(steps);grantInitial=copyTable(initial);grantBudget=budget;showGrantStep(1)
@@ -675,7 +695,7 @@ function Panel.Open(build,source,layout)
 		controls.close.shown=false
 		layout.tick=function() require("Modules.AtlasTargets").tick(build) end
 		layout.inspectorWidth=inspector
-		layout.viewState=function() return {centerX=controls.canvas.centerX,centerY=controls.canvas.centerY,scale=controls.canvas.scale,focus=controls.canvas.focus,page=controls.page:GetSelValue(),avoided=copyTable(avoided),undo=copyTable(undo),redo=copyTable(redo),preferred=preferred,inspectorWidth=inspector,search=controls.search.buf,mechanic=controls.mechanic:GetSelValue(),title=controls.title.buf,budgetText=controls.budget.buf,notes=controls.notes.buf,grantSteps=grantSteps and copyTable(grantSteps),grantIndex=grantIndex,grantInitial=grantInitial and copyTable(grantInitial),grantBudget=grantBudget,grantWarning=grantWarning,grantMatchLabel=grantMatchLabel,stageResume=stageResume and copyTable(stageResume)} end
+		layout.viewState=function() return {newDraft=newDraft,centerX=controls.canvas.centerX,centerY=controls.canvas.centerY,scale=controls.canvas.scale,focus=controls.canvas.focus,page=controls.page:GetSelValue(),avoided=copyTable(avoided),undo=copyTable(undo),redo=copyTable(redo),preferred=preferred,inspectorWidth=inspector,search=controls.search.buf,mechanic=controls.mechanic:GetSelValue(),title=controls.title.buf,budgetText=controls.budget.buf,notes=controls.notes.buf,grantSteps=grantSteps and copyTable(grantSteps),grantIndex=grantIndex,grantInitial=grantInitial and copyTable(grantInitial),grantBudget=grantBudget,grantWarning=grantWarning,grantMatchLabel=grantMatchLabel,stageResume=stageResume and copyTable(stageResume)} end
 		-- Keep unfinished editor text separate from the validated graph draft.
 		layout.snapshot=function() return copyTable(draft) end
 	end

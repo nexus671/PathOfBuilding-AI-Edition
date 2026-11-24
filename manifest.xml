@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.69.0-ai.preview1291" />
+	<Version number="2.69.0-ai.preview1292" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="23a96145a5c9f84498bdbe68bfcaf8a6a95493ec" />
+	<File name="changelog.txt" part="default" sha1="253da99708604f4a735ec880421ca50ce9008629" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
@@ -1574,7 +1574,7 @@
 	<File name="Assets/veiledicon.png" part="program" sha1="035479a7ee7847969ef50ff428e3bee897fba671" />
 	<File name="Assets/vestigialicon.png" part="program" sha1="ecb5dd4b9aed1cac0c1a677b18838ae9c62744d7" />
 	<File name="Assets/warlordicon.png" part="program" sha1="cca050c84884f5c0bb1380ece51d3c4b32be4900" />
-	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="f1db1fd6481ffac6e93339e4fe7ed19b688a1ec5" />
+	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="fbb4250baeef63fe050e07be0f170cc3a8d4d8db" />
 	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="bc317bacfeecf533d7c1a5e3d3536a2edf847d6a" />
 	<File name="Classes/AtlasRegionsControl.lua" part="program" sha1="b0d056fb0937de21a124f35a28618ae9cf5b362d" />
 	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="091b4a396966a60064fe5c3ad148a80f97be18e7" />
@@ -2171,7 +2171,7 @@
 	<File name="Modules/PlanningRevision.lua" part="program" sha1="f68afda18a3c9768fbc71a72c6dd67bfebfea316" />
 	<File name="Modules/PlanningUI.lua" part="program" sha1="26a949d5f5407c9038c56d86473a47a223567d3e" />
 	<File name="Modules/PlanningWorker.lua" part="program" sha1="cfa18e6b4626a7a834906bc0df0e992b386e68f2" />
-	<File name="Modules/PlanningWorkspace.lua" part="program" sha1="1e1230cfa0c5d22503177fe38662fca2ebf229d5" />
+	<File name="Modules/PlanningWorkspace.lua" part="program" sha1="2ae09e9afd4087c92f013af3444b935ccb572728" />
 	<File name="Modules/RecoveryTasks.lua" part="program" sha1="99bdef734b4030782fda58f36e3863f0d25f50ac" />
 	<File name="Modules/StatDescriber.lua" part="program" sha1="05f5a888f3d88c63920dde8e46500e102eef7025" />
 	<File name="Modules/ToastNotification.lua" part="program" sha1="87abe18f2c81a8df77e7e79248730e81ca5e03c5" />
