@@ -1369,6 +1369,128 @@ end
 checkAdvisoryStashCoverage()
 print("All 29 stash market types preserve scoped native inspection, safe provider evidence, variant ambiguity and build routes")
 
+do
+	local listings=require("Modules.LootFilterGearListings")
+	local raw=[[Rarity: RARE
+Fixture Ring
+Amethyst Ring
+--------
+Item Level: 86
+--------
++23% to Chaos Resistance (implicit)
+--------
++79 to maximum Life
++41% to Cold Resistance
+]]
+	local item=new("Item"):Item(raw)
+	local target=assert(listings.target(item),"Expected a comparable rare ring")
+	assert(target.implicitMods:find("23%% to Chaos Resistance"))
+	assert(not listings.target(new("Item"):Item(raw:gsub("Item Level: 86","Item Level: 86\nUnidentified"))))
+	local function row(id,note)
+		return {id=string.format("%064x",id),baseType="Amethyst Ring",rarity="Rare",identified=true,ilvl=86,note=note,
+			implicitMods={{description="+23% to Chaos Resistance"}},
+			explicitMods={{description="+41% to Cold Resistance"},{description="+79 to maximum Life"}}}
+	end
+	local function stash(id,seller,items,note)
+		return {id=string.format("%064x",id),accountName=seller,items=items,stash=note,league="Covens",public=true}
+	end
+	local low, early, high = row(1,"~price 20 chaos"),row(2,"~price 10 chaos"),row(3,"~b/o 30 chaos")
+	early.explicitMods={{description="+41% to Cold Resistance\n+79 to maximum Life"}}
+	local wrongRoll, wrongLevel, wrongState, wrongChannel = row(4,"~price 1 chaos"),row(5,"~price 2 chaos"),row(6,"~price 3 chaos"),row(7,"~price 4 chaos")
+	wrongRoll.explicitMods[2].description="+78 to maximum Life"
+	wrongLevel.ilvl=85
+	wrongState.corrupted=true
+	wrongChannel.explicitMods[1].flags={crafted=true}
+	local other = stash(7,"Other Realm#0000",{row(11,"~price 1 chaos")})
+	other.league="Standard"
+	local wrongIntangibility, wrongLegacy = row(15,"~price 1 chaos"),row(16,"~price 1 chaos")
+	wrongIntangibility.properties={{name="Intangibility",values={{"20%",0}}}}
+	local wrongMemory = row(19,"~price 1 chaos")
+	wrongMemory.properties={{name="Memory Strands",values={{"12",0}}}}
+	wrongLegacy.craftedMods={"+18% to Lightning Resistance"}
+	local div=row(8,"~price 1.5 divine")
+	local duplicate=row(9,"~price 1 chaos")
+	local page={next_change_id="cursor",stashes={
+		stash(1,"One#0001",{low,early,wrongRoll,wrongLevel,wrongState,wrongChannel,wrongIntangibility,wrongMemory,wrongLegacy}),
+		stash(2,"Two#0002",{high,div,duplicate}),
+		stash(3,"Three#0003",{row(10),row(9,"~price 60 chaos")},"~b/o 50 chaos"),
+		stash(4,"Four#0004",{row(12,"~price 1/5 chaos"),row(13,"unpriced")},"~b/o 4 chaos"),
+		other,stash(8,"Retired#0000",{row(14,"~price 1 chaos")}),{id=string.format("%064x",8),public=false},
+	}}
+	local json=require("dkjson")
+	local encoded=assert(json.encode(page))
+	local sample=listings.compare(encoded,target,"Covens")
+	assert(sample.inspected==15 and sample.matched==7 and sample.priced==5 and sample.ambiguous==1)
+	assert(sample.results[1].sellers==3 and sample.results[1].low==10 and sample.results[1].median==30 and sample.results[1].high==50)
+	assert(sample.results[2].sellers==1 and sample.results[2].low==1.5 and not sample.results[2].median)
+	assert(listings.compare(encoded,target,"Hardcore").matched==0)
+	assert(not pcall(listings.compare,'{"stashes":{},"next_change_id":"x"}',target,"Covens"))
+	assert(not pcall(listings.compare,string.rep(" ",4*1024*1024+1),target,"Covens"))
+	do
+		local advanced=new("Item"):Item(raw:gsub("Item Level: 86","Item Level: 86\nIntangibility: 20%%"))
+		assert(advanced.intangibility==20 and not listings.target(advanced))
+		local amuletRaw=raw:gsub("Amethyst Ring","Agate Amulet"):gsub("+23%% to Chaos Resistance","+20 to Strength and Intelligence")
+		amuletRaw=amuletRaw:gsub("%-%-%-%-%-%-%-%-\n%+20 to Strength","--------\nAllocates Charisma (enchant)\n--------\n+20 to Strength")
+		local amulet=new("Item"):Item(amuletRaw)
+		assert(amulet.enchantModLines[1] and amulet.enchantModLines[1].crafted)
+		local listed=row(17,"~price 50 chaos")
+		listed.baseType="Agate Amulet"
+		listed.enchantMods={"Allocates Charisma"}
+		listed.implicitMods={{description="+20 to Strength and Intelligence"}}
+		local samplePage={next_change_id="cursor",stashes={stash(18,"Seller#0018",{listed})}}
+		assert(listings.compare(json.encode(samplePage),assert(listings.target(amulet)),"Covens").matched==1)
+		local variantRaw=raw:gsub("Amethyst Ring","Two-Stone Ring (Fire/Cold)")
+			:gsub("+23%% to Chaos Resistance","+15%% to Fire and Cold Resistances")
+		local variant=new("Item"):Item(variantRaw)
+		local buildTargets=require("Modules.LootFilterMarketBrowse").buildTargets({itemsTab={orderedSlots={{slotName="Ring 1"}},
+			items={variant},activeItemSet={["Ring 1"]={selItemId=1}}}})
+		local variantTarget=assert(buildTargets[1] and buildTargets[1].listingItem)
+		assert(variantTarget.base=="Two-Stone Ring")
+		listed.baseType="Two-Stone Ring"
+		listed.enchantMods=nil
+		listed.implicitMods={{description="+15% to Fire and Cold Resistances"}}
+		assert(listings.compare(json.encode(samplePage),variantTarget,"Covens").matched==1)
+		listed.implicitMods[1].description="+15% to Cold and Lightning Resistances"
+		assert(listings.compare(json.encode(samplePage),variantTarget,"Covens").matched==0)
+	end
+	local path=os.tmpname()..".json"
+	local file=assert(io.open(path,"wb"))
+	assert(file:write(encoded));assert(file:close())
+	local originalPicker=require("Classes.LootFilterFileBrowser").Open
+	require("Classes.LootFilterFileBrowser").Open=function(_,selected,options)
+		assert(options.accept("listings.JSON") and not options.accept("filter.txt"))
+		selected(path)
+	end
+	local oldDownload = launch.DownloadPage
+	launch.DownloadPage=function() error("A file comparison must not request market data") end
+	local variant=new("Item"):Item(raw:gsub("79 to maximum Life","78 to maximum Life"))
+	local collection={itemsTab={orderedSlots={{slotName="Ring 1"},{slotName="Ring 2"}},items={item,variant},
+		activeItemSet={["Ring 1"]={selItemId=1},["Ring 2"]={selItemId=2}}}}
+	assert(#require("Modules.LootFilterMarketBrowse").buildTargets(collection)==2)
+	local gearUI=headless.install({width=720,height=600})
+	gearUI:bind(build)
+	main.popups={}
+	require("Classes.LootFilterMarketBrowseControl").Open(collection)
+	gearUI:text("league","Covens")
+	gearUI:click("buildTarget")
+	gearUI:text("search","Ring 1")
+	gearUI:click("choose")
+	gearUI:click("listingSample")
+	assert(main.popups[1].title=="Comparable asking prices")
+	local rows={}
+	for _, line in ipairs(main.popups[1].controls.details.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
+	local details=table.concat(rows," ")
+	assert(details:find("7 matching rolls",1,true) and details:find("Median 30",1,true),details)
+	assert(details:find("Range 10 to 50",1,true) and details:find("Ask 1.5 | 1 seller",1,true),details)
+	assert(details:find("Realm, age and completed sales are unverified.",1,true),details)
+	assert(not details:find("One#0001",1,true))
+	if output then gearUI:frame():write(output.."/gear-listing-snapshot.json") end
+	launch.DownloadPage=oldDownload
+	require("Classes.LootFilterFileBrowser").Open=originalPicker
+	os.remove(path)
+	print("Native gear listing snapshot compares exact rolls and distinct sellers with no market request")
+end
+
 
 local function checkReviewedRolloverControls()
 	local oldConfig, oldPreview, oldConfigure, oldDownload = sync.configuration, sync.preview, sync.configure, launch.DownloadPage
