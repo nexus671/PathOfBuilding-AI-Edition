@@ -1,3 +1,4 @@
+-- cspell:ignore rareonly
 local marketJSON = require("Modules.LootFilterMarketJSON")
 local M = {}
 
