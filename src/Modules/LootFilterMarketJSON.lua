@@ -1,3 +1,4 @@
+-- cspell:ignore jsontype
 local json = require("dkjson")
 local M = {}
 local null = {}
