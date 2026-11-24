@@ -313,6 +313,38 @@ do
 		{"name":"Map (Tier 13)","detailsId":"same-tier","chaosValue":2,"count":40,"listingCount":40}
 	]}]],"Map")
 	assert(mapQuotes["Map (Tier 12)"]==false and mapQuotes["Map (Tier 13)"]==false)
+
+	local function exchange(first, second)
+		return assert(json.encode({
+			core={primary="chaos"}, items={{id="x",name="Repeated"}},
+			lines={{id="x",primaryValue=1,volumePrimaryValue=first},{id="x",primaryValue=1,volumePrimaryValue=second}},
+		}))
+	end
+	for _, body in ipairs({exchange(2000,10),exchange(10,2000)}) do
+		local quote = market.quotes(body,"Currency").Repeated
+		assert(quote.volume==10 and not market.liquid(quote))
+	end
+	assert(market.quotes(exchange(2000,0),"Currency").Repeated==false)
+	assert(not pcall(market.quotes,exchange(2000,2000).."{}","Currency"))
+
+	local function mapRow(name, volume, base)
+		return {name=name,detailsId="tier-price",chaosValue=2,count=volume,listingCount=40,baseType=base}
+	end
+	local function mapBody(first, second)
+		return assert(json.encode({lines={first,second}}))
+	end
+	local large, small = mapRow("Map (Tier 12)",100), mapRow("Map (Tier 12)",5)
+	for _, body in ipairs({mapBody(large,small),mapBody(small,large)}) do
+		local quote = market.quotes(body,"Map")["Map (Tier 12)"]
+		assert(quote.volume==5 and not market.liquid(quote))
+	end
+	local namedMap = mapRow("Cemetery Map",40,"Cemetery Map")
+	local noListings = mapRow("Map (Tier 12)",0)
+	for _, other in ipairs({namedMap,noListings}) do
+		assert(market.quotes(mapBody(other,large),"Map")["Map (Tier 12)"]==false)
+		assert(market.quotes(mapBody(large,other),"Map")["Map (Tier 12)"]==false)
+	end
+	assert(not pcall(market.quotes,mapBody(large,large).."{}","Map"))
 end
 local joined = {Shared={id="a",price=1,volume=100,source="Currency"}}
 market.merge(joined, {Shared={id="b",price=10,volume=10000,source="Oil"}})

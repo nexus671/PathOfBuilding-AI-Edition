@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1249][2026/11/23]
+
+* Use conservative liquidity for duplicate exchange and map quotes in daily filter sync.
+
 VERSION[2.68.1-ai.preview1248][2026/11/23]
 
 * Browse all documented PoE 1 stash item categories with conservative variant and listing evidence.
