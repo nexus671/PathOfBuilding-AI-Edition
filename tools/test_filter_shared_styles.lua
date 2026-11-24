@@ -55,6 +55,8 @@ shown=preview(previewProfile,{key="Colour",value="FF0000FF"},"00FF00FF");assert(
 shown=preview(previewProfile,{key="AlertSound",value="2"},"6");assert(table.concat(shown.PlayAlertSound,",")=="8,50","Sound preview ignored whole-filter settings")
 assert(not pcall(shared.validate,{{key="SetTextColor",from="FF0000FF",to="00FF00FF"},{key="SetTextColor",from="FF0000FF",to="FFFFFFFF"}}),"Duplicate sources were accepted")
 newBuild();local filters=require("Modules.LootFilters");local profile=filters.profile("shared","Shared styles")
+local mutedProfile=filters.profile("muted","Muted sounds");mutedProfile.template=muted;mutedProfile.sharedStyles={{key="AlertSound",from="None",to="3"}}
+assert(filters.compile(mutedProfile):find("PlayAlertSound 3 # muted",1,true),"Profile compilation must re-enable saved muted alerts")
 profile.template="Show\n SetTextColor 255 0 0\n PlayAlertSound 2 200";profile.sharedStyles={entries[1],entries[4]}
 local compiled=filters.compile(profile);assert(compiled:find("SetTextColor 0 255 0 255",1,true) and compiled:find("PlayAlertSound 6 200",1,true),"Compiled filter did not use shared styles")
 profile.appearance={textColor={255,255,255,255}};compiled=filters.compile(profile);assert(compiled:find("SetTextColor 255 255 255 255",1,true),"Whole-filter appearance must take precedence")
