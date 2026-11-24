@@ -12,7 +12,9 @@ local explicit,other,implicit
 for index,entry in ipairs(controls.target.list) do
 	if entry.label:match('^Prefix |') or entry.label:match('^Suffix |') then
 		if not explicit then explicit=index elseif not other and entry.val~=controls.target.list[explicit].val then other=index end
-	elseif entry.label:match('^Exarch |') or entry.label:match('^Eater |') or entry.label:match('^Corrupted |') then implicit=implicit or index end
+	elseif entry.label:match('^Exarch |') or entry.label:match('^Eater |') or entry.label:match('^Corrupted |') then
+		if not implicit or #entry.label>#controls.target.list[implicit].label then implicit=index end
+	end
 end
 assert(explicit and other and implicit, 'Expected explicit and implicit target choices')
 controls.target:SetSel(explicit);ui:click('addTarget')
