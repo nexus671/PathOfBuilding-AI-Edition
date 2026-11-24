@@ -1,4 +1,4 @@
-local json = require("dkjson")
+local marketJSON = require("Modules.LootFilterMarketJSON")
 local parser = require("Modules.LootFilterParser")
 local maps = require("Modules.LootFilterMapMarket")
 local gems = require("Modules.LootFilterGemMarket")
@@ -64,18 +64,16 @@ function M.quotes(body, source, gemRequests)
 	if source==gems.feed then return gems.quotes(body,gemRequests) end
 	if maps.variants[source] then return maps.quotes(body,source) end
 	assert(type(body) == "string" and #body <= 2 * 1024 * 1024, "Invalid exchange response size")
-	local data, position = json.decode(body)
-	assert(type(data) == "table" and type(data.core) == "table" and data.core.primary == "chaos"
-		and type(data.items) == "table" and type(data.lines) == "table"
-		and not body:sub(position):find("%S"), "Invalid chaos-denominated exchange response")
+	local data = marketJSON.decode(body, {"items", "lines"})
+	assert(data and type(data.core) == "table" and data.core.primary == "chaos", "Invalid chaos-denominated exchange response")
 	local names, quotes, priced = {}, {}, false
 	for _, item in ipairs(data.items) do
-		assert(type(item) == "table" and quoteText(item.id) and quoteText(item.name), "Invalid exchange item")
+		assert(quoteText(item.id) and quoteText(item.name), "Invalid exchange item")
 		assert(not names[item.id] or names[item.id] == item.name, "Exchange identifier has conflicting names")
 		names[item.id] = item.name
 	end
 	for _, line in ipairs(data.lines) do
-		assert(type(line) == "table" and quoteText(line.id), "Invalid exchange price line")
+		assert(quoteText(line.id), "Invalid exchange price line")
 		local name = names[line.id]
 		if name then
 			if finite(line.primaryValue) and finite(line.volumePrimaryValue) then
@@ -293,13 +291,9 @@ end
 
 function M.tradeLeagues(raw)
 	assert(type(raw)=="string" and #raw<=65536, "Invalid PC trade league list size")
-	local data, position = json.decode(raw)
-	assert(type(data)=="table" and raw:match("^%s*%[") and position and not raw:sub(position):find("%S")
-		and #data>0 and #data<=100, "No PC trade leagues returned")
+	local data = marketJSON.decode(raw, nil, true)
+	assert(data and #data>0 and #data<=100, "No PC trade leagues returned")
 	local list, seen = {}, {}
-	for key in pairs(data) do
-		assert(type(key)=="number" and key>=1 and key<=#data and key==math.floor(key), "Invalid PC trade league list")
-	end
 	for _, value in ipairs(data) do
 		local league = M.tradeLeague(value)
 		assert(league and not seen[league.id], "Invalid PC trade league list")

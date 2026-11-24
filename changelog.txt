@@ -1,6 +1,11 @@
-VERSION[2.68.1-ai.preview1264][2026/11/24]
+VERSION[2.68.1-ai.preview1265][2026/11/24]
 
 * Fit crafting inventory actions in smaller windows.
+
+VERSION[2.68.1-ai.preview1264][2026/11/24]
+
+* Retain the last verified loot filter when a market price collection contains malformed rows.
+* Show why a shared price cache rejected an invalid or stale feed.
 
 VERSION[2.68.1-ai.preview1263][2026/11/24]
 

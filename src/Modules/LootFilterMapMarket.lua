@@ -1,4 +1,4 @@
-local json = require("dkjson")
+local marketJSON = require("Modules.LootFilterMarketJSON")
 local M = {}
 M.feeds = {"Map", "BlightedMap", "BlightRavagedMap"}
 M.excludedFlags = {"Corrupted", "HasImplicitMod", "AnyEnchantment", "MirageMap", "ZanaMemory", "ShapedMap", "ElderMap"}
@@ -29,12 +29,10 @@ end
 
 function M.quotes(body, category)
 	assert(type(body) == "string" and #body <= 2*1024*1024, "Invalid map response size")
-	local data, position = json.decode(body)
-	assert(type(data) == "table" and type(data.lines) == "table"
-		and not body:sub(position):find("%S"), "Invalid stash map response")
+	local data = marketJSON.decode(body, {"lines"})
+	assert(data, "Invalid stash map response")
 	local quotes, seen = {}, {}
 	for _, row in ipairs(data.lines) do
-		assert(type(row) == "table", "Invalid stash map entry")
 		local tier = M.tier(row,category)
 		local id = type(row.detailsId) == "string" and #row.detailsId <= 200
 			and row.detailsId:match("^[A-Za-z0-9_.%-]+$") and row.detailsId

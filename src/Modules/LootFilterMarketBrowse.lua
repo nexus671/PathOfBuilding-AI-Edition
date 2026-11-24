@@ -1,4 +1,5 @@
 local json = require("dkjson")
+local marketJSON = require("Modules.LootFilterMarketJSON")
 local maps = require("Modules.LootFilterMapMarket")
 local M = {maxBytes=12*1024*1024}
 M.categories = {
@@ -95,8 +96,8 @@ function M.managedQuote(body, target)
 	assert(target and target.managed, "Choose an exact managed rule")
 	local market = require("Modules.LootFilterEconomy")
 	assert(type(body)=="string" and #body<=market.maxFeedBytes(target.category), "Market response exceeds the size limit")
-	local payload, position = json.decode(body)
-	assert(type(payload)=="table" and type(payload.lines)=="table" and not body:sub(position):find("%S"), "Invalid market overview")
+	local payload = marketJSON.decode(body, {"lines"})
+	assert(payload, "Invalid market overview")
 	local requested = target.key and {[target.key]=true} or nil
 	local valid, quotes = pcall(market.quotes,body,target.category,requested)
 	if not valid then
@@ -387,15 +388,14 @@ function M.rows(body, category, query, target, catalogue)
 			end
 		end
 	else
-		local data = json.decode(body)
-		assert(type(data)=="table" and type(data.lines)=="table", "Invalid stash overview")
+		local data = marketJSON.decode(body, {"lines"})
+		assert(data, "Invalid stash overview")
 		local unique = category.id:match("^Unique")
 		local advisory = M.advisory(category)
 		local variants = (unique or advisory) and variantEvidence(data.lines,advisoryCategories[category.id])
 		local uniqueEvidence = unique and uniqueBaseEvidence(data.lines,variants,catalogue)
 		local handled = {}
 		for _, item in ipairs(data.lines) do
-			assert(type(item)=="table", "Invalid stash overview entry")
 			local extended = advisoryCategories[category.id]
 			local identity = marketName(item.detailsId) and item.detailsId or nil
 			if extended then identity=require("Modules.LootFilterEconomy").evidencePriceId(item.detailsId) end
