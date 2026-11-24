@@ -1952,6 +1952,10 @@ async function main(){
   const atlasPlans=await call('get_atlas_plans');assert.equal(atlasPlans.plans[1].strategy.setupCost.amount,25);assert.equal(atlasPlans.plans[1].progression.previousId,'starter-atlas');assert.deepEqual(atlasPlans.plans[0].mapDrafts,starterAtlas.mapDrafts);assert.ok(atlasPlans.limitations.some(note=>note.includes('unknown explicit modifiers') && note.includes('+30% Atlas Drops')));assert.ok(atlasPlans.limitations.some(note=>note.includes('one conditional modeled outcome')));assert.ok(atlasPlans.limitations.some(note=>note.includes('item-level and quality retention')));assert.ok(atlasPlans.limitations.some(note=>note.includes('Vaal Temple previews')));await host('bundle-roundtrip');
   assert.deepEqual((await call('get_atlas_plans')).plans[0].mapDrafts,starterAtlas.mapDrafts);
   assert.deepEqual((await call('get_crafting_projects')).projects.find(entry=>entry.id==='body-enchant').priceBook,bodyPriceBook);
+  const bundleFilters=(await call('get_loot_filters')).filters;
+  assert.deepEqual(bundleFilters.profiles.find(profile=>profile.id===savedFilters.filters.profiles[0].id),savedFilters.filters.profiles[0],'Bundle import changed the AI-created filter');
+  const bundleFilter=bundleFilters.profiles.find(profile=>profile.id==='bundle-filter');
+  assert.equal(bundleFilter.trackBuildPickups,true);assert.equal(bundleFilter.rules[0].text,'Show\n BaseType == "Chaos Orb"\n SetTextColor 255 0 0');
   context=(await call('get_build_context')).context;
   const removal=await queued('propose_build',{mode:'edit',title:'Remove body guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:'body-enchant'}]},'review');
   assert.ok(removal.changes.some(line=>line.includes('Removed crafting project:')));

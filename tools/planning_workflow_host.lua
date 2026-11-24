@@ -82,12 +82,17 @@ for line in io.lines() do
 			assert(build.planningWorkspace.controls.undo:IsEnabled(),"Saved checkpoint did not restore undo")
 			bridge.enable(build)
 		elseif command.kind=="bundle-roundtrip" then
+			local profile=require("Modules.LootFilters").profile("bundle-filter","Bundle filter")
+			profile.trackBuildPickups=true;profile.rules={{id="bundle-rule",title="Chaos highlight",text='Show\n BaseType == "Chaos Orb"\n SetTextColor 255 0 0'}}
+			build.savers.LootFilters:Upsert(profile)
 			build.viewMode="CONFIG";ui:bind(build);ui:click("aiBuild");ui:click("nav_tools");ui:text("search","bundle");ui:click("choose");ui:click("export");ui:click("paste");ui:click("review")
 			assert(bridge.prepared and bridge.prepared.mode=="new","Bundle did not prepare a new build")
 			ui:click("apply");build=main.modes.BUILD;ui:bind(build);frame()
 			assert(not build.dbFileName and #build.savers.AtlasPlans.plans==2 and build.savers.CraftingProjects.projects[1].run,"Bundle import lost saved metadata or reused the source file")
 			local body=build.savers.CraftingProjects.projects[2]
 			assert(body and body.id=="body-enchant" and body.nativeRecipe.requirements.harvestEnchant=="LifeBodyEnchant" and body.inventory[1].state.harvestEnchant=="LifeBodyEnchant","Bundle import lost the second gear guide or its enchantment")
+			local restored=require("Modules.LootFilters").find(build.savers.LootFilters.data,"bundle-filter")
+			assert(restored and restored.trackBuildPickups and restored.rules[1] and restored.rules[1].text==profile.rules[1].text,"Bundle import lost saved filter rules or build pickups")
 		elseif command.kind=="quit" then bridge.disable(build);return {quit=true}
 		else error("Unknown host command") end
 		return {revision=bridge.revision(build),status=bridge.status and bridge.status.status,life=build.calcsTab.calcsOutput.LifeUnreserved,drawCommands=#ui.commands}
