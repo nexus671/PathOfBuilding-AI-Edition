@@ -1178,6 +1178,13 @@ function Panel.Open(build,project,layout)
 		controls.coverage.x=288;controls.coverage.y=height-32;controls.coverage.width=144
 		controls.close.x=width-184;controls.close.y=height-32;controls.close.width=168
 	end
+	-- Put labels above the fields so values retain their full width.
+	for _,key in ipairs({"trials","budget","price","currency","baseCost"}) do controls[key].prompt=nil end
+	controls.trialsLabel.label="^7Trials";controls.priceLabel.label="^7Action cost"
+	label(controls,"budgetFieldLabel",controls.budget.x,controls.trialsLabel.y,"Action budget")
+	label(controls,"unitFieldLabel",controls.currency.x,controls.priceLabel.y,"Unit")
+	label(controls,"baseCostFieldLabel",controls.baseCost.x,controls.priceLabel.y,"Base cost")
+	for _,key in ipairs({"budgetFieldLabel","unitFieldLabel","baseCostFieldLabel"}) do controls[key].shown=function() return controls.page:GetSelValue()=="Simulate recipe" end end
 	if layout and not compact then ui.splitter(controls,"splitter",leftWidth+19,84,height-148,function(delta)
 		layout.workbench=layout.snapshot();layout.craftWidth=math.max(416,math.min(width-400,leftWidth+delta));Panel.Open(build,draft,layout)
 	end);controls.splitter.enabled=function() return not tasks.job end end

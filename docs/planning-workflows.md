@@ -58,7 +58,7 @@ Linked stages must use the same Atlas version and cannot form a cycle. Saved Atl
 
 ## Portable bundles
 
-**Tools > Export / import complete bundle** copies native character XML and saved planning data together: items, skills, passive trees, configuration sets, notes, crafting guides and working checkpoints, Atlas stages/strategies, and Journey acquisition and leveling plans.
+**Tools > Export / import complete bundle** copies native character XML and saved planning data together: items, skills, passive trees, configuration sets, notes, crafting guides and working checkpoints, Atlas stages/strategies, Journey acquisition and leveling plans, and saved loot-filter profiles.
 
 Keep working drafts before exporting. Paste and inspect a bundle to see its contents, then **Review as new build**. Native proposal review calculates it before you choose Apply. It opens as an unsaved new build and does not overwrite the source file.
 
