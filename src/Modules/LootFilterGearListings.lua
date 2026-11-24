@@ -90,10 +90,9 @@ local function sameItem(item, target)
 		or item.unmodifiableExceptChaos or item.stackSize and item.stackSize~=1 or hasEntries(item.sockets)
 		or hasEntries(item.socketedItems) or hasEntries(item.scourgeMods) or hasEntries(item.crucibleMods)
 		or hasEntries(item.veiledMods) or hasEntries(item.grantedSkills) then return false end
-	for _, property in ipairs(type(item.properties)=="table" and item.properties or {}) do
-		if type(property)~="table" or type(property.name)~="string" or property.name:find("Quality",1,true)
-			or property.name:find("Talisman",1,true) or property.name:find("Intangibility",1,true) then return false end
-	end
+	-- These comparisons only cover jewellery without extra item properties,
+	-- including catalyst quality, Intangibility and Memory Strands.
+	if item.properties~=nil and (type(item.properties)~="table" or next(item.properties)) then return false end
 	for _, key in ipairs(conditions) do
 		if (item[key]==true)~=target[key] then return false end
 	end

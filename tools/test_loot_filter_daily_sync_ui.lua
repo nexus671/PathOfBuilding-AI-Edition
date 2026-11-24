@@ -1363,11 +1363,13 @@ Item Level: 86
 	other.league="Standard"
 	local wrongIntangibility, wrongLegacy = row(15,"~price 1 chaos"),row(16,"~price 1 chaos")
 	wrongIntangibility.properties={{name="Intangibility",values={{"20%",0}}}}
+	local wrongMemory = row(19,"~price 1 chaos")
+	wrongMemory.properties={{name="Memory Strands",values={{"12",0}}}}
 	wrongLegacy.craftedMods={"+18% to Lightning Resistance"}
 	local div=row(8,"~price 1.5 divine")
 	local duplicate=row(9,"~price 1 chaos")
 	local page={next_change_id="cursor",stashes={
-		stash(1,"One#0001",{low,early,wrongRoll,wrongLevel,wrongState,wrongChannel,wrongIntangibility,wrongLegacy}),
+		stash(1,"One#0001",{low,early,wrongRoll,wrongLevel,wrongState,wrongChannel,wrongIntangibility,wrongMemory,wrongLegacy}),
 		stash(2,"Two#0002",{high,div,duplicate}),
 		stash(3,"Three#0003",{row(10),row(9,"~price 60 chaos")},"~b/o 50 chaos"),
 		stash(4,"Four#0004",{row(12,"~price 1/5 chaos"),row(13,"unpriced")},"~b/o 4 chaos"),
@@ -1376,7 +1378,7 @@ Item Level: 86
 	local json=require("dkjson")
 	local encoded=assert(json.encode(page))
 	local sample=listings.compare(encoded,target,"Covens")
-	assert(sample.inspected==14 and sample.matched==7 and sample.priced==5 and sample.ambiguous==1)
+	assert(sample.inspected==15 and sample.matched==7 and sample.priced==5 and sample.ambiguous==1)
 	assert(sample.results[1].sellers==3 and sample.results[1].low==10 and sample.results[1].median==30 and sample.results[1].high==50)
 	assert(sample.results[2].sellers==1 and sample.results[2].low==1.5 and not sample.results[2].median)
 	assert(listings.compare(encoded,target,"Hardcore").matched==0)
