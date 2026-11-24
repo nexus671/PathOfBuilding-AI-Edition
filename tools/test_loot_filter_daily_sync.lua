@@ -24,6 +24,18 @@ Hide
 # PoB economy: end
 Show
     Class == "Stackable Currency"
+    LinkedSockets >= 6
+
+Hide
+    Class == "Stackable Currency"
+    HasCruciblePassiveTree True
+
+Hide
+    BaseType == "Orb of Chance"
+    ItemLevel >= 70
+
+Show
+    Class == "Stackable Currency"
 ]]
 local target, baseline, protections = dir.."/target.filter", dir.."/baseline.filter", dir.."/protect.json"
 write(target,original)
@@ -98,6 +110,22 @@ assert(diff.verifiedProtection and diff.protectedChecks==1 and diff.changeCount=
 assert(#diff.feeds==8 and diff.feeds[1].category=="Currency" and not diff.feeds[1].revalidated
 	and diff.feeds[1].responseAge==diff.responseAges[1])
 assert(diff.changes[1].item=="Orb of Alteration" and diff.changes[1].sample.action=="Show")
+do
+	local output=read(target)
+	local settings=read(configFile)
+	local before,after=sync.compareObservedStack("default","Orb of Alteration",5,83)
+	assert(before.action=="Hide" and after.action=="Show" and before.line and after.line)
+	before,after=sync.compareObservedStack("default","Orb of Chance",5,83)
+	assert(before.action=="Unknown" and after.action=="Unknown" and after.missingProperties[1]=="ItemLevel")
+	before,after=sync.compareObservedStack("default","Orb of Chance",5,83,69)
+	assert(before.action=="Show" and after.action=="Show")
+	assert(not pcall(sync.compareObservedStack,"default","Orb of Alteration",1.5,83))
+	assert(not pcall(sync.compareObservedStack,"default","Orb of Alteration",5,83,nil,"Map Fragments"))
+	assert(read(target)==output and read(configFile)==settings)
+	write(target,output.."\n# External edit")
+	assert(not pcall(sync.compareObservedStack,"default","Orb of Alteration",5,83))
+	write(target,output)
+end
 local diffPayload=require("dkjson").encode(diff)
 assert(not diffPayload:find("target.filter",1,true) and not diffPayload:find("protect.json",1,true))
 local configPath=dir.."/LootFilterDailySync.json";local originalConfig=read(configPath);local json=require("dkjson");local edited=json.decode(originalConfig)

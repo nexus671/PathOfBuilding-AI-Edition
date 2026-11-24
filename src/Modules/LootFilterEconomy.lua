@@ -37,6 +37,10 @@ for _, class in ipairs(M.managedClasses) do
 	if class ~= "Divination Cards" and class ~= "Maps" and not gems.classes[class] and not M.exchangeItemClasses[class] then classes[class] = true end
 end
 
+function M.stackClass(class)
+	return classes[class]==true or class=="Divination Cards"
+end
+
 local function finite(value)
 	return type(value) == "number" and value > 0 and value < math.huge
 end
