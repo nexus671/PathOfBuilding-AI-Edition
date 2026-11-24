@@ -74,6 +74,23 @@ function M.Open(rule,save,conditions,options)
 	end)
 	c.keepRule.enabled=function() return not parser.actionReason(options.mode,c.action:GetSelValue()) end
 	c.keepRule.tooltipText=function() return parser.actionReason(options.mode,c.action:GetSelValue()) or "Keep this rule's appearance." end
+	if h<520 or w<800 then
+		c.page=new("DropDownControl"):DropDownControl(ui.anchor,{16,24,160,26},{"Text","Border","Background","Effects"})
+		ui.tabs(c,c.page,{{"pageText","Text","Text"},{"pageBorder","Border","Border"},{"pageBackground","Background","Background"},{"pageEffects","Effects","Effects"}},16,24,w-32)
+		local function page(key,name) c[key].shown=function() return c.page:GetSelValue()==name end end
+		c.heading.shown=false;c.title.y=60;c.action.y=60;c.modeNotice.y=90;c.preview.y=100;c.preview.height=64
+		for _,entry in ipairs({{"textHex","Text"},{"borderHex","Border"},{"backgroundHex","Background"}}) do
+			local key,name=unpack(entry);c[key.."Label"].x=16;c[key.."Label"].y=174;page(key.."Label",name)
+			for i=1,8 do local id=key.."Color"..i;c[id].x=16+(i-1)*44;c[id].y=202;page(id,name) end
+			c[key].x=16;c[key].y=246;c[key].width=240;c[key.."Pick"].x=264;c[key.."Pick"].y=246
+			page(key,name);page(key.."Pick",name)
+		end
+		c.hexHint.y=284;c.hexHint.shown=function() return c.page:GetSelValue()~="Effects" end
+		for i,pair in ipairs({{"sizeLabel","size"},{"soundLabel","sound"},{"iconLabel","icon"}}) do
+			local label,control=c[pair[1]],c[pair[2]];label.x=16;label.y=174+(i-1)*48;control.x=200;control.y=170+(i-1)*48;control.width=w-216;page(pair[1],"Effects");page(pair[2],"Effects")
+		end
+		c.effects.y=322;page("effects","Effects")
+	end
 	ui.style(c,{keepRule=true},custom);visual.layers(c,{preview=true});main:OpenPopup(w,h,"Drop appearance",c,nil,"title","cancel")
 end
 return M

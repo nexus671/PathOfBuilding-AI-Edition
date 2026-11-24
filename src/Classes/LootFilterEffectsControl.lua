@@ -101,6 +101,28 @@ function M.Open(original,sample,onKeep)
 	c.keep.tooltipText=function() return not c.keep:IsEnabled() and "Add a sound file without quotes or newlines, or choose another alert type." or "Keep these sound and effect settings." end
 	c.test=new("ButtonControl"):ButtonControl(ui.anchor,{252,h-42,220,28},"Preview sound",function() local index=customActive() and #c.previewFile.list>0 and c.previewFile:GetSelValueByKey("val") or nil;local _,message=require("Modules.LootFilterAudio").play(styles(),index);main:OpenMessagePopup("Sound preview",message) end)
 	c.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-42,140,28},"Cancel",function() main:ClosePopup() end)
+	if main.screenH<608 or main.screenW<800 then
+		w,h=math.min(w,main.screenW-40),math.min(h,main.screenH-60)
+		c.page=new("DropDownControl"):DropDownControl(ui.anchor,{16,24,160,26},{"Sound","Files","Map effects"})
+		ui.tabs(c,c.page,{{"pageSound","Sound","Sound"},{"pageFiles","Files","Files"},{"pageMap","Map effects","Map effects"}},16,24,w-32)
+		local function page(key,name)
+			local previous=c[key].shown;c[key].shown=function() return c.page:GetSelValue()==name and (previous==nil or previous==true or type(previous)=="function" and previous()) end
+		end
+		c.preview.y=60;c.preview.width=w-32;c.preview.height=60
+		for i,pair in ipairs({{"soundLabel","soundKind"},{"alertLabel","alertId"},{"volumeLabel","volume"}}) do
+			local y=130+(i-1)*68;local label,control=c[pair[1]],c[pair[2]];label.x=16;label.y=y;control.x=16;control.y=y+24;control.width=w-32;page(pair[1],"Sound");page(pair[2],"Sound")
+		end
+		c.help.y=338;c.help.width=w-32;page("help","Sound")
+		c.customLabel.y=130;c.customPath.y=154;c.customPath.width=w-32
+		c.browseSound.y=190;c.addSound.y=190;c.previewFileLabel.y=236;c.previewFile.y=256;c.previewFile.width=w-176;c.manageFiles.x=w-144;c.manageFiles.y=256
+		for _,key in ipairs({"customLabel","customPath","browseSound","addSound","previewFileLabel","previewFile","manageFiles"}) do page(key,"Files") end
+		local column=math.floor((w-40)/2)
+		for i,pair in ipairs({{"iconLabel","iconShape"},{"iconColorLabel","iconColor"},{"iconSizeLabel","iconSize"},{"beamLabel","beam"},{"beamDurationLabel","beamDuration"}}) do
+			local x=16+(i-1)%2*(column+8);local y=130+math.floor((i-1)/2)*68;local label,control=c[pair[1]],c[pair[2]];label.x=x;label.y=y;control.x=x;control.y=y+24;control.width=column;page(pair[1],"Map effects");page(pair[2],"Map effects")
+		end
+		local footer=math.floor((w-44)/3)
+		for i,key in ipairs({"keep","test","close"}) do c[key].x=16+(i-1)*(footer+6);c[key].y=h-42;c[key].width=footer end
+	end
 	ui.style(c,{keep=true});visual.layers(c,{preview=true});main:OpenPopup(w,h,"Sound, minimap icon and beam",c,nil,nil,"close");return c
 end
 return M
