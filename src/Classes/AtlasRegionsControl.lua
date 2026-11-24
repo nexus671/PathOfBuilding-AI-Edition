@@ -118,6 +118,13 @@ function M.Open(plan,keep)
 	end)
 	button("keep",16,h-48,200,"Use in Atlas draft",function() keep(regions.validate(draft));main:ClosePopup() end)
 	button("close",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
+	if w<800 then
+		local width=math.floor((w-48)/3)
+		for i,key in ipairs({"upsert","remove","run","threadCheck","removeRegion","overview","undo","redo"}) do
+			local control=c[key];control.x=16+((i-1)%3)*(width+8);control.y=h-164+math.floor((i-1)/3)*38;control.width=width
+		end
+		c.list.height=h-368;c.status.y=h-202
+	end
 	ui.style(c,{keep=true});for _,control in pairs(c) do control.layoutAudit="shaped-regions" end
 	refresh();main:OpenPopup(w,h,"Shaped Regions",c,nil,"map","close")
 	return c

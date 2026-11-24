@@ -1,6 +1,6 @@
 VERSION[2.68.1-ai.preview1263][2026/11/24]
 
-* Explain unsupported Thread counts before opening the Atlas checker.
+* Explain unsupported Thread counts and fit Atlas region actions in smaller windows.
 
 VERSION[2.68.1-ai.preview1262][2026/11/24]
 
