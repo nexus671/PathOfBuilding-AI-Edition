@@ -74,4 +74,31 @@ describe("Compact Calcs navigation", function()
 		main.portraitMode = originalPortrait
 		main.popups = { }; ui:restore()
 	end)
+
+	it("keeps enabled sections reachable on populated builds", function()
+		for _, file in ipairs({ "OccVortex.xml", "Mirage Archer Toxic Rain.xml" }) do
+			local input = assert(io.open("../spec/TestBuilds/3.13/" .. file, "rb"))
+			local xml = input:read("*a"); input:close()
+			loadBuildFromXML(xml, file); main.popups = { }
+			local ui = require("Modules.HeadlessUI").install({ width = 640, height = 480 })
+			ui:bind(build); ui:frame(); ui:click("modeCalcs"); ui:frame()
+			local calcs = build.calcsTab
+			local horizontal, vertical = calcs.controls.scrollBarH, calcs.controls.scrollBar
+			local right = calcs.x + calcs.width - 18 + horizontal.offsetMax
+			local bottom = calcs.y + calcs.height - 14 + vertical.offsetMax
+			local count = 0
+			for _, section in ipairs(calcs.sectionList) do if section.enabled and not section.isOverlay then
+				count = count + 1
+				local x, y = section:GetPos(); local w, h = section:GetSize()
+				assert.is_true(x >= calcs.x and x + w <= right + 1 and y >= calcs.y and y + h <= bottom + 1, file .. " has an unreachable section")
+			end end
+			assert.is_true(count > 20)
+			local previousX = horizontal.offsetMax
+			horizontal:SetOffset(previousX); ui:frame(); ui.cursorX, ui.cursorY = 500, 200
+			ui:key("WHEELDOWN"); ui:frame()
+			assert.equal(previousX, horizontal.offset)
+			assert.is_true(vertical.offset > 0)
+			main.popups = { }; ui:restore()
+		end
+	end)
 end)
