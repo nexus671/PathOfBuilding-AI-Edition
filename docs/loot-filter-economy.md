@@ -84,6 +84,17 @@ After a verified sync, use **Test observed stack** to enter a stackable item's e
 
 In **Preview changes**, **Offline price preview**, or **Review league change**, **Test observed stack** compares the current and proposed text shown in that preview. You can check the proposed visibility before saving the policy or league.
 
+Choose **Compare file** to review up to 250 recorded stacks at once. Use a JSON array with one entry per observed stack. Repeated entries count as separate observations. Add `ItemLevel` if known and `Class` if the name alone does not identify the stackable class.
+
+```json
+[
+  {"BaseType":"Orb of Transmutation","StackSize":24,"AreaLevel":83},
+  {"BaseType":"Orb of Alteration","StackSize":5,"AreaLevel":67}
+]
+```
+
+The report counts stacks that become visible, become hidden, stay at the same visibility, or remain unresolved. Select an outcome to see which items contributed and the matching lines in each filter.
+
 ## Managed exchange feeds
 
 In **Managed price rules**, enter an exact commodity name, its filter class, scope, and baseline stack cutoff. Choose **Exchange feed** for a category such as Scarabs, Fossils, or Tattoos. PoB matches the name within that feed and uses its own price history. **Default exchange feeds** keeps the usual lookup for existing rules.
