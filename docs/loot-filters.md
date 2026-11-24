@@ -111,7 +111,7 @@ For strict `<` and `>` comparisons, a socket pattern matches when **any** specif
 
 If the supplied socket count and colour list disagree, colour-dependent socket checks report unknown. A count-only alternative can still match independently. Negative socket-colour and linked-group comparisons also report unknown until their game behaviour is verified; numeric-only negative `Sockets` comparisons are supported.
 
-For modifier or enchantment counts, the game requires the operator and number together, such as `HasExplicitMod >=2 "of Haast" "of Ephij"`. The rule editor formats this automatically and flags a separated operator in imported rules.
+New rule conditions start with an empty value. Enter a value for each condition before keeping the rule; the disabled button explains what needs attention. For modifier or enchantment counts, the game requires the operator and number together, such as `HasExplicitMod >=2 "of Haast" "of Ephij"`. The rule editor formats this automatically and flags a separated operator in imported rules.
 
 **Import** accepts `.filter` and `.ruthlessfilter` text. The original text stays in the build, separate from personal rules. The compiler adapts GGG's announced 3.30 BaseType renames and removals and adds Show rules for new items. If removing old items empties a BaseType list, it discards that entire block instead of broadening it. **Audit / update** lists migrations and parser diagnostics. New items remain visible rather than receiving invented economy tiers.
 
