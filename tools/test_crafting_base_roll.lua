@@ -15,6 +15,15 @@ local regenGoal={anyOf={"LifeRegeneration2"},minBaseValue=4,maxBaseValue=4}
 assert(sim.matches(divined.state,{regenGoal},nil,model))
 
 
+local jewelRaw="Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86";local jewel=sim.model(jewelRaw);local manaRegen=assert(jewel.byId.AbyssFlatManaShieldRegenerationJewel1)
+local manaTick=sim.rollRange(manaRegen,function() return 0.02 end);assert(math.abs(manaTick-1/54)<1e-10,"Mana regeneration must use raw per-minute ticks")
+local jewelState=copyTable(jewel.initial);jewelState.rarity="RARE";jewelState.affixes={{id="AbyssFlatManaShieldRegenerationJewel1",range=0.5}}
+local manaDivined=sim.perform(jewelRaw,{method="divine"},7,jewelState);local manaReroll=manaDivined.state.affixes[1].range;assert(math.abs(manaReroll*54-math.floor(manaReroll*54+0.5))<1e-8,"Divine reroll lost the raw mana-regeneration tick")
+
+for _,case in ipairs({{"Rarity: NORMAL\nHubris Circlet\nItem Level: 86\nCrusader Item","EnergyShieldRegenInfluence1"},{"Rarity: NORMAL\nPlate Vest\nItem Level: 86\nElder Item","LifeRegenerationRatePercentUber1"}}) do
+ local percentModel=sim.model(case[1]);local percentMod=assert(percentModel.byId[case[2]]);assert(math.abs(sim.rollRange(percentMod,function() return 0.04 end)-1/30)<1e-9,"Percentage regeneration must use raw per-minute ticks")
+end
+
 local goal={anyOf={"IncreasedLife4"},minBaseValue=65,maxBaseValue=67}
 assert(sim.singleBaseRoll(model.byId.IncreasedLife4,0.8)==66)
 assert(sim.matches(state,{goal},nil,model));state.affixes[1].range=0.5;assert(not sim.matches(state,{goal},nil,model))
