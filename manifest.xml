@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.69.0-ai.preview1276" />
+	<Version number="2.69.0-ai.preview1277" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="b561a9edfe7b74fb77f89ed3f95685f637b7e632" />
+	<File name="changelog.txt" part="default" sha1="7eea17b6f783b7acad7f96966041ef2390d843b2" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
@@ -2018,7 +2018,7 @@
 	<File name="Modules/AtlasRegions.lua" part="program" sha1="e418859ff34df69202221e4d46f5c3f1275afc3b" />
 	<File name="Modules/AtlasStrategy.lua" part="program" sha1="ded6873f204e28aeb113fa20e3f842753d54a730" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="645f7029289c96e150d0f14283ca126ba7411df7" />
-	<File name="Modules/Build.lua" part="program" sha1="522151ec5b6730e175806dda84925e5bc13dce9a" />
+	<File name="Modules/Build.lua" part="program" sha1="c26e3520d724b9ba1d38b3baf171bde7e78040a5" />
 	<File name="Modules/BuildDisplayStats.lua" part="program" sha1="ffc4da3b13c3d50f3580b452622429f0bd7e70ab" />
 	<File name="Modules/BuildInsights.lua" part="program" sha1="4fa3f589f42f550df982c5ede6be5827ff0a5c87" />
 	<File name="Modules/BuildJourney.lua" part="program" sha1="3885528e3fadc4a991d0a02767f0b7239c66d392" />
