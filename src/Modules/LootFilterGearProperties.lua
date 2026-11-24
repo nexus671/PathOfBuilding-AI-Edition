@@ -93,7 +93,10 @@ function M.target(item)
 	end
 	local weapon = item.weaponData and (item.weaponData[1] or item.weaponData[2])
 	local range = weapon and weapon.range
-	local class = item.base.weapon and item.base.subType or item.base.type
+	local weaponType = item.base.weapon and data.weaponTypeInfo[item.base.type]
+	-- Thrusting is an internal subtype of One Handed Sword.
+	local subtype = item.base.weapon and item.base.subType
+	local class = weaponType and weaponType.label or subtype~="Thrusting" and subtype or item.base.type
 	return {sockets=sockets,quality=quality,properties=properties,class=class,range=range and range/10}
 end
 

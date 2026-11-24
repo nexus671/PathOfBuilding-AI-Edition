@@ -1633,10 +1633,10 @@ Item Level: 86
 	local noAxeProps=equipmentRow(42,"Siege Axe",sockets("RRG"),{property("Quality","+20%")},axeMods)
 	layout.stashes[2]=stash(41,"Weapon#0041",{goodAxe,wrongAxe,noAxeProps})
 	assert(listings.compare(json.encode(layout),weaponTarget,"Covens").matched==1)
-	for _, variant in ipairs({{"Carving Knife","Rune Dagger"},{"Iron Staff","Warstaff"}}) do
+	for _, variant in ipairs({{"Carving Knife","Rune Dagger"},{"Iron Staff","Warstaff"},{"Jewelled Foil","One Handed Sword"}}) do
 		local native = new("Item"):Item(weapon.raw:gsub("Siege Axe",variant[1]))
 		local known = assert(listings.target(native))
-		assert(known.equipment.class==variant[2])
+		assert(known.equipment.class==variant[2],variant[1].." displayed as "..tostring(known.equipment.class))
 		local combat = {property("Quality","+20%"),{name=variant[2],values=assert(json.decode("[]"))}}
 		for name, value in pairs(known.equipment.properties) do combat[#combat+1]=property(name,tostring(value)) end
 		local listing=equipmentRow(50,variant[1],sockets("R-R-G"),combat,axeMods)
