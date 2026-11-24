@@ -21,28 +21,48 @@ function cacheRoot(raw) {
   return url.href;
 }
 
+function gemTuple(row, regular) {
+  const variant = row.variant;
+  const canonical = regular && variant != null && variant !== '';
+  const quality = canonical ? row.gemQuality ?? 0 : row.gemQuality;
+  const corrupted = canonical ? row.corrupted ?? false : row.corrupted;
+  if (!exchangeText(row.name) || /["\\]/.test(row.name) || !Number.isInteger(row.gemLevel)
+      || row.gemLevel < 1 || row.gemLevel > 40 || !Number.isInteger(quality)
+      || quality < 0 || quality > 100 || typeof corrupted !== 'boolean') return null;
+  return [row.name,row.gemLevel,quality,corrupted];
+}
+
+function regularGemVariant(row, tuple) {
+  if (row.baseType != null && row.baseType !== '' && row.baseType !== row.name
+      || ['Imbued','imbued','TransfiguredGem','transfiguredGem','transfigured'].some(flag=>row[flag]!=null && row[flag]!==false)
+      || row.metadata?.gemKind === 'transfigured' || row.metadata?.gemKind === 'imbued') return false;
+  if (row.variant == null || row.variant === '') return true;
+  const [,level,quality,corrupted] = tuple;
+  const expected = String(level) + (quality > 0 ? '/' + quality : '') + (corrupted ? 'c' : '');
+  return row.variant === expected;
+}
+
 function exactGemQuotes(rows, regular) {
   const identities = new Map();
   const variants = new Map();
   for (const row of rows) {
     const id=row?.detailsId;
-    if (typeof id!=='string' || !id.trim()) continue;
-    const valid=typeof row.name==='string' && row.name.trim() && Number.isInteger(row.gemLevel)
-      && row.gemLevel>=1 && row.gemLevel<=40 && Number.isInteger(row.gemQuality)
-      && row.gemQuality>=0 && row.gemQuality<=100 && typeof row.corrupted==='boolean';
-    if (!valid) {
-      identities.set(id,false);
+    const validId=typeof id==='string' && /^[A-Za-z0-9_.-]{1,200}$/.test(id);
+    if (!validId && !regular) continue;
+    const tuple=gemTuple(row,regular);
+    if (!tuple) {
+      if (validId) identities.set(id,false);
       continue;
     }
-    const tuple=[row.name,row.gemLevel,row.gemQuality,row.corrupted];
     if (!regular) tuple.push(row.baseType,row.variant,id);
     const key=JSON.stringify(tuple);
-    const eligible=positive(row.chaosValue) && positive(row.count) && positive(row.listingCount)
-      && (!regular || (row.baseType==null || row.baseType==='' || row.baseType===row.name)
-        && (row.variant==null || row.variant===''));
-    const signature=eligible && JSON.stringify([key,row.chaosValue]);
-    const prior=identities.get(id);
-    identities.set(id,prior===undefined || prior===signature ? signature : false);
+    const eligible=validId && positive(row.chaosValue) && positive(row.count) && positive(row.listingCount)
+      && (!regular || regularGemVariant(row,tuple));
+    if (validId) {
+      const signature=eligible && JSON.stringify([key,row.chaosValue]);
+      const prior=identities.get(id);
+      identities.set(id,prior===undefined || prior===signature ? signature : false);
+    }
     const volume=eligible ? Math.min(row.count,row.listingCount) : 0;
     const variant=variants.get(key);
     variants.set(key,{ id,volume:!variant ? volume : variant.id===id ? Math.min(variant.volume,volume) : 0 });
@@ -99,7 +119,7 @@ function priceEvidence(payload, category, kind) {
   const listed = priced.filter(row=>row.liquid);
   if (category==='SkillGem' || category==='ImbuedGem') {
     const exact=exactGemQuotes(payload.lines,category==='SkillGem');
-    if (!exact) throw new Error('No unambiguous listing-backed gem quote with explicit level, quality and corruption');
+    if (!exact) throw new Error('No unambiguous listing-backed gem quote with a consistent level, quality and corruption');
     return { priced:priced.length, listed:listed.length, exactGemQuotes:exact };
   }
   return { priced:priced.length, listed:listed.length };

@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1267][2026/11/24]
+
+* Match verified regular gem prices using the provider's live variant labels.
+
 VERSION[2.68.1-ai.preview1266][2026/11/24]
 
 * Fit crafting inventory actions in smaller windows.
