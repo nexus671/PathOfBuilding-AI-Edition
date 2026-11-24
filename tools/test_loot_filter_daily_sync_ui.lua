@@ -784,6 +784,30 @@ do
 	assert(not compare(row)[1].partialGemMatch) -- Existing complete alternate comparisons survive.
 	row.corrupted="false";assert(not pcall(compare,row));row.corrupted=nil
 	row.gemLevel=nil;row.gemQuality=nil;row.variant="Power Charge On Critical"
+	do
+		local function variant(id,level,quality,corrupted)
+			return {name="Cyclone",variant="Power Charge On Critical",detailsId=id,chaosValue=50,
+				count=40,listingCount=40,gemLevel=level,gemQuality=quality,corrupted=corrupted}
+		end
+		local variants={variant("unknown"),variant("corrupt",nil,nil,true),variant("uncorrupt",nil,nil,false),
+			variant("level-only",20,nil,false),variant("quality-only",nil,20,false),variant("complete",20,20,false)}
+		local function compareAll(lines)
+			local results=browser.rows(assert(json.encode({lines=lines})),{id="ImbuedGem"},"",target)
+			local indexed={};for _,value in ipairs(results) do indexed[value.identity]=value end
+			return indexed
+		end
+		local separate=compareAll(variants)
+		for _,value in ipairs(variants) do assert(separate[value.detailsId].price==50 and not separate[value.detailsId].conflicting) end
+		assert(separate.unknown.corrupted==nil and separate.corrupt.corrupted==true and separate.uncorrupt.corrupted==false)
+		assert(not separate.complete.partialGemMatch)
+		variants[#variants+1]=variant("duplicate-uncorrupt",nil,nil,false)
+		local grouped=compareAll(variants)
+		assert(grouped.uncorrupt.conflicting and grouped.uncorrupt.price==nil)
+		assert(grouped["duplicate-uncorrupt"].conflicting and grouped["duplicate-uncorrupt"].price==nil)
+		for _,id in ipairs({"unknown","corrupt","level-only","quality-only","complete"}) do
+			assert(grouped[id].price==50 and not grouped[id].conflicting,id)
+		end
+	end
 	local collection={skillsTab={socketGroupList={{imbuedSupport=target.imbuedSupport,gemList={{gemData={name="Cyclone",grantedEffect={support=false}},level=20,quality=20}}}}}}
 	main.popups={}
 	launch.DownloadPage=function(_,url,callback)

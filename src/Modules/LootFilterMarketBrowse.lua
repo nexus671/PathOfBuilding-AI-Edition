@@ -469,11 +469,21 @@ function M.rows(body, category, query, target, catalogue)
 					count=positive(item.count) and item.count or nil,
 					listings=positive(item.listingCount) and item.listingCount or nil,
 				}
-				if partialGemMatch then partialRows[#partialRows+1]=out[#out] end
+				if partialGemMatch then
+					-- Omitted dimensions remain distinct from explicit values, in
+					-- particular unknown corruption versus either boolean state.
+					local dimensions=assert(json.encode({item.gemLevel or "absent",item.gemQuality or "absent",
+						item.corrupted==nil and "absent" or item.corrupted}))
+					local group=partialRows[dimensions] or {}
+					group[#group+1]=out[#out]
+					partialRows[dimensions]=group
+				end
 			end
 		end
-		if #partialRows>1 then
-			for _, row in ipairs(partialRows) do row.conflicting,row.price,row.supported=true,nil,nil end
+		for _, group in pairs(partialRows) do
+			if #group>1 then
+				for _, row in ipairs(group) do row.conflicting,row.price,row.supported=true,nil,nil end
+			end
 		end
 	end
 	table.sort(out,function(a,b)
