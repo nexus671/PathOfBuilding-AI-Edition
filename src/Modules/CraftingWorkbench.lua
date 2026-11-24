@@ -54,7 +54,7 @@ function M.drawArt(handle,x,y,width,height,sprite)
  else DrawImage(handle,x,y,width,height) end
 end
 function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
-	options=options or {};local weaponItem=model.item.base.weapon~=nil;local header=(options.header or 180)+(weaponItem and 22 or 0);local artSize=options.artSize or 84;local propertyX=artSize+26
+	options=options or {};local weaponItem=model.item.base.weapon~=nil;local header=(options.header or 180)+(weaponItem and not options.short and 22 or 0);local artSize=options.artSize or 84;local propertyX=artSize+26
 	local art,artWidth,artHeight,artPath,flaskSprite
 	local function setArt(item)
 		local path,width,height=M.itemArt(item)
@@ -82,6 +82,23 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 			SetDrawColor(color);DrawString(cx+w/2,cy+8,"CENTER_X",20,"VAR",title);DrawString(cx+w/2,cy+33,"CENTER_X",16,"VAR",subtitle)
 			box(cx+12,cy+56,w-24,1,"^x756647")
 		else text(cx+16,cy+9,20,title,color,w-32);text(cx+16,cy+33,16,subtitle,color,w-32) end
+		if options.short then
+			SetDrawColor(1,1,1,state.destroyed and 0.2 or 1)
+			local ax,ay=cx+12+(artSize-artWidth)/2,cy+66+(artSize-artHeight)/2
+			M.drawArt(art,ax,ay,artWidth,artHeight,flaskSprite)
+			text(cx+propertyX,cy+67,14,"Item level "..item.itemLevel,nil,w-propertyX-12)
+			local quality=state.quality or item.quality or 0
+			if item.type~="Jewel" or quality~=0 then text(cx+propertyX,cy+85,14,"Quality: +"..quality.."%",nil,w-propertyX-12) end
+			text(cx+propertyX,cy+103,14,self.defences or "",nil,w-propertyX-12)
+			local sockets=state.sockets or item.sockets or {}
+			if state.socketLayoutUnknown then text(cx+12,cy+header-20,12,"Sockets unknown","^xE9BE7B",w-24)
+			else for i,socket in ipairs(sockets) do
+				local sx=cx+12+(i-1)*20
+				if i>1 and socket.color~="A" and sockets[i-1].color~="A" and socket.group==sockets[i-1].group then box(sx-7,cy+header-15,8,2,"^xA68B59") end
+				box(sx,cy+header-20,14,14,"^xA68B59");box(sx+2,cy+header-18,10,10,({R="^xE07070",G="^x70BB70",B="^x7070EE",W="^xEEEEEE",A="^x205B42"})[socket.color] or "^xC8C8C8")
+			end end
+			return
+		end
 		SetDrawColor(1,1,1,state.destroyed and 0.2 or 1)
 		local ax,ay=cx+12+(artSize-artWidth)/2,cy+66+(artSize-artHeight)/2
 		M.drawArt(art,ax,ay,artWidth,artHeight,flaskSprite)
@@ -178,6 +195,15 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 			if state.foreseeing then wrap(lines,"Foreseeing (modeled; game outcome unknown)","^xD4A5FF",w-30) end
 			if (state.intangibility or 0)>0 then wrap(lines,"Intangibility: "..state.intangibility.."%","^xD3B987",w-30) end
 			if (state.memoryStrands or 0)>0 then wrap(lines,"Memory strands: "..state.memoryStrands,"^xD3B987",w-30) end
+		end
+		if options.short then
+			local item=card.preview or model.item;local properties={}
+			local catalyst=state.catalyst or item.catalyst
+			if catalyst then wrap(properties,(catalystNames[catalyst] or "Catalyst").." quality: +"..(state.catalystQuality or item.catalystQuality or 0).."%","^xD3B987",w-30) end
+			if card.weaponStats then local weapon=card.weaponStats;wrap(properties,string.format("Weapon DPS %.1f | phys %.1f | ele %.1f | chaos %.1f",weapon.TotalDPS or 0,weapon.PhysicalDPS or 0,weapon.ElementalDPS or 0,weapon.ChaosDPS or 0),"^xA6B3C6",w-30);wrap(properties,string.format("%.2f attacks/s | %.2f%% crit",weapon.AttackRate or 0,weapon.CritChance or 0),"^xA6B3C6",w-30) end
+			if card.influenceSummary then wrap(properties,card.influenceSummary,"^xD3B987",w-30) end
+			wrap(properties,require("Modules.CraftingInspection").slots(model,state),"^xA6B3C6",w-30)
+			for i=#properties,1,-1 do table.insert(lines,1,properties[i]) end
 		end
 		mods.list=lines;mods.controls.scrollBar.offset=0
 		if options.compact then

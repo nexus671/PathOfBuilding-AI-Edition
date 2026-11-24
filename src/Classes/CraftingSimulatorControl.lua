@@ -89,11 +89,13 @@ function Panel.Open(build,project,layout)
 	local priceOverrides=copyTable(restored and restored.priceOverrides or {})
 	local width=layout and layout.width or math.min(1120,main.screenW-40)
 	local height=layout and layout.height or math.max(520,math.min(740,main.screenH-60))
-	local leftWidth=math.max(416,math.min(width-400,layout and layout.craftWidth or restored and restored.craftWidth or 416))
+	local compact=width<800 or height<550
+	local leftWidth=compact and math.floor((width-48)*0.55) or math.max(416,math.min(width-400,layout and layout.craftWidth or restored and restored.craftWidth or 416))
 	local itemWidth=math.min(540,width-leftWidth-64)
 	local itemX=leftWidth+32+math.floor((width-leftWidth-48-itemWidth)/2)
 	label(controls,"intro",16,64,"Select a currency, then click your item to craft.")
-	local refreshItem=workbench.item(controls,"item",itemX,112,itemWidth,height-184,model,function() return state end,function() controls.apply:Click() end,{header=196,artSize=96,compact=true,slot=draft.slot,selectedAffix=function() return inspectedId end,changedAffixes=function() return changedAffixes end})
+	local shortItem=height<480
+	local refreshItem=workbench.item(controls,"item",itemX,112,itemWidth,height-184,model,function() return state end,function() controls.apply:Click() end,{header=shortItem and 142 or 196,artSize=shortItem and 48 or 96,short=shortItem,compact=true,slot=draft.slot,selectedAffix=function() return inspectedId end,changedAffixes=function() return changedAffixes end})
 	controls.targetSummary=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,244,416,height-312},nil,{})
 	local targetReason,savedResultRows,warningActive,oddsContext
 	local function refresh(extra,capturedOdds)
@@ -135,7 +137,7 @@ function Panel.Open(build,project,layout)
 		local workingWarning=targetReason and targetReason()
 		local savedWarning=targetReason and draft.nativeRecipe and targetReason(true)
 		if controls.resultSummary then
-			if extra then savedResultRows=rows(extra);oddsContext=capturedOdds
+			if extra then savedResultRows=rows(extra,leftWidth-28);oddsContext=capturedOdds
 			elseif not warningActive then savedResultRows=controls.resultSummary.list end
 			local notices={}
 			if workingWarning then notices[#notices+1]="Working item: "..workingWarning end
@@ -812,8 +814,20 @@ function Panel.Open(build,project,layout)
 			if result.trials>=limit then return limit==2000 and "This setup has reached the maximum of 2,000 trials." or "This setup has reached its "..limit.."-trial limit. Reduce the action budget in a new simulation to allow more trials." end
 			return "Repeat this captured recipe, item, targets, seed and prices with more trials. Only the trial count changes."
 		end
+		local resultWidth=math.min(860,main.screenW-24)
+		if resultWidth<860 then
+			for _,key in ipairs({"successCard","attemptCard","costCard","intervalCard","medianSpend","unluckySpend","veryUnluckySpend","precision"}) do popup[key].shown=false end
+			local summary={"Success: "..ui.percent(result.successChance,1).." | "..result.successes.." / "..result.trials.." trials",string.format("Mean attempts: %.1f | Mean spending: ",result.meanActions)..(result.meanCost and string.format("%.2f %s",result.meanCost,result.costCurrency) or "Not priced"),"95% interval: "..ui.percent(result.confidenceLow,1).." - "..ui.percent(result.confidenceHigh,1)}
+			for _,line in ipairs(precision) do summary[#summary+1]=line end
+			if result.spendingQuantiles then for _,entry in ipairs({{"Median","p50"},{"90th percentile","p90"},{"99th percentile","p99"}}) do summary[#summary+1]=entry[1].." spending: "..string.format("%.2f %s",result.spendingQuantiles[entry[2]],result.costCurrency) end else summary[#summary+1]="Spending percentiles unavailable: supply every action price." end
+			local compactLines=ui.rows(summary,resultWidth-60);for _,line in ipairs(lines) do for _,row in ipairs(ui.rows({line[1]},resultWidth-60)) do compactLines[#compactLines+1]=row end end
+			popup.results.x=16;popup.results.y=28;popup.results.width=resultWidth-32;popup.results.height=resultHeight-122;popup.results.list=compactLines
+			popup.resources.x=16;popup.resources.width=110;popup.item.x=134;popup.item.width=resultWidth-426;popup.preview.x=resultWidth-284;popup.preview.width=112;popup.keepTarget.x=resultWidth-164;popup.keepTarget.width=148
+			popup.moreTrials.x=16;popup.moreTrials.width=135;popup.sample.x=159;popup.sample.width=156;popup.charts.x=323;popup.charts.width=130;popup.close.x=resultWidth-155;popup.close.width=139
+			popup.sample.label=function() local index=popup.item:GetSelValueByKey("val");return index and result.retainedSuccesses and result.retainedSuccesses[index] and "Inspect selected" or "Inspect sample" end
+		end
 		ui.style(popup,{moreTrials=true})
-		main:OpenPopup(860,resultHeight,"Crafting simulation results",popup,nil,nil,"close")
+		main:OpenPopup(resultWidth,resultHeight,"Crafting simulation results",popup,nil,nil,"close")
 	end)
 	local function openManual(directSockets)
 		local editor=require("Classes.CraftingItemEditorControl").Open(model,state,function(edited)
@@ -844,7 +858,7 @@ function Panel.Open(build,project,layout)
 		if tasks.job and tasks.job.owner==controls then tasks.cancel("Crafting view closed") end
 		if layout then layout.openProjects() else ui.discard(build,"workingCraft",draft.id);main:ClosePopup() end
 	end)
-	controls.resultSummary=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,398,416,height-464},nil,rows({"Run an action or a recipe to inspect its results."}))
+	controls.resultSummary=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,398,416,height-464},nil,rows({"Run an action or a recipe to inspect its results."},leftWidth-28))
 	controls.undo.enabled=function() return #history>0 end
 	controls.undo.tooltipText=function() return #history==0 and "Apply a crafting action first; there is nothing to undo." or "Undo the most recent crafting action." end
 	targetReason=function(saved)
@@ -950,19 +964,19 @@ function Panel.Open(build,project,layout)
 	controls.page.selFunc=function() refresh() end
 	button(controls,"settings",16,380,200,"Find currencies",palette)
 	button(controls,"benchRarity",16,458,416,"Preview bench rarity outcome",function()
-		local popup={}
-		ui.description(popup,"help",16,30,350,110,{"Choose a hypothetical outcome to inspect.","Modifier rolls and retained properties are estimates.","Rarity odds, price and eligibility are unknown.","Unique references may be legacy or unavailable.","Unique values, sockets and quality are illustrative.","Copied text does not retain this label."},14)
-		popup.outcome=new("DropDownControl"):DropDownControl(ui.anchor,{16,150,300,26},{{label="Magic example",val="MAGIC"},{label="Rare example",val="RARE"},{label="Unique reference",val="UNIQUE"}})
-		popup.unique=new("DropDownControl"):DropDownControl(ui.anchor,{16,188,300,26},{})
+		local popup={};local popupWidth=math.min(768,main.screenW-24);local popupHeight=math.min(500,main.screenH-24);local left=math.floor((popupWidth-48)/2);local rightX=left+32;local rightWidth=popupWidth-rightX-16
+		ui.description(popup,"help",16,30,left,110,{"Choose a hypothetical outcome to inspect.","Modifier rolls and retained properties are estimates.","Rarity odds, price and eligibility are unknown.","Unique references may be legacy or unavailable.","Unique values, sockets and quality are illustrative.","Copied text does not retain this label."},14)
+		popup.outcome=new("DropDownControl"):DropDownControl(ui.anchor,{16,150,left,26},{{label="Magic example",val="MAGIC"},{label="Rare example",val="RARE"},{label="Unique reference",val="UNIQUE"}})
+		popup.unique=new("DropDownControl"):DropDownControl(ui.anchor,{16,188,left,26},{})
 		popup.unique.shown=function() return popup.outcome:GetSelValueByKey("val")=="UNIQUE" end
-		popup.reference=ui.description(popup,"reference",16,346,350,60,{},14)
+		popup.reference=ui.description(popup,"reference",16,346,left,60,{},14)
 		popup.reference.shown=popup.unique.shown
-		popup.notice=ui.description(popup,"notice",16,414,350,32,{},14)
+		popup.notice=ui.description(popup,"notice",16,popupHeight-86,left,32,{},14)
 		local function showSource()
 			local choice=popup.unique:GetSelValue();local source=choice and choice.source
-			popup.reference.list=ui.rows({#popup.unique.list==0 and "No bundled unique references for this base." or source and "Bundled source: "..source or "Bundled source not recorded."},334,14)
+			popup.reference.list=ui.rows({#popup.unique.list==0 and "No bundled unique references for this base." or source and "Bundled source: "..source or "Bundled source not recorded."},left-16,14)
 		end
-		local show=require("Classes.JourneyItemControl").new(popup,"example",390,30,360,408,"CONDITIONAL EXAMPLE",{expanded=true})
+		local show=require("Classes.JourneyItemControl").new(popup,"example",rightX,30,rightWidth,popupHeight-92,"CONDITIONAL EXAMPLE",{expanded=true})
 		local example,kept
 		local function generate()
 			local outcome=popup.outcome:GetSelValueByKey("val")
@@ -981,12 +995,12 @@ function Panel.Open(build,project,layout)
 			end
 		end
 		popup.unique.selFunc=function() example=nil;popup.notice.list={};show(nil);showSource() end
-		button(popup,"generate",16,230,300,"Generate example",generate)
+		button(popup,"generate",16,230,left,"Generate example",generate)
 		popup.generate.enabled=function() return popup.outcome:GetSelValueByKey("val")~="UNIQUE" or #popup.unique.list>0 end
 		popup.generate.tooltipText=function() return not popup.generate:IsEnabled() and "No bundled unique references are available for this base. Choose another outcome." or "Generate a conditional example without applying a craft." end
-		button(popup,"copy",16,268,300,"Copy example item",function() assert(example,"Generate an example first");Copy(example.itemText) end)
+		button(popup,"copy",16,268,left,"Copy example item",function() assert(example,"Generate an example first");Copy(example.itemText) end)
 		popup.copy.enabled=function() return example~=nil end
-		button(popup,"keep",16,306,300,"Keep as new project",function()
+		button(popup,"keep",16,306,left,"Keep as new project",function()
 			assert(example,"Generate an example first")
 			local store=build.savers.CraftingProjects;local id,exists,attempt
 			repeat
@@ -995,11 +1009,11 @@ function Panel.Open(build,project,layout)
 			until not exists
 			local title="Bench rarity example ("..example.outcome:lower()..")"
 			local project=require("Modules.CraftingBenchRarityPreview").project(draft.startingItem,example,draft.slot,title,id)
-			store:Upsert(project);kept=true;popup.notice.list=ui.rows({"Project kept. Save the build to retain it."},334,14)
+			store:Upsert(project);kept=true;popup.notice.list=ui.rows({"Project kept. Save the build to retain it."},left-16,14)
 		end)
 		popup.keep.enabled=function() return example~=nil and not kept end
-		button(popup,"close",630,458,120,"Close",function() main:ClosePopup() end)
-		ui.style(popup,{generate=true});main:OpenPopup(768,500,"Bench rarity preview",popup,nil,nil,"close")
+		button(popup,"close",popupWidth-138,popupHeight-42,120,"Close",function() main:ClosePopup() end)
+		ui.style(popup,{generate=true});main:OpenPopup(popupWidth,popupHeight,"Bench rarity preview",popup,nil,nil,"close")
 	end)
 	controls.benchRarity.tooltipText="View a conditional magic or rare example; this does not simulate rarity odds or apply a craft."
 	local function crafting() return controls.page:GetSelValue()=="Emulate item" and not paletteOpen and not inspectedId end
@@ -1134,11 +1148,37 @@ function Panel.Open(build,project,layout)
 	controls.affixBack.height=28;controls.affixTarget.height=28
 	ui.style(affixControls,{affixTarget=true})
 	for key,control in pairs(controls) do
-		if key~="item" and key~="itemMods" and key~="stage" and key~="projectName" and not key:match("^currency_") and not key:match("^palette") and not key:match("^affix") and type(control.x)=="number" and control.x<448 and type(control.width)=="number" then
+		if key~="item" and key~="itemMods" and key~="stage" and key~="projectName" and key~="inventory" and key~="keepItem" and not key:match("^currency_") and not key:match("^palette") and not key:match("^affix") and type(control.x)=="number" and control.x<448 and type(control.width)=="number" then
 			control.x=16+math.floor((control.x-16)*leftWidth/416);if control.width>0 then control.width=math.floor(control.width*leftWidth/416) end
 		end
 	end
-	if layout then ui.splitter(controls,"splitter",leftWidth+19,84,height-148,function(delta)
+	if compact then
+		local compactRows={
+			["Target conditions"]={targetLabel=96,target=112,addTarget=144,alternative=144,clearTargets=144,targetPicker=176,targetConditions=208,targetGroups=208,targetSummary=240},
+			["Simulate recipe"]={trialsLabel=88,trials=104,budget=104,priceLabel=136,price=152,currency=152,baseCost=152,simulate=184,runRecipe=184,editRecipe=216,resourcePrices=216,optimize=248,fossilResults=248,distribution=280,compareRecipes=280,resultSummary=312},
+			["Craft settings"]={methodLabel=96,method=112,configure=144,keepRecipe=176,reset=176,exact=208,compareItem=208,seedLabel=240,seed=256,inspectItem=288,allflame=320,gwennen=320,manual=352,benchRarity=384},
+		}
+		for _,positions in pairs(compactRows) do for key,y in pairs(positions) do controls[key].y=y end end
+		controls.targetSummary.height=math.max(48,height-controls.targetSummary.y-48)
+		controls.resultSummary.height=math.max(44,height-controls.resultSummary.y-40)
+		for _,key in ipairs({"allflame","gwennen","manual","benchRarity"}) do controls[key].shown=false end
+		button(controls,"moreSettings",16,320,leftWidth,"More craft settings",function()
+			local entries={{id="allflame",label="Allflame settings"},{id="gwennen",label="Record Gwennen pair"},{id="manual",label="Edit hypothetical item"},{id="benchRarity",label="Preview bench rarity outcome"}}
+			browser.Open("More craft settings",entries,{action="Open",closeOnChoose=false,canChoose=function(entry) return controls[entry.id]:IsEnabled() end,choose=function(entry) main:ClosePopup();controls[entry.id].onClick() end})
+		end)
+		controls.moreSettings.shown=function() return controls.page:GetSelValue()=="Craft settings" end
+		controls.selectedAction.y=224;controls.actionHint.y=248;controls.actionHint.height=24
+		controls.actionHint.shown=function() return crafting() and #controls.option.list==0 end
+		controls.optionLabel.shown=false;controls.option.y=250
+		controls.apply.y=278;controls.undo.y=278;controls.apply.height=28;controls.undo.height=28
+		controls.settings.y=310;controls.history.y=310
+		controls.preview.x=16;controls.preview.y=height-32;controls.preview.width=112
+		controls.keepWorking.x=136;controls.keepWorking.y=height-32;controls.keepWorking.width=144
+		controls.cancelJob.x=136;controls.cancelJob.y=height-32;controls.cancelJob.width=144
+		controls.coverage.x=288;controls.coverage.y=height-32;controls.coverage.width=144
+		controls.close.x=width-184;controls.close.y=height-32;controls.close.width=168
+	end
+	if layout and not compact then ui.splitter(controls,"splitter",leftWidth+19,84,height-148,function(delta)
 		layout.workbench=layout.snapshot();layout.craftWidth=math.max(416,math.min(width-400,leftWidth+delta));Panel.Open(build,draft,layout)
 	end);controls.splitter.enabled=function() return not tasks.job end end
 	if restored then controls.method:SelByValue(restored.method or "alchemy","val");controls.resultSummary.list=restored.resultRows or controls.resultSummary.list

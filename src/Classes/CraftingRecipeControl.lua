@@ -13,7 +13,7 @@ end
 function Panel.Open(recipe,currentAction,onKeep,model,options)
 	options=options or {}
 	local draft=copyTable(recipe or {steps={},targets={}})
-	local controls={};local selected=1;local baseline
+	local controls={};local selected=1;local baseline;local compact=main.screenW<884 or main.screenH<544
 	local ui=require("Modules.PlanningUI")
 	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,28,0,14},"Select a step.")
 	controls.graph=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,62,828,264},nil,{})
@@ -52,10 +52,10 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		end
 		routes[#routes+1]={label="End recipe",val=#draft.steps+1}
 		controls.graph.list=lines;controls.step:SetList(list);controls.step:SelByValue(selected,"val")
-		controls.success:SetList(routes)
 		local failureRoutes=copyTable(routes);local recovery=require("Classes.CraftingRecoveryControl")
 		for _,policy in ipairs({"stop","restart","salvage"}) do failureRoutes[#failureRoutes+1]={label=recovery.labels[policy],val=policy} end
-		controls.failure:SetList(failureRoutes);loadStep()
+		if compact then for _,entry in ipairs(routes) do entry.label="Success: "..entry.label end;for _,entry in ipairs(failureRoutes) do entry.label="Failure: "..entry.label end end
+		controls.success:SetList(routes);controls.failure:SetList(failureRoutes);loadStep()
 	end
 	local function saveSelected()
 		if not draft.steps[selected] then return end
@@ -284,10 +284,27 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 	controls.editRog.shown=selectedRog
 
 	button(controls,"close",728,642,116,"Close",function() main:ClosePopup() end)
-	local height=math.max(520,math.min(690,main.screenH-60));local offset=690-height
-	controls.graph.height=264-offset
-	for key,control in pairs(controls) do if key ~= "graph" and control.y >= 350 then control.y=control.y-offset end end
-	refresh();ui.style(controls,{keep=true});for _,control in pairs(controls) do control.layoutAudit="recipe-editor" end;main:OpenPopup(860,height,"Crafting recipe routes",controls,nil,nil,"close")
+	local width=math.min(860,main.screenW-24);local height=compact and math.min(690,main.screenH-24) or math.max(520,math.min(690,main.screenH-60))
+	if width<860 or height<520 then
+		local inner=width-32;local third=math.floor((inner-16)/3);local half=math.floor((inner-8)/2);local quarter=math.floor((inner-24)/4)
+		controls.graph.x=16;controls.graph.y=62;controls.graph.width=inner;controls.graph.height=80
+		controls.step.x=16;controls.step.y=150;controls.step.width=inner
+		controls.attempts.x=16;controls.attempts.y=182;controls.attempts.width=120;controls.attempts.prompt="Attempts"
+		controls.condition.x=144;controls.condition.y=182;controls.condition.width=inner-128
+		controls.routeLabel.shown=false;controls.success.x=16;controls.success.y=214;controls.success.width=half;controls.success.tooltipText="Route after success";controls.failure.x=24+half;controls.failure.y=214;controls.failure.width=half;controls.failure.tooltipText="Route after failure or exhausted attempts"
+		for index,key in ipairs({"add","replace","delete"}) do controls[key].x=16+(index-1)*(third+8);controls[key].y=248;controls[key].width=third end
+		controls.add.label="Append action";controls.replace.label="Replace action";controls.delete.label="Delete step"
+		controls.update.x=16;controls.update.y=280;controls.update.width=half;controls.recovery.x=24+half;controls.recovery.y=280;controls.recovery.width=half
+		for index,key in ipairs({"reviewUnlocks","trackUnlock","flowGraph"}) do controls[key].x=16+(index-1)*(third+8);controls[key].y=312;controls[key].width=third end
+		controls.note.y=346;controls.note.label="Routes stop at the action budget."
+		for index,key in ipairs({"keep","addCurrency","editFossils","close"}) do controls[key].x=16+(index-1)*(quarter+8);controls[key].y=height-42;controls[key].width=quarter end
+		for _,key in ipairs({"editBeast","editRog"}) do controls[key].x=16+2*(quarter+8);controls[key].y=height-42;controls[key].width=quarter end
+		controls.addCurrency.label="Add step";controls.editBeast.label="Beast level";controls.keep.label="Keep recipe"
+	else
+		local offset=690-height;controls.graph.height=264-offset
+		for key,control in pairs(controls) do if key ~= "graph" and control.y >= 350 then control.y=control.y-offset end end
+	end
+	refresh();ui.style(controls,{keep=true});for _,control in pairs(controls) do control.layoutAudit="recipe-editor" end;main:OpenPopup(width,height,"Crafting recipe routes",controls,nil,nil,"close")
 	return controls
 end
 return Panel

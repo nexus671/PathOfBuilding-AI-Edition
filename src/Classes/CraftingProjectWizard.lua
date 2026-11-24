@@ -141,6 +141,13 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 	button("preview",232,h-48,180,"Preview target stats",function() preview(read()) end)
 	button("close",w-136,h-48,120,"Cancel",function() ui.discard(build,"crafting");main:ClosePopup() end)
 	c.save.shown=function() return c.wizardPage.selIndex==4 end;c.preview.shown=c.save.shown;c.previous.shown=function() return c.wizardPage.selIndex>1 and c.wizardPage.selIndex<4 end;c.next.shown=function() return c.wizardPage.selIndex<4 end
+	if h<500 then
+		c.starting.height=100;c.pasteStarting.y=276;c.useEquipped.y=276;c.blankStarting.y=310;c.undoBlank.y=310;c.blankHint.y=344;c.blankHint.height=30
+		c.target.height=140;c.targetPreviewMods.height=108;c.pasteTarget.y=250;c.originalTarget.y=250;c.goalsLabel.y=286;c.goals.y=306;c.goals.height=math.max(48,h-360)
+		c.steps.height=110;c.notesLabel.y=226;c.notes.y=246;c.notes.height=48
+		for _,key in ipairs({"costLabel","currencyLabel","sourceLabel"}) do c[key].y=304 end
+		for _,key in ipairs({"cost","currency","priceSource"}) do c[key].y=322 end
+	end
 	update("starting",startPreview);update("target",targetPreview)
 	for _,control in pairs(c) do control.layoutAudit="crafting-project-wizard" end
 	ui.style(c,{next=true,save=true},{startPreview=true,targetPreview=true});main:OpenPopup(w,h,"Crafting project",c,nil,"title","close")

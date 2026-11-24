@@ -1,6 +1,10 @@
-VERSION[2.68.1-ai.preview1242][2026/11/23]
+VERSION[2.68.1-ai.preview1243][2026/11/23]
 
 * Keep campaign pickups, filter rules, drop testing and styling usable in smaller windows.
+
+VERSION[2.68.1-ai.preview1242][2026/11/23]
+
+* Keep crafting projects and workbench controls usable in smaller windows.
 
 VERSION[2.68.1-ai.preview1241][2026/11/23]
 
