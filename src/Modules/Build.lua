@@ -1887,7 +1887,7 @@ function buildMode:OpenSpectreLibrary()
 	local function UpdateMinionDisplay(selected)
 		self.lastSelectedMinion = selected
 		local minion = self.data.minions[selected]
-		local gemLevel = m_min(m_max(controls.minionGemLevel.buf, 1), 40)
+		local gemLevel = m_min(m_max(tonumber(controls.minionGemLevel.buf) or 1, 1), 40)
 		local minionLevel = data.skills["RaiseSpectre"].levels[gemLevel][2]
 		local baseLife = self.data.monsterLifeTable[m_min(minionLevel, 100)]
 		local totalLife = baseLife * minion.life

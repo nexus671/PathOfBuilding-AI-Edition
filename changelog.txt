@@ -1,6 +1,7 @@
 VERSION[2.69.0-ai.preview1269][2026/11/24]
 
 * Integrate upstream Path of Building 2.69.0.
+* Keep the Spectre Library usable while editing its gem level.
 
 VERSION[2.69.0][2026/11/24]
 
