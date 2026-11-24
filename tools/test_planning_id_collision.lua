@@ -48,3 +48,12 @@ end
 filterCopyUI:click('manage');filterCopyUI:text('search','Duplicate profile');filterCopyUI:click('choose');data.newId=realNewId
 local copied=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles
 assert(#copied==2 and copied[1].title=='Original' and copied[2].id=='filter-'..string.rep('b',20));filterCopyUI:restore();print('FILTER_PROFILE_ID_COLLISION_OK')
+newBuild();main.popups={};local gemUI=require('Modules.HeadlessUI').install({width=960,height=640});gemUI:bind(build)
+local journey=build.savers.BuildJourney;journey:Put('milestones',{id='gem-'..string.rep('a',20),title='Existing milestone',priority=3,dependencies={}})
+require('Classes.GemQualityPlanControl').Open(build);gemUI.clipboard='Item Class: Active Skill Gems\nRarity: Gem\nArc\n--------\nLevel: 20\nQuality: +12%';gemUI:click('paste')
+data.newId=function(prefix,entries,length)
+ calls=0;package.loaded.sha1=function() calls=calls+1;return string.rep(calls==1 and 'a' or 'b',40) end
+ local result=realNewId(prefix,entries,length);package.loaded.sha1=old or originalSha;return result
+end
+gemUI:click('keep');data.newId=realNewId
+assert(#journey.data.milestones==2 and journey.data.milestones[1].title=='Existing milestone' and journey.data.milestones[2].id=='gem-'..string.rep('b',20));gemUI:restore();print('GEM_MILESTONE_ID_COLLISION_OK')
