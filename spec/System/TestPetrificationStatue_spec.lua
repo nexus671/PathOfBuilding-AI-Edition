@@ -41,5 +41,16 @@ describe("Petrification Statue", function()
 		assert.equal(30, statue.levels[1].cooldown)
 		assert.equal(4000, statue.constantStats[1][2])
 		assert.matches("not automatically applied", statue.description)
+		build.calcsTab:BuildOutput()
+		local enemy = build.calcsTab.mainEnv.enemy.modDB
+		local before = { enemy:Sum("BASE", nil, "ActionSpeed"), enemy:Sum("INC", nil, "ActionSpeed"), enemy:More(nil, "ActionSpeed") }
+		local item = new("Item"):Item("Rarity: UNIQUE\nGreater Chimeral Eye\nChimeral Eye\nImplicits: 1\nGrants Level 20 Petrification Statue")
+		build.itemsTab:AddItem(item)
+		build.itemsTab.slots["Wickerman Head"].selItemId = item.id
+		build.buildFlag = true
+		runCallback("OnFrame")
+		build.calcsTab:BuildOutput()
+		enemy = build.calcsTab.mainEnv.enemy.modDB
+		assert.same(before, { enemy:Sum("BASE", nil, "ActionSpeed"), enemy:Sum("INC", nil, "ActionSpeed"), enemy:More(nil, "ActionSpeed") })
 	end)
 end)
