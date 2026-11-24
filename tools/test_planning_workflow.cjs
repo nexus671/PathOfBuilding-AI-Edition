@@ -2013,6 +2013,15 @@ async function main(){
   const copiedListings=await queued('compare_gear_listings',{baseRevision:context.revision,itemText:listingRing,snapshotPath,league:'Standard'},'gearListings');
   assert.equal(copiedListings.gearListings.source,'copied item');assert.deepEqual(copiedListings.gearListings.comparison,listings.gearListings.comparison);
   assert.deepEqual(fs.readFileSync(snapshotPath),snapshotBytes);assert.equal((await call('get_build_context')).context.revision,context.revision);
+  const captured={format:'pob-public-stash-capture-v1',realm:'pc',league:'Standard',capturedAt:1700000000,pages:[
+    {requestCursor:'start',response:{next_change_id:'next',stashes:[{id:'2'.repeat(64),public:true,league:'Standard',accountName:'Seller#0001',items:[listing]}]}},
+    {requestCursor:'next',response:{next_change_id:'end',stashes:[{id:'3'.repeat(64),public:true,league:'Standard',accountName:'Seller#0002',items:[{...listing,id:'4'.repeat(64),note:'~price 20 chaos'}]}]}}
+  ]};
+  fs.writeFileSync(snapshotPath,JSON.stringify(captured));
+  const captureBytes=fs.readFileSync(snapshotPath);
+  const capturedListings=await queued('compare_gear_listings',{baseRevision:context.revision,slot:'Ring 1',snapshotPath,league:'Standard'},'gearListings');
+  assert.equal(capturedListings.gearListings.comparison.matched,2);assert.equal(capturedListings.gearListings.comparison.capture.pages,2);
+  assert.deepEqual(fs.readFileSync(snapshotPath),captureBytes);assert.equal((await call('get_build_context')).context.revision,context.revision);
   const twoStone=listingRing.replace('Amethyst Ring','Two-Stone Ring (Fire/Cold)').replace('+23% to Chaos Resistance','+15% to Fire and Cold Resistances');
   const variant={...listing,baseType:'Two-Stone Ring',implicitMods:[{description:'+15% to Fire and Cold Resistances'}]};
   fs.writeFileSync(snapshotPath,JSON.stringify({next_change_id:'cursor',stashes:[{id:'2'.repeat(64),public:true,league:'Standard',accountName:'Seller#0001',items:[variant]}]}));

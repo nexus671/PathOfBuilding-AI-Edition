@@ -103,6 +103,14 @@ For an identified rare ring, amulet, or belt from the active build, choose **Fro
 
 AI clients can request the same offline review with `compare_gear_listings`, providing the build revision, an equipped jewellery slot or copied item text, an absolute path to a local JSON snapshot, and league ID. Poll `get_proposal_status` for aggregate results. The tool makes no market request and does not change the build; it does not establish whether a listing is still available or sold.
 
+To compare several pages recorded from the same PC stream, bundle up to 32 consecutive responses in a capture file. Keep the cursor actually used to request each page and the UTC capture time. The local bundler takes those values from the recorder and does not contact GGG. Select its output with **Compare listing file**.
+
+```powershell
+python tools/build_public_stash_capture.py --league Covens --captured-at 1795545600 --page cursor-a first.json --page cursor-b second.json covens-capture.json
+```
+
+Replace the example cursors, time, league and paths with the recorded values. The first page must return `cursor-b` in this example. PoB rejects gaps, cycles, a different league, and a non-PC capture. A later public change replaces the earlier tab. A withdrawal removes the tab. The reader accepts a 16 MiB capture or a 4 MiB single page. Capture metadata is declared by the recorder. A capture covers only the recorded stream window and cannot confirm full market coverage, live availability, or sales.
+
 Use **Check quote** in the rule editor to open a read-only lookup for the selected feed and exact item or variant. Choose the intended league before requesting prices. The lookup shows the current quote and liquidity evidence without saving the rule or publishing a filter.
 
 Choose **Embers of the Allflame** for an exact ember. PoB uses its per-item quote and can remove the baseline hide. An exported fixed baseline carries these feed selections into daily sync. Each explicit extra category is fetched once per refresh. If a required feed is unavailable, stale, or contains malformed rows, daily sync keeps the last verified output. Missing, ambiguous, or thin item quotes keep their baseline rules. [Market API reference](https://poe.ninja/docs/api)

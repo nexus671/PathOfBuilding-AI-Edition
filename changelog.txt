@@ -1,10 +1,14 @@
-VERSION[2.69.0-ai.preview1288][2026/11/24]
+VERSION[2.69.0-ai.preview1289][2026/11/24]
 
 * Let AI tools compare equipped or copied jewellery against a local listing snapshot.
 
-VERSION[2.69.0-ai.preview1287][2026/11/24]
+VERSION[2.69.0-ai.preview1288][2026/11/24]
 
 * Exclude unverified special item states from gear listing comparisons.
+
+VERSION[2.69.0-ai.preview1287][2026/11/24]
+
+* Compare gear listings across captured stash pages and apply later tab changes.
 
 VERSION[2.69.0-ai.preview1286][2026/11/24]
 
