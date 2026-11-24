@@ -4,7 +4,7 @@ local ui = require("Modules.PlanningUI")
 local sync = require("Modules.LootFilterDailySync")
 local M = {}
 
-function M.Open(build)
+local function open(build, managedTarget)
 	local width = math.min(680,main.screenW-40)
 	local controls = {}
 	local busy, popup, target
@@ -14,7 +14,7 @@ function M.Open(build)
 	for i, category in ipairs(browse.categories) do options[i]=category.label end
 	controls.category=new("DropDownControl"):DropDownControl(ui.anchor,{16,98,width-32,28},options)
 	ui.label(controls,"queryLabel",16,138,"Item name, base or variant",14)
-	controls.query=new("EditControl"):EditControl(ui.anchor,{16,160,width-32,26},"","Search prices",nil,100)
+	controls.query=new("EditControl"):EditControl(ui.anchor,{16,160,width-32,26},"","Search prices",nil,201)
 	ui.description(controls,"help",16,196,width-32,44,{"Start with = to match an exact name, base or price ID."},14)
 	ui.label(controls,"status",16,250,"",14)
 	local function status(label) controls.status.label=ui.fit(label,width-32,14) end
@@ -74,7 +74,8 @@ function M.Open(build)
 				if code==401 or code==403 then finish("Market provider denied access to this feed."); return end
 				if err or not response then finish("Market request failed. Try again later."); return end
 				callback(response)
-			end,{followRedirects=false,timeout=20,maxBytes=browse.maxBytes,header="Accept: application/json"})
+			end,{followRedirects=false,timeout=20,maxBytes=path=="leagues" and 65536
+				or comparable and comparable.managed and market.maxFeedBytes(category.id) or browse.maxBytes,header="Accept: application/json"})
 		end
 		local function prices()
 			status("Fetching "..category.label:lower().." for "..league.."...")
@@ -83,8 +84,21 @@ function M.Open(build)
 				local ok,body,age=pcall(sync.fresh,response,os.time())
 				if not ok then finish("Exchange response is unavailable or stale.");return end
 				local catalogue = main.uniqueDB and not main.uniqueDB.loading and main.uniqueDB.list
-				local valid,rows=pcall(browse.rows,body,category,query,comparable,catalogue)
-				if not valid then finish(ui.errorText(rows));return end
+				local valid,rows
+				local managedState
+				if comparable and comparable.managed then
+					local result
+					valid,result=pcall(browse.managedQuote,body,comparable)
+					if not valid then finish(ui.errorText(result));return end
+					managedState=result.state
+					local messages={empty="The selected feed has no current price rows.",missing="No quote matches this managed rule exactly.",
+						ambiguous="The exact managed quote is ambiguous."}
+					if messages[managedState] then finish(messages[managedState]);return end
+					rows={result.row}
+				else
+					valid,rows=pcall(browse.rows,body,category,query,comparable,catalogue)
+					if not valid then finish(ui.errorText(rows));return end
+				end
 				local entries={}
 				for i,row in ipairs(rows) do
 					if i>1000 then break end
@@ -127,12 +141,13 @@ function M.Open(build)
 				if not row.conflicting then
 					show("Links: ",row.links);show("Gem level: ",row.gemLevel)
 					show("Gem quality: ",row.gemQuality);show("Map tier: ",row.mapTier)
-					show("Observations: ",row.count);show("Listings: ",row.listings);show("Chaos quoted volume: ",row.volume)
+					show("Observations: ",row.count);show("Listings: ",row.listings)
+					show(row.liquidityUnit=="listing samples" and "Listing samples: " or "Chaos quoted volume: ",row.volume)
 				end
 				entries[#entries+1]={id=tostring(i), label=row.conflicting and row.identity or row.name,
 					details=details, search=table.concat(details," ")}
 				end
-				finish("Showing "..#entries.." of "..#rows.." matches.")
+				finish(managedState=="thin" and "The exact managed quote has insufficient market volume." or "Showing "..#entries.." of "..#rows.." matches.")
 				require("Classes.PlanningBrowserControl").Open(category.label.." market prices",entries)
 			end)
 		end
@@ -149,8 +164,25 @@ function M.Open(build)
 	end)
 	controls.get.enabled=function() return not busy end
 	controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-154,282,138,28},"Close",function() main:ClosePopup() end)
+	if managedTarget then
+		for index,category in ipairs(browse.categories) do
+			if category.id==managedTarget.category then controls.category:SetSel(index);break end
+		end
+		controls.query:SetText("="..managedTarget.name)
+		target=managedTarget
+		status("Exact managed target. Show prices to check its current quote.")
+	end
 	ui.style(controls)
 	popup=main:OpenPopup(width,330,"Browse loot market prices",controls,nil,nil,"close")
+end
+
+function M.Open(build)
+	return open(build)
+end
+
+function M.OpenForManagedRule(rule)
+	local target=assert(browse.managedTarget(rule),"Choose an explicit exchange feed for this managed item first")
+	return open(nil,target)
 end
 
 return M

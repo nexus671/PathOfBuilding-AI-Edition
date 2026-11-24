@@ -330,6 +330,35 @@ rulesUI:choose("class","Map Fragments","label")
 rulesUI:choose("exchangeCategory","Scarab","val")
 rulesUI:text("name","Harbinger Scarab")
 rulesUI:text("cutoff","4")
+do
+	local savedDownload = launch.DownloadPage
+	local requests, empty = 0, false
+	launch.DownloadPage = function(_, url, callback, opts)
+		requests = requests + 1
+		assert(url:find("league=Covens&type=Scarab",1,true) and opts.followRedirects==false)
+		local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\n\r\n",
+			body=empty and '{"core":{"primary":"chaos"},"items":[],"lines":[]}'
+				or '{"core":{"primary":"chaos"},"items":[{"id":"supported","name":"Harbinger Scarab"},{"id":"other","name":"harbinger scarab"}],'
+				..'"lines":[{"id":"supported","primaryValue":8,"volumePrimaryValue":400},{"id":"other","primaryValue":200,"volumePrimaryValue":400}]}'})
+	end
+	rulesUI:click("checkQuote")
+	assert(requests==0 and main.popups[1].controls.query.buf=="=Harbinger Scarab")
+	rulesUI:text("league","Covens")
+	rulesUI:click("get")
+	assert(requests==1)
+	local details = {}
+	for _, row in ipairs(main.popups[1].controls.details.list) do details[#details+1] = StripEscapes(row[1] or "") end
+	local shown = table.concat(details," ")
+	assert(shown:find("8 chaos",1,true) and shown:find("supported",1,true) and not shown:find("200 chaos",1,true))
+	rulesUI:click("close")
+	empty = true
+	rulesUI:click("get")
+	assert(requests==2 and main.popups[1].controls.status.label:find("no current price rows",1,true))
+	rulesUI:click("close")
+	assert(main.popups[1].title=="Edit managed price rule" and main.popups[1].controls.name.buf=="Harbinger Scarab")
+	launch.DownloadPage = savedDownload
+end
 rulesUI:click("save")
 rulesUI:text("search","Harbinger Scarab")
 rulesUI:click("choose")

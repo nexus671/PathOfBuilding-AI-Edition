@@ -1845,3 +1845,56 @@ local function checkStructuredFeedFailures()
 end
 checkStructuredFeedFailures()
 print("Failed feed evidence survives restart, covers retries and timeouts, preserves verified output, and excludes private errors")
+
+
+local function checkExactManagedQuoteInspection()
+	local browse=require("Modules.LootFilterMarketBrowse")
+	local json=require("dkjson")
+	local function exchange(name,price,volume)
+		return assert(json.encode({core={primary="chaos"},items={{id="exact-id",name=name}},
+			lines={{id="exact-id",primaryValue=price or 3,volumePrimaryValue=volume or 1000}}}))
+	end
+	local scarab=assert(browse.managedTarget({name="Harbinger Scarab",class="Map Fragments",scope="maps",cutoff=6,exchangeCategory="Scarab"}))
+	assert(scarab.managed and scarab.category=="Scarab" and scarab.name=="Harbinger Scarab")
+	local quote=browse.managedQuote(exchange("Harbinger Scarab"),scarab)
+	assert(quote.state=="quoted" and quote.row.identity=="exact-id" and quote.row.source=="Scarab")
+	assert(browse.managedQuote(exchange("harbinger scarab"),scarab).state=="missing")
+	assert(browse.managedQuote(exchange("Harbinger Scarab",3,1),scarab).state=="thin")
+	assert(browse.managedQuote('{"core":{"primary":"chaos"},"items":[],"lines":[]}',scarab).state=="empty")
+	local ambiguous='{"core":{"primary":"chaos"},"items":[{"id":"a","name":"Harbinger Scarab"},{"id":"b","name":"Harbinger Scarab"}],"lines":[{"id":"a","primaryValue":3,"volumePrimaryValue":1000},{"id":"b","primaryValue":5,"volumePrimaryValue":1000}]}'
+	assert(browse.managedQuote(ambiguous,scarab).state=="ambiguous")
+	assert(not browse.managedTarget({name="Orb of Alteration",class="Stackable Currency",scope="maps",cutoff=6}))
+	local card=browse.managedTarget({name="The Doctor",class="Divination Cards",scope="maps"})
+	assert(card.category=="DivinationCard" and browse.managedQuote(exchange("The Doctor",3,499),card).state=="thin")
+	local ember=browse.managedTarget({name="Allflame Ember of Abyss",class="Embers of the Allflame",scope="maps",exchangeCategory="AllflameEmber"})
+	assert(ember.category=="AllflameEmber" and browse.managedQuote(exchange("Allflame Ember of Abyss"),ember).state=="quoted")
+	local map=browse.managedTarget({class="Maps",tier=16,mapType="Map"})
+	local mapRow={name="Map (Tier 16)",detailsId="tier-16-exact",chaosValue=3,count=30,listingCount=30}
+	quote=browse.managedQuote(assert(json.encode({lines={mapRow}})),map)
+	assert(quote.state=="quoted" and quote.row.mapTier==16 and quote.row.identity=="tier-16-exact")
+	mapRow.name="Map (Tier 15)"
+	assert(browse.managedQuote(assert(json.encode({lines={mapRow}})),map).state=="missing")
+	assert(browse.managedQuote('{"lines":[]}',map).state=="empty")
+	local blighted=browse.managedTarget({class="Maps",tier=16,mapType="BlightedMap"})
+	assert(blighted.category=="BlightedMap" and browse.managedQuote(assert(json.encode({lines={mapRow}})),blighted).state=="missing")
+	local gem=browse.managedTarget({name="Arc",class="Skill Gems",scope="maps",gemLevel=20,gemQuality=20,corrupted=false})
+	local gemRow={name="Arc",detailsId="arc-exact",gemLevel=20,gemQuality=20,corrupted=false,chaosValue=5,count=50,listingCount=50}
+	local function gemResult(row) return browse.managedQuote(assert(json.encode({lines={row}})),gem) end
+	quote=gemResult(gemRow)
+	assert(quote.state=="quoted" and quote.row.identity=="arc-exact" and quote.row.corrupted==false and quote.row.gemLevel==20)
+	for key,value in pairs({gemLevel=19,gemQuality=19,corrupted=true,name="Arc of Surging"}) do
+		local row={}
+		for field,entry in pairs(gemRow) do row[field]=entry end
+		row[key]=value
+		assert(gemResult(row).state=="missing",key)
+	end
+	gemRow.variant="Imbued"
+	assert(gemResult(gemRow).state=="ambiguous")
+	gemRow.variant=nil;gemRow.count=1
+	assert(gemResult(gemRow).state=="thin")
+	assert(browse.managedQuote('{"lines":[]}',gem).state=="empty")
+	assert(not pcall(browse.managedQuote,'{"lines":[]} trailing',gem))
+	assert(not pcall(browse.managedQuote,'{"core":{"primary":"divine"},"items":[],"lines":[]}',scarab))
+end
+checkExactManagedQuoteInspection()
+print("Managed quote inspection uses exact exchange, card, map, gem and Allflame identities with shared liquidity checks")
