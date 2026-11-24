@@ -30,6 +30,15 @@ function M.errorText(value)
 	end
 	return line:match("%S") and line or fallback
 end
+-- Preserve actionable multiline details while omitting Lua stack traces.
+function M.errorDetails(value)
+	local lines={}
+	for line in tostring(value or ""):gmatch("[^\r\n]+") do
+		if line:match("^%s*stack traceback:") then break end
+		if line:match("%S") then lines[#lines+1]=M.errorText(line:gsub("^%s+","")) end
+	end
+	return #lines>0 and table.concat(lines,"\n") or M.errorText(nil)
+end
 local function draftKey(kind,id) return id and kind..":"..id or kind end
 function M.reset(build) states[build]=nil end
 function M.draft(build,kind,id) states[build]=states[build] or {drafts={}};states[build].drafts[draftKey(kind,id)]=true end
