@@ -18,7 +18,8 @@ local function canonical(key,values)
 		for i=1,#values do local n=tonumber(values[i]);if not n or n~=math.floor(n) or n<0 or n>255 then return end end
 		return appearance.hex(rgba)
 	elseif sounds[key] then
-		local value=values[1];if not value or value=="None" then return end
+		local value=values[1];if not value then return end
+		if value=="None" then return value end
 		if key=="PlayAlertSound" or key=="PlayAlertSoundPositional" then
 			local number=tonumber(value);if not number or number~=math.floor(number) or number<1 or number>16 then return end
 			return tostring(number)
@@ -48,7 +49,7 @@ function M.validate(entries)
 	for _,entry in ipairs(entries) do
 		assert(type(entry)=="table","Invalid shared style")
 		local key=entry.key;assert(colours[key] or sounds[key] or groups[key],"Unknown shared style")
-		local from,to=normalized(key,entry.from),normalized(key,entry.to,true);local id=key.."\0"..from
+		local from,to=normalized(key,entry.from,true),normalized(key,entry.to,true);local id=key.."\0"..from
 		assert(not seen[id],"Duplicate shared style source");seen[id]=true
 		result[#result+1]={key=key,from=from,to=to}
 	end
