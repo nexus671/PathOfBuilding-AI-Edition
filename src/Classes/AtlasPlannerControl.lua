@@ -620,8 +620,10 @@ function Panel.Open(build,source,layout)
 			large.fit=button(16,h-42,100,"Fit tree",function() large.canvas:Fit() end)
 			large.connect=button(124,h-42,140,"Connect path",function() controls.allocate.onClick();sync() end)
 			large.connect.enabled=function() return controls.allocate:IsEnabled() end
+			large.connect.tooltipText=function() return controls.allocate.tooltipText() end
 			large.remove=button(272,h-42,140,"Remove branch",function() controls.remove.onClick();sync() end)
 			large.remove.enabled=function() return controls.remove:IsEnabled() end
+			large.remove.tooltipText=function() return controls.remove.tooltipText() end
 			large.close=button(w-132,h-42,116,"Back",function()
 				controls.canvas.centerX,controls.canvas.centerY,controls.canvas.scale=large.canvas.centerX,large.canvas.centerY,large.canvas.scale
 				main:ClosePopup()
