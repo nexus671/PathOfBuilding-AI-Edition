@@ -83,7 +83,8 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 			assert(type(item) == "table" and type(item.BaseType) == "string" and type(item.Rarity) == "string", "Each protected sample needs BaseType and Rarity")
 			check(item)
 		end
-	else
+	end
+	if not protections or protected.hasPersonalMarkerSet(raw) then
 		for _, entry in ipairs(protected.samples()) do check(entry.item,entry.marker) end
 		protected.checkPersonalSamples(raw,check)
 	end

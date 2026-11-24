@@ -20,6 +20,8 @@ Open **Loot Filter → Profile tools → Daily price sync**. Choose the live .fi
 
 The current daily flow supports the protected tiered-test filter profile. It checks all requested feeds for an exchange snapshot served within the past hour, parses the generated filter, and checks protected drops before publishing. It backs up a changed live file, keeps a recovery record, and pauses writes if the target was edited outside PoB. After reviewing an edit, use Enable / update to adopt it. Use Disable to stop the daily refresh. In Path of Exile, reload the filter if the game is already open.
 
+For the tiered-test baseline, a custom protection file adds examples to the built-in Cord Belt, six-link, fractured magic, rank A/B Fated, and hidden scroll checks.
+
 Protected examples use bundled base dimensions and ordinary base drop levels. A unique's drop level and defence percentile are left unknown when its base does not establish them; if either could decide a protected result, the daily check stops and explains why. Base-update reviews warn when the previous result is unknown. These are representative examples, not a guarantee for every possible drop.
 
 Price-change examples use known base properties and the chosen area level. They leave the item's level unknown, so a dependent rule produces an uncertain preview rather than assuming an item level from the area. **Last review** identifies missing properties for the before and after examples separately; other unresolved conditions are labelled without guessing.

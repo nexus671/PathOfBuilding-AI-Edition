@@ -1,6 +1,10 @@
+VERSION[2.68.1-ai.preview1241][2026/11/23]
+
+* Keep crafting projects and workbench controls usable in smaller windows.
+
 VERSION[2.68.1-ai.preview1240][2026/11/23]
 
-* Make crafting, recipe planning and results easier to use in smaller windows.
+* Keep the tiered-test protected drop checks when additional samples are configured.
 
 VERSION[2.68.1-ai.preview1239][2026/11/23]
 

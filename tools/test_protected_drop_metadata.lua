@@ -71,3 +71,31 @@ local levelImpact=impact:gsub('DropLevel == 2','ItemLevel >= 84');local _,levelC
 local early='Show\n BaseType == "Orb of Alteration"\n ItemLevel >= 84\n'..levelImpact;local _,_,earlyChanges=validate(early,bodies,false,1,{{BaseType='Cord Belt',Rarity='Magic'}});assert(earlyChanges[1].sample.before=='Unknown' and earlyChanges[1].sample.beforeMissing[1]=='ItemLevel','Previous uncertainty was not retained')
 local missing=parser.safeMissingProperties({'ItemLevel','ItemLevel','C:/private/filter','DropLevel','UnknownPrivateName'});assert(#missing==2 and missing[1]=='ItemLevel' and missing[2]=='DropLevel','Missing-property sanitization failed')
 print('ECONOMY_IMPACT_METADATA_OK')
+
+
+local function checkAdditivePersonalProtections()
+	local custom={{BaseType="Cord Belt",Rarity="Magic",Class="Belts",FracturedItem=false,Fated=false}}
+	local marked="# CUSTOM: Always show Cord Belts\n# CUSTOM: Show six-linked items before equipment hides\n"..personal
+	assert(protected.hasPersonalMarkerSet(marked) and not protected.hasPersonalMarkerSet(personal))
+	assert(select(6,validate(marked,{},true,1))==68)
+	assert(select(6,validate(marked,{},true,1,custom))==69)
+	for _, obstruction in ipairs({
+		'Hide\n    BaseType == "Cord Belt"\n    Rarity Unique\n',
+		'Hide\n    BaseType == "Royal Plate"\n    LinkedSockets == 6\n',
+		'Hide\n    BaseType == "Amethyst Ring"\n    Fated True\n',
+		'Hide\n    Class == "Boots"\n    Rarity Magic\n    FracturedItem True\n',
+		'Show\n    BaseType == "Portal Scroll"\n',
+		'Show\n    BaseType == "Cord Belt"\n    MinimapIcon 0 Cyan Star\n',
+	}) do
+		local passed,why=pcall(validate,obstruction..marked,{},true,1,custom)
+		assert(not passed and why:find("Protected drop failed",1,true),tostring(why))
+	end
+	-- Unrelated filters and incomplete marker sets retain custom-only validation.
+	local generic='Show\n    BaseType == "Cord Belt"\n# PoB economy: begin\nHide\n    BaseType == "Orb of Alteration"\n    Class == "Stackable Currency"\n    StackSize <= 6\n# PoB economy: end\nHide\n'
+	assert(select(6,validate(generic,{},true,1,custom))==1)
+	assert(select(6,validate("# CUSTOM: Different personal filter\n"..generic,{},true,1,custom))==1)
+	assert(select(6,validate("# CUSTOM: Always show Cord Belts\n"..generic,{},true,1,custom))==1)
+	assert(select(6,validate(personal,{},true,1,custom))==1)
+end
+checkAdditivePersonalProtections()
+print("PERSONAL_PROTECTIONS_REMAIN_REQUIRED_WITH_CUSTOM_SAMPLES_OK")

@@ -1,7 +1,26 @@
 local parser = require("Modules.LootFilterParser")
 local M = {}
 local scrollMarker = "# CUSTOM: Hide Wisdom and Portal Scrolls"
+local fracturedMarker = "# CUSTOM: Show fractured magic equipment"
+local fatedMarker = "# CUSTOM: Show Fated equipment on rank A and B bases"
+local personalMarkers = {
+	"# CUSTOM: Always show Cord Belts",
+	"# CUSTOM: Show six-linked items before equipment hides",
+	fracturedMarker,
+	fatedMarker,
+	scrollMarker,
+}
 local ruleStarts = {Show=true,Hide=true,Minimal=true,Import=true}
+
+function M.hasPersonalMarkerSet(raw)
+	local comments = {}
+	for line in raw:gmatch("[^\r\n]+") do
+		local comment = line:match("^%s*(# CUSTOM: .-)%s*$")
+		if comment then comments[comment] = true end
+	end
+	for _, marker in ipairs(personalMarkers) do if not comments[marker] then return false end end
+	return true
+end
 
 local function personalRulePrefix(raw, stop)
 	local rules = {}
@@ -106,7 +125,7 @@ end
 function M.checkPersonalSamples(raw, check)
 	local library = require("Modules.LootFilterLibrary")
 	local seen = {}
-	for _, name in ipairs(declaredValues(raw,"# CUSTOM: Show Fated equipment on rank A and B bases","BaseType")) do
+	for _, name in ipairs(declaredValues(raw,fatedMarker,"BaseType")) do
 		if not seen[name] then
 			seen[name] = true
 			local class = assert(library.baseClass(name),"Protected Fated base has no known class: "..name)
@@ -116,7 +135,7 @@ function M.checkPersonalSamples(raw, check)
 		end
 	end
 	seen = {}
-	for _, class in ipairs(declaredValues(raw,"# CUSTOM: Show fractured magic equipment","Class")) do
+	for _, class in ipairs(declaredValues(raw,fracturedMarker,"Class")) do
 		if not seen[class] then
 			seen[class] = true
 			local name = assert(library.baseExampleForClass(class),"Protected fractured class has no known sample: "..class)
