@@ -74,7 +74,7 @@ For a one-time scheduled check from the Windows command line, launch your PoB ex
 
 Open **Pickup policy** in daily sync and choose optional campaign and map chaos targets. These apply to exact managed Hide rules that say `AreaLevel < 68` or `AreaLevel >= 68`. Rules without an area condition still use the default target. Only tagged sections support the campaign condition.
 
-You can also set an absolute maximum hide cutoff for an exact commodity name. For example, `{"Orb of Alteration": 7}` permits a managed rule to hide stacks of at most seven when prices justify it. A new profile needs the latest liquid quote plus three earlier liquid daily quotes before it can tighten. The highest of the recent quotes must still put the newly hidden stacks below 85% of the pickup target. Divination cards retain their visibility-only policy.
+Under **Per-item stack caps**, use **Add** to enter an exact managed commodity name and the largest stack PoB may hide. For example, a cap of 7 for Orb of Alteration permits a managed rule to hide stacks of up to seven when prices justify it. Use **Edit** or **Remove** on the selected cap to change it. A new profile needs the latest liquid quote plus three earlier liquid daily quotes before it can tighten. The highest of the recent quotes must still put the newly hidden stacks below 85% of the pickup target. Divination cards retain their visibility-only policy.
 
 Select **Use with next update**, then **Preview changes** to check the resulting filter or **Enable / update** to save the policy. An existing matching baseline and league can reuse saved daily quotes in preview.
 

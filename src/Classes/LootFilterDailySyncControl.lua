@@ -3,7 +3,6 @@ local background = require("Modules.LootFilterBackgroundTask")
 local ui = require("Modules.PlanningUI")
 local market = require("Modules.LootFilterEconomy")
 local appearance = require("Modules.LootFilterPriceAppearance")
-local json = require("dkjson")
 local M = {}
 
 local feedFailureDescriptions = {
@@ -68,34 +67,99 @@ local function showLastAttempt(profileId)
 	main:OpenPopup(width,contentHeight+68,"Last sync attempt",controls,nil,nil,"close")
 end
 
+local function editItemCap(width, target, caps, selected, save)
+	local controls = {}
+	ui.label(controls,"itemLabel",16,20,"Exact managed item name",14)
+	controls.item = new("EditControl"):EditControl(ui.anchor,{16,42,width-32,28},selected or "",nil,nil,200)
+	ui.label(controls,"limitLabel",16,84,"Maximum hidden stack size (1 to 10,000)",14)
+	controls.limit = new("EditControl"):EditControl(ui.anchor,{16,106,140,28},selected and tostring(caps[selected]) or "",nil,nil,5)
+	local function apply()
+		local name = controls.item.buf==selected and selected or controls.item.buf:match("^%s*(.-)%s*$")
+		local limit = tonumber(controls.limit.buf)
+		local changes = copyTable(caps)
+		local ok, result = pcall(function()
+			assert(name~="" and limit, "Enter an exact item name and a whole stack size.")
+			assert(name==selected or not changes[name], "Select the existing cap to edit this item.")
+			if selected then changes[selected]=nil end
+			changes[name]=limit
+			return market.pickupPolicy(target,{caps=changes})
+		end)
+		if not ok then main:OpenMessagePopup("Item cap",ui.errorText(result)); return end
+		main:ClosePopup()
+		save(result.caps,name)
+	end
+	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,158,148,28},"Use item cap",apply)
+	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,158,120,28},"Cancel",function() main:ClosePopup() end)
+	controls.limit.enterFunc = apply
+	ui.style(controls,{apply=true})
+	main:OpenPopup(width,204,selected and "Edit item cap" or "Add item cap",controls,nil,selected and "limit" or "item","cancel")
+end
+
 local function editPickupPolicy(width, target, policy, save)
 	local controls = {}
 	ui.label(controls,"campaignLabel",16,16,"Campaign chaos per stack",14)
 	ui.label(controls,"mapsLabel",width/2+4,16,"Maps chaos per stack",14)
 	local function targetField(key,x)
 		controls[key] = new("EditControl"):EditControl(ui.anchor,{x,38,width/2-32,26},
-			policy[key] and tostring(policy[key]) or "", "Use default target", nil, 10)
+			policy[key] and tostring(policy[key]) or "", nil, nil, 10)
 	end
 	targetField("campaign",16)
 	targetField("maps",width/2+4)
-	ui.description(controls,"capsLabel",16,80,width-32,48,{
-		"Optional item caps allow tightening after three earlier liquid daily quotes.",
-		"Enter exact commodity names and their highest hide cutoff, for example: " .. '{"Orb of Alteration": 6}',
+	ui.label(controls,"stackTargetHelp",16,65,"Blank uses the default stack target.",13)
+	ui.label(controls,"capsLabel",16,88,"Per-item stack caps",14)
+	ui.description(controls,"capsHelp",16,108,width-32,36,{
+		"An item cap limits new hides after three earlier liquid daily quotes. It applies to rules managed by prices.",
 	},14)
-	controls.caps = new("EditControl"):EditControl(ui.anchor,{16,134,width-32,122},
-		next(policy.caps or {}) and json.encode(policy.caps,{indent=true}) or "{}",nil,nil,24000,nil,18)
-	ui.label(controls,"highlightLabel",16,270,"Highlight from (chaos)",14)
-	ui.label(controls,"strongLabel",width/2+4,270,"Strong highlight from (chaos)",14)
+	local caps = copyTable(policy.caps or {})
+	local selectionWidth = width-310
+	controls.caps = new("DropDownControl"):DropDownControl(ui.anchor,{16,150,selectionWidth,28},{})
+	local function refreshCaps(selected)
+		local names, entries = {}, {}
+		for name in pairs(caps) do names[#names+1]=name end
+		table.sort(names)
+		local index = 1
+		for _, name in ipairs(names) do
+			local value = "  |  "..caps[name]
+			local title = ui.fit(StripEscapes(name),selectionWidth-70,20)
+			entries[#entries+1] = {label=title..value,name=name,searchFilter=StripEscapes(name)}
+			if name==selected then index=#entries end
+		end
+		if #entries==0 then entries[1]={label="No item caps set"} end
+		controls.caps:SetList(entries)
+		controls.caps:SetSel(index)
+	end
+	local function saveCaps(updated, selected)
+		caps = updated
+		refreshCaps(selected)
+	end
+	local function capButton(key,x,label,action)
+		controls[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,150,82,28},label,action)
+	end
+	capButton("addCap",width-280,"Add",function()
+		editItemCap(math.min(490,width),target,caps,nil,saveCaps)
+	end)
+	capButton("editCap",width-192,"Edit",function()
+		editItemCap(math.min(490,width),target,caps,controls.caps:GetSelValueByKey("name"),saveCaps)
+	end)
+	capButton("removeCap",width-104,"Remove",function()
+		caps[controls.caps:GetSelValueByKey("name")]=nil
+		refreshCaps()
+	end)
+	controls.caps.enabled = function() return next(caps)~=nil end
+	controls.editCap.enabled,controls.removeCap.enabled = controls.caps.enabled,controls.caps.enabled
+	refreshCaps()
+	ui.label(controls,"highlightLabel",16,206,"Highlight from (chaos, optional)",14)
+	ui.label(controls,"strongLabel",width/2+4,206,"Strong highlight from (chaos, optional)",14)
 	local function highlightField(key,x)
-		controls[key] = new("EditControl"):EditControl(ui.anchor,{x,292,width/2-32,26},
-			policy[key] and tostring(policy[key]) or "", "Disabled", nil, 10)
+		controls[key] = new("EditControl"):EditControl(ui.anchor,{x,228,width/2-32,26},
+			policy[key] and tostring(policy[key]) or "", nil, nil, 10)
 	end
 	highlightField("highlightChaos",16)
 	highlightField("strongHighlightChaos",width/2+4)
 	local function paletteField(key,x,defaultLabel)
 		local choices = {{label=defaultLabel}}
 		for _, preset in ipairs(appearance.presets) do choices[#choices+1] = preset end
-		controls[key] = new("DropDownControl"):DropDownControl(ui.anchor,{x,330,width/2-32,28},choices)
+		controls[key] = new("DropDownControl"):DropDownControl(ui.anchor,{x,266,width/2-32,28},choices)
 		for index, preset in ipairs(choices) do
 			if preset.val==policy[key] then controls[key]:SetSel(index); break end
 		end
@@ -103,12 +167,10 @@ local function editPickupPolicy(width, target, policy, save)
 	paletteField("highlightStyle",16,"Default (yellow circle)")
 	paletteField("strongHighlightStyle",width/2+4,"Default (orange star)")
 	local confirm = policy.confirmTightening==true
-	controls.confirmTightening = new("ButtonControl"):ButtonControl(ui.anchor,{16,374,width-32,28},"",function() confirm=not confirm end)
+	controls.confirmTightening = new("ButtonControl"):ButtonControl(ui.anchor,{16,310,width-32,28},"",function() confirm=not confirm end)
 	controls.confirmTightening.label = function() return "Require GGG trade confirmation for new hides: "..(confirm and "On" or "Off") end
-	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,420,180,28},"Use with next update",function()
+	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,356,180,28},"Use with next update",function()
 		local passed, checked = pcall(function()
-			local caps, nextIndex, why = json.decode(controls.caps.buf)
-			assert(type(caps) == "table" and not controls.caps.buf:sub(nextIndex):find("%S"), why or "Enter a JSON object of item caps")
 			return market.pickupPolicy(target, {
 				campaign=controls.campaign.buf ~= "" and (tonumber(controls.campaign.buf) or -1) or nil,
 				maps=controls.maps.buf ~= "" and (tonumber(controls.maps.buf) or -1) or nil,
@@ -124,9 +186,9 @@ local function editPickupPolicy(width, target, policy, save)
 		main:ClosePopup()
 		save(checked)
 	end)
-	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,420,120,28},"Cancel",function() main:ClosePopup() end)
+	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,356,120,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(controls)
-	main:OpenPopup(width,466,"Pickup policy",controls,nil,nil,"cancel")
+	main:OpenPopup(width,402,"Pickup policy",controls,nil,nil,"cancel")
 end
 
 function M.Open(profileId, profileName)
