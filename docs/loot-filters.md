@@ -69,7 +69,7 @@ For influence tests, `HasInfluence Shaper Elder` matches either influence, while
 
 When matching rules use `Continue`, a later numbered alert replaces the earlier numbered alert, including `None` to disable it. Custom sounds retain their separate precedence. If a single block specifies both numbered alert modes, the reference-sound preview reports that the effective sound is unverified.
 
-**Category appearance**, on Style or in Profile tools, changes declared colours, fonts, alerts and effects for one item family. Rules stay at their original priority. Whole-filter appearance applies last. The picker shows active block counts; categories follow preset labels and rule conditions, so check Customize when styling an imported rule. Restore original removes the category's settings.
+**Category appearance**, on Style or in Profile tools, changes declared colours, fonts, alerts and effects for one item family. Rules stay at their original priority. Whole-filter appearance applies last; the editor identifies colour settings overridden by it. The picker shows active block counts; categories follow preset labels and rule conditions, so check Customize when styling an imported rule. Restore original removes the category's settings.
 
 Choose **Pick** beside a colour field to open the colour wheel. Drag the wheel, brightness or opacity bars, choose a quick colour, or enter exact hex/RGBA values. Arrow keys adjust a focused selector. **Keep colour** returns to the editor; **Cancel** leaves it unchanged. When an imported background colour omits opacity, the preview and picker use the game's default of 240. Ruthless text colours require alpha 80 or higher.
 
@@ -111,7 +111,7 @@ For strict `<` and `>` comparisons, a socket pattern matches when **any** specif
 
 If the supplied socket count and colour list disagree, colour-dependent socket checks report unknown. A count-only alternative can still match independently. Negative socket-colour and linked-group comparisons also report unknown until their game behaviour is verified; numeric-only negative `Sockets` comparisons are supported.
 
-For modifier or enchantment counts, the game requires the operator and number together, such as `HasExplicitMod >=2 "of Haast" "of Ephij"`. The rule editor formats this automatically and flags a separated operator in imported rules.
+New rule conditions start with an empty value. Enter a value for each condition before keeping the rule; the disabled button explains what needs attention. For modifier or enchantment counts, the game requires the operator and number together, such as `HasExplicitMod >=2 "of Haast" "of Ephij"`. The rule editor formats this automatically and flags a separated operator in imported rules.
 
 **Import** accepts `.filter` and `.ruthlessfilter` text. The original text stays in the build, separate from personal rules. The compiler adapts GGG's announced 3.30 BaseType renames and removals and adds Show rules for new items. If removing old items empties a BaseType list, it discards that entire block instead of broadening it. **Audit / update** lists migrations and parser diagnostics. New items remain visible rather than receiving invented economy tiers.
 
