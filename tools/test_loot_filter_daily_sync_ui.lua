@@ -291,6 +291,32 @@ do
 	assert(reviewUI.clipboard:find("Oldest quote is 121 minutes old.",1,true))
 	if output then reviewUI:frame():write(output.."/"..reviewWidth.."-offline-observed-stack.json") end
 	testPreviewStack(reviewUI)
+	local picker=require("Classes.LootFilterFileBrowser")
+	local originalChoose,originalBatch=picker.Open,sync.compareObservedStackBatch
+	picker.Open=function(_,choose,options)
+		assert(options.accept("recorded.JSON") and not options.accept("filter.filter"))
+		choose("C:/PoE/recorded.JSON")
+	end
+	sync.compareObservedStackBatch=function(before,after,path)
+		assert(before==raw and after==raw:gsub("^Hide","Show") and path=="C:/PoE/recorded.JSON")
+		return {count=1,units=5,shown=1,hidden=0,unchanged=0,unknown=0},{
+			{item={BaseType="Orb of Alteration",StackSize=5,AreaLevel=83,Class="Stackable Currency"},
+				before={action="Hide",line=1},after={action="Show",line=1,styles={}},group="shown"},
+		}
+	end
+	reviewUI:click("inspectStack")
+	reviewUI:click("importStacks")
+	assert(main.popups[1].title=="Recorded stack comparison")
+	local facts={}
+	for _, row in ipairs(main.popups[1].controls.details.list) do facts[#facts+1]=StripEscapes(row[1] or "") end
+	local summary=table.concat(facts," ")
+	assert(summary:find("1 recorded stack, 5 items in total",1,true) and summary:find("Became visible: 1",1,true))
+	if output then reviewUI:frame():write(output.."/"..reviewWidth.."-batch-observed-stack.json") end
+	reviewUI:choose("category","Became visible")
+	local filtered=main.popups[1].controls
+	assert(filtered.count.label:find("1 result |",1,true))
+	assert(filtered.results.list[1].entry.label:find("Orb of Alteration",1,true))
+	picker.Open,sync.compareObservedStackBatch=originalChoose,originalBatch
 	main.popups={};reviewFixture=nil
 	sync.setOfflinePriceDays, sync.previewOffline = save, originalPreview
 end

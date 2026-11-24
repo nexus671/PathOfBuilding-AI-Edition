@@ -593,25 +593,68 @@ local function observedStackItem(name, size, area, itemLevel, itemClass)
 	return item
 end
 
-local function simulateObservedStack(before, after, item)
+local function observedStackComparison(before, after)
+	assert(type(before)=="string" and type(after)=="string" and #before<=volumeLimit and #after<=volumeLimit,
+		"This filter comparison exceeds the supported size")
 	local parser = require("Modules.LootFilterParser")
-	return parser.simulate(parser.parse(before),item),parser.simulate(parser.parse(after),item)
+	local first, second = parser.parse(before), parser.parse(after)
+	return function(item) return parser.simulate(first,item),parser.simulate(second,item) end
 end
 
 function M.compareObservedStackPreview(before, after, name, size, area, itemLevel, itemClass)
-	assert(type(before)=="string" and type(after)=="string" and #before<=volumeLimit and #after<=volumeLimit,
-		"This filter preview exceeds the supported size")
-	return simulateObservedStack(before,after,observedStackItem(name,size,area,itemLevel,itemClass))
+	local item = observedStackItem(name,size,area,itemLevel,itemClass)
+	return observedStackComparison(before,after)(item)
 end
 
-function M.compareObservedStack(id, name, size, area, itemLevel, itemClass)
-	local item = observedStackItem(name,size,area,itemLevel,itemClass)
+local function verifiedObservationSources(id)
 	local config = assert(get(id), "Enable and run daily sync first")
 	local raw, verified = M.verifiedOutput(id)
 	assert(config.revision==verified.revision, "The sync profile changed. Run the comparison again")
 	local baseline = assert(read(config.baseline), "Baseline filter is missing")
 	assert(sha(baseline)==config.baselineHash, "Baseline checksum changed")
-	return simulateObservedStack(baseline,raw,item)
+	return baseline,raw
+end
+
+function M.compareObservedStack(id, name, size, area, itemLevel, itemClass)
+	local item = observedStackItem(name,size,area,itemLevel,itemClass)
+	return observedStackComparison(verifiedObservationSources(id))(item)
+end
+
+local observationFields = {BaseType=true,StackSize=true,AreaLevel=true,ItemLevel=true,Class=true}
+local visibility = {Show=true,Minimal=true,Hide=false}
+
+function M.compareObservedStackBatch(before, after, path)
+	assert(type(path)=="string" and path:lower():match("%.json$"), "Choose a JSON observation file")
+	local raw = assert(readWithLimit(path,256*1024), "Observation file is unavailable or exceeds 256 KiB")
+	local list = require("Modules.LootFilterMarketJSON").decode(raw,nil,true)
+	assert(list and #list>=1 and #list<=250, "Provide a JSON array of 1 to 250 stack observations")
+	local items = {}
+	for index, value in ipairs(list) do
+		for field in pairs(value) do
+			assert(observationFields[field], "Observation "..index.." has an unsupported field")
+		end
+		local ok,item = pcall(observedStackItem,value.BaseType,value.StackSize,value.AreaLevel,value.ItemLevel,value.Class)
+		assert(ok, "Observation "..index..": "..tostring(item):gsub("^.-%.lua:%d+:%s*",""))
+		items[index] = item
+	end
+	local compare = observedStackComparison(before,after)
+	local summary = {count=#items,units=0,shown=0,hidden=0,unchanged=0,unknown=0}
+	local rows = {}
+	for index, item in ipairs(items) do
+		local earlier, later = compare(item)
+		local wasVisible, isVisible = visibility[earlier.action],visibility[later.action]
+		local group = (wasVisible==nil or isVisible==nil) and "unknown"
+			or wasVisible==isVisible and "unchanged" or isVisible and "shown" or "hidden"
+		summary[group] = summary[group]+1
+		summary.units = summary.units+item.StackSize
+		rows[index] = {item=item,before=earlier,after=later,group=group}
+	end
+	return summary,rows
+end
+
+function M.compareVerifiedObservedStackBatch(id,path)
+	local before,after = verifiedObservationSources(id)
+	return M.compareObservedStackBatch(before,after,path)
 end
 
 function M.externalDiff(id)

@@ -67,7 +67,41 @@ local function showLastAttempt(profileId)
 	main:OpenPopup(width,contentHeight+68,"Last sync attempt",controls,nil,nil,"close")
 end
 
-local function compareObservedStack(compare, beforeLabel, afterLabel)
+local function describeObservedOutcome(details, label, result)
+	details[#details+1] = label.." | "..result.action..(result.line and (" at line "..result.line) or "")
+	if result.action=="Unknown" then
+		local missing = require("Modules.LootFilterParser").safeMissingProperties(result.missingProperties)
+		details[#details+1] = missing and ("Needs "..table.concat(missing,", ")..".") or "A filter rule or included file could not be verified."
+	elseif (result.action=="Show" or result.action=="Minimal") and result.styles.MinimapIcon then
+		details[#details+1] = "Minimap marker: "..table.concat(result.styles.MinimapIcon," ")
+	end
+end
+
+local function compareStackFile(compare, beforeLabel, afterLabel)
+	require("Classes.LootFilterFileBrowser").Open(main.userPath,function(path)
+		local ok,summary,rows = pcall(compare,path)
+		if not ok then main:OpenMessagePopup("Compare observation file",ui.errorText(summary)); return end
+		local outcomes = {shown="Became visible",hidden="Became hidden",unchanged="Same visibility",unknown="Unresolved"}
+		local entries = {{id="summary",label="Recorded stacks",category="Summary",details={
+			string.format("%d recorded %s, %d %s in total",summary.count,summary.count==1 and "stack" or "stacks",
+				summary.units,summary.units==1 and "item" or "items"),
+			"Became visible: "..summary.shown, "Became hidden: "..summary.hidden,
+			"Same visibility: "..summary.unchanged, "Unresolved: "..summary.unknown,
+		}}}
+		for index, row in ipairs(rows) do
+			local item = row.item
+			local label = string.format("%s | Stack %d | Area %d",item.BaseType,item.StackSize,item.AreaLevel)
+			local details = {label,item.Class}
+			if item.ItemLevel then details[#details+1] = "Item level: "..item.ItemLevel end
+			describeObservedOutcome(details,beforeLabel,row.before)
+			describeObservedOutcome(details,afterLabel,row.after)
+			entries[#entries+1] = {id=tostring(index),label=label,category=outcomes[row.group],details=details}
+		end
+		require("Classes.PlanningBrowserControl").Open("Recorded stack comparison",entries)
+	end,{title="Choose stack observation file",itemLabel="JSON",accept=function(name) return name:lower():match("%.json$") end})
+end
+
+local function compareObservedStack(compare, compareBatch, beforeLabel, afterLabel)
 	local width = math.min(540,main.screenW-40)
 	local controls = {}
 	local function input(key,label,x,y,w,limit)
@@ -93,16 +127,8 @@ local function compareObservedStack(compare, beforeLabel, afterLabel)
 			tonumber(controls.size.buf),tonumber(controls.area.buf),level,controls.class:GetSelValueByKey("class"))
 		if not ok then main:OpenMessagePopup("Test observed stack",ui.errorText(before)); return end
 		local details = {string.format("%s, stack of %d, area level %d",name,tonumber(controls.size.buf),tonumber(controls.area.buf))}
-		for _, pair in ipairs({{beforeLabel,before},{afterLabel,after}}) do
-			local result = pair[2]
-			details[#details+1] = pair[1].." | "..result.action..(result.line and (" at line "..result.line) or "")
-			if result.action=="Unknown" then
-				local missing = require("Modules.LootFilterParser").safeMissingProperties(result.missingProperties)
-				details[#details+1] = missing and ("Needs "..table.concat(missing,", ")..".") or "A filter rule or included file could not be verified."
-			elseif result.action=="Show" and result.styles.MinimapIcon then
-				details[#details+1] = "Minimap marker: "..table.concat(result.styles.MinimapIcon," ")
-			end
-		end
+		describeObservedOutcome(details,beforeLabel,before)
+		describeObservedOutcome(details,afterLabel,after)
 		local resultControls = {}
 		local rows = ui.rows(details,width-48,14)
 		local height = 0
@@ -112,14 +138,18 @@ local function compareObservedStack(compare, beforeLabel, afterLabel)
 		ui.style(resultControls)
 		main:OpenPopup(width,height+80,"Observed stack result",resultControls,nil,nil,"close")
 	end
-	controls.test = new("ButtonControl"):ButtonControl(ui.anchor,{16,206,150,28},"Compare filters",run)
-	controls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,206,120,28},"Close",function() main:ClosePopup() end)
+	controls.test = new("ButtonControl"):ButtonControl(ui.anchor,{16,206,column,28},"Compare filters",run)
+	controls.importStacks = new("ButtonControl"):ButtonControl(ui.anchor,{24+column,206,column,28},"Compare file",function()
+		compareStackFile(compareBatch,beforeLabel,afterLabel)
+	end)
+	controls.close = new("ButtonControl"):ButtonControl(ui.anchor,{32+2*column,206,column,28},"Close",function() main:ClosePopup() end)
 	ui.style(controls,{test=true})
 	main:OpenPopup(width,252,"Test observed stack",controls,nil,"name","close")
 end
 
 local function comparePreviewStack(before, after)
 	compareObservedStack(function(...) return sync.compareObservedStackPreview(before,after,...) end,
+		function(path) return sync.compareObservedStackBatch(before,after,path) end,
 		"Current filter","Proposed filter")
 end
 
@@ -793,7 +823,8 @@ function M.Open(profileId, profileName)
 	end)
 	c.lastAttempt.enabled = function() return config.target~=nil end
 	c.observedStack = new("ButtonControl"):ButtonControl(ui.anchor,{34+3*fourth,534,fourth,26},"Test observed stack",function()
-		compareObservedStack(function(...) return sync.compareObservedStack(profileId,...) end,"Fixed baseline","Verified filter")
+		compareObservedStack(function(...) return sync.compareObservedStack(profileId,...) end,
+			function(path) return sync.compareVerifiedObservedStackBatch(profileId,path) end,"Fixed baseline","Verified filter")
 	end)
 	c.observedStack.enabled = function() return not sync.busy and latestActionConfig().lastSuccess~=nil end
 	ui.style(c)
