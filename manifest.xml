@@ -1738,7 +1738,7 @@
 	<File name="Classes/CraftingModifierControl.lua" part="program" sha1="d15485e09c6aa68453c2ecde121457cb06eefc8d" />
 	<File name="Classes/CraftingPricesControl.lua" part="program" sha1="9d4eea23479e6aac285e1525f8bbefab40c1ed85" />
 	<File name="Classes/CraftingGuideStepsControl.lua" part="program" sha1="d1073234f6f3faa3851e58860d04322c686ce2c9" />
-	<File name="Classes/CraftingProjectControl.lua" part="program" sha1="e42cfd85c3b821718e8a73503d3a0408ddf8029a" />
+	<File name="Classes/CraftingProjectControl.lua" part="program" sha1="559fbd8772d39b47007d5a10196b8d2523c5f515" />
 	<File name="Classes/CraftingUniqueQualityControl.lua" part="program" sha1="6db188f6420662201a4a4a4cf862345c0826800b" />
 	<File name="Classes/CraftingProjectWizard.lua" part="program" sha1="30fe1ef2a5f7767ca3231c21c4b056ba38d68d32" />
 	<File name="Classes/CraftingRecipeControl.lua" part="program" sha1="c02e780d6ceb01137921f3aac7b9c8ee2230205e" />
