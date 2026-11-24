@@ -15,6 +15,24 @@ M.categories = {
 	{ id="SkillGem", label="Skill and support gems" },
 	{ id="BaseType", label="Crafting bases" },
 	{ id="ImbuedGem", label="Imbued gems" },
+	{ id="Currency", label="Currencies", feed="exchange" },
+	{ id="Fragment", label="Fragments", feed="exchange" },
+	{ id="Runegraft", label="Runegrafts", feed="exchange" },
+	{ id="AllflameEmber", label="Allflame embers", feed="exchange" },
+	{ id="Tattoo", label="Tattoos", feed="exchange" },
+	{ id="Omen", label="Omens", feed="exchange" },
+	{ id="DjinnCoin", label="Djinn coins", feed="exchange" },
+	{ id="Ducat", label="Ducats", feed="exchange" },
+	{ id="EnshroudingCrystal", label="Enshrouding crystals", feed="exchange" },
+	{ id="Artifact", label="Artifacts", feed="exchange" },
+	{ id="Oil", label="Oils", feed="exchange" },
+	{ id="DeliriumOrb", label="Delirium orbs", feed="exchange" },
+	{ id="Scarab", label="Scarabs", feed="exchange" },
+	{ id="Astrolabe", label="Astrolabes", feed="exchange" },
+	{ id="Thread", label="Threads", feed="exchange" },
+	{ id="Fossil", label="Fossils", feed="exchange" },
+	{ id="Resonator", label="Resonators", feed="exchange" },
+	{ id="Essence", label="Essences", feed="exchange" },
 }
 
 local gems = {SkillGem=true,ImbuedGem=true}
@@ -198,10 +216,12 @@ function M.rows(body, category, query, target, catalogue)
 			or type(identity)=="string" and identity:lower():find(query,1,true)
 	end
 	if category.feed == "exchange" then
-		for name, quote in pairs(require("Modules.LootFilterEconomy").quotes(body, category.id)) do
+		local economy = require("Modules.LootFilterEconomy")
+		for name, quote in pairs(economy.quotes(body, category.id)) do
 			local identity = quote and quote.id
 			if matches(name,nil,nil,identity) then
-				out[#out+1] = {name=name,price=quote and quote.price,volume=quote and quote.volume,ambiguous=quote==false,identity=identity}
+				out[#out+1] = {name=name,price=quote and quote.price,volume=quote and quote.volume,ambiguous=quote==false,identity=identity,
+					supported=quote and economy.liquid(quote) or false}
 			end
 		end
 	else

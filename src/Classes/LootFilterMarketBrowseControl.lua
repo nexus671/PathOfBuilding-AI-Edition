@@ -100,6 +100,9 @@ function M.Open(build)
 						if value then details[#details+1]=label..tostring(value) end
 					end
 				show("Price ID: ",row.identity)
+				if category.feed=="exchange" and not row.ambiguous and not row.supported then
+					details[#details+1]="Quoted chaos volume is below this category's liquidity threshold."
+				end
 				if not row.conflicting then show("Base: ",row.base);show("Variant: ",row.variant) end
 				if advisory and not row.conflicting then
 					if row.incomplete then details[#details+1]="The listing is missing variant details." end

@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1240][2026/11/23]
+
+* Browse prices across all documented PoE 1 exchange categories.
+
 VERSION[2.68.1-ai.preview1239][2026/11/23]
 
 * Require economy feeds to respond from their configured endpoint.

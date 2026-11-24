@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1239" />
+	<Version number="2.68.1-ai.preview1240" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="9fb19649aeeb4cef6d0746f44369677357fdca48" />
+	<File name="changelog.txt" part="default" sha1="ea9eeb8151a1d8151077e8d40b6c0fee329e077c" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -3195,8 +3195,8 @@
 	<File name="Data/Crafting/GemSoulCores330.json" part="program" sha1="3e72815316e5ea26174bddddcae5bb84bb45cafb" />
 	<File name="Modules/CraftingBaseImplicit.lua" part="program" sha1="d664ebb4bb48c45004d487e16c898ac3746d94c4" />
 	<File name="Modules/UpdateNotes.lua" part="program" sha1="ba75d1adad6ec5129186dddef6b4e75e1a6f01f9" />
-	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="9191ccdc40364896f3b7849cd9bbf8e97cbd395f" />
-	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="31dfc5d5a01b372b1490c33855d39a8aba5c4751" />
+	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="8b947e00fab86146be0e451b5792d247acde67a0" />
+	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="ce231104bb32de5085375adb5ecfcc19f2b2c4f6" />
 	<File name="Modules/LootFilterBackground.lua" part="program" sha1="d80487b2fe4825109212d7672c3e8881564c15bd" />
 	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="9101b199044399546f6d9014d28d2efa8fe50f80" />
 	<File name="Classes/LootFilterManagedEconomyControl.lua" part="program" sha1="fa894d28fc10e6032a8d6def5ec5b77b16bafe9c" />

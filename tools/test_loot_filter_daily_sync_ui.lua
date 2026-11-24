@@ -810,3 +810,61 @@ local function checkDownloadRedirectPolicy()
 end
 checkDownloadRedirectPolicy()
 print("Economy downloads reject redirects while ordinary downloads retain redirect following and conditional 304 headers survive")
+
+
+local function checkExchangeMarketCategories()
+	local browser=require("Modules.LootFilterMarketBrowse")
+	local expected={"Currency","Fragment","Runegraft","AllflameEmber","Tattoo","Omen","DjinnCoin","Ducat",
+		"EnshroudingCrystal","DivinationCard","Artifact","Oil","DeliriumOrb","Scarab","Astrolabe","Thread","Fossil","Resonator","Essence"}
+	local original={"DivinationCard","UniqueWeapon","UniqueArmour","UniqueAccessory","UniqueJewel","UniqueFlask",
+		"Map","BlightedMap","BlightRavagedMap","UniqueMap","SkillGem","BaseType","ImbuedGem"}
+	for index,id in ipairs(original) do assert(browser.categories[index].id==id) end
+	local categories={}
+	for _,category in ipairs(browser.categories) do
+		assert(not categories[category.id]); categories[category.id]=category
+	end
+	local body=[[{"core":{"primary":"chaos"},"items":[
+		{"id":"supported-id","name":"Supported fixture"},{"id":"thin-id","name":"Thin fixture"},
+		{"id":"ambiguous-one","name":"Ambiguous fixture"},{"id":"ambiguous-two","name":"Ambiguous fixture"}],
+		"lines":[{"id":"supported-id","primaryValue":10,"volumePrimaryValue":1000},
+		{"id":"thin-id","primaryValue":2,"volumePrimaryValue":1},
+		{"id":"ambiguous-one","primaryValue":3,"volumePrimaryValue":1000},
+		{"id":"ambiguous-two","primaryValue":4,"volumePrimaryValue":1000}]}]]
+	local originalDownload=launch.DownloadPage
+	newBuild()
+	local harness=headless.install({width=720,height=600})
+	harness:bind(build)
+	local requests=0
+	for _,id in ipairs(expected) do
+		local category=assert(categories[id])
+		assert(category.feed=="exchange")
+		local rows=browser.rows(body,category)
+		assert(#rows==3 and rows[1].identity=="supported-id" and rows[1].supported)
+		assert(rows[2].identity=="thin-id" and not rows[2].supported)
+		assert(rows[3].ambiguous and not rows[3].price and not rows[3].identity)
+		assert(browser.rows(body,category,"=supported-id")[1].name=="Supported fixture")
+		assert(not pcall(browser.rows,'{"core":{"primary":"divine"},"items":[],"lines":[]}',category))
+		main.popups={}
+		launch.DownloadPage=function(_,url,callback,options)
+			requests=requests+1
+			assert(url==require("Modules.LootFilterEconomy").endpoint.."exchange/current/overview?league=Covens&type="..id)
+			assert(options.followRedirects==false and options.timeout==20)
+			callback({header="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT").."\r\n\r\n",body=body})
+		end
+		require("Classes.LootFilterMarketBrowseControl").Open()
+		harness:text("league","Covens")
+		harness:choose("category",category.label)
+		harness:text("query","=thin-id")
+		harness:click("get")
+		assert(main.popups[1].title==category.label.." market prices")
+		local details={}
+		for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		local evidence=table.concat(details," ")
+		assert(evidence:find("Price ID: thin-id",1,true) and evidence:find("liquidity threshold",1,true))
+	end
+	assert(requests==19 and #browser.categories==31)
+	assert(#require("Modules.LootFilterEconomy").categories==8)
+	launch.DownloadPage=originalDownload
+end
+checkExchangeMarketCategories()
+print("All 19 documented exchange categories browse through native controls with exact identities, ambiguity and liquidity evidence")

@@ -42,7 +42,7 @@ Use **Preview changes** before enabling a new setup. It fetches prices and valid
 
 The sync review tests up to 500 combinations of affected classes and representative areas at the first stack size whose cutoff changed and at proposed highlight thresholds. It shows both the baseline and candidate outcome and the matching line, including stacks that another rule still hides.
 
-**Browse market prices** opens a read-only market browser for cards, uniques, maps, gems, and crafting bases. It shows the quote and available variant details, including map tier, gem level and quality, links, and listing counts. Daily filter changes support managed commodity stacks, cards, tier-wide maps, and exact regular gem variants.
+**Browse market prices** opens a read-only market browser for all 19 documented PoE 1 exchange categories, plus uniques, maps, gems, and crafting bases. Exchange results show estimated chaos values, price IDs, and liquidity notes. Stash results show available variant details, including map tier, gem level and quality, links, and listing counts. Daily filter changes support managed commodity stacks, cards, tier-wide maps, and exact regular gem variants. [Market API reference](https://poe.ninja/docs/api)
 
 Daily sync retains still-fresh exchange responses in memory for conditional requests. The scheduler, exchange review, market browser, and league picker share provider cooldowns across PoB windows and the Windows background worker. The shared deadline belongs to the configured price endpoint. Diagnostics show the source mode and any active wait. Daily sync rechecks the age of every response before publication. The displayed age is the age of the response, not the age of underlying trades. Provider IDs distinguish same-name items, and ambiguous names or categories below their volume floor keep the baseline rule.
 
@@ -116,7 +116,7 @@ The service accepts only the app's public economy routes and active leagues. It 
 Run the cache probe after configuring HTTPS and before pointing scheduled clients at the service.
 
 ```sh
-node tools/check_loot_market_cache.cjs https://prices.example.test/pob-market/ Covens SkillGem,BaseType
+node tools/check_loot_market_cache.cjs https://prices.example.test/pob-market/ Covens SkillGem,BaseType,Scarab
 ```
 
-The league defaults to the current PC trade league. Omit the third argument to check only the eight core feeds. The read-only command reports cache health, source age, quote evidence and HTTP failures. A successful probe qualifies the requested transport and feed shape. Then use PoB's **Preview changes** against the intended baseline to check exact matches and protected drops before enabling sync.
+The league defaults to the current PC trade league. Omit the third argument to check only the eight core feeds. Add supported exchange or stash category names to qualify their availability. The read-only command reports cache health, source age, quote evidence and HTTP failures. A successful probe qualifies the requested transport and feed shape. Then use PoB's **Preview changes** against the intended baseline to check exact matches and protected drops before enabling sync.
