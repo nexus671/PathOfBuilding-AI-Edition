@@ -1,4 +1,5 @@
 # Releasing Path of Building AI Edition
+<!-- cspell:ignore Lupa -->
 
 AI Edition is developed on `dev`; `main` is the published branch. Validate the
 exact commit and updater manifest before moving a published branch or creating a

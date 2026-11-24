@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# cspell:ignore WINFUNCTYPE STARTUPINFO STARTF USESHOWWINDOW startupinfo
+# cspell:ignore WINFUNCTYPE STARTUPINFO STARTF USESHOWWINDOW startupinfo lupa
 """Smoke-test a freshly extracted AI Edition portable package on Windows."""
 import argparse
 import ctypes
