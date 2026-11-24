@@ -105,17 +105,23 @@ function exactMapTiers(rows, category) {
 
 function advisoryGemQuotes(rows, candidates) {
   const variants=new Map();
+  const optionalInteger=(value,minimum,maximum)=>value==null
+    || Number.isInteger(value) && value>=minimum && value<=maximum;
   for (const row of rows) {
     if (!exchangeText(row.name) || !exchangeText(row.variant) || /["\\]/.test(row.name+row.variant)) continue;
     const support=row.variant.toLowerCase().replace(/ support$/,'');
     if (!support) continue;
-    const key=JSON.stringify([row.name,support]);
+    if (!optionalInteger(row.gemLevel,1,40) || !optionalInteger(row.gemQuality,0,100)
+        || row.corrupted!=null && typeof row.corrupted!=='boolean') continue;
+    const combination=JSON.stringify([row.name,support]);
+    const key=JSON.stringify([combination,row.gemLevel ?? null,row.gemQuality ?? null,row.corrupted ?? null]);
     const id=row.detailsId;
     const prior=variants.get(key);
-    // Even an invalidated ID can have claimed this combination.
-    variants.set(key,prior===undefined || prior===id ? id ?? false : false);
+    // Even an invalidated ID can have claimed this variant.
+    variants.set(key,prior===undefined || prior && prior.id===id ? {id,combination} : false);
   }
-  return [...variants.values()].filter(id=>id && candidates.get(id)?.liquid).length;
+  return new Set([...variants.values()].filter(row=>row && candidates.get(row.id)?.liquid)
+    .map(row=>row.combination)).size;
 }
 
 function priceEvidence(payload, category, kind) {
