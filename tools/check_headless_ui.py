@@ -55,6 +55,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_genesis_ui.lua")
     sources.append(ROOT / "tools/test_atlas_remove_ui.lua")
     sources.append(ROOT / "tools/test_atlas_regions_history_ui.lua")
+    sources.append(ROOT / "tools/test_crafting_inventory_compact.lua")
     sources.append(ROOT / "tools/test_atlas_search_ui.lua")
     sources.append(ROOT / "tools/test_atlas_refinement.lua")
     sources.append(ROOT / "tools/test_atlas_preview_details_ui.lua")
@@ -212,6 +213,18 @@ def main():
                                           env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-region-history-controls.log").write_text(atlas_region_history.stdout)
     assert atlas_region_history.returncode == 0, atlas_region_history.stdout
+    compact_inventory = subprocess.run(lua_command + ["../tools/test_crafting_inventory_compact.lua", "-", "640"], cwd=ROOT / "src",
+                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-inventory-compact-controls.log").write_text(compact_inventory.stdout)
+    assert compact_inventory.returncode == 0, compact_inventory.stdout
+    short_inventory = subprocess.run(lua_command + ["../tools/test_crafting_inventory_compact.lua", "-", "640", "480"], cwd=ROOT / "src",
+                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-inventory-short-controls.log").write_text(short_inventory.stdout)
+    assert short_inventory.returncode == 0, short_inventory.stdout
+    breakpoint_inventory = subprocess.run(lua_command + ["../tools/test_crafting_inventory_compact.lua", "-", "840", "600"], cwd=ROOT / "src",
+                                          env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-inventory-breakpoint-controls.log").write_text(breakpoint_inventory.stdout)
+    assert breakpoint_inventory.returncode == 0, breakpoint_inventory.stdout
     atlas_region_compact = subprocess.run(lua_command + ["../tools/test_atlas_regions_history_ui.lua", "-", "640"], cwd=ROOT / "src",
                                           env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-region-compact-controls.log").write_text(atlas_region_compact.stdout)

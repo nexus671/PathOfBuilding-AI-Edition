@@ -7,7 +7,7 @@ local visual=require("Modules.LootFilterVisuals")
 local M={}
 function M.Open(build,options)
 	options=options or {};local store=build.savers.CraftingProjects;local c={};local w,h=math.min(1080,main.screenW-40),math.min(720,main.screenH-60)
-	local left=math.floor((w-48)*0.46);local right=left+32;local selected,entries,removed;local thumbs={};local models={};local searchCache={};local pending
+	local left=math.floor((w-48)*0.46);local right=left+32;local compact=right<424;local panelHeight=h-(compact and 226 or 188);local selected,entries,removed;local thumbs={};local models={};local searchCache={};local pending
 	-- Reuse recent starting-item models while browsing snapshots. This
 	-- cache belongs to the open dialog and never limits the saved inventory.
 	local function itemModel(raw)
@@ -27,14 +27,15 @@ function M.Open(build,options)
 	end
 	c.search=new("EditControl"):EditControl(ui.anchor,{16,28,left,28},"","Search items, slots and modifiers",nil,160)
 	c.itemTitle=new("EditControl"):EditControl(ui.anchor,{right,28,w-right-16,28},"","Snapshot name",nil,120)
-	local grid=new("Control"):Control(ui.anchor,{16,76,left,h-188});c.items=grid;grid.scroll=0;grid.planningFocusable=true
+	local grid=new("Control"):Control(ui.anchor,{16,76,left,panelHeight});c.items=grid;grid.scroll=0;grid.planningFocusable=true
 	function grid:IsMouseOver() return self:IsShown() and self:IsMouseInBounds() end
 	local function choose(entry)
 		selected=entry;c.itemTitle:SetText(entry and entry.item.title or "")
 		c.savedItem=nil;c.savedItemMods=nil
 		if entry then
 			local model=itemModel(entry.item.baseItem)
-			local refresh=art.item(c,"savedItem",right,76,w-right-16,h-188,model,function() return entry.item.state end,nil,{header=180,artSize=88});refresh()
+			local short=panelHeight<240
+			local refresh=art.item(c,"savedItem",right,76,w-right-16,panelHeight,model,function() return entry.item.state end,nil,{header=short and 140 or 180,artSize=short and 48 or 88,short=short});refresh()
 			for _,key in ipairs({"savedItem","savedItemMods"}) do c[key].anchor.other=c.search.anchor.other end
 			c.savedItem.enabled=false;c.savedItem.layoutAudit="crafting-inventory";c.savedItemMods.layoutAudit="crafting-inventory"
 		end
@@ -120,7 +121,7 @@ function M.Open(build,options)
 	end)
 	c.source.enabled=function() return selected~=nil and selected.item.originNote~=nil and selected.item.originNote~="" end
 	c.source.tooltipText="Read the saved item's source and assumptions."
-	ui.label(c,"count",right+144,h-78,"",13);c.count.label=function() return "^7"..ui.fit(selected and selected.project.title or #entries.." saved items",w-right-160,13) end
+	ui.label(c,"count",right+144,h-78,"",13);c.count.label=function() return "^7"..ui.fit(selected and selected.project.title or #entries.." saved items",compact and w-200 or w-right-160,13) end
 	button("resume",16,h-42,260,"Resume as separate working craft",function()
 		assert(selected,"Select an item first");local project=inventory.project(selected.item);main:ClosePopup();options.resume(project)
 	end);c.resume.enabled=function() return selected~=nil and options.resume~=nil end
@@ -128,6 +129,12 @@ function M.Open(build,options)
 	c.compare.enabled=function() return selected~=nil and options.current~=nil end;c.compare.tooltipText="Open the inventory from a working craft to compare its item with this saved snapshot."
 	ui.label(c,"saveHint",528,h-36,"Use build Save.",12)
 	button("close",w-156,h-42,140,"Close",function() main:ClosePopup() end)
+	if compact then
+		local width=math.floor((w-56)/4)
+		for i,key in ipairs({"rename","remove","undoRemove","source"}) do local control=c[key];control.x=16+(i-1)*(width+8);control.y=h-122;control.width=width end
+		local half=math.floor((w-40)/2);c.resume.x=16;c.resume.y=h-84;c.resume.width=half;c.compare.x=24+half;c.compare.y=h-84;c.compare.width=half
+		c.searchStatus.y=h-144;c.count.x=16;c.count.y=h-36;c.saveHint.shown=false
+	end
 	c.search.changeFunc=refresh;ui.style(c,{resume=true},{savedItem=true});for _,control in pairs(c) do control.layoutAudit="crafting-inventory" end;refresh()
 	if options.selectProjectId and options.selectItemId then
 		for index,entry in ipairs(entries) do if entry.project.id==options.selectProjectId and entry.item.id==options.selectItemId then
