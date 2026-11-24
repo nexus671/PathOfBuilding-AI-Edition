@@ -55,6 +55,12 @@ function M.new(controls,width,height,options)
 	-- Leave space between the result list, favorite toggle and explanation.
 	own.paletteResults.height=height-372
 	for key,control in pairs(own) do control.shown=options.shown;controls[key]=control end
+	if height<480 then
+		own.paletteResults.height=math.max(48,height-312)
+		own.paletteFavorite.y=height-138
+		own.paletteHint.shown=false
+		own.paletteUse.tooltipText=function() return selected and options.hint(selected) or "Choose an action to inspect its details." end
+	end
 	ui.style(own,{paletteUse=true})
 	local original=own.paletteSearch.OnKeyDown
 	function own.paletteSearch:OnKeyDown(key,...)

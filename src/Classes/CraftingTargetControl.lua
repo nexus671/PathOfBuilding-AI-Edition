@@ -22,6 +22,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 			local names=require("Modules.CraftingUniqueQuality").catalysts;local name=names[conditions.catalyst] or "Unknown"
 			controls.info.label="Catalyst target: "..name..(conditions.minCatalystQuality~=nil and (" "..conditions.minCatalystQuality.."%") or " (any quality)").." (edit with Catalyst)"
 		else controls.info.label=defaultInfo end
+		if group and main.screenH<646 then controls.info.tooltipText=controls.info.label;controls.info.label=require("Modules.PlanningUI").fit(controls.info.label,370,14) end
 	end
 	updateCatalystInfo()
 	edit("count",16,64,group and group.atLeast or 1,"Matching mods in group")
@@ -228,9 +229,22 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 		for _,key in ipairs({"count","countLabel","roll","rollLabel","mode","scope","groups","groupsLabel","fractured","crafted"}) do controls[key].enabled=false;controls[key].shown=false end
 		for _,control in pairs(controls) do if type(control.y)=="number" and control.y>=214 then control.y=control.y-150 end end
 		controls.keep.label="Keep item properties"
+	elseif main.screenH<646 then
+		local page="group";local groupKeys={count=true,countLabel=true,roll=true,rollLabel=true,mode=true,scope=true,groups=true,groupsLabel=true,fractured=true,crafted=true,baseRoll=true}
+		local footer={keep=true,close=true,itemStats=true,catalystGoal=true}
+		for key,control in pairs(controls) do
+			if groupKeys[key] then local shown=control.shown;control.shown=function() return page=="group" and (shown==nil or shown==true or type(shown)=="function" and shown()) end
+			elseif type(control.y)=="number" and control.y>=214 then
+				control.y=control.y-150
+				if not footer[key] then local shown=control.shown;control.shown=function() return page=="properties" and (shown==nil or shown==true or type(shown)=="function" and shown()) end end
+			end
+		end
+		updateCatalystInfo()
+		button("switchPage",400,24,208,"Item properties",function() page=page=="group" and "properties" or "group" end)
+		controls.switchPage.label=function() return page=="group" and "Item properties" or "Group conditions" end
 	end
 	require("Modules.PlanningUI").style(controls,{keep=true})
-	main:OpenPopup(624,group and 616 or 466,group and "Crafting target conditions" or "Item properties",controls,nil,nil,"close")
+	main:OpenPopup(624,group and main.screenH>=646 and 616 or math.min(466,main.screenH-30),group and "Crafting target conditions" or "Item properties",controls,nil,nil,"close")
 	return controls
 end
 return Panel
