@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1249" />
+	<Version number="2.68.1-ai.preview1250" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="50432e002efbe5417af55c4aefc001af4752ff79" />
+	<File name="changelog.txt" part="default" sha1="de16d8fa0477c69f53c859a3a4f58e2371c72455" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1788,7 +1788,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="31415cd7f6b9ba32f843cf4182aa9b6dc9837f4b" />
 	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="cd9722c136617760c1c0b5abf4e2613393460445" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="bb41929c330d5ef8d8bc4c5e2447464bb3dad58d" />
-	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="d8f114cee6f56cd20fd9ef4b1894aec45ef4524c" />
+	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="305514f7c33668124eed3ec54f2333f5998e3b3f" />
 	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="68cf0de12e7b7e02fc2f8bb8da62d601b23c5ef0" />
 	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="6cb1168225fe8af9b85032abad5ae246743c0bf4" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="63c05752ff51b8175dae13fe832b3db3e61a8d41" />

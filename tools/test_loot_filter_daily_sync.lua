@@ -603,15 +603,82 @@ assert(not secondWindow.configuration().pending)
 secondWindow.rollback()
 assert(read(target)==cardBaseline and secondWindow.configuration().paused)
 
--- Simulate termination after the atomic replace and before the final
--- settings commit. A new window must recognize the installed candidate.
-secondWindow.pause(false)
-write(target,refreshed)
-write(dir.."/LootFilterDailySync.json",assert(require("dkjson").encode(pending)))
-local replacementWindow = assert(loadfile("Modules/LootFilterDailySync.lua"))()
-replacementWindow.tick(now,true)
-assert(read(target)==refreshed and not replacementWindow.configuration().pending,replacementWindow.status)
-print("Windows fault recovery: concurrent pause, locked target, and both pending-journal states passed")
+do
+	-- Fail the settings commit only after the target was atomically replaced.
+	secondWindow.pause(false)
+	local json = require("dkjson")
+	local settingsFile = dir.."/LootFilterDailySync.json"
+	local receiptFile = dir.."/LootFilterDailySync-PendingRefresh.json"
+	-- A legitimate settings file and new review can exceed the size limit together.
+	local prior = secondWindow.configuration()
+	prior.priceHistory = {}
+	for day=1,4 do
+		local values = {}
+		for index=1,1600 do values["SkillGem:"..index..string.rep("x",185)] = 1 end
+		prior.priceHistory[day] = {day="prior "..day,time=now-day*86400,values=values}
+	end
+	write(settingsFile,assert(json.encode(prior)))
+	local failedCommit = false
+	io.open = function(path, mode)
+		if not failedCommit and path==settingsFile..".tmp" and mode=="wb" and read(target)==refreshed then
+			failedCommit = true
+			return nil,"Injected final settings write failure"
+		end
+		return openFile(path,mode)
+	end
+	secondWindow.tick(now+1,true)
+	io.open = openFile
+	local interrupted = secondWindow.configuration()
+	assert(failedCommit and read(target)==refreshed and interrupted.pendingRefresh and interrupted.pending)
+	local receiptBytes = read(receiptFile)
+	local receipt = assert(json.decode(receiptBytes))
+	assert(#read(settingsFile)+#receiptBytes>2*1024*1024)
+	assert(interrupted.current~=interrupted.pending and interrupted.pendingRefresh==require("sha1")(receiptBytes))
+	assert(receipt.review.checkedAt==now+1)
+	assert(not pcall(secondWindow.verifiedOutput,"default"))
+	-- Make the retry eligible and simulate restarting with an active provider hold.
+	interrupted.lastFailure = nil
+	write(settingsFile,assert(json.encode(interrupted)))
+	local replacementWindow = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local priorEndpoint = market.endpoint
+	market.endpoint = priorEndpoint.."local-recovery-test/"
+	replacementWindow.noteProviderLimit({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 3600\r\n\r\n"},429,os.time())
+	assert(replacementWindow.providerWait(os.time())>0 and #replacementWindow.dueProfiles(now+1,false)==1)
+	local recoveryRequests = 0
+	launch.DownloadPage = function() recoveryRequests = recoveryRequests+1; error("Provider unavailable") end
+	-- A corrupt expected snapshot cannot be treated as a verified installation.
+	local expected = dir.."/LootFilterExpected-"..interrupted.pending..".filter"
+	write(expected,"Corrupt expected snapshot")
+	replacementWindow.tick(now+2,true)
+	assert(recoveryRequests==0 and read(target)==refreshed and replacementWindow.configuration().pendingRefresh)
+	assert(replacementWindow.status:find("snapshot could not be verified",1,true),replacementWindow.status)
+	write(expected,refreshed)
+	local external = refreshed.."\n# Outside edit"
+	local edited = false
+	io.open = function(path, mode)
+		if not edited and path==interrupted.baseline and mode=="rb" then
+			edited = true
+			write(target,external)
+		end
+		return openFile(path,mode)
+	end
+	replacementWindow.tick(now+3,true)
+	io.open = openFile
+	assert(edited and read(target)==external and replacementWindow.configuration().pendingRefresh)
+	assert(replacementWindow.status:find("Target changed during the interrupted refresh",1,true))
+	write(target,refreshed)
+	local recoveryTime = now+1804
+	assert(replacementWindow.providerWait(recoveryTime)>0 and #replacementWindow.dueProfiles(recoveryTime,false)==1)
+	replacementWindow.tick(recoveryTime,false)
+	local recovered = replacementWindow.configuration()
+	assert(recoveryRequests==0 and read(target)==refreshed and not recovered.pending and not recovered.pendingRefresh)
+	assert(recovered.lastSuccess==now+1 and recovered.review.checkedAt==now+1 and not recovered.lastFailure)
+	assert(recovered.marketSourceHash==receipt.sourceHash and not io.open(receiptFile,"rb"))
+	assert(#recovered.history==#interrupted.history+1 and replacementWindow.verifiedOutput("default")==refreshed)
+	assert(replacementWindow.archivedReviews("default")[recovered.history[1].reviewKey].checkedAt==now+1)
+	market.endpoint = priorEndpoint
+end
+print("Windows refresh recovery passed across a partial write, sharing violation, final commit failure, and provider cooldown")
 
 
 -- Old hour-only settings still trigger on the hour. The new minute is used

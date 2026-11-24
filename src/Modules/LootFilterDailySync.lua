@@ -149,8 +149,18 @@ local function get(id)
 	return config
 end
 
+local function encodeSyncRecord(record)
+	local raw = assert(json.encode(record))
+	assert(#raw <= volumeLimit, "Sync record exceeds the size limit")
+	return raw
+end
+
 local function save(config, id)
-	put(settingsPath(id), assert(json.encode(config)))
+	put(settingsPath(id), encodeSyncRecord(config))
+end
+
+local function pendingRefreshPath(id)
+	return settingsPath(id):gsub("%.json$", "-PendingRefresh.json")
 end
 
 local function reviewPath(id)
@@ -292,6 +302,7 @@ end
 
 function M.nextEligible(config, now)
 	if not config or not config.enabled or config.paused then return nil end
+	if config.pendingRefresh then return nowText(math.max(now,retryAfter(config))) end
 	local scheduled = scheduledAt(config, now)
 	return nowText(math.max(now + M.providerWait(now), scheduled, retryAfter(config), config.providerRetryAfter or 0))
 end
@@ -1034,13 +1045,14 @@ function M.noteProviderLimit(response, status, now)
 	return M.providerWait(now)
 end
 
-local function rememberFailure(config, startedAt, message, id, failedFeed)
+local function rememberFailure(config, startedAt, message, id, failedFeed, pendingDigest)
 	-- A failed attempt may race with another window. Only record it for
 	-- this configuration and preserve a newer successful or failed attempt.
 	pcall(function()
 		lockSettings(function()
 			local current = get(id)
 			if not current or current.revision ~= config.revision or not current.enabled or current.paused
+				or pendingDigest and (current.pending ~= pendingDigest or not current.pendingRefresh)
 				or current.lastSuccess and current.lastSuccess >= startedAt
 				or current.lastFailure and current.lastFailure.startedAt > startedAt then return end
 			local finishedAt = os.time()
@@ -1058,13 +1070,87 @@ local function rememberFailure(config, startedAt, message, id, failedFeed)
 	end)
 end
 
+local function prepareRefreshState(current, digest, refresh, replaced)
+	local result = {}
+	for key, value in pairs(current) do result[key] = value end
+	result.backupRecords = {}
+	if type(current.backupRecords)=="table" then
+		for key, value in pairs(current.backupRecords) do result.backupRecords[key] = value end
+	end
+	local records = backupRecords(result)
+	local review = refresh.review
+	local checkedAt = review.checkedAt
+	local count = #review.changes
+	if replaced then
+		records[review.backup] = checkedAt
+		result.backup = review.backup
+	end
+	result.current, result.day = digest, refresh.day
+	result.pending, result.pendingRefresh, result.pendingRestore = nil, nil, nil
+	result.priceHistory, result.marketSourceHash = refresh.priceHistory, refresh.sourceHash
+	result.summary = string.format("%s: %d price decisions from the baseline. Protected drops verified.", nowText(checkedAt), count)
+	result.lastSuccess, result.lastFailure, result.providerRetryAfter = checkedAt, nil, nil
+	result.review = review
+	local evidence = assert(json.encode(review))
+	result.history = {{checkedAt=checkedAt, adjustments=count, backup=review.backup,
+		oldest=math.max(unpack(review.ages)), reviewKey=sha(evidence)}}
+	for index, run in ipairs(current.history or {}) do
+		if index >= 30 then break end
+		result.history[#result.history+1] = run
+	end
+	return result, encodeSyncRecord(result), evidence
+end
+
+local function finishRefresh(current, id, raw, evidence, replaced)
+	put(settingsPath(id), raw)
+	if replaced then os.remove(pendingRefreshPath(id)) end
+	pcall(archiveReview,id,current.history[1].reviewKey,evidence)
+	local limit = current.backupLimit
+	if type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) then
+		pruneBackups(current,backupChoices(current))
+		pcall(save,current,id)
+	end
+	return current.summary
+end
+
+-- Only finish a candidate that the earlier refresh already installed. The saved
+-- baseline and expected filter must still match the independently checked bytes.
+local function reconcileRefresh(current, id)
+	if not current.pendingRefresh then return end
+	local original = assert(read(filterPath(current.target)), "Target filter is missing")
+	local digest = sha(original)
+	if digest == current.current then
+		current.pending, current.pendingRefresh = nil, nil
+		save(current,id)
+		os.remove(pendingRefreshPath(id))
+		return
+	end
+	assert(digest == current.pending, "Target changed during the interrupted refresh")
+	assert(read(expectedPath(digest)) == original, "Interrupted refresh snapshot could not be verified")
+	local receipt = assert(read(pendingRefreshPath(id)), "Interrupted refresh review is missing")
+	assert(sha(receipt)==current.pendingRefresh, "Interrupted refresh review checksum changed")
+	local refresh = assert(json.decode(receipt))
+	assert(backupDigest(current.current) and refresh.review.backup == current.current, "Interrupted refresh backup could not be verified")
+	readBackup(current.target,current.current)
+	local baseline = assert(read(current.baseline), "Baseline filter is missing")
+	assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
+	verifyUnmanagedRules(original,baseline)
+	local _, _, _, _, _, checks = validate(original,{},true,current.targetValue,current.protections,nil,nil,nil,current.pickupPolicy)
+	assert(refresh.review.league==current.league and refresh.review.protectedChecks==checks, "Interrupted refresh review could not be verified")
+	local nextState, raw, evidence = prepareRefreshState(current,digest,refresh,true)
+	assert(read(filterPath(current.target)) == original, "Target changed during the interrupted refresh")
+	return finishRefresh(nextState,id,raw,evidence,true), nextState
+end
+
 local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 	return lockSettings(function()
 		local current = get(id)
 		assert(sourceMatches(config) and current and sourceMatches(current), sourceChanged)
 		assert(current and current.enabled and not current.paused and current.baselineHash == config.baselineHash and current.target == config.target
 			and current.revision == config.revision and current.league == config.league and current.targetValue == config.targetValue and current.hour == config.hour and current.minute == config.minute and current.protectionFile == config.protectionFile, "Daily sync settings changed during the refresh")
-		if not force and current.day == day then return "Already synced today." end
+		local recovered, nextState = reconcileRefresh(current,id)
+		current = nextState or current
+		if not force and current.day == day then return recovered or "Already synced today." end
 		local original = assert(read(current.target), "Target filter is missing")
 		local before = sha(original)
 		assert(before == current.current or before == current.pending, "Target was edited outside PoB. Review and adopt the edits from External edits.")
@@ -1072,51 +1158,39 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
 		verifyUnmanagedRules(original, baseline)
 		local history = current.marketSourceHash == config.marketSourceHash and current.priceHistory or nil
-		local candidate, count, changes, skipped, snapshots, protectedChecks = validate(
+		local candidate, _, changes, skipped, snapshots, protectedChecks = validate(
 			baseline, bodies, false, current.targetValue, current.protections, history, day, now, current.pickupPolicy, confirmation)
-		current.priceHistory = snapshots
-		current.marketSourceHash = config.marketSourceHash or sha(market.endpoint)
-		local records = backupRecords(current)
 		keepExpected(candidate)
-		if candidate ~= original then
+		local digest = sha(candidate)
+		local ages = {}
+		for index, feed in ipairs(feeds) do ages[index] = feed.age end
+		local refresh = {day=day,sourceHash=config.marketSourceHash or sha(market.endpoint),priceHistory=snapshots,
+			review={changes=changes,skipped=skipped,checkedAt=now,backup=current.backup,ages=ages,feeds=feeds,
+				league=current.league,protectedChecks=protectedChecks}}
+		local replaced = candidate ~= original
+		if replaced then refresh.review.backup = before end
+		local completed, raw, evidence = prepareRefreshState(current,digest,refresh,replaced)
+		if replaced then
 			local backup = current.target .. ".before-pob-sync-" .. before .. ".bak"
 			if not read(backup) then put(backup, original) end
-			current.backup = before
 			assert(read(backup) == original and read(current.target) == original, "Backup or target changed during sync")
-			records[before] = now
-			current.current, current.pending = before, sha(candidate)
+			local receipt = encodeSyncRecord(refresh)
+			put(pendingRefreshPath(id),receipt)
+			assert(read(pendingRefreshPath(id)) == receipt, "Interrupted refresh review could not be saved")
+			current.current, current.pending, current.pendingRefresh = before, digest, sha(receipt)
 			save(current,id)
 			assert(read(current.target) == original, "Target changed before replacement")
 			put(current.target, candidate)
 		end
 		assert(read(current.target) == candidate, "Installed filter verification failed")
-		current.current, current.pending, current.day = sha(candidate), nil, day
-		current.pendingRestore = nil
-		current.summary = string.format("%s: %d price decisions from the baseline. Protected drops verified.", nowText(now), count)
-		current.lastSuccess, current.lastFailure, current.providerRetryAfter = now, nil, nil
-		local ages = {}
-		for index, feed in ipairs(feeds) do ages[index] = feed.age end
-		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages, feeds=feeds,
-			league=current.league, protectedChecks=protectedChecks}
-		local evidence = assert(json.encode(current.review))
-		local reviewKey = sha(evidence)
-		current.history = current.history or {}
-		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages)), reviewKey=reviewKey})
-		local limit = current.backupLimit
-		local backups = type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) and backupChoices(current)
-		if #current.history > 30 then table.remove(current.history) end
-		save(current,id)
-		pcall(archiveReview,id,reviewKey,evidence)
+		local summary = finishRefresh(completed,id,raw,evidence,replaced)
+		current = completed
 		if offlineDays(current.offlinePriceDays) then
 			pcall(function()
 				put(offlinePricePath(id),offline.encode(current,bodies,feeds,now,math.max(now,os.time()),day,confirmation))
 			end)
 		end
-		if backups then
-			pruneBackups(current,backups)
-			pcall(save,current,id)
-		end
-		return current.summary
+		return summary
 	end)
 end
 
@@ -1304,15 +1378,26 @@ function M.tick(now, force, scheduled, id)
 		return
 	end
 	if not force and now < (polls[id] or 0) then return end
-	if M.providerWait(now)>0 then
-		if force then M.status = "Waiting before contacting the exchange again." end
-		return
-	end
 	polls[id] = now + 60
 	local ok, config = pcall(get,id)
 	if not ok then M.status = tostring(config); return end
 	if not config or not config.enabled or config.paused or scheduled and not config.backgroundEnabled then return end
-	if now < (config.providerRetryAfter or 0) then
+	if config.pendingRefresh and (force or now >= retryAfter(config)) then
+		local recovered, result = pcall(lockSettings,function()
+			local latest = assert(get(id), "Daily sync settings are missing")
+			if not latest.enabled or latest.paused or scheduled and not latest.backgroundEnabled then return {} end
+			return {summary=reconcileRefresh(latest,id),config=latest}
+		end)
+		if not recovered then
+			M.status = "Sync recovery failed: "..tostring(result)
+			rememberFailure(config,now,M.status,id,nil,config.pending)
+			return
+		end
+		if result.summary then M.status = result.summary; return end
+		config = result.config
+		if not config then return end
+	end
+	if M.providerWait(now)>0 or now < (config.providerRetryAfter or 0) then
 		if force then M.status = "Waiting before contacting the exchange again." end
 		return
 	end
@@ -1360,10 +1445,11 @@ end
 
 function M.dueProfiles(now, scheduled)
 	local due = {}
-	if M.providerWait(now)>0 then return due end
+	local waiting = M.providerWait(now)>0
 	for _, entry in ipairs(M.profiles()) do
 		local ok, config = pcall(get,entry.id)
-		if ok and config and (not scheduled or config.backgroundEnabled) and now >= (polls[entry.id] or 0) and M.isDue(config,now) then
+		if ok and config and config.enabled and not config.paused and (not scheduled or config.backgroundEnabled) and now >= (polls[entry.id] or 0)
+			and (config.pendingRefresh and now >= retryAfter(config) or not waiting and M.isDue(config,now)) then
 			due[#due+1] = {id=entry.id,revision=config.revision}
 		end
 	end
