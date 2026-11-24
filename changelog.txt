@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1278][2026/11/24]
+
+* Improve headless text cursor accuracy and long-line responsiveness.
+
 VERSION[2.69.0-ai.preview1277][2026/11/24]
 
 * Make Calcs sections reachable in compact windows with horizontal scrolling.
