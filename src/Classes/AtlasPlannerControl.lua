@@ -546,7 +546,7 @@ function Panel.Open(build,source,layout)
 					end
 					if #comparison.modifierChanges>0 then lines[#lines+1]="Modifier changes before keystone and other interactions; not effective map chances";for _,change in ipairs(comparison.modifierChanges) do lines[#lines+1]=string.format("Change: %+d%% | %s",change.delta,change.text) end end
 					for _,node in ipairs(comparison.added) do lines[#lines+1]="+ "..node.name end;for _,node in ipairs(comparison.removed) do lines[#lines+1]="- "..node.name end
-					lines[#lines+1]="Changed bonus counts";for _,stat in ipairs(comparison.stats) do lines[#lines+1]=stat end
+					lines[#lines+1]=#comparison.stats>0 and "Changed bonus counts" or "No changes in bonus counts";for _,stat in ipairs(comparison.stats) do lines[#lines+1]=stat end
 					choices[#choices+1]={id=plan.id,label=plan.title,details=lines,plan=plan}
 				end end;browser.Open("Compare Atlas plans",choices,{action="Show overlay",choose=function(choice)
 					local before={};for _,id in ipairs(choice.plan.nodes) do before[id]=true end;controls.canvas.comparison={before=before};controls.help.label="^7"..ui.fit("Green: added paths | Red: removed paths | Gold: shared paths",graphWidth,14)
