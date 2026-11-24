@@ -1,7 +1,7 @@
 'use strict';
 
 const { isDeepStrictEqual } = require('node:util');
-const { requestKey, overviewRoute, ageSource, boundedBody, validatePayload } = require('./serve_loot_market_cache.cjs');
+const { requestKey, overviewRoute, ageSource, boundedBody, validatePayload, providerFailureReasons } = require('./serve_loot_market_cache.cjs');
 
 const coreFeeds = ['Currency', 'Oil', 'Omen', 'Essence', 'Thread', 'Fragment', 'Resonator', 'Artifact'];
 const positive = value => Number.isFinite(value) && value>0;
@@ -105,6 +105,44 @@ function priceEvidence(payload, category, kind) {
   return { priced:priced.length, listed:listed.length };
 }
 
+const nonnegativeInteger = value => Number.isSafeInteger(value) && value>=0;
+const providerStates = new Set(['idle','ready','degraded','cooldown']);
+
+function numericEvidence(target, source, fields) {
+  for (const field of fields) {
+    if (nonnegativeInteger(source?.[field])) target[field] = source[field];
+  }
+}
+
+function healthEvidence(payload) {
+  if (payload?.status!=='ready' || !nonnegativeInteger(payload.cached) || !nonnegativeInteger(payload.pending)) {
+    throw new Error('Cache health response is incomplete');
+  }
+  const info = { cached:payload.cached, pending:payload.pending };
+  numericEvidence(info,payload,['cachedBytes','serviceable','hits','requests','coalesced','rejected']);
+  if (payload.rejections) {
+    const rejections = {};
+    numericEvidence(rejections,payload.rejections,['client','queue','cooldown']);
+    if (Object.keys(rejections).length) info.rejections = rejections;
+  }
+  const provider = payload.provider;
+  if (providerStates.has(provider?.state)) {
+    const snapshot = {state:provider.state};
+    numericEvidence(snapshot,provider,['lastValidatedAt','cooldownSeconds','successes','failures']);
+    if (provider.lastValidatedAt===null) snapshot.lastValidatedAt = null;
+    const failure = provider.lastFailure;
+    if (failure===null) snapshot.lastFailure = null;
+    if (providerFailureReasons.includes(failure?.reason) && nonnegativeInteger(failure.at)) {
+      snapshot.lastFailure = {at:failure.at,reason:failure.reason};
+      if (Number.isInteger(failure.httpStatus) && failure.httpStatus>=100 && failure.httpStatus<=599) {
+        snapshot.lastFailure.httpStatus = failure.httpStatus;
+      }
+    }
+    info.provider = snapshot;
+  }
+  return info;
+}
+
 async function qualifyCache(raw, { league, extra = [], fetcher = fetch, now = Date.now } = {}) {
   const root = cacheRoot(raw);
   if (extra.some(category=>!overviewRoute(category))) throw new Error('Choose only supported optional market categories');
@@ -134,12 +172,7 @@ async function qualifyCache(raw, { league, extra = [], fetcher = fetch, now = Da
     }
   }
 
-  const health=await probe('Cache health','health',payload=>{
-    if (payload?.status!=='ready' || !Number.isInteger(payload.cached) || !Number.isInteger(payload.pending)) {
-      throw new Error('Cache health response is incomplete');
-    }
-    return { cached:payload.cached, pending:payload.pending };
-  });
+  const health=await probe('Cache health','health',healthEvidence);
   if (!health) return report;
   const leagues=await probe('Trade leagues','leagues',(payload,response)=>{
     validatePayload(payload,'leagues');
