@@ -9,7 +9,7 @@ function M.Open(profile,id,keep)
 	local draft=copyTable(profile);local tier
 	for _,entry in ipairs(draft.tiers or {}) do if entry.id==id then tier=entry end end
 	assert(tier,"Choose a tier")
-	local controls={};local selected;local refresh
+	local controls={};local selected;local refresh;local previewCache={};local previewTiers
 	local function button(key,x,y,width,title,callback)
 		controls[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,26},title,function()
 			local ok,err=pcall(callback);if not ok then ui.errorPopup("Stack styles",err) end
@@ -24,21 +24,46 @@ function M.Open(profile,id,keep)
 		local minimum=tonumber(controls.stackSize.buf);local style=assert(controls.stackStyle:GetSelValueByKey("val"),"Create another tier first")
 		local ids={};for _,entry in ipairs(draft.tiers) do if entry.id~=style and (all or entry.id==id) then ids[#ids+1]=entry.id end end
 		local next=copyTable(draft);next.tiers=editing.setStackStyle(next.tiers,ids,minimum,style)
-		draft=next;for _,entry in ipairs(draft.tiers) do if entry.id==id then tier=entry end end;selected=nil;refresh()
+		draft=next;for _,entry in ipairs(draft.tiers) do if entry.id==id then tier=entry end end;selected=nil;previewCache={};previewTiers=nil;refresh()
 		controls.note.label=all and ("Applied to "..#ids.." tiers. Keep changes to save.") or "Stack style added. Keep changes to save."
 	end
 	button("stackAdd",460,92,164,"Add / replace",function() applyStyle(false) end)
-	local previewCache={}
+	local function previewContext(target)
+		if not previewTiers then
+			local ok,validated=pcall(editing.validateTiers,draft.tiers)
+			previewTiers={valid=ok,byId={}}
+			if ok then for _,entry in ipairs(validated) do previewTiers.byId[entry.id]=entry end end
+		end
+		if not previewTiers.valid then return end
+		local byId=previewTiers.byId;local source=byId[id];local selected={source};local included={[id]=true}
+		for _,rule in ipairs(source.stackRules or {}) do
+			if not included[rule.styleTierId] then selected[#selected+1]=byId[rule.styleTierId];included[rule.styleTierId]=true end
+		end
+		if not included[target.id] then selected[#selected+1]=byId[target.id] end
+		return selected
+	end
 	local function previewBlock(target)
-		if previewCache[target.id] then return previewCache[target.id] end
+		local threshold=controls.stackSize.buf
+		local cached=previewCache[target.id]
+		if cached and cached.threshold==threshold then return cached end
 		local source=#tier.items>0 and editing.withItems(tier.text,tier.items) or tier.text
-		local ok,raw=pcall(require("Modules.LootFilterStackTiers").rule,source,target.text,2)
+		local minimum=tonumber(threshold)
+		local context=previewContext(target)
+		local ok=context and pcall(editing.setStackStyle,context,{id},minimum,target.id)
+		local upper
+		if ok and parser.parse(source).rules[1].continue then
+			for _,rule in ipairs(tier.stackRules or {}) do
+				if rule.minimum>minimum and (not upper or rule.minimum<upper) then upper=rule.minimum end
+			end
+		end
+		local raw
+		if ok then ok,raw=pcall(require("Modules.LootFilterStackTiers").rule,source,target.text,minimum,upper) end
 		if ok then
 			raw=require("Modules.LootFilterCategoryStyles").apply(raw,draft.categoryStyles)
 			raw=require("Modules.LootFilterSharedStyles").apply(raw,draft.sharedStyles)
 			raw=require("Modules.LootFilterDecorators").apply(raw,draft.appearance)
 		else raw=target.text end
-		local result={block=parser.parse(raw).rules[1],fallback=not ok};previewCache[target.id]=result;return result
+		local result={block=parser.parse(raw).rules[1],fallback=not ok,threshold=threshold};previewCache[target.id]=result;return result
 	end
 	controls.stackPreview=new("Control"):Control(ui.anchor,{16,132,608,60})
 	function controls.stackPreview:Draw()
@@ -49,7 +74,7 @@ function M.Open(profile,id,keep)
 			local item=library.sample({text=tier.text});item.BaseType=tier.items[1] or "Example stack"
 			local preview=previewBlock(target);local block=preview.block
 			visual.text(x+8,y+8,12,preview.fallback and "Style preview" or "Tier preview","^xB7C5D4")
-			visual.text(x+width-60,y+8,12,block.action=="Hide" and "Hidden" or block.action=="Minimal" and "Minimal" or "Shown","^xB7C5D4")
+			visual.text(x+width-90,y+8,12,preview.fallback and "Unavailable" or block.action=="Hide" and "Hidden" or block.action=="Minimal" and "Minimal" or "Shown","^xB7C5D4")
 			visual.chip(x+80,y+8,width-160,height-12,item,{action=block.action,styles=block.styles})
 		end
 	end
@@ -64,7 +89,7 @@ function M.Open(profile,id,keep)
 	button("stackRemove",16,312,145,"Remove selected",function()
 		assert(selected,"Choose a stack style to remove")
 		for i=#(tier.stackRules or {}),1,-1 do if tier.stackRules[i].minimum==selected then table.remove(tier.stackRules,i) end end
-		selected=nil;refresh()
+		selected=nil;previewCache={};previewTiers=nil;refresh()
 	end)
 	controls.stackRemove.enabled=function() return selected~=nil end
 	button("stackAll",169,312,145,"Apply to all",function() applyStyle(true) end)

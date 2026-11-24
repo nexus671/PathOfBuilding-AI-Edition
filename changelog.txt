@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1272][2026/11/24]
+VERSION[2.69.0-ai.preview1273][2026/11/24]
 
 * Search official trade from the market browser using a crafting base and its known item level.
+
+VERSION[2.69.0-ai.preview1272][2026/11/24]
+
+* Show the correct stack-style preview for the selected threshold.
 
 VERSION[2.69.0-ai.preview1271][2026/11/24]
 
