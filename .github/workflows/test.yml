@@ -24,6 +24,8 @@ jobs:
           python tools/run_headless_lupa.py --filesystem tools/test_loot_filter_daily_sync.lua $fixture.FullName
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/run_headless_lupa.py --filesystem tools/test_loot_filter_daily_sync_ui.lua
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -NonInteractive -File tools/test_loot_filter_background_notifications.ps1
   test_crafting_imports:
     runs-on: ubuntu-latest
     container: ghcr.io/pathofbuildingcommunity/pathofbuilding-tests:latest

@@ -283,18 +283,29 @@ function M.feedCategories(raw)
 	return categories, gemRequests
 end
 
+function M.tradeLeague(value)
+	if type(value)~="table" or type(value.id)~="string" or #value.id==0 or #value.id>80
+		or not value.id:match("^[A-Za-z0-9 _-]+$") or not value.id:match("%S")
+		or value.id:match("^ ") or value.id:match(" $") or type(value.name)~="string" or #value.name>160
+		or not value.name:match("%S") or value.name:find("[%c/\\%^]") then return nil end
+	return {id=value.id,name=value.name}
+end
+
 function M.tradeLeagues(raw)
 	assert(type(raw)=="string" and #raw<=65536, "Invalid PC trade league list size")
-	local data = json.decode(raw)
-	assert(type(data)=="table" and #data>0 and #data<=100, "No PC trade leagues returned")
-	local seen = {}
-	for _, league in ipairs(data) do
-		assert(type(league)=="table" and type(league.id)=="string" and #league.id<=80 and league.id:match("^[%w%s_-]+$")
-			and type(league.name)=="string" and #league.name<=160 and not league.name:find("[%c]")
-			and not seen[league.id], "Invalid PC trade league list")
-		seen[league.id] = true
+	local data, position = json.decode(raw)
+	assert(type(data)=="table" and raw:match("^%s*%[") and position and not raw:sub(position):find("%S")
+		and #data>0 and #data<=100, "No PC trade leagues returned")
+	local list, seen = {}, {}
+	for key in pairs(data) do
+		assert(type(key)=="number" and key>=1 and key<=#data and key==math.floor(key), "Invalid PC trade league list")
 	end
-	return data, seen
+	for _, value in ipairs(data) do
+		local league = M.tradeLeague(value)
+		assert(league and not seen[league.id], "Invalid PC trade league list")
+		list[#list+1], seen[league.id] = league, true
+	end
+	return list, seen
 end
 
 function M.feedPath(league, category)
