@@ -426,8 +426,10 @@ end
 local function publicImpactSample(sample)
 	if type(sample)~="table" then return nil end
 	local parser=require("Modules.LootFilterParser")
+	local rarity = sample.rarity
 	return {action=safeText(sample.action,20),class=safeText(sample.class,100),count=finiteNumber(sample.count),
 		line=finiteNumber(sample.line),before=safeText(sample.before,20),beforeLine=finiteNumber(sample.beforeLine),area=finiteNumber(sample.area),
+		rarity=(rarity=="Normal" or rarity=="Magic" or rarity=="Rare") and rarity or nil,
 		marker=safeText(sample.marker,40),
 		beforeMissing=sample.before=="Unknown" and parser.safeMissingProperties(sample.beforeMissing) or nil,
 		afterMissing=sample.action=="Unknown" and parser.safeMissingProperties(sample.afterMissing) or nil}
@@ -460,6 +462,7 @@ function M.publicDiff(now, id)
 				gemLevel=finiteNumber(change.gemLevel),gemQuality=finiteNumber(change.gemQuality),corrupted=corruption,
 				mapOnly=change.maps==true, scope=safeText(change.scope,20),
 				sample=sample,samples=#samples>0 and samples or nil,samplesTruncated=type(change.samples)=="table" and #change.samples>20 or nil,
+				samplesLimited=change.samplesLimited==true or nil,
 			}
 		end
 	end

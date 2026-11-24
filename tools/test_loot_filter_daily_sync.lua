@@ -872,6 +872,44 @@ for index, category in ipairs(feedKinds) do mapBodies[index] = stash[category] o
 local promoted, mapCount, mapChanges, mapSkips = validate(mapBase,mapBodies,false,1,mapSamples,nil,nil,nil,{maps=5})
 assert(mapCount==1 and mapChanges[1].name=="Map (Tier 16)" and mapChanges[1].liquidityUnit=="listing samples")
 assert(mapChanges[1].sample.before=="Hide" and mapChanges[1].sample.action=="Show" and mapChanges[1].priceId=="ordinary-16")
+-- Every map rarity gets an independent impact result, including custom shadowing.
+for _, late in ipairs({false,true}) do
+	local rareHide = 'Hide\n    Class == "Maps"\n    Rarity == Rare\n'
+	local commonShow = 'Show\n    Class == "Maps"\n    Rarity <= Magic\n'
+	local rules = 'Show\n    BaseType == "Cord Belt"\n' .. (late and commonShow..rareHide or rareHide..commonShow)
+	local baseline = market.addManagedSection(rules,{{class="Maps",tier=16,mapType="Map"}})
+	local feeds = {}
+	for index, category in ipairs(market.feedCategories(baseline)) do feeds[index]=category=="Map" and normalMap or commodityBody end
+	local _, _, changes = validate(baseline,feeds,false,1,mapSamples,nil,nil,nil,{maps=5})
+	local change = changes[1]
+	assert(change.sample==change.samples[1] and change.sample.rarity=="Normal" and not change.samplesLimited)
+	local seen = {}
+	for _, sample in ipairs(change.samples) do
+		seen[sample.rarity]=true
+		assert(sample.before=="Hide" and type(sample.beforeLine)=="number" and type(sample.line)=="number")
+		assert(sample.action==(sample.rarity=="Rare" and "Hide" or "Show"))
+		assert(sample.beforeLine~=sample.line)
+	end
+	assert(seen.Normal and seen.Magic and seen.Rare and #change.samples==3)
+end
+-- The global simulation bound marks both partial and wholly deferred decisions.
+do
+	local baseline = market.addManagedSection('Show\n    BaseType == "Cord Belt"\nShow\n    Class == "Maps"\n',{{class="Maps",tier=16,mapType="Map"}})
+	baseline=baseline:gsub("(# PoB economy: begin\n)(.-)(# PoB economy: end)",function(first,blocks,last) return first..blocks:rep(170)..last end)
+	local feeds = {}
+	for index, category in ipairs(market.feedCategories(baseline)) do feeds[index]=category=="Map" and normalMap or commodityBody end
+	local _, _, changes = validate(baseline,feeds,false,1,mapSamples,nil,nil,nil,{maps=5})
+	local total, partial, empty = 0,false,false
+	for _, change in ipairs(changes) do
+		total=total+#change.samples
+		if #change.samples<3 then
+			assert(change.samplesLimited==true)
+			partial=partial or #change.samples>0
+			empty=empty or #change.samples==0
+		else assert(not change.samplesLimited) end
+	end
+	assert(total==500 and partial and empty)
+end
 assert(#mapSkips==3 and mapSkips[1].reason:find("Ambiguous",1,true) and mapSkips[3].reason:find("floor",1,true))
 assert(not pcall(validate,mapBase,missing,false,1,mapSamples))
 write(target,mapBase)
@@ -888,6 +926,14 @@ launch.DownloadPage = function(_, url, callback)
 end
 marketSync.tick(now,true)
 assert(read(target)==promoted and pathCount==3)
+local publicMaps = marketSync.publicDiff(now)
+local publicRarities = {}
+for _, sample in ipairs(publicMaps.changes[1].samples) do
+	publicRarities[sample.rarity]=true
+	assert(type(sample.beforeLine)=="number" and type(sample.line)=="number")
+end
+assert(publicRarities.Normal and publicRarities.Magic and publicRarities.Rare)
+
 print("Managed maps use separate stash feeds, reject ambiguous variants, and preserve thin markets")
 
 -- Named profiles preserve existing default settings and isolate their live

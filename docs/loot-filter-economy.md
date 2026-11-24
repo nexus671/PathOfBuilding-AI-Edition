@@ -46,7 +46,7 @@ Daily sync uses the lower of the latest liquid quote and the median of available
 
 Use **Preview changes** before enabling a new setup. It fetches prices and validates the proposed filter, then opens the full text comparison without saving settings or replacing your file.
 
-The sync review tests up to 500 combinations of affected classes and representative areas at the first stack size whose cutoff changed and at proposed highlight thresholds. It shows both the baseline and candidate outcome and the matching line, including stacks that another rule still hides.
+The sync review tests up to 500 combinations of affected classes and representative areas at the first stack size whose cutoff changed and at proposed highlight thresholds. It checks Normal, Magic, and Rare maps separately. Each sample shows the baseline and updated outcomes with their matching rule lines when available, including drops that stay hidden. Decisions that reach the review limit identify their incomplete coverage in the desktop review and through `samplesLimited` in the AI bridge.
 
 **Browse market prices** opens a read-only market browser for all 19 documented PoE 1 exchange categories and all 29 documented stash item categories. Exchange results show estimated chaos values, price IDs, and liquidity notes. Stash results show the available variant details and listing counts. The added stash categories require a scoped search and flag thin evidence or conflicting variant IDs. Required character level describes the level needed to equip an item. Item-level valuation needs a separate data source. Daily filter changes support managed commodity stacks, cards, tier-wide maps, and exact regular gem variants. [Market API reference](https://poe.ninja/docs/api)
 

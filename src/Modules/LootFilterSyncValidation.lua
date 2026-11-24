@@ -20,7 +20,6 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 		local earlier = parser.parse(raw)
 		local remaining = 500
 		for _, change in ipairs(changes) do
-			if remaining == 0 then break end
 			local areas = change.scope == "campaign" and {60} or change.scope == "maps" and {83} or {83, 60}
 			change.samples = {}
 			local stack = change.old==change.cutoff and change.highlights and change.highlights[1].firstStack
@@ -32,6 +31,8 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 					stacks[#stacks+1], seenStacks[threshold] = threshold, true
 				end
 			end
+			local rarities = change.tier and {"Normal", "Magic", "Rare"} or {"Normal"}
+			local expectedSamples = #change.classes * #areas * #stacks * #rarities
 			for _, itemClass in ipairs(change.classes) do
 				for _, area in ipairs(areas) do
 					if remaining == 0 then break end
@@ -52,20 +53,24 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 					if change.gemLevel then
 						sample.GemLevel, sample.Quality, sample.Corrupted = change.gemLevel, change.gemQuality, change.corrupted
 					end
-					for _, size in ipairs(stacks) do
-						if remaining == 0 then break end
-						sample.StackSize = size
-						local before, after = parser.simulate(earlier, sample), parser.simulate(parsed, sample)
-						change.samples[#change.samples+1] = {
-							action=after.action, line=after.line, before=before.action, beforeLine=before.line,
-							beforeMissing=parser.safeMissingProperties(before.missingProperties), afterMissing=parser.safeMissingProperties(after.missingProperties),
-							class=sample.Class, count=sample.StackSize, area=area,
-							marker=after.action=="Show" and after.styles.MinimapIcon and table.concat(after.styles.MinimapIcon," ") or nil,
-						}
-						remaining = remaining-1
+					for _, rarity in ipairs(rarities) do
+						sample.Rarity = rarity
+						for _, size in ipairs(stacks) do
+							if remaining == 0 then break end
+							sample.StackSize = size
+							local before, after = parser.simulate(earlier, sample), parser.simulate(parsed, sample)
+							change.samples[#change.samples+1] = {
+								action=after.action, line=after.line, before=before.action, beforeLine=before.line,
+								beforeMissing=parser.safeMissingProperties(before.missingProperties), afterMissing=parser.safeMissingProperties(after.missingProperties),
+								class=sample.Class, count=sample.StackSize, area=area, rarity=change.tier and rarity or nil,
+								marker=after.action=="Show" and after.styles.MinimapIcon and table.concat(after.styles.MinimapIcon," ") or nil,
+							}
+							remaining = remaining-1
+						end
 					end
 				end
 			end
+			change.samplesLimited = #change.samples < expectedSamples or nil
 			change.sample = change.samples[1]
 		end
 	end
