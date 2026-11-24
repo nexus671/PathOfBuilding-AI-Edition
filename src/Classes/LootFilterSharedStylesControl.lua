@@ -4,8 +4,8 @@ local shared=require("Modules.LootFilterSharedStyles")
 local appearance=require("Modules.LootFilterAppearanceSettings")
 local visual=require("Modules.LootFilterVisuals")
 local M={}
-local names={SetTextColor="Text colour",SetBorderColor="Border colour",SetBackgroundColor="Background colour",PlayAlertSound="Alert sound",PlayAlertSoundPositional="Positional alert",CustomAlertSound="Custom sound",CustomAlertSoundOptional="Optional custom sound"}
-local function isColour(key) return key=="SetTextColor" or key=="SetBorderColor" or key=="SetBackgroundColor" end
+local names={Colour="Any colour",AlertSound="Any numbered alert",CustomSound="Any custom sound",SetTextColor="Text colour",SetBorderColor="Border colour",SetBackgroundColor="Background colour",PlayAlertSound="Alert sound",PlayAlertSoundPositional="Positional alert",CustomAlertSound="Custom sound",CustomAlertSoundOptional="Optional custom sound"}
+local function isColour(key) return key=="Colour" or key=="SetTextColor" or key=="SetBorderColor" or key=="SetBackgroundColor" end
 local function edit(profile,row,onKeep)
 	local c={};local w,h=math.min(640,main.screenW-40),math.min(360,main.screenH-60)
 	local existing;for _,entry in ipairs(profile.sharedStyles or {}) do if entry.key==row.key and entry.from==row.value then existing=entry end end
@@ -15,9 +15,9 @@ local function edit(profile,row,onKeep)
 	c.target=new("EditControl"):EditControl(ui.anchor,{16,182,w-148,28},existing and existing.to or row.value,nil,nil,1000)
 	if isColour(row.key) then c.pick=new("ButtonControl"):ButtonControl(ui.anchor,{w-120,182,104,28},"Pick",function()
 		local initial=appearance.fromHex(c.target.buf) or appearance.fromHex(row.value)
-		require("Classes.ColourPickerControl").Open(initial,function(colour) c.target:SetText(appearance.hex(colour),true) end,{title="Replacement colour",minimumAlpha=row.key=="SetTextColor" and profile.mode=="Ruthless" and 80 or 0})
+		require("Classes.ColourPickerControl").Open(initial,function(colour) c.target:SetText(appearance.hex(colour),true) end,{title="Replacement colour",minimumAlpha=(row.key=="Colour" or row.key=="SetTextColor") and profile.mode=="Ruthless" and 80 or 0})
 	end)
-	elseif row.key=="CustomAlertSound" or row.key=="CustomAlertSoundOptional" then
+	elseif row.key=="CustomSound" or row.key=="CustomAlertSound" or row.key=="CustomAlertSoundOptional" then
 		c.pick=new("ButtonControl"):ButtonControl(ui.anchor,{w-120,182,104,28},"Browse",function() require("Classes.LootFilterFileBrowser").Open(c.target.buf,function(path) c.target:SetText(path,true) end) end)
 	end
 	local function candidate()
@@ -25,14 +25,14 @@ local function edit(profile,row,onKeep)
 	end
 	local function valid()
 		if not pcall(shared.validate,{candidate()}) then return false end
-		if row.key=="SetTextColor" and profile.mode=="Ruthless" then local rgba=appearance.fromHex(c.target.buf);return rgba and rgba[4]>=80 end
+		if (row.key=="Colour" or row.key=="SetTextColor") and profile.mode=="Ruthless" then local rgba=appearance.fromHex(c.target.buf);return rgba and rgba[4]>=80 end
 		return true
 	end
 	if isColour(row.key) then
 		c.preview=new("Control"):Control(ui.anchor,{16,222,w-32,54})
-		function c.preview:Draw() local x,y=self:GetPos();local width=self:GetSize();local styles={SetTextColor={"255","235","175","255"},SetBorderColor={"105","195","245","255"},SetBackgroundColor={"20","30","45","255"},SetFontSize={"32"}};local rgba=appearance.fromHex(c.target.buf);if rgba then styles[row.key]=rgba end;visual.floor(x,y,width,54);visual.chip(x,y,width,54,{BaseType="Example item"},{action="Show",styles=styles}) end
+		function c.preview:Draw() local x,y=self:GetPos();local width=self:GetSize();local styles={SetTextColor={"255","235","175","255"},SetBorderColor={"105","195","245","255"},SetBackgroundColor={"20","30","45","255"},SetFontSize={"32"}};local rgba=appearance.fromHex(c.target.buf);if rgba then styles[row.key=="Colour" and "SetTextColor" or row.key]=rgba end;visual.floor(x,y,width,54);visual.chip(x,y,width,54,{BaseType="Example item"},{action="Show",styles=styles}) end
 	else
-		c.previewSound=new("ButtonControl"):ButtonControl(ui.anchor,{16,226,160,28},"Preview sound",function() local _,message=require("Modules.LootFilterAudio").play({[row.key]={c.target.buf,"100"}});main:OpenMessagePopup("Sound preview",message) end);c.previewSound.enabled=valid
+		c.previewSound=new("ButtonControl"):ButtonControl(ui.anchor,{16,226,160,28},"Preview sound",function() local key=row.key=="AlertSound" and "PlayAlertSound" or row.key=="CustomSound" and "CustomAlertSound" or row.key;local _,message=require("Modules.LootFilterAudio").play({[key]={c.target.buf,"100"}});main:OpenMessagePopup("Sound preview",message) end);c.previewSound.enabled=valid
 	end
 	c.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-48,160,28},"Keep replacement",function()
 		local replacement=shared.validate({candidate()})[1];local next=copyTable(profile);next.sharedStyles=next.sharedStyles or {};local found
@@ -55,7 +55,7 @@ function M.Open(profile,onKeep)
 	for _,entry in ipairs(profile.sharedStyles or {}) do local id=entry.key.."\0"..entry.from;if not indexed[id] then local row={key=entry.key,value=entry.from,count=0};rows[#rows+1]=row;indexed[id]=row end end
 	for _,row in ipairs(rows) do
 		local target;for _,entry in ipairs(profile.sharedStyles or {}) do if entry.key==row.key and entry.from==row.value then target=entry.to end end
-		entries[#entries+1]={id=row.key.."/"..row.value,label=row.value.." | "..row.count,category=names[row.key],details={names[row.key],row.count.." declared occurrences before whole-filter overrides.",target and ("Replacement: "..target) or "No replacement saved.","Replacements are simultaneous and preserve rule order.","Unresolved imported files cannot be changed."},row=row}
+		entries[#entries+1]={id=row.key.."/"..row.value,label=names[row.key].." | "..row.value.." | "..row.count,category=names[row.key],details={names[row.key],row.count.." declared occurrences before whole-filter overrides.",target and ("Replacement: "..target) or "No replacement saved.","Specific style replacements take priority over shared groups.","Replacements are simultaneous and preserve rule order.","Unresolved imported files cannot be changed."},row=row}
 	end
 	require("Classes.PlanningBrowserControl").Open("Shared colours and sounds",entries,{action="Edit replacement",closeOnChoose=false,choose=function(entry) main:ClosePopup();edit(profile,entry.row,onKeep) end})
 end

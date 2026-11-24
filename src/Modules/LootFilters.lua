@@ -82,7 +82,7 @@ function M.validate(data)
 		if p.sharedStyles~=nil then
 			entry.sharedStyles=require("Modules.LootFilterSharedStyles").validate(p.sharedStyles)
 			if entry.mode=="Ruthless" then for _,style in ipairs(entry.sharedStyles) do
-				if style.key=="SetTextColor" then assert(tonumber(style.to:sub(7,8),16)>=80,"Ruthless text opacity must be at least 80") end
+				if style.key=="SetTextColor" or style.key=="Colour" then assert(tonumber(style.to:sub(7,8),16)>=80,"Ruthless text opacity must be at least 80") end
 			end end
 		end
 		if p.campaign~=nil then entry.campaign=require("Modules.LootFilterCampaign").validate(p.campaign) end

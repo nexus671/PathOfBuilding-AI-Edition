@@ -18,7 +18,7 @@ local entries={
 	{key="PlayAlertSound",from="2",to="6"},
 	{key="CustomAlertSound",from="C:\\sounds\\a#1.wav",to="C:\\sounds\\b.wav"},
 }
-local before=shared.list(raw);assert(#before==5,"Unexpected shared style inventory")
+local before=shared.list(raw);assert(#before==10,"Unexpected shared style inventory")
 local result=shared.apply(raw,entries)
 assert(result:find("SetTextColor 0 255 0 255 # red",1,true),"Replacement lost the comment or chained into another mapping")
 assert(result:find("SetTextColor 0 0 255 255",1,true),"Second source was not replaced")
@@ -29,6 +29,11 @@ assert(result:find('Import "other.filter"\n SetTextColor 255 0 0',1,true),"An im
 local silent=shared.apply(raw,{{key="PlayAlertSound",from="2",to="None"},{key="CustomAlertSound",from="C:\\sounds\\a#1.wav",to="None"}})
 assert(silent:find("PlayAlertSound None # alert",1,true) and silent:find("CustomAlertSound None",1,true),"Muting shared sounds must remove their volume and preserve comments")
 assert(shared.apply(raw,{})==raw,"Empty mappings changed the filter")
+local grouped='Show\n SetTextColor 255 0 0\n SetBorderColor 255 0 0\n SetBackgroundColor 255 0 0 255\n PlayAlertSound 2 100\n PlayAlertSoundPositional 2 200'
+local groupedResult=shared.apply(grouped,{{key="Colour",from="FF0000FF",to="00FF00FF"},{key="SetBorderColor",from="FF0000FF",to="0000FFFF"},{key="AlertSound",from="2",to="6"}})
+assert(groupedResult:find("SetTextColor 0 255 0 255",1,true) and groupedResult:find("SetBackgroundColor 0 255 0 255",1,true),"Shared colour did not reach all matching uses")
+assert(groupedResult:find("SetBorderColor 0 0 255 255",1,true),"Specific replacement must take precedence over the shared group")
+assert(groupedResult:find("PlayAlertSound 6 100",1,true) and groupedResult:find("PlayAlertSoundPositional 6 200",1,true),"Shared alert did not preserve positional mode and volume")
 assert(not pcall(shared.validate,{{key="SetTextColor",from="FF0000FF",to="00FF00FF"},{key="SetTextColor",from="FF0000FF",to="FFFFFFFF"}}),"Duplicate sources were accepted")
 newBuild();local filters=require("Modules.LootFilters");local profile=filters.profile("shared","Shared styles")
 profile.template="Show\n SetTextColor 255 0 0\n PlayAlertSound 2 200";profile.sharedStyles={entries[1],entries[4]}
