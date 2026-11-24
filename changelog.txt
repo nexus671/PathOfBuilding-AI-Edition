@@ -1,6 +1,7 @@
 VERSION[2.68.1-ai.preview1252][2026/11/23]
 
 * Fix skill-gem support effects with Mantle of Dreams, from upstream.
+* Fix defensive breakdowns for gear with no base value, from upstream.
 
 VERSION[2.68.1-ai.preview1251][2026/11/23]
 
