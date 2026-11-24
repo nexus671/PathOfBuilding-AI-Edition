@@ -34,7 +34,8 @@ function M.Open(build,options)
 		c.savedItem=nil;c.savedItemMods=nil
 		if entry then
 			local model=itemModel(entry.item.baseItem)
-			local refresh=art.item(c,"savedItem",right,76,w-right-16,panelHeight,model,function() return entry.item.state end,nil,{header=180,artSize=88});refresh()
+			local short=panelHeight<240
+			local refresh=art.item(c,"savedItem",right,76,w-right-16,panelHeight,model,function() return entry.item.state end,nil,{header=short and 140 or 180,artSize=short and 48 or 88,short=short});refresh()
 			for _,key in ipairs({"savedItem","savedItemMods"}) do c[key].anchor.other=c.search.anchor.other end
 			c.savedItem.enabled=false;c.savedItem.layoutAudit="crafting-inventory";c.savedItemMods.layoutAudit="crafting-inventory"
 		end
