@@ -9,6 +9,8 @@ local sha = require("sha1")
 local registerScript = [=[
 local enable, taskName, workingDirectory, userPath = ...
 local ok, result = pcall(function()
+	local inspecting = enable=="inspect"
+	assert(inspecting or type(enable)=="boolean", "Invalid background task request")
 	local ffi = require("ffi")
 	local base64 = require("base64")
 	ffi.cdef[[
@@ -144,12 +146,57 @@ exit $process.ExitCode
 	local script = "$ErrorActionPreference = 'Stop'; $name = " .. literal(taskName) .. [[
 
 $description = 'Path of Building AI Edition loot filter background sync'
-$task = Get-ScheduledTask -TaskName $name -TaskPath '\' -ErrorAction SilentlyContinue
-if ($task -and $task.Description -ne $description) { exit 1 }
+try {
+    $task = Get-ScheduledTask -TaskName $name -TaskPath '\' -ErrorAction Stop
+} catch {
+    if ($_.CategoryInfo.Category -ne 'ObjectNotFound') { throw }
+    $task = $null
+}
+if ($task -and $task.Description -ne $description) { exit 11 }
 ]]
 	if enable then
-		script = script .. "$powershell = " .. literal(powershell) ..
-			"; $arguments = " .. literal(launchArguments .. encode(worker)) .. [[
+		local arguments = launchArguments..encode(worker)
+		script = script .. "$powershell = "..literal(powershell).."\n"
+		if inspecting then
+			-- Keep the inspection command below Windows' process argument limit.
+			script = script .. "$argumentHash = "..literal(require("sha1")(arguments)).."; $exe = "..literal(executable).."\n"
+		else
+			script = script .. "$arguments = "..literal(arguments).."\n"
+		end
+	end
+	if inspecting then
+		script = script .. [[
+if (-not $task) { exit 10 }
+if ($task.State -eq 'Disabled' -or -not $task.Settings.Enabled) { exit 12 }
+if (@($task.Actions).Count -ne 1 -or $task.Actions[0].Execute -ne $powershell) { exit 13 }
+$sha = [System.Security.Cryptography.SHA1]::Create()
+try {
+    $bytes = [Text.Encoding]::UTF8.GetBytes([string]$task.Actions[0].Arguments)
+    $actualHash = [BitConverter]::ToString($sha.ComputeHash($bytes)).Replace('-','').ToLowerInvariant()
+} finally { $sha.Dispose() }
+if ($actualHash -cne $argumentHash) { exit 13 }
+$sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+try {
+    $actual = $task.Principal.UserId
+    if ($actual -notlike 'S-1-*') {
+        $actual = ([System.Security.Principal.NTAccount]::new($actual)).Translate([System.Security.Principal.SecurityIdentifier]).Value
+    }
+} catch { exit 14 }
+if ($actual -ne $sid -or $task.Principal.LogonType -ne 'Interactive' -or $task.Principal.RunLevel -ne 'Limited') { exit 14 }
+try {
+    $trigger = $task.Triggers[0]
+    if (@($task.Triggers).Count -ne 1 -or $trigger.CimClass.CimClassName -ne 'MSFT_TaskTimeTrigger' -or
+        -not $trigger.Enabled -or $trigger.EndBoundary -or $trigger.Repetition.Duration -or
+        [System.Xml.XmlConvert]::ToTimeSpan($trigger.Repetition.Interval).TotalMinutes -ne 5 -or
+        $task.Settings.MultipleInstances -ne 'IgnoreNew') { exit 15 }
+} catch { exit 15 }
+if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { exit 16 }
+if ($task.State -eq 'Running') { exit 17 }
+if ($task.State -ne 'Ready') { exit 18 }
+exit 0
+]]
+	elseif enable then
+		script = script .. [[
 
 $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $action = New-ScheduledTaskAction -Execute $powershell -Argument $arguments
@@ -179,10 +226,32 @@ exit 0
 	if waited == 0 then ffi.C.GetExitCodeProcess(process.process, exitCode) end
 	if waited == 258 then ffi.C.TerminateProcess(process.process, 1) end
 	ffi.C.CloseHandle(process.process)
+	if inspecting then
+		assert(waited==0, "Windows Task Scheduler did not respond")
+		local states = {[0]="ready",[10]="missing",[11]="foreign",[12]="disabled",[13]="action_changed",
+			[14]="account_changed",[15]="trigger_changed",[16]="executable_missing",[17]="running",[18]="unavailable"}
+		return assert(states[tonumber(exitCode[0])], "Could not read the Windows task. Check permissions for the current user.")
+	end
 	assert(waited == 0 and exitCode[0] == 0, "Windows Task Scheduler did not accept the change. Check permissions for the current user.")
 end)
 return ok, result
 ]=]
+
+local function launchTaskCheck(mode)
+	local taskName = "PoB AI Loot Sync " .. sha(main.userPath:lower()):sub(1,16)
+	return LaunchSubScript(registerScript, "", "", mode, taskName, GetRuntimePath(), main.userPath)
+end
+
+function M.inspect(callback)
+	assert(require("ffi").os=="Windows", "Background sync requires Windows")
+	assert(not M.busy, "Wait for the current background sync check")
+	local id = assert(launchTaskCheck("inspect"), "Could not start Windows task inspection")
+	M.busy = true
+	launch:RegisterSubScript(id,function(ok,state)
+		M.busy = false
+		callback(ok,state)
+	end)
+end
 
 function M.change(enabled, callback, profileId)
 	assert(require("ffi").os == "Windows", "Background sync requires Windows")
@@ -203,10 +272,7 @@ function M.change(enabled, callback, profileId)
 				end
 			end
 		end
-		local directory = GetRuntimePath()
-		local taskName = "PoB AI Loot Sync " .. sha(main.userPath:lower()):sub(1,16)
-		local id = assert(LaunchSubScript(registerScript, "", "", enabled, taskName, directory, main.userPath),
-			"Could not start background sync setup")
+		local id = assert(launchTaskCheck(enabled), "Could not start background sync setup")
 		M.busy = true
 		launch:RegisterSubScript(id, function(passed, why)
 			M.busy = false

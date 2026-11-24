@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1237][2026/11/23]
+
+* Inspect the Windows background task from daily sync and report registration problems.
+
 VERSION[2.68.1-ai.preview1236][2026/11/23]
 
 * Keep provider cooldowns across PoB windows and Windows background jobs.

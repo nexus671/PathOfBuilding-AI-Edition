@@ -429,7 +429,32 @@ function M.Open(profileId, profileName)
 				main:OpenPopup(360,126,"New sync profile",controls,nil,nil,"cancel")
 			end})
 	end)
-	ui.description(c,"backgroundHelp",16,504,width-210,25,{"Background updates run while you are signed in to Windows."},13)
+	c.backgroundStatus = new("ButtonControl"):ButtonControl(ui.anchor,{16,504,180,26},"Check Windows task",function()
+		local owner = main.popups[1]
+		local passed, err = pcall(background.inspect,function(ok,state)
+			if main.popups[1]~=owner then return end
+			local descriptions = {
+				ready="Windows has the expected background task.",
+				running="Windows is running the expected background task.",
+				missing="The Windows task is missing.",
+				foreign="A different Windows task uses the expected name.",
+				disabled="The Windows task is disabled.",
+				action_changed="The task runs a different action or PoB installation.",
+				account_changed="The task uses a different account or run mode.",
+				trigger_changed="The task uses a different trigger or execution policy.",
+				executable_missing="The task's PoB executable is missing.",
+				unavailable="The Windows task is currently unavailable.",
+			}
+			local message = ok and descriptions[state] or ui.errorText(state)
+			local preference = not config.enabled and "Price sync is disabled for this profile."
+				or config.backgroundEnabled and "Background sync is enabled for this profile."
+				or "This profile uses in-app sync."
+			main:OpenMessagePopup("Windows background task",preference.."\n"..(message or descriptions.unavailable))
+		end)
+		if not passed then main:OpenMessagePopup("Windows background task",ui.errorText(err)) end
+	end)
+	c.backgroundStatus.enabled = function() return not background.busy end
+	ui.description(c,"backgroundHelp",206,503,width-402,27,{"Runs while you are signed in to Windows."},13)
 	c.account = new("ButtonControl"):ButtonControl(ui.anchor,{width-184,504,168,26},"Publish to account",function()
 		require("Classes.LootFilterSyncAccountControl").Open(profileId)
 	end)
