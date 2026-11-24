@@ -600,14 +600,18 @@ function M.Open(profileId, profileName)
 	c.run.enabled = function() return config.enabled and not config.paused and not sync.busy end
 	c.pause.enabled = function() return config.enabled and not sync.busy end
 	local lastStatus, cached = sync.status, config
-	c.rollback.enabled = function()
+	local function latestActionConfig()
 		if not sync.busy and lastStatus ~= sync.status then
 			lastStatus = sync.status
 			local passed, saved = pcall(sync.configuration,profileId)
 			if passed and saved then cached = saved end
 		end
-		return not sync.busy and (cached.backup ~= nil or type(cached.history) == "table" and #cached.history > 0
-			or type(cached.backupRecords) == "table" and next(cached.backupRecords) ~= nil)
+		return cached
+	end
+	c.rollback.enabled = function()
+		local latest = latestActionConfig()
+		return not sync.busy and (latest.backup ~= nil or type(latest.history) == "table" and #latest.history > 0
+			or type(latest.backupRecords) == "table" and next(latest.backupRecords) ~= nil)
 	end
 	local function backgroundLabel()
 		return config.backgroundEnabled and "Disable background sync" or "Enable background sync"
@@ -788,7 +792,7 @@ function M.Open(profileId, profileName)
 	c.observedStack = new("ButtonControl"):ButtonControl(ui.anchor,{34+3*fourth,534,fourth,26},"Test observed stack",function()
 		compareObservedStack(profileId)
 	end)
-	c.observedStack.enabled = function() return config.lastSuccess~=nil and not sync.busy end
+	c.observedStack.enabled = function() return not sync.busy and latestActionConfig().lastSuccess~=nil end
 	ui.style(c)
 	main:OpenPopup(width, 578, "Daily filter sync", c, nil, nil, "close")
 end

@@ -172,6 +172,14 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	harness:frame()
 	harness:click("close")
 	local originalStack=sync.compareObservedStack
+	local previousStatus, verifiedFixture=sync.status, reviewFixture
+	main.popups={}
+	reviewFixture={enabled=true,target=selected}
+	require("Classes.LootFilterDailySyncControl").Open()
+	assert(not main.popups[1].controls.observedStack:IsEnabled())
+	reviewFixture=verifiedFixture
+	sync.status="Verified test refresh"
+	assert(main.popups[1].controls.observedStack:IsEnabled())
 	sync.compareObservedStack=function(id,name,count,area,level,class)
 		assert(id=="default" and name=="Orb of Alteration" and count==5 and area==83 and level==nil and class==nil)
 		return {action="Hide",line=17,styles={}}, {action="Show",line=26,styles={MinimapIcon={"1","Cyan","Diamond"}}}
@@ -188,7 +196,7 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	local shown=table.concat(evidence," ")
 	assert(shown:find("Hide at line 17",1,true) and shown:find("Show at line 26",1,true) and shown:find("1 Cyan Diamond",1,true),shown)
 	if output then harness:frame():write(output.."/"..size[1].."-observed-stack-review.json") end
-	sync.compareObservedStack=originalStack
+	sync.compareObservedStack,sync.status=originalStack,previousStatus
 	reviewFixture = nil
 	print(string.format("Native setup and diagnostics controls passed at %dx%d.", unpack(size)))
 end
