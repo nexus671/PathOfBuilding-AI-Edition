@@ -79,6 +79,10 @@ local function describeObservedOutcome(details, label, result)
 	elseif (result.action=="Show" or result.action=="Minimal") and result.styles.MinimapIcon then
 		details[#details+1] = "Minimap marker: "..table.concat(result.styles.MinimapIcon," ")
 	end
+	for index,reason in ipairs(result.reasons or {}) do
+		if index>3 then details[#details+1]="Additional filter warnings omitted.";break end
+		details[#details+1] = tostring(reason):gsub("[%c%^]"," ")
+	end
 end
 
 local function compareStackFile(compare, beforeLabel, afterLabel)

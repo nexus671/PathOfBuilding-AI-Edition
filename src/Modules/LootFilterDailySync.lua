@@ -656,7 +656,7 @@ function M.compareObservedStackBatch(before, after, path)
 	for index, item in ipairs(items) do
 		local earlier, later = compare(item)
 		local wasVisible, isVisible = visibility[earlier.action],visibility[later.action]
-		local group = (wasVisible==nil or isVisible==nil) and "unknown"
+		local group = (wasVisible==nil or isVisible==nil or #(earlier.reasons or {})>0 or #(later.reasons or {})>0) and "unknown"
 			or wasVisible==isVisible and "unchanged" or isVisible and "shown" or "hidden"
 		summary[group] = summary[group]+1
 		summary.units = summary.units+item.StackSize

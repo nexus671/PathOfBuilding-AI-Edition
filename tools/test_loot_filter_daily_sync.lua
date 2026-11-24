@@ -86,6 +86,11 @@ do
 	write(path,'['..first..',{ "BaseType":"Example Card", "Class":"Divination Cards", "StackSize":1, "AreaLevel":60 }]')
 	local grouped=sync.compareObservedStackBatch(original,proposed,path)
 	assert(#grouped.byClass==2 and grouped.byClass[1].key=="Divination Cards" and grouped.byClass[2].key=="Stackable Currency")
+	write(path,'['..first..']')
+	local warningFilter='Show\n    BaseType == "Orb of Alteration"\nImport "missing.filter"\n'
+	local warningSummary,warningRows=sync.compareObservedStackBatch(warningFilter,warningFilter,path)
+	assert(warningRows[1].before.action=="Show" and #warningRows[1].before.reasons>0)
+	assert(warningSummary.unknown==1 and warningSummary.unchanged==0 and warningSummary.byArea[1].unknown==1)
 	for _,invalid in ipairs({first,"[null]","[]",observations.." trailing",'['..first:gsub('"StackSize"','"WrongSize"')..']'}) do
 		write(path,invalid)
 		assert(not pcall(sync.compareObservedStackBatch,original,proposed,path))

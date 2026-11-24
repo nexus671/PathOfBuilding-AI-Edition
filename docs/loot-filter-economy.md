@@ -84,7 +84,7 @@ After a verified sync, use **Test observed stack** to enter a stackable item's e
 
 In **Preview changes**, **Offline price preview**, or **Review league change**, **Test observed stack** compares the current and proposed text shown in that preview. You can check the proposed visibility before saving the policy or league.
 
-Choose **Compare file** to review up to 250 recorded stacks at once. Use a JSON array with one entry per observed stack. Repeated entries count as separate observations. Add `ItemLevel` if known and `Class` if the name alone does not identify the stackable class. The results can be grouped by item class or exact area level; these are counts from your file, not estimates of drop rates.
+Choose **Compare file** to review up to 250 recorded stacks at once. Use a JSON array with one entry per observed stack. Repeated entries count as separate observations. Add `ItemLevel` if known and `Class` if the name alone does not identify the stackable class. The results can be grouped by item class or exact area level; these are counts from your file, not estimates of drop rates. Results with unresolved includes or other preview assumptions are counted as unresolved, with the warning shown in the item details.
 
 ```json
 [
