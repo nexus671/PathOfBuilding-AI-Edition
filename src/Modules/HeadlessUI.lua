@@ -77,9 +77,34 @@ function M.install(options)
 	replace("Copy",function(text) ui.clipboard=text end)
 	replace("Paste",function() return ui.clipboard end)
 	replace("DrawStringWidth",measure)
-	replace("DrawStringCursorIndex",function(height,name,text,x)
-		for i=1,#text do if measure(height,name,text:sub(1,i))>x then return i-1 end end
-		return #text
+	replace("DrawStringCursorIndex",function(height,name,text,x,y)
+		-- SimpleGraphic chooses a line, skips colour codes, and maps its cursor
+		-- offset back to a one-based UTF-8 byte index for Lua.
+		local start,lineY=1,height
+		while true do
+			local newline=text:find("\n",start,true)
+			local finish=newline and newline-1 or #text
+			if (y or 0)<=lineY or not newline then
+				local line=text:sub(start,finish);local index,width=1,0
+				while index<=#line do
+					local byte=line:byte(index);local length
+					if byte==94 then local _,found=escape(line:sub(index,index+7));length=found end
+					if length then index=index+length
+					else
+						local last=index
+						if byte>=194 and byte<=244 then
+							while last<#line and line:byte(last+1)>=128 and line:byte(last+1)<=191 do last=last+1 end
+						end
+						local char=line:sub(index,last)
+						width=width+measure(height,name,char)
+						if x<=width then return start+index-1 end
+						index=last+1
+					end
+				end
+				return start+#line
+			end
+			start=newline+1;lineY=lineY+height
+		end
 	end)
 	replace("SetDrawColor",function(r,g,b,a) color=type(r)=="string" and assert(escape(r),"Unknown colour escape") or {r,g,b,a or 1} end)
 	replace("GetDrawColor",function() return unpack(color) end)
