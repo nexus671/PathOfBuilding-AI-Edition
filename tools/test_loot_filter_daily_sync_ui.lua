@@ -789,7 +789,7 @@ do
 			return {name="Cyclone",variant="Power Charge On Critical",detailsId=id,chaosValue=50,
 				count=40,listingCount=40,gemLevel=level,gemQuality=quality,corrupted=corrupted}
 		end
-		local variants={variant("unknown"),variant("corrupt",nil,nil,true),variant("uncorrupt",nil,nil,false),
+		local variants={variant("unknown"),variant("corrupt",nil,nil,true),variant("uncorrupted",nil,nil,false),
 			variant("level-only",20,nil,false),variant("quality-only",nil,20,false),variant("complete",20,20,false)}
 		local function compareAll(lines)
 			local results=browser.rows(assert(json.encode({lines=lines})),{id="ImbuedGem"},"",target)
@@ -798,12 +798,12 @@ do
 		end
 		local separate=compareAll(variants)
 		for _,value in ipairs(variants) do assert(separate[value.detailsId].price==50 and not separate[value.detailsId].conflicting) end
-		assert(separate.unknown.corrupted==nil and separate.corrupt.corrupted==true and separate.uncorrupt.corrupted==false)
+		assert(separate.unknown.corrupted==nil and separate.corrupt.corrupted==true and separate.uncorrupted.corrupted==false)
 		assert(not separate.complete.partialGemMatch)
-		variants[#variants+1]=variant("duplicate-uncorrupt",nil,nil,false)
+		variants[#variants+1]=variant("duplicate-uncorrupted",nil,nil,false)
 		local grouped=compareAll(variants)
-		assert(grouped.uncorrupt.conflicting and grouped.uncorrupt.price==nil)
-		assert(grouped["duplicate-uncorrupt"].conflicting and grouped["duplicate-uncorrupt"].price==nil)
+		assert(grouped.uncorrupted.conflicting and grouped.uncorrupted.price==nil)
+		assert(grouped["duplicate-uncorrupted"].conflicting and grouped["duplicate-uncorrupted"].price==nil)
 		for _,id in ipairs({"unknown","corrupt","level-only","quality-only","complete"}) do
 			assert(grouped[id].price==50 and not grouped[id].conflicting,id)
 		end
