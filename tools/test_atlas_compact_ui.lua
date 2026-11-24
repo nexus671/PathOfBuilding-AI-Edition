@@ -6,5 +6,5 @@ ui:click("more");ui:text("search","Compare routes");ui:click("choose");assert(ma
 ui:click("more");ui:text("search","Plan tools");ui:click("choose");assert(main.popups[1] and main.popups[1].title=="Atlas plan tools");if output then ui:frame():write(output.."/"..width.."-atlas-compact-tools.json") end;main:ClosePopup()
 ui:click("more");ui:text("search","Targets");ui:click("choose");assert(main.popups[1]);main:ClosePopup()
 if output then ui:frame():write(output.."/"..width.."-atlas-compact.json") end
-ui:choose("page","Notes & sharing");ui:text("notes","Keep maps for the plan");if output then ui:frame():write(output.."/"..width.."-atlas-compact-notes.json") end;ui:click("copy");assert(Paste():find("Keep maps for the plan",1,true));ui:choose("page","Tree");assert(build.planningWorkspace.controls.canvas:IsShown())
+ui:choose("page","Notes & sharing");ui:text("notes","Keep maps for the plan");if output then ui:frame():write(output.."/"..width.."-atlas-compact-notes.json") end;ui:click("copy");assert(Paste():find("Keep maps for the plan",1,true));ui:choose("page","Tree");assert(build.planningWorkspace.controls.canvas:IsShown());assert(build.planningWorkspace.controls.notes.buf=="Keep maps for the plan","Changing Atlas pages lost the notes")
 print("ATLAS_COMPACT_OK");ui:restore()
