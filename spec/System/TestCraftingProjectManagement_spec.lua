@@ -374,6 +374,11 @@ describe("Crafting project removal and save-state ownership",function()
 		c.page:SelByValue("Target conditions");c.page.selFunc()
 		c.targetConditions:Click();main.popups[1].controls.close:Click();assert.is_false(uiState.hasDraft(build,"workingCraft","targets"))
 		c.addTarget:Click();assert.is_true(uiState.hasDraft(build,"workingCraft","targets"));c.keepWorking:Click()
+		local first=c.target:GetSelValueByKey("val")
+		for index,entry in ipairs(c.target.list) do
+			if entry.val~=first and (entry.label:match("^Prefix |") or entry.label:match("^Suffix |")) then c.target:SetSel(index);break end
+		end
+		assert.is_true(c.alternative:IsEnabled())
 		c.alternative:Click();assert.is_true(uiState.hasDraft(build,"workingCraft","targets"));c.keepWorking:Click()
 		c.clearTargets:Click();assert.is_true(uiState.hasDraft(build,"workingCraft","targets"));c.keepWorking:Click()
 		c.targetConditions:Click();local p=main.popups[1].controls;p.minQuality:SetText("10");p.keep:Click()
