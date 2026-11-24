@@ -138,7 +138,9 @@ test('never caches a partial overview with malformed collection entries',async t
     {...good,items:[...good.items,false]},
   ]) {
     offered = payload;
-    assert.equal((await cache.request(currencyPath)).status,502);
+    const rejected = await cache.request(currencyPath);
+    assert.equal(rejected.status,502);
+    assert.equal(rejected.headers.get('x-pob-market-failure'),'invalid_response');
     const health = await (await cache.request('/health')).json();
     assert.equal(health.provider.lastFailure.reason,'invalid_response');
   }
@@ -339,6 +341,9 @@ test('health uses fixed upstream failure classes without exposing response bodie
     const cache=await fixture(t,(path,options,{now})=>path==='/leagues' ? snapshot(leagueBody,now) : item.reply(now));
     const response=await cache.request(currencyPath);
     assert.ok(response.status>=400);
+    const safeHeader=['invalid_response','stale','oversized'].includes(item.reason) ? item.reason : null;
+    assert.equal(response.headers.get('x-pob-market-failure'),safeHeader);
+    assert.doesNotMatch(await response.text(),/private|token=|secret/);
     const health=await (await cache.request('/health')).json();
     assert.equal(health.provider.state,'degraded');
     assert.deepEqual(health.provider.lastFailure,{at:Date.UTC(2026,10,23),reason:item.reason,

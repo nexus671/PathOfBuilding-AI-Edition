@@ -348,7 +348,8 @@ local function feedFailure(category, reason, status)
 	return M.failedFeedEvidence({category=category,reason=reason,httpStatus=status})
 end
 
-local function requestFailure(category, status, message)
+local headers
+local function requestFailure(category, status, message, response, endpoint)
 	local reason = "http_error"
 	if message=="No data returned" then reason,status = "empty_response",200
 	elseif message=="Response exceeds the size limit" or status==304 then reason = "invalid_response"
@@ -359,6 +360,14 @@ local function requestFailure(category, status, message)
 	elseif status==429 then reason = "rate_limited"
 	elseif status>=500 then reason = "provider_unavailable"
 	elseif status>=300 and status<400 then reason = "redirect" end
+	-- Only a bound shared source can supply this small relay reason enum.
+	-- Keep the actual HTTP status and the ordinary fallback for older relays.
+	if status==502 and endpoint and endpoint~=market.resolveEndpoint() then
+		local valid, values = pcall(headers,response)
+		local failure = valid and values["x-pob-market-failure"]
+		if failure=="stale" then reason = "stale"
+		elseif failure=="invalid_response" or failure=="oversized" then reason = "invalid_response" end
+	end
 	return feedFailure(category,reason,status)
 end
 
@@ -1007,7 +1016,7 @@ local function days(year, month, day)
 	return era * 146097 + y * 365 + math.floor(y / 4) - math.floor(y / 100) + math.floor((153 * m + 2) / 5) + day - 719469
 end
 
-local function headers(response)
+headers = function(response)
 	local input = type(response) == "table" and response.header or ""
 	if type(input) ~= "string" then return {} end
 	local result = {}
@@ -1017,7 +1026,11 @@ local function headers(response)
 		local key, value = line:match("^([%w-]+):[ \t]*(.-)[ \t]*$")
 		if key then
 			key = key:lower()
-			if key=="age" or key=="date" or key=="etag" or key=="retry-after" or key=="cf-cache-status" then
+			if key=="x-pob-market-failure" then
+				-- Even identical duplicates are ineligible; reset only at a new
+				-- HTTP status line, just like the other final-response headers.
+				result[key] = result[key]==nil and value or false
+			elseif key=="age" or key=="date" or key=="etag" or key=="retry-after" or key=="cf-cache-status" then
 				assert(result[key]==nil, "Duplicate exchange freshness or cache header")
 				result[key] = value
 			end
@@ -1404,7 +1417,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id, onLea
 				return
 			end
 			if err then
-				local failedFeed = requestFailure(category,status,err)
+				local failedFeed = requestFailure(category,status,err,response,endpoint)
 				job.failedFeed = failedFeed
 				local retryable = status == 429 or status and status >= 500 and status <= 599 or not status
 				local delay = providerDelay or 5
@@ -1447,7 +1460,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id, onLea
 			local at = os.time()
 			local code = err and tonumber(err:match("^Response code: (%d+)$"))
 			M.noteProviderLimit(response,code,at)
-			if err then finish(false,"Could not verify the selected PC trade league.",requestFailure("leagues",code,err));return end
+			if err then finish(false,"Could not verify the selected PC trade league.",requestFailure("leagues",code,err,response,endpoint));return end
 			local fresh, body, age = pcall(M.fresh,response,at)
 			if not fresh then finish(false,"The PC trade league list is unavailable or stale.",feedFailure("leagues","stale",200));return end
 			local valid, _, leagues = pcall(market.tradeLeagues,body)

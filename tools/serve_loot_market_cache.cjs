@@ -17,6 +17,7 @@ const freshestAge = 3600;
 const leaguePattern = /^[\w -]{1,80}$/;
 const providerFailureReasons = Object.freeze(['rate_limited','unavailable','access_denied','http_error','stale',
   'invalid_response','oversized','transport','timeout']);
+const relayedFailureReasons = new Set(['invalid_response','oversized','stale']);
 
 class MarketError extends Error {
   constructor(status, message, retryAfter, reason) {
@@ -238,6 +239,9 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
       provider.failures++;
       provider.state = 'degraded';
       provider.lastFailure = {at:now(),reason,...(httpStatus===undefined ? {} : {httpStatus})};
+      if (!(error instanceof MarketError) && reason === 'invalid_response') {
+        throw new MarketError(502,'Provider response unavailable',undefined,reason);
+      }
       throw error;
     } finally {
       if (response?.body && !response.body.locked) await response.body.cancel().catch(() => {});
@@ -285,7 +289,7 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
       }
       const entry = await get(details);
       const age = Math.max(0,Math.ceil((now()-entry.sourceAt)/1000));
-      if (age > freshestAge) throw new MarketError(502,'Provider response is stale');
+      if (age > freshestAge) throw new MarketError(502,'Provider response is stale',undefined,'stale');
       const headers = { 'Content-Type':'application/json', Date:new Date(entry.sourceAt).toUTCString(),
         Age:String(age), 'Cache-Control':entry.ttl ? 'private, max-age=0' : 'no-store' };
       if (entry.etag) headers.ETag = entry.etag;
@@ -300,6 +304,9 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
       stats.rejected++;
       const headers = { 'Content-Type':'application/json','Cache-Control':'no-store' };
       if (error?.retryAfter) headers['Retry-After'] = String(error.retryAfter);
+      if (error instanceof MarketError && error.status === 502 && relayedFailureReasons.has(error.reason)) {
+        headers['X-PoB-Market-Failure'] = error.reason;
+      }
       res.writeHead(error?.status || 502,headers);
       res.end(JSON.stringify({ error: error instanceof MarketError ? error.message : 'Provider response unavailable' }));
     }

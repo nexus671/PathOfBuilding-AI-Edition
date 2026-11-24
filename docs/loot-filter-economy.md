@@ -131,6 +131,8 @@ The operator runs `node tools/serve_loot_market_cache.cjs` with `POB_MARKET_UPST
 
 The service accepts only the app's public economy routes and active leagues. It coalesces requests, bounds the upstream queue, respects provider caching, and preserves origin age and retry timing. Throttled, stale, oversized and malformed data go through the app's existing checks before any filter is published. The operator needs to qualify the deployed host with the provider and verify fresh responses from that host before enabling distribution. [poe.ninja API guidelines](https://poe.ninja/docs/api)
 
+When the configured shared cache rejects an upstream response, **Last attempt** can distinguish a stale feed from an invalid or oversized response alongside HTTP 502. Older caches can still report a generic provider error.
+
 ### Monitor the relay
 
 Polling **/health** reads the current process without fetching prices. A top-level **ready** status means the relay can answer HTTP requests. **provider.state** reports whether the relay has yet to contact the provider (**idle**), last validated a response (**ready**), last failed a validation (**degraded**), or is waiting out a provider cooldown (**cooldown**). The receipt includes the remaining cooldown, aggregate attempts, and numeric timestamps and fixed reason codes for the last outcomes.
