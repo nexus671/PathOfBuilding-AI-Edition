@@ -71,6 +71,16 @@ local function showLastAttempt(profileId)
 	main:OpenPopup(width,contentHeight+68,"Last sync attempt",controls,nil,nil,"close")
 end
 
+local observedStyles = {
+	{"MinimapIcon","Minimap marker"}, {"PlayEffect","Beam"},
+	{"SetTextColor","Text color (RGBA)"}, {"SetBorderColor","Border color (RGBA)"},
+	{"SetBackgroundColor","Background color (RGBA)"}, {"SetFontSize","Font size"},
+	{"PlayAlertSound","Alert sound"}, {"PlayAlertSoundPositional","Positional alert sound"},
+	{"CustomAlertSound","Custom alert sound"}, {"CustomAlertSoundOptional","Optional custom alert sound"},
+	{"DisableDropSound","Drop sound disabled"}, {"EnableDropSound","Drop sound enabled"},
+	{"DisableDropSoundIfAlertSound","Drop sound disabled with alert"}, {"EnableDropSoundIfAlertSound","Drop sound enabled with alert"},
+}
+
 local function describeObservedOutcome(details, label, result)
 	details[#details+1] = label.." | "..result.action..(result.line and (" at line "..result.line) or "")
 	if #(result.matches or {})>1 then
@@ -81,8 +91,14 @@ local function describeObservedOutcome(details, label, result)
 	if result.action=="Unknown" then
 		local missing = require("Modules.LootFilterParser").safeMissingProperties(result.missingProperties)
 		details[#details+1] = missing and ("Needs "..table.concat(missing,", ")..".") or "A filter rule or included file could not be verified."
-	elseif (result.action=="Show" or result.action=="Minimal") and result.styles.MinimapIcon then
-		details[#details+1] = "Minimap marker: "..table.concat(result.styles.MinimapIcon," ")
+	elseif result.action=="Show" or result.action=="Minimal" then
+		for _,style in ipairs(observedStyles) do
+			local values=(result.styles or {})[style[1]]
+			if values then
+				local value=table.concat(values," "):gsub("[%c%^]"," ")
+				details[#details+1] = style[2]..(value~="" and (": "..value) or "")
+			end
+		end
 	end
 	for index,reason in ipairs(result.reasons or {}) do
 		if index>3 then details[#details+1]="Additional filter warnings omitted.";break end
@@ -159,10 +175,11 @@ local function compareObservedStack(compare, compareBatch, beforeLabel, afterLab
 		local rows = ui.rows(details,width-48,14)
 		local height = 0
 		for _, row in ipairs(rows) do height=height+row.height end
-		resultControls.details = new("TextListControl"):TextListControl(ui.anchor,{16,16,width-32,height+8},nil,rows)
-		resultControls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,height+36,120,28},"Close",function() main:ClosePopup() end)
+		local detailsHeight = math.min(height+8,math.max(80,main.screenH-120))
+		resultControls.details = new("TextListControl"):TextListControl(ui.anchor,{16,16,width-32,detailsHeight},nil,rows)
+		resultControls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,detailsHeight+28,120,28},"Close",function() main:ClosePopup() end)
 		ui.style(resultControls)
-		main:OpenPopup(width,height+80,"Observed stack result",resultControls,nil,nil,"close")
+		main:OpenPopup(width,detailsHeight+72,"Observed stack result",resultControls,nil,nil,"close")
 	end
 	controls.test = new("ButtonControl"):ButtonControl(ui.anchor,{16,206,column,28},"Compare filters",run)
 	controls.importStacks = new("ButtonControl"):ButtonControl(ui.anchor,{24+column,206,column,28},"Compare file",function()

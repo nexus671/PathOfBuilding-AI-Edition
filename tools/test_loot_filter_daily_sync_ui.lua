@@ -191,7 +191,10 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	assert(main.popups[1].controls.observedStack:IsEnabled())
 	sync.compareObservedStack=function(id,name,count,area,level,class)
 		assert(id=="default" and name=="Orb of Alteration" and count==5 and area==83 and level==nil and class==nil)
-		return {action="Hide",line=17,styles={}}, {action="Show",line=26,styles={MinimapIcon={"1","Cyan","Diamond"}}}
+		return {action="Hide",line=17,styles={}}, {action="Show",line=26,styles={MinimapIcon={"1","Cyan","Diamond"},
+			PlayEffect={"Blue"},SetTextColor={"255","100","50","255"},SetBorderColor={"1","2","3","255"},
+			SetBackgroundColor={"4","5","6","255"},SetFontSize={"40"},PlayAlertSound={"2","250"},
+			CustomAlertSound={"sound.ogg","100"},DisableDropSound={}}}
 	end
 	harness:click("observedStack")
 	harness:text("name","Orb of Alteration")
@@ -204,6 +207,10 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	for _, comparison in ipairs(compared.controls.details.list) do evidence[#evidence+1]=StripEscapes(comparison[1] or "") end
 	local shown=table.concat(evidence," ")
 	assert(shown:find("Hide at line 17",1,true) and shown:find("Show at line 26",1,true) and shown:find("1 Cyan Diamond",1,true),shown)
+	assert(shown:find("Beam: Blue",1,true) and shown:find("Text color (RGBA): 255 100 50 255",1,true)
+		and shown:find("Alert sound: 2 250",1,true) and shown:find("Drop sound disabled",1,true),shown)
+	local x,y=compared.controls.close:GetPos();local w,h=compared.controls.close:GetSize()
+	assert(x>=0 and y>=0 and x+w<=size[1] and y+h<=size[2],"Long comparison must keep Close on screen")
 	if output then harness:frame():write(output.."/"..size[1].."-observed-stack-review.json") end
 	sync.compareObservedStack,sync.status=originalStack,previousStatus
 	reviewFixture = nil

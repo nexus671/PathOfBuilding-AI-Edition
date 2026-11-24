@@ -80,7 +80,7 @@ Select **Use with next update**, then **Preview changes** to check the resulting
 
 In **Last review**, select **Pickup policy** to find caps that cannot tighten the fixed baseline. The review identifies exact names without an eligible rule and caps at or below every matching baseline cutoff.
 
-After a verified sync, use **Test observed stack** to enter a stackable item's exact name, stack size, and area level. If a rule needs the item level, enter it when known. PoB compares the fixed baseline with the verified filter and shows the matched lines and minimap marker. The comparison uses the entered observation and leaves both files untouched.
+After a verified sync, use **Test observed stack** to enter a stackable item's exact name, stack size, and area level. If a rule needs the item level, enter it when known. PoB compares the fixed baseline with the verified filter and shows matched lines and configured appearance, including colors, markers, beams and sounds. The comparison uses the entered observation and leaves both files untouched.
 
 In **Preview changes**, **Offline price preview**, or **Review league change**, **Test observed stack** compares the current and proposed text shown in that preview. You can check the proposed visibility before saving the policy or league.
 
