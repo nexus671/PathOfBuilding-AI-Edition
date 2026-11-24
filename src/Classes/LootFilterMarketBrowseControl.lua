@@ -74,7 +74,7 @@ function M.Open(build)
 				if code==401 or code==403 then finish("Market provider denied access to this feed."); return end
 				if err or not response then finish("Market request failed. Try again later."); return end
 				callback(response)
-			end,{timeout=20,maxBytes=browse.maxBytes,header="Accept: application/json"})
+			end,{followRedirects=false,timeout=20,maxBytes=browse.maxBytes,header="Accept: application/json"})
 		end
 		local function prices()
 			status("Fetching "..category.label:lower().." for "..league.."...")

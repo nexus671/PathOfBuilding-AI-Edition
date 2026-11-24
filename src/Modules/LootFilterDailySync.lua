@@ -1135,7 +1135,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 				end
 			end
 			finish(false,problem)
-		end,{timeout=15,maxBytes=65536,header="Accept: application/json"})
+		end,{followRedirects=false,timeout=15,maxBytes=65536,header="Accept: application/json"})
 	end
 	local function finishWithPrices(confirmation)
 		if market.endpoint ~= endpoint then finish(false,sourceChanged); return end
@@ -1232,7 +1232,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			storeFeed(url,{body=data,tag=tag,sourceAt=time-age,checkedAt=time})
 			bodies[index], responses[index] = data, {initialAge=age, checkedAt=time, revalidated=false}
 			fetch(index + 1, 1)
-		end, {timeout=20,maxBytes=market.maxFeedBytes(category),header=requestHeaders})
+		end, {followRedirects=false,timeout=20,maxBytes=market.maxFeedBytes(category),header=requestHeaders})
 	end
 	fetch(1, 1)
 end

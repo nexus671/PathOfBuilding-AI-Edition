@@ -37,7 +37,7 @@ local header = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT"
 local calls, stale = 0, true
 launch = {DownloadPage=function(_, _, callback, params)
 	calls = calls + 1
-	assert(params.timeout == 20)
+	assert(params.timeout == 20 and params.followRedirects == false)
 	callback({
 		header=stale and header:gsub("Age: 5","Age: 4001") or header,
 		body='{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.21,"volumePrimaryValue":1000}]}',
@@ -329,7 +329,7 @@ do
 	local cachedHeader = header:gsub("Age: 5", 'Age: 5\r\nETag: W/"fixture"')
 	launch.DownloadPage = function(_, _, callback, params)
 		networkCount = networkCount + 1
-		assert(not params.header:find("no-cache",1,true))
+		assert(params.followRedirects == false and not params.header:find("no-cache",1,true))
 		if transient then
 			transient = false
 			callback({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 20\r\n\r\n"}, "Response code: 429")
@@ -382,7 +382,8 @@ end
 local obsolete = "Ended Fixture"
 local leagueChecks = 0
 local markets = '[{"id":"Covens","name":"Covens"},{"id":"Standard","name":"Standard"}]'
-launch.DownloadPage = function(_,url,callback)
+launch.DownloadPage = function(_,url,callback,params)
+	assert(params.followRedirects == false)
 	if url:match("/leagues$") then
 		leagueChecks = leagueChecks+1
 		callback({header=header,body=markets})
@@ -1046,7 +1047,8 @@ local function checkConfirmedTightening()
 	local exchange=require("Modules.LootFilterExchangeCrossCheck")
 	local itemId=assert(exchange.itemId("Orb of Alteration"))
 	local chaosId="Metadata/Items/Currency/CurrencyRerollRare"
-	launch.DownloadPage=function(_,url,callback)
+	launch.DownloadPage=function(_,url,callback,params)
+		assert(params.followRedirects == false)
 		if url:find(exchange.endpoint,1,true)==1 then
 			if not chaosVolume then callback(nil,"Temporary outage"); return end
 			callback({body=require("dkjson").encode({next_change_id=exchange.hour(clock)+3600,markets={{
@@ -1100,7 +1102,7 @@ end
 function main:ClosePopup() self.popups[1]=nil end
 main.screenW = 1024
 launch.DownloadPage = function(_, url, callback, params)
-	assert(params.timeout == 20)
+	assert(params.timeout == 20 and params.followRedirects == false)
 	if url:match("/leagues$") then callback({header=header,body='[{"id":"Covens","name":"Covens"}]'}); return end
 	reply(url,callback)
 end

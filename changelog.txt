@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1239][2026/11/23]
+
+* Require economy feeds to respond from their configured endpoint.
+
 VERSION[2.68.1-ai.preview1238][2026/11/23]
 
 * Keep daily price sync and its Windows task on the configured price source.

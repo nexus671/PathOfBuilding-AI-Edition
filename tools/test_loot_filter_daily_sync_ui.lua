@@ -77,7 +77,7 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	local downloadPage = launch.DownloadPage
 	local age = 3601
 	launch.DownloadPage = function(_,url,callback,options)
-		assert(url=="https://poe.ninja/poe1/api/economy/leagues" and options.maxBytes==65536)
+		assert(url=="https://poe.ninja/poe1/api/economy/leagues" and options.maxBytes==65536 and options.followRedirects==false)
 		local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
 		callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\nAge: "..age.."\r\n\r\n",
 			body='[{"id":"New Season","name":"New Season Trade"},{"id":"Standard","name":"Standard"}]'})
@@ -539,7 +539,8 @@ main.popups = {}
 local marketUI = headless.install({width=960,height=640})
 marketUI:bind(build)
 local originalMarketDownload = launch.DownloadPage
-launch.DownloadPage = function(_,url,callback)
+launch.DownloadPage = function(_,url,callback,options)
+	assert(options.followRedirects==false)
 	assert(url:find("type=UniqueAccessory",1,true))
 	local header = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT").."\r\n\r\n"
 	callback({header=header,body=[[{"lines":[
@@ -753,3 +754,59 @@ do
 	main.userPath = oldDirectory
 end
 print("Manual price review and league selection honor the same provider cooldown as sync")
+
+
+-- Exercise the production download subscript with controlled curl responses.
+local function checkDownloadRedirectPolicy()
+	local originalRequire, originalLaunch = require, LaunchSubScript
+	local originalScripts = launch.subScripts
+	local responseCode, follow, received, request = 302
+	local curl = {OPT_FOLLOWLOCATION="follow",INFO_RESPONSE_CODE="code"}
+	function curl.easy()
+		local easy = {}
+		function easy:setopt(key,value) if key==curl.OPT_FOLLOWLOCATION then follow=value end end
+		function easy:setopt_url(url) assert(url=="https://source.example.test/prices") end
+		function easy:setopt_headerfunction(callback) self.header=callback end
+		function easy:setopt_writefunction(callback) self.write=callback end
+		function easy:perform()
+			local code = follow==1 and responseCode==302 and 200 or responseCode
+			self.code=code
+			self.header("HTTP/1.1 "..code.." Fixture\r\nLocation: https://other.example.test/prices\r\n\r\n")
+			if code~=304 then self.write(code==200 and "verified prices" or "redirect") end
+			return true
+		end
+		function easy:getinfo(key) assert(key==curl.INFO_RESPONSE_CODE); return self.code end
+		function easy:close() end
+		return easy
+	end
+	require=function(name) if name=="lcurl.safe" then return curl end; return originalRequire(name) end
+	LaunchSubScript=function(script,_,_,...)
+		request={assert(loadstring(script))(...)}
+		return 98123
+	end
+	launch.subScripts={}
+	local function download(options)
+		received=nil
+		launch:DownloadPage("https://source.example.test/prices",function(response,why) received={response,why} end,options)
+		launch.subScripts[98123].callback(unpack(request))
+		return received[1],received[2]
+	end
+	local response, why=download()
+	assert(follow==1 and response.body=="verified prices" and not why)
+	response,why=download({followRedirects=true})
+	assert(follow==1 and response.body=="verified prices" and not why)
+	for _, code in ipairs({301,302,303,307,308}) do
+		responseCode=code
+		response,why=download({followRedirects=false})
+		assert(follow==0 and why=="Response code: "..code and response.body=="redirect")
+	end
+	responseCode=304
+	response,why=download({followRedirects=false})
+	assert(follow==0 and why=="Response code: 304" and response.body=="" and response.header:find("304",1,true))
+	responseCode=200
+	response,why=download({followRedirects=false})
+	assert(follow==0 and response.body=="verified prices" and not why)
+	require, LaunchSubScript, launch.subScripts=originalRequire, originalLaunch, originalScripts
+end
+checkDownloadRedirectPolicy()
+print("Economy downloads reject redirects while ordinary downloads retain redirect following and conditional 304 headers survive")

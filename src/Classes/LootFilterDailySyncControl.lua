@@ -151,7 +151,7 @@ function M.Open(profileId, profileName)
 				action="Use league",
 				choose=function(entry) c.league:SetText(entry.id) end,
 			})
-		end,{timeout=15,maxBytes=65536,header="Accept: application/json"})
+		end,{followRedirects=false,timeout=15,maxBytes=65536,header="Accept: application/json"})
 	end)
 	c.chooseLeague.enabled = function() return not loadingLeagues and not sync.busy end
 	field("time", 198, "Daily time (local, HH:MM)", string.format("%02d:%02d", config.hour or 9, config.minute or 0), 16, 195)
