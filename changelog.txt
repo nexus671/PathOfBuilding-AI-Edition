@@ -1,3 +1,11 @@
+VERSION[2.68.1-ai.preview1253][2026/11/23]
+
+* Defer additional slow loot filter profiles before the Windows task reaches its execution limit.
+
+VERSION[2.68.1-ai.preview1252][2026/11/23]
+
+* Report the actual Windows background sync result when a failure cannot be saved.
+
 VERSION[2.68.1-ai.preview1251][2026/11/23]
 
 * Keep filter tier instructions readable in small windows.
