@@ -265,6 +265,7 @@ function M.change(enabled, callback, profileId)
 	local release = sync.acquireBackgroundSetup()
 	local ok, problem = pcall(function()
 		local config = assert(sync.configuration(profileId), "Enable daily sync first")
+		if enabled then sync.assertPriceSource(config) end
 		if not enabled then
 			for _, entry in ipairs(sync.profiles()) do
 				if entry.id ~= profileId then

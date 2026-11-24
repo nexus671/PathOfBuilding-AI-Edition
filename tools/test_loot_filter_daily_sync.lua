@@ -1547,7 +1547,19 @@ local function checkMarketSourceBinding()
 	historySource.priceHistory={{day="other-source",time=now-86400,values={["Currency:alt"]=100}}}
 	write(settings,assert(json.encode(historySource)))
 	assert(service.configuration(id).lastSuccess and #service.configuration(id).priceHistory==1)
+	service.setBackground(true,service.configuration(id).revision,id)
 	market.endpoint=alternate
+	local task = require("Modules.LootFilterBackgroundTask")
+	local launchTask, register = LaunchSubScript, launch.RegisterSubScript
+	local taskStarts = 0
+	LaunchSubScript=function() taskStarts=taskStarts+1; return 12345 end
+	launch.RegisterSubScript=function(_,_,callback) callback(true) end
+	local enabled, reason=pcall(task.change,true,function() end,id)
+	assert(not enabled and reason:find("price source changed",1,true) and taskStarts==0 and not task.busy)
+	local disabled
+	task.change(false,function(ok) disabled=ok end,id)
+	assert(disabled and not service.configuration(id).backgroundEnabled)
+	LaunchSubScript, launch.RegisterSubScript=launchTask, register
 	requests=0
 	service.tick(now+1,true,false,id)
 	assert(requests==0 and read(live)==verified and service.configuration(id).lastFailure.message:find("price source changed",1,true))

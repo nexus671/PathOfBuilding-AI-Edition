@@ -12,6 +12,11 @@ local function sourceMatches(config)
 	return market.endpoint and (not config.marketSourceHash or config.marketSourceHash == sha(market.endpoint))
 end
 
+function M.assertPriceSource(config)
+	assert(market.endpoint, market.endpointError)
+	assert(sourceMatches(config), sourceChanged)
+end
+
 local function readWithLimit(path, limit)
 	local file = io.open(path, "rb")
 	if not file then return nil end
