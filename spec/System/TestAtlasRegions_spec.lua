@@ -51,8 +51,8 @@ describe("Manually tracked Shaped Regions",function()
 	it("explains when an observed count exceeds the Thread checker's range",function()
 		newBuild();main.popups={};local input=fixture();input[1].maps[1].freeThreads=101
 		local controls=require("Classes.AtlasRegionsControl").Open({shapedRegions=input},function() end)
-		controls.region:SelByValue("Blight");controls.region.selFunc();controls.list.onClick({line=controls.list.list[1]});controls.threadCheck:Click()
-		assert.matches("supports up to 100",controls.status.label);assert.equal("Shaped Regions",main.popups[1].title);main.popups={}
+		controls.region:SelByValue("Blight");controls.region.selFunc();controls.list.onClick({line=controls.list.list[1]})
+		assert.is_false(controls.threadCheck:IsEnabled());assert.matches("supports up to 100",controls.status.label);assert.matches("supports up to 100",controls.threadCheck.tooltipText());assert.equal("Shaped Regions",main.popups[1].title);main.popups={}
 	end)
 	it("validates observations without silently dropping duplicates or invalid counts",function()
 		local bad=fixture();bad[1].maps[2].name="beach MAP";assert.has_error(function() regions.validate(bad) end)
