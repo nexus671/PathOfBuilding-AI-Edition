@@ -78,8 +78,9 @@ function M.install(options)
 	replace("Paste",function() return ui.clipboard end)
 	replace("DrawStringWidth",measure)
 	replace("DrawStringCursorIndex",function(height,name,text,x)
-		for i=1,#text do if measure(height,name,text:sub(1,i))>x then return i-1 end end
-		return #text
+		-- SimpleGraphic converts the renderer's zero-based offset to a Lua index.
+		for i=1,#text do if measure(height,name,text:sub(1,i))>x then return i end end
+		return #text+1
 	end)
 	replace("SetDrawColor",function(r,g,b,a) color=type(r)=="string" and assert(escape(r),"Unknown colour escape") or {r,g,b,a or 1} end)
 	replace("GetDrawColor",function() return unpack(color) end)
