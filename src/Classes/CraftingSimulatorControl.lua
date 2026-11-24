@@ -1108,7 +1108,7 @@ function Panel.Open(build,project,layout)
 	button(controls,"keepItem",leftWidth+44+math.floor((width-leftWidth-60)/2),54,math.floor((width-leftWidth-60)/2),"Keep item snapshot",function()
 		local project=copyTable(draft);for _,saved in ipairs(build.savers.CraftingProjects.projects) do if saved.id==draft.id then project=copyTable(saved);break end end
 		local originNote=draft.originNote or (draft.notes and draft.notes:find("Conditional bench-rarity example;",1,true)==1 and draft.notes:sub(1,1000) or nil)
-		project.inventory=project.inventory or {};project.inventory[#project.inventory+1]=require("Modules.CraftingInventory").capture(draft,state,draft.title:sub(1,104).." / "..(#project.inventory+1),originNote)
+		project.inventory=project.inventory or {};project.inventory[#project.inventory+1]=require("Modules.CraftingInventory").capture(draft,state,draft.title:sub(1,104).." / "..(#project.inventory+1),originNote,project.inventory)
 		inventoryChanged(build.savers.CraftingProjects:Upsert(project));refresh({"Item snapshot kept in this build. Open Item inventory to compare or resume it; use build Save to persist."})
 	end)
 	controls.keepItem.tooltipText="Keep a snapshot in Item inventory to compare or resume later. Save the build to persist it."

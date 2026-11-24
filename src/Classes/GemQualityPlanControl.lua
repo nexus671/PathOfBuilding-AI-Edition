@@ -75,8 +75,11 @@ function M.Open(build)
  button("keep",340,150,"Add to Journey",function()
   if not result or not selectedDraft() then return end
   local key=planKey()
-  local entry=copyTable(selectedDraft());entry.id="gem-"..require("sha1")(os.time()..tostring({})):sub(1,20)
-  local ok,err=pcall(function() build.savers.BuildJourney:Put("milestones",entry) end)
+  local entry=copyTable(selectedDraft())
+  local ok,err=pcall(function()
+   entry.id=require("Modules.PlanningData").newId("gem-",build.savers.BuildJourney.data.milestones,20)
+   build.savers.BuildJourney:Put("milestones",entry)
+  end)
   if not ok then ui.errorPopup("Add to Journey",err);return end
   savedKey=key;refresh()
  end)

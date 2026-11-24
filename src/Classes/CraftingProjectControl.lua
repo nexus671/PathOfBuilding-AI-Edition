@@ -56,7 +56,7 @@ function Panel.Preview(build,project)
 	assert(not bridge.prepared,"Review or reject the pending build proposal first")
 	local prepared=bridge.prepare(build,{mode="edit",title="Crafting target: "..project.title:sub(1,100),baseRevision=bridge.revision(build),quote=project.estimate,
 		operations={{type="set_crafting_project",project=project},{type="equip_item",slot=project.slot,text=project.targetItem}}})
-	prepared.id="craft-"..require("sha1")(tostring({})..os.time()):sub(1,16)
+	prepared.id=require("Modules.PlanningData").newId("craft-",bridge.history,16)
 	bridge.remember(prepared); bridge.prepared=prepared
 	bridge.status=bridge.summary(prepared); bridge.status.status="review"
 	if bridge.enabled then bridge.publishState() end

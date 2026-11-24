@@ -3,7 +3,7 @@ local ui=require("Modules.PlanningUI")
 local projects=require("Modules.CraftingProjects")
 local M={}
 function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
-	local draft=source and copyTable(source) or {id="craft-"..require("sha1")(tostring({})..os.time()):sub(1,16),title="New crafting plan",slot=initialSlot or "Helmet",startingItem=initialItem or "",goals={},steps={}}
+	local draft=source and copyTable(source) or {id=require("Modules.PlanningData").newId("craft-",build.savers.CraftingProjects.projects,16),title="New crafting plan",slot=initialSlot or "Helmet",startingItem=initialItem or "",goals={},steps={}}
 	local c={};local w,h=math.min(880,main.screenW-40),math.min(644,main.screenH-48);local col=math.floor((w-48)/2)
 	local function edit(key,x,y,width,height,value,limit)
 		c[key]=new("EditControl"):EditControl(ui.anchor,{x,y,width,height},value or "",nil,height>28 and "^%C\t\n" or nil,limit,nil,height>28 and 16 or nil)
@@ -126,7 +126,12 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 				if candidate.nativeRecipe then candidate.nativeRecipe.initialState=nil end
 				for _,alternative in ipairs(candidate.recipeAlternatives or {}) do alternative.recipe.initialState=nil end
 			end
-			local kept=build.savers.CraftingProjects:Upsert(candidate);main:ClosePopup();onKeep(kept)
+			if not source then
+    for _,existing in ipairs(build.savers.CraftingProjects.projects) do
+     if existing.id==candidate.id then candidate.id=require("Modules.PlanningData").newId("craft-",build.savers.CraftingProjects.projects,16);break end
+    end
+   end
+   local kept=build.savers.CraftingProjects:Upsert(candidate);main:ClosePopup();onKeep(kept)
 		end
 		if changed and (starts>0 or source.run) then
 			local lines={}
