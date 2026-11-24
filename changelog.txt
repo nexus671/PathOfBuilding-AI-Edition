@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1277][2026/11/24]
+VERSION[2.69.0-ai.preview1278][2026/11/24]
 
 * Test an observed stack against a price preview before saving any changes.
+
+VERSION[2.69.0-ai.preview1277][2026/11/24]
+
+* Make Calcs sections reachable in compact windows with horizontal scrolling.
 
 VERSION[2.69.0-ai.preview1276][2026/11/24]
 

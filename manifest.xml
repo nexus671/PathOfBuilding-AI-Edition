@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.69.0-ai.preview1277" />
+	<Version number="2.69.0-ai.preview1278" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="7eea17b6f783b7acad7f96966041ef2390d843b2" />
+	<File name="changelog.txt" part="default" sha1="89e2215eb026cfac32b8a4ad5540c03322a55422" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
@@ -1587,7 +1587,7 @@
 	<File name="Classes/ButtonControl.lua" part="program" sha1="7a58ec249f011107f2ddcdc3aa02f812643e5c5f" />
 	<File name="Classes/CalcBreakdownControl.lua" part="program" sha1="b4e200fb48b750a54ba40af4f35114019f3c00ff" />
 	<File name="Classes/CalcSectionControl.lua" part="program" sha1="ace88981a36381c6ccecbdb76ee1b9b04d1afeaf" />
-	<File name="Classes/CalcsTab.lua" part="program" sha1="7290661fb80361f13d1a52b09a12533f5bced504" />
+	<File name="Classes/CalcsTab.lua" part="program" sha1="d6200a9a508241e39963090d8a1cdfe0ef9dba2f" />
 	<File name="Classes/CheckBoxControl.lua" part="program" sha1="801ffca613485c5c8c35d1d88e208d9edcb9aaf0" />
 	<File name="Classes/ColourPickerControl.lua" part="program" sha1="19b0a3fade49e7b2c89bd6e3d5370b049801b3a5" />
 	<File name="Classes/CompareBuySimilar.lua" part="program" sha1="90fb7ce125b2c5e8df8f741b644127a6ec3c4773" />

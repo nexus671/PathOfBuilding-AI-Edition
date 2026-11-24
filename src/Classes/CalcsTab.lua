@@ -159,6 +159,7 @@ Effective DPS: Curses and enemy properties (such as resistances and status condi
 	self.controls.breakdown = new("CalcBreakdownControl"):CalcBreakdownControl(self)
 
 	self.controls.scrollBar = new("ScrollBarControl"):ScrollBarControl({"TOPRIGHT",self,"TOPRIGHT"}, {0, 0, 18, 0}, 50, "VERTICAL", true)
+	self.controls.scrollBarH = new("ScrollBarControl"):ScrollBarControl({"BOTTOMLEFT",self,"BOTTOMLEFT"}, {0, 0, 0, 14}, self.colWidth, "HORIZONTAL", true)
 	self.powerBuilderInitialized = nil
 	return self
 end
@@ -236,7 +237,12 @@ function CalcsTabClass:Draw(viewPort, inputEvents)
 	local baseX = viewPort.x + 4
 	local baseY = viewPort.y + 30
 	local maxCol = m_floor(viewPort.width / (self.colWidth + 8))
-	if main.portraitMode then maxCol = 3 end
+	local compactScroll = maxCol < 4
+	if main.portraitMode then maxCol = 3 elseif compactScroll then maxCol = 4 end
+	local horizontal = self.controls.scrollBarH
+	horizontal.width = m_max(1, viewPort.width - 18)
+	horizontal:SetContentDimension(compactScroll and ((main.portraitMode and 3 or 4) * (self.colWidth + 8)) or horizontal.width, horizontal.width)
+	self.controls.search.width = compactScroll and m_max(80, m_min(260, viewPort.width - 160)) or 260
 	local colY = { }
 	local maxY = 0
 	for _, section in ipairs(self.sectionList) do
@@ -309,14 +315,19 @@ function CalcsTabClass:Draw(viewPort, inputEvents)
 			end
 		end
 	end
-	self.controls.scrollBar.height = viewPort.height
-	self.controls.scrollBar:SetContentDimension(maxY - (baseY - 26), viewPort.height)
+	local contentHeight = viewPort.height - (horizontal.enabled and 14 or 0)
+	self.controls.scrollBar.height = contentHeight
+	self.controls.scrollBar:SetContentDimension(maxY - (baseY - 26), contentHeight)
 	if self.focusRecoverySimulation then
 		for _,section in ipairs(self.sectionList) do
 			for i,subSection in ipairs(section.subSection) do
 				if subSection.label == "Recovery over Time" then
 					subSection.collapsed = false
-					self.controls.scrollBar.offset = m_min(m_max(0,maxY-viewPort.y-viewPort.height),m_max(0,section.y+section.controls["toggle"..i].y-viewPort.y-40))
+					self.controls.scrollBar:SetOffset(m_max(0, section.y + section.controls["toggle"..i].y - viewPort.y - 40))
+					if horizontal.enabled then
+						if section.width > horizontal.viewDim then horizontal:SetOffset(section.x - viewPort.x)
+						else horizontal:ScrollIntoView(section.x - viewPort.x, section.width) end
+					end
 				end
 			end
 		end
@@ -325,6 +336,8 @@ function CalcsTabClass:Draw(viewPort, inputEvents)
 	for _, section in ipairs(self.sectionList) do
 		if not section.isOverlay then
 			-- Give sections their actual Y position and let them update
+			section.mouseClipRect = horizontal.enabled and { viewPort.x, viewPort.y, viewPort.width - 18, contentHeight } or nil
+			section.x = section.x - horizontal.offset
 			section.y = section.y - self.controls.scrollBar.offset
 			section:UpdatePos()
 		end
