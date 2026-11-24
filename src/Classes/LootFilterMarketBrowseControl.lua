@@ -4,6 +4,24 @@ local ui = require("Modules.PlanningUI")
 local sync = require("Modules.LootFilterDailySync")
 local M = {}
 
+local function showManagedQuote(entry)
+	local width = math.min(500,main.screenW-40)
+	local lines = {entry.label}
+	for _, detail in ipairs(entry.details) do lines[#lines+1] = detail end
+	local rows = ui.rows(lines,width-50,14)
+	local contentHeight = 0
+	for _, row in ipairs(rows) do contentHeight = contentHeight+row.height end
+	local height = math.min(main.screenH-40,contentHeight+80)
+	local controls = {
+		details=new("TextListControl"):TextListControl(ui.anchor,{16,18,width-32,height-72},nil,rows),
+		close=new("ButtonControl"):ButtonControl(ui.anchor,{width-136,height-42,120,28},"Close",function()
+			main:ClosePopup()
+		end),
+	}
+	ui.style(controls,{close=true})
+	main:OpenPopup(width,height,"Exact market quote",controls,nil,nil,"close")
+end
+
 local function open(build, managedTarget)
 	local width = math.min(680,main.screenW-40)
 	local controls = {}
@@ -148,7 +166,12 @@ local function open(build, managedTarget)
 					details=details, search=table.concat(details," ")}
 				end
 				finish(managedState=="thin" and "The exact managed quote has insufficient market volume." or "Showing "..#entries.." of "..#rows.." matches.")
-				require("Classes.PlanningBrowserControl").Open(category.label.." market prices",entries)
+				if managedState then
+					table.insert(entries[1].details,1,category.label.." in "..league)
+					showManagedQuote(entries[1])
+				else
+					require("Classes.PlanningBrowserControl").Open(category.label.." market prices",entries)
+				end
 			end)
 		end
 		if league~="" then prices();return end

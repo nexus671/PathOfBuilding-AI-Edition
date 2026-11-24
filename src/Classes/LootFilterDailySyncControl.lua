@@ -43,7 +43,7 @@ local function showLastAttempt(profileId)
 		local feed = sync.failedFeedEvidence(failure.failedFeed)
 		if feed then
 			local category = feed.category=="leagues" and "League list" or feed.category
-			details[#details+1] = "Price feed · "..category..(feed.httpStatus and " · HTTP "..feed.httpStatus or "")
+			details[#details+1] = category.." price feed"..(feed.httpStatus and " (HTTP "..feed.httpStatus..")" or "")
 			details[#details+1] = feedFailureDescriptions[feed.reason] or "The price feed check failed."
 		elseif type(failure.message)=="string" then
 			details[#details+1] = ui.fit(ui.errorText(failure.message),460,16)
@@ -51,9 +51,9 @@ local function showLastAttempt(profileId)
 	elseif not lastSuccess then
 		details[1] = "This profile has no completed sync attempt."
 	end
-	if lastSuccess then details[#details+1] = "Last verified refresh · "..lastSuccess end
+	if lastSuccess then details[#details+1] = "Last verified refresh on "..lastSuccess end
 	local width = math.min(520,main.screenW-40)
-	local contentHeight = #details*28
+	local contentHeight = #details*22
 	local controls = {}
 	ui.description(controls,"message",16,18,width-32,contentHeight,details,14)
 	controls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,contentHeight+24,120,28},"Close",function()

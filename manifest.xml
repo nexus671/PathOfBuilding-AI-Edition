@@ -1786,7 +1786,7 @@
 	<File name="Classes/LootFilterStackControl.lua" part="program" sha1="31ec30fe8cd7622aafb64c141104fdf0c4028e8a" />
 	<File name="Classes/LootFilterStructureControl.lua" part="program" sha1="b5dc73fb5fa8baf59d74f7d68e8e38d255bd25de" />
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="31415cd7f6b9ba32f843cf4182aa9b6dc9837f4b" />
-	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="4c9c08cd0dd7660d935582a3bfb4cfd852908f3c" />
+	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="cd9722c136617760c1c0b5abf4e2613393460445" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="bb41929c330d5ef8d8bc4c5e2447464bb3dad58d" />
 	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="d8f114cee6f56cd20fd9ef4b1894aec45ef4524c" />
 	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="5d71d6aeaa7ebf405657254937e83e40fa7d2ff0" />
@@ -3195,7 +3195,7 @@
 	<File name="Data/Crafting/GemSoulCores330.json" part="program" sha1="3e72815316e5ea26174bddddcae5bb84bb45cafb" />
 	<File name="Modules/CraftingBaseImplicit.lua" part="program" sha1="d664ebb4bb48c45004d487e16c898ac3746d94c4" />
 	<File name="Modules/UpdateNotes.lua" part="program" sha1="ba75d1adad6ec5129186dddef6b4e75e1a6f01f9" />
-	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="6ee4da1f88d81e587733c700e2ebf8bb4acb9324" />
+	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="e89d2a7d013deda0c4a21139855ee82d95965801" />
 	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="4f1939b9e4a385e3379a7b8e2faa79caa9134e43" />
 	<File name="Modules/LootFilterBackground.lua" part="program" sha1="d80487b2fe4825109212d7672c3e8881564c15bd" />
 	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="9101b199044399546f6d9014d28d2efa8fe50f80" />
