@@ -41,4 +41,12 @@ local steps={{method='recombine',donorItem=donor}}
 assert(pcall(simulator.validateTargetAvailability,model,{{scope='explicit',anyOf={donorOnly}}},steps), 'Valid donor target was rejected')
 ok,reason=pcall(simulator.validateTargetAvailability,model,{{scope='implicit',anyOf={donorOnly}}},steps)
 assert(not ok and tostring(reason):find('scope',1,true), 'Donor scope mismatch must be rejected')
+ui:click('targetPicker');ui:choose('kind','Exarch')
+local picker=main.popups[1].controls
+assert(not picker.alternative:IsEnabled() and picker.alternative.tooltipText():find('same',1,true), 'Modifier browser must explain incompatible alternatives')
+main:ClosePopup()
+ui:click('targetGroups');ui:click('newAlternative');ui:choose('kind','Exarch')
+picker=main.popups[1].controls
+assert(not picker.choose:IsEnabled() and picker.choose.tooltipText():find('same',1,true), 'Group editor must explain incompatible alternatives')
+main:ClosePopup();main:ClosePopup()
 ui:restore();print('CRAFTING_ALTERNATIVE_SCOPE_OK')

@@ -43,8 +43,13 @@ function M.Open(model,state,options)
 	button("previousPage",detailX,h-72,100,"Previous",function() turn(-1) end);c.previousPage.enabled=function() return page>1 end
 	button("nextPage",detailX+108,h-72,100,"Next",function() turn(1) end);c.nextPage.enabled=function() return page*pageSize<#rows end
 	button("choose",16,h-42,200,options.action or "Require modifier",function() if selected then options.choose(selected.id);main:ClosePopup() end end)
-	c.choose.enabled=function() return selected~=nil end
-	if options.alternative then button("alternative",228,h-42,200,"Add alternative",function() if selected then options.alternative(selected.id);main:ClosePopup() end end);c.alternative.enabled=function() return selected and (not options.canAlternative or options.canAlternative()) end end
+	c.choose.enabled=function() return selected~=nil and not (options.chooseReason and options.chooseReason(selected.id)) end
+	if options.chooseReason then c.choose.tooltipText=function() return selected and options.chooseReason(selected.id) end end
+	if options.alternative then
+		button("alternative",228,h-42,200,"Add alternative",function() if selected then options.alternative(selected.id);main:ClosePopup() end end)
+		c.alternative.enabled=function() return selected and (not options.canAlternative or options.canAlternative()) and not (options.alternativeReason and options.alternativeReason(selected.id)) end
+		if options.alternativeReason then c.alternative.tooltipText=function() return selected and options.alternativeReason(selected.id) end end
+	end
 	if options.present then
 		button("present",440,h-42,200,"Set as present",function() if selected then options.present(selected.id);main:ClosePopup() end end)
 		c.present.enabled=function()

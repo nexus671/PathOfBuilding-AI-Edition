@@ -460,6 +460,7 @@ function Panel.Open(build,project,layout)
 	label(controls,"targetLabel",16,262,"Target modifier (add several for AND conditions)")
 	controls.target=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,282,416,24},{})
 	local targetModel,targetState,targetBeastKey
+	local alternativeReason
 	refreshTargetOptions=function()
 		local current=simulator.context(model,state)
 		local first=configured.beast_prefix_suffix and configured.beast_prefix_suffix.beastLevel
@@ -481,7 +482,7 @@ function Panel.Open(build,project,layout)
 	end
 	refreshTargetOptions()
 	button(controls,"targetPicker",16,188,416,"Find target modifiers",function()
-		require("Classes.CraftingModifierControl").Open(model,copyTable(state),{choose=pickTarget,canAlternative=function() return #targets>0 end,alternative=function(id)
+		require("Classes.CraftingModifierControl").Open(model,copyTable(state),{choose=pickTarget,canAlternative=function() return #targets>0 end,alternativeReason=function(id) return alternativeReason(id) end,alternative=function(id)
 			local group=assert(targets[#targets],"Add a target group first");assert(require("Modules.CraftingModifiers").scope(simulator.context(model,state).byId[id])==(group.scope or "explicit"),"Choose the same explicit/implicit scope, or create a separate group");for _,value in ipairs(group.anyOf) do if value==id then return end end;assert(#group.anyOf<30,"Use up to thirty alternatives per group");group.anyOf[#group.anyOf+1]=id;changed();refresh()
 		end,present=function(id)
 			assert(not state.destroyed and not state.veil,"Reset destruction or finish the unveil first")
@@ -494,10 +495,10 @@ function Panel.Open(build,project,layout)
 		local id=controls.target:GetSelValueByKey("val");local mod=simulator.context(model,state).byId[id]
 		targets[#targets+1]={anyOf={id},scope=require("Modules.CraftingModifiers").scope(mod)};changed();refresh()
 	end)
-	local function alternativeReason()
+	alternativeReason=function(id)
 		local group=targets[#targets]
 		if not group then return "Add a target group first." end
-		local id=controls.target:GetSelValueByKey("val")
+		id=id or controls.target:GetSelValueByKey("val")
 		local mod=id and simulator.context(model,state).byId[id]
 		if not mod then return "Choose an available modifier." end
 		if require("Modules.CraftingModifiers").scope(mod)~=(group.scope or "explicit") then return "Choose a modifier with the same explicit, implicit or enchantment scope." end
