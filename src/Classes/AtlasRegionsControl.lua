@@ -22,6 +22,10 @@ function M.Open(plan,keep)
 	local function findRegion(value)
 		for _,region in ipairs(draft) do if region.mechanic==value then return region end end
 	end
+	local function selectedMap()
+		local region=findRegion(c.region:GetSelValue())
+		for _,map in ipairs(region and region.maps or {}) do if map.name==selected then return map end end
+	end
 	local function refresh()
 		local region=findRegion(c.region:GetSelValue());local rows={}
 		for _,map in ipairs(region and region.maps or {}) do
@@ -30,7 +34,8 @@ function M.Open(plan,keep)
 		end
 		if #rows==0 then rows=ui.rows({"No maps recorded for this Thread type."},w-60,16) end
 		c.list.list=rows;c.list.controls.scrollBar.offset=0
-		c.status.label="^7Select a map to edit it or record a run. Changes stay in this draft."
+		local map=selectedMap()
+		c.status.label=map and map.freeThreads>100 and "^xE9BE7BThe Thread checker supports up to 100 free Threads." or "^7Select a map to edit it or record a run. Changes stay in this draft."
 	end
 	local function snapshot() return {regions=copyTable(draft),mechanic=c.region:GetSelValue(),selected=selected} end
 	local function apply(candidate,nextSelected)
@@ -92,8 +97,8 @@ function M.Open(plan,keep)
 		end end
 		error("Select a map first")
 	end)
-	c.threadCheck.enabled=function() return selected~=nil end
-	c.threadCheck.tooltipText="Start with this map's recorded free Threads; add spent or bonus Threads and check the area level."
+	c.threadCheck.enabled=function() local map=selectedMap();return map~=nil and map.freeThreads<=100 end
+	c.threadCheck.tooltipText=function() local map=selectedMap();return not map and "Select a recorded map first." or map.freeThreads>100 and "The Thread checker supports up to 100 free Threads." or "Start with this map's recorded free Threads; add spent or bonus Threads and check the area level." end
 	button("overview",16,h-88,180,"All recorded maps",function()
 		local entries={};for _,map in ipairs(regions.overview(draft)) do
 			local details={"Recorded regions for "..map.name..":", "Unlisted regions are unknown; counts are observations, not guaranteed totals."}

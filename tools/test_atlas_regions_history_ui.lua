@@ -17,4 +17,8 @@ assert(input[1].maps[1].freeThreads==2 and input[2].maps[1].freeThreads==4,"Edit
 build.savers.AtlasPlans:Upsert({id="region-history",title="Region history",version="3.30.0c",budget=150,nodes={},shapedRegions=kept})
 local xml=build:SaveDB("Region history");loadBuildFromXML(xml,"Region history");local restored=build.savers.AtlasPlans.plans[1].shapedRegions
 assert(restored[1].maps[1].freeThreads==2 and restored[2].maps[1].freeThreads==4,"Saved Atlas plan lost restored region counts")
+local high=require("Classes.AtlasRegionsControl").Open({shapedRegions={{mechanic="Blight",maps={{name="Beach Map",freeThreads=101}}}}},function() end)
+high.region:SelByValue("Blight");high.region.selFunc();high.list.onClick({line=high.list.list[1]})
+assert(not high.threadCheck:IsEnabled() and high.status.label:find("supports up to 100",1,true) and high.threadCheck.tooltipText():find("supports up to 100",1,true),"Unsupported Thread count was not explained before checking")
+high.close:Click()
 print("ATLAS_REGION_HISTORY_UI_OK")
