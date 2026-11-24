@@ -1,13 +1,8 @@
 'use strict';
 
-const { requestKey, ageSource, boundedBody, validatePayload } = require('./serve_loot_market_cache.cjs');
+const { requestKey, overviewRoute, ageSource, boundedBody, validatePayload } = require('./serve_loot_market_cache.cjs');
 
 const coreFeeds = ['Currency', 'Oil', 'Omen', 'Essence', 'Thread', 'Fragment', 'Resonator', 'Artifact'];
-const optionalFeeds = new Map([
-  ['DivinationCard', 'exchange/current/overview'],
-  ...['Map','BlightedMap','BlightRavagedMap','UniqueWeapon','UniqueArmour','UniqueAccessory','UniqueJewel','UniqueFlask',
-    'UniqueMap','SkillGem','ImbuedGem','BaseType'].map(category=>[category,'stash/current/item/overview']),
-]);
 const positive = value => Number.isFinite(value) && value>0;
 
 function cacheRoot(raw) {
@@ -93,7 +88,7 @@ function priceEvidence(payload, category, kind) {
 
 async function qualifyCache(raw, { league, extra = [], fetcher = fetch, now = Date.now } = {}) {
   const root = cacheRoot(raw);
-  if (extra.some(category=>!optionalFeeds.has(category))) throw new Error('Choose only supported optional market categories');
+  if (extra.some(category=>!overviewRoute(category))) throw new Error('Choose only supported optional market categories');
   const report = { status:'failed', league:null, probes:[] };
 
   async function probe(name, path, consume, limit=65536) {
@@ -141,9 +136,9 @@ async function qualifyCache(raw, { league, extra = [], fetcher = fetch, now = Da
   }
   report.league=selected;
 
-  for (const category of [...coreFeeds,...new Set(extra)]) {
+  for (const category of new Set([...coreFeeds,...extra])) {
     const params=new URLSearchParams({league:selected,type:category});
-    const path=(optionalFeeds.get(category) ?? 'exchange/current/overview')+'?'+params;
+    const path=overviewRoute(category)+'?'+params;
     const details=requestKey('/'+path);
     const passed=await probe(category,details.key,(payload,response)=>{
       validatePayload(payload,details.kind);

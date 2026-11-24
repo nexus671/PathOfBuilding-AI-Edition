@@ -37,7 +37,7 @@ local header = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT"
 local calls, stale = 0, true
 launch = {DownloadPage=function(_, _, callback, params)
 	calls = calls + 1
-	assert(params.timeout == 20)
+	assert(params.timeout == 20 and params.followRedirects == false)
 	callback({
 		header=stale and header:gsub("Age: 5","Age: 4001") or header,
 		body='{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.21,"volumePrimaryValue":1000}]}',
@@ -329,7 +329,7 @@ do
 	local cachedHeader = header:gsub("Age: 5", 'Age: 5\r\nETag: W/"fixture"')
 	launch.DownloadPage = function(_, _, callback, params)
 		networkCount = networkCount + 1
-		assert(not params.header:find("no-cache",1,true))
+		assert(params.followRedirects == false and not params.header:find("no-cache",1,true))
 		if transient then
 			transient = false
 			callback({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 20\r\n\r\n"}, "Response code: 429")
@@ -382,7 +382,8 @@ end
 local obsolete = "Ended Fixture"
 local leagueChecks = 0
 local markets = '[{"id":"Covens","name":"Covens"},{"id":"Standard","name":"Standard"}]'
-launch.DownloadPage = function(_,url,callback)
+launch.DownloadPage = function(_,url,callback,params)
+	assert(params.followRedirects == false)
 	if url:match("/leagues$") then
 		leagueChecks = leagueChecks+1
 		callback({header=header,body=markets})
@@ -1046,7 +1047,8 @@ local function checkConfirmedTightening()
 	local exchange=require("Modules.LootFilterExchangeCrossCheck")
 	local itemId=assert(exchange.itemId("Orb of Alteration"))
 	local chaosId="Metadata/Items/Currency/CurrencyRerollRare"
-	launch.DownloadPage=function(_,url,callback)
+	launch.DownloadPage=function(_,url,callback,params)
+		assert(params.followRedirects == false)
 		if url:find(exchange.endpoint,1,true)==1 then
 			if not chaosVolume then callback(nil,"Temporary outage"); return end
 			callback({body=require("dkjson").encode({next_change_id=exchange.hour(clock)+3600,markets={{
@@ -1100,7 +1102,7 @@ end
 function main:ClosePopup() self.popups[1]=nil end
 main.screenW = 1024
 launch.DownloadPage = function(_, url, callback, params)
-	assert(params.timeout == 20)
+	assert(params.timeout == 20 and params.followRedirects == false)
 	if url:match("/leagues$") then callback({header=header,body='[{"id":"Covens","name":"Covens"}]'}); return end
 	reply(url,callback)
 end
@@ -1521,3 +1523,84 @@ local function checkSharedProviderHold()
 end
 checkSharedProviderHold()
 print("Provider retry deadlines survive independent instances, preserve the longest wait, and isolate endpoints")
+
+
+local function checkMarketSourceBinding()
+	local service = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local json, sha = require("dkjson"), require("sha1")
+	local endpoint = market.endpoint
+	local alternate = endpoint.."test-source-binding/"
+	local id = service.createProfile("Price source binding")
+	local live, fixed = dir.."/source-bound.filter",dir.."/source-bound-fixed.filter"
+	local settings = dir.."/LootFilterDailySync-"..id..".json"
+	local options = {profileId=id,hour=0,protectionFile=protections}
+	write(live,original); write(fixed,original)
+	service.configure(live,fixed,"Covens",options)
+	assert(service.configuration(id).marketSourceHash==sha(endpoint))
+	local requests, held = 0,nil
+	local function reply(_,url,callback)
+		requests=requests+1
+		callback({header=header,body=commodityBody})
+	end
+	launch.DownloadPage = reply
+	service.tick(now,true,false,id)
+	local verified = read(live)
+	local historySource=service.configuration(id)
+	historySource.priceHistory={{day="other-source",time=now-86400,values={["Currency:alt"]=100}}}
+	write(settings,assert(json.encode(historySource)))
+	assert(service.configuration(id).lastSuccess and #service.configuration(id).priceHistory==1)
+	service.setBackground(true,service.configuration(id).revision,id)
+	market.endpoint=alternate
+	local task = require("Modules.LootFilterBackgroundTask")
+	local launchTask, register = LaunchSubScript, launch.RegisterSubScript
+	local taskStarts = 0
+	LaunchSubScript=function() taskStarts=taskStarts+1; return 12345 end
+	launch.RegisterSubScript=function(_,_,callback) callback(true) end
+	local enabled, reason=pcall(task.change,true,function() end,id)
+	assert(not enabled and reason:find("price source changed",1,true) and taskStarts==0 and not task.busy)
+	local disabled
+	task.change(false,function(ok) disabled=ok end,id)
+	assert(disabled and not service.configuration(id).backgroundEnabled)
+	LaunchSubScript, launch.RegisterSubScript=launchTask, register
+	requests=0
+	service.tick(now+1,true,false,id)
+	assert(requests==0 and read(live)==verified and service.configuration(id).lastFailure.message:find("price source changed",1,true))
+	local proposed
+	service.preview(live,fixed,"Covens",options,function(_,after) proposed=after end)
+	assert(proposed==verified and requests==8 and read(live)==verified)
+	service.configure(live,fixed,"Covens",options)
+	assert(service.configuration(id).marketSourceHash==sha(alternate) and not service.configuration(id).priceHistory)
+	service.tick(now+2,true,false,id)
+	assert(service.configuration(id).lastSuccess and #service.configuration(id).priceHistory==1)
+	service.configure(live,fixed,"Covens",options)
+	assert(#service.configuration(id).priceHistory==1)
+
+	-- An in-flight request cannot mix sources or publish after the source changes.
+	requests=0
+	launch.DownloadPage=function(_,url,callback) requests=requests+1; held=callback end
+	local before = read(live)
+	service.tick(now+3,true,false,id)
+	assert(held and service.busy and requests==1)
+	market.endpoint=endpoint
+	held({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 120\r\n\r\n"},"Response code: 429")
+	assert(service.providerWait(now)==0)
+	assert(not service.busy and requests==1 and read(live)==before and service.status:find("price source changed",1,true))
+
+	-- Older profiles remain usable, then bind only verified prices from this source.
+	local legacy=service.configuration(id)
+	legacy.marketSourceHash=nil
+	legacy.priceHistory={{day="old-source",time=now-86400,values={["Currency:alt"]=100}}}
+	write(settings,assert(json.encode(legacy)))
+	launch.DownloadPage=reply
+	service.tick(now+4,true,false,id)
+	local migrated=service.configuration(id)
+	assert(migrated.lastSuccess==now+4 and migrated.marketSourceHash==sha(endpoint) and #migrated.priceHistory==1)
+	assert(migrated.priceHistory[1].day~="old-source")
+	legacy=service.configuration(id)
+	legacy.marketSourceHash=nil
+	write(settings,assert(json.encode(legacy)))
+	service.configure(live,fixed,"Covens",options)
+	assert(service.configuration(id).marketSourceHash==sha(endpoint) and not service.configuration(id).priceHistory)
+end
+checkMarketSourceBinding()
+print("Daily profiles bind verified sources, reset changed or legacy histories, and stop mismatched asynchronous requests")
