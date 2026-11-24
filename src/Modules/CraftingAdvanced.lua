@@ -281,6 +281,7 @@ function A.extend(M,api)
 	local identities=setmetatable({},{__mode="k"})
 	local veiledCache={}
 	function M.rollRange(mod,random)
+		local regeneration=M.rawRegenRange(mod,random);if regeneration~=nil then return regeneration end
 		local metadata=A.data().mods[identities[mod]] or mod.clientStats and {stats=mod.clientStats}
 		local varying={};for _,stat in ipairs(metadata and metadata.stats or {}) do if stat.max ~= stat.min then varying[#varying+1]=stat end end
 		local display=0;for _,line in ipairs(mod) do for range in line:gmatch("%b()") do if range:match("%-?%d+%.?%d*%-%-?%d+%.?%d*") then display=display+1 end end end

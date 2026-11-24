@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1262][2026/11/24]
+
+* Improve regeneration roll precision for rounded crafting modifiers.
+
 VERSION[2.68.1-ai.preview1261][2026/11/24]
 
 * Count distinct cutoff changes accurately in Windows economy notifications.
