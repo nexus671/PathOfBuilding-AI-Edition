@@ -43,6 +43,26 @@ test('qualifies the core market and only the optional feeds requested',async()=>
   assert.equal(report.probes.at(-1).exactGemQuotes,1);
 });
 
+test('includes bounded relay diagnostics while qualifying actual feed responses',async()=>{
+  const f=fixture({health:()=>response({
+    status:'ready',cached:2,pending:0,cachedBytes:500,serviceable:1,hits:8,requests:5,
+    rejections:{client:2,queue:0,cooldown:1,unexpected:'private metadata'},
+    provider:{state:'degraded',lastValidatedAt:now-1000,cooldownSeconds:0,successes:4,failures:1,
+      lastFailure:{at:now,reason:'invalid_response',httpStatus:200,message:'private provider body'}},
+    unexpected:'private host',
+  })});
+  const report=await qualifyCache(root,f);
+  assert.equal(report.status,'passed');
+  assert.deepEqual(report.probes[0],{
+    name:'Cache health',status:'passed',cached:2,pending:0,cachedBytes:500,serviceable:1,hits:8,requests:5,
+    rejections:{client:2,queue:0,cooldown:1},
+    provider:{state:'degraded',lastValidatedAt:now-1000,cooldownSeconds:0,successes:4,failures:1,
+      lastFailure:{at:now,reason:'invalid_response',httpStatus:200}},
+  });
+  assert.equal(f.requests.length,10);
+  assert.doesNotMatch(JSON.stringify(report),/private/);
+});
+
 test('stops on throttling and reports retry timing',async()=>{
   const f=fixture({Currency:()=>new Response(null,{status:429,headers:{'Retry-After':'60'}})});
   const report=await qualifyCache(root,f);
