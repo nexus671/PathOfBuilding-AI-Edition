@@ -7,6 +7,10 @@ local M = {}
 M.categories = {"Currency", "Oil", "Omen", "Essence", "Thread", "Fragment", "Resonator", "Artifact"}
 M.exchangeCategories = {"Currency", "Fragment", "Runegraft", "AllflameEmber", "Tattoo", "Omen", "DjinnCoin", "Ducat",
 	"EnshroudingCrystal", "Artifact", "Oil", "DeliriumOrb", "Scarab", "Astrolabe", "Thread", "Fossil", "Resonator", "Essence"}
+M.maxFeedCount = #M.exchangeCategories + #maps.feeds + 2
+function M.evidencePriceId(value)
+	return type(value)=="string" and #value>=1 and #value<=200 and value:match("^[A-Za-z0-9_.%-]+$") and value or nil
+end
 local exchangeCategories, coreCategories = {}, {}
 for _, category in ipairs(M.exchangeCategories) do exchangeCategories[category] = true end
 for _, category in ipairs(M.categories) do coreCategories[category] = true end
@@ -152,7 +156,7 @@ function M.remember(quotes, history, day, now)
 				or (prices[midpoint]+prices[midpoint+1])/2
 			adjusted[name] = {price=math.min(quote.price, median), currentPrice=quote.price,
 				highPrice=#prices >= 3 and math.max(quote.price, prices[#prices]) or nil,
-				volume=quote.volume, id=quote.id, source=quote.source, observations=#prices, liquidityUnit=quote.liquidityUnit}
+				volume=quote.volume, id=quote.id, providerId=quote.providerId, source=quote.source, observations=#prices, liquidityUnit=quote.liquidityUnit}
 		else
 			adjusted[name] = quote
 		end
@@ -408,6 +412,7 @@ function M.review(raw, quotes, target, preferences, confirmation)
 		if gem then
 			local quote = quotes[quoteKey(gem.key,gems.feed)]
 			gem.key = nil
+			gem.source, gem.priceId = gems.feed, M.evidencePriceId(quote and quote.providerId)
 			local cutoff, reason, price = cutoffFor(quote,1,policy[gem.scope] or policy.target)
 			if cutoff==1 then
 				gem.old, gem.reason, gem.maps = 1, reason, gem.scope=="maps"
@@ -430,11 +435,11 @@ function M.review(raw, quotes, target, preferences, confirmation)
 			local quote = quotes[quoteKey(name,category)]
 			local cutoff, reason, price = cutoffFor(quote,1,policy.maps or policy.target)
 			if cutoff == 1 then
-				skipped[#skipped+1] = {name=name,old=1,reason=reason,maps=true,scope="maps"}
+				skipped[#skipped+1] = {name=name,old=1,reason=reason,maps=true,scope="maps",source=category,priceId=M.evidencePriceId(quote and quote.id)}
 				return block
 			end
 			changes[#changes+1] = {name=name,old=1,cutoff=0,price=price,currentPrice=quote.currentPrice,
-				source=quote.source,observations=quote.observations,classes={"Maps"},volume=quote.volume,
+				source=quote.source,priceId=M.evidencePriceId(quote.id),observations=quote.observations,classes={"Maps"},volume=quote.volume,
 				liquidityUnit=quote.liquidityUnit,maps=true,scope="maps",tier=tier,blighted=variant.blighted,ravaged=variant.ravaged}
 			return ""
 		end
@@ -476,13 +481,15 @@ function M.review(raw, quotes, target, preferences, confirmation)
 				end
 			end
 			if cutoff == old and #styles==0 then
-				skipped[#skipped + 1] = {name=name, old=old, reason=reason, maps=scope=="maps", scope=scope}
+				skipped[#skipped + 1] = {name=name, old=old, reason=reason, maps=scope=="maps", scope=scope,
+					source=exchangeCategory or card and "DivinationCard" or quote and quote.source or nil,
+					priceId=M.evidencePriceId(quote and quote.id)}
 			else
 				changed = changed or cutoff~=old
 				local icons = {}
 				for index, style in ipairs(styles) do icons[index] = {firstStack=style.firstStack,icon=appearance.icon(style.tier,style.style)} end
 				changes[#changes + 1] = {name=name, old=old, cutoff=cutoff, price=usedPrice or quote.price, currentPrice=quote.currentPrice,
-					source=quote.source, observations=quote.observations, classes=class.values,
+					source=quote.source, priceId=M.evidencePriceId(quote.id), observations=quote.observations, classes=class.values,
 					volume=quote.volume, maps=scope=="maps", scope=scope,highlights=#icons>0 and icons or nil,
 					confirmedPrice=cutoff>old and comparison or nil}
 			end

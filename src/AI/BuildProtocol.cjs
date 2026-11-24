@@ -25,6 +25,8 @@ const lootCategoryStyles=journeyList(object({category:{enum:['Build targets','Ca
 const lootEconomyStackFields={name:string(200),scope:{enum:['all','campaign','maps']},cutoff:integer(1,10000)};
 const lootExchangeCategory={enum:['Currency','Fragment','Runegraft','AllflameEmber','Tattoo','Omen','DjinnCoin','Ducat',
   'EnshroudingCrystal','Artifact','Oil','DeliriumOrb','Scarab','Astrolabe','Thread','Fossil','Resonator','Essence']};
+// Divination cards, ordinary and blight map variants, and regular gems.
+const lootMaxFeedCount=lootExchangeCategory.enum.length+5;
 const lootEconomyStackRule=object({...lootEconomyStackFields,class:{enum:['Stackable Currency','Map Fragments','Misc Map Items','Delve Stackable Socketable Currency']},exchangeCategory:lootExchangeCategory},['name','class','scope']);
 const lootEconomyCardRule=object({...lootEconomyStackFields,class:{const:'Divination Cards'}},['name','class','scope']);
 const lootEconomyEmberRule=object({name:lootEconomyStackFields.name,class:{const:'Embers of the Allflame'},
@@ -329,14 +331,20 @@ function createBridge(reportPath, clientName = () => "MCP client") {
       const offset = args.offset ?? 0, limit = args.limit ?? 25;
       const decisions = Array.isArray(snapshot.changes) ? snapshot.changes.slice(0,250) : [];
       const nextOffset = offset + limit < decisions.length ? offset + limit : null;
-      const feeds = Array.isArray(snapshot.feeds) ? snapshot.feeds.slice(0,20)
+      const feeds = Array.isArray(snapshot.feeds) ? snapshot.feeds.slice(0,lootMaxFeedCount)
         .filter(feed => typeof feed?.category === 'string' && /^[A-Za-z]{1,40}$/.test(feed.category)
           && Number.isFinite(feed.responseAge) && feed.responseAge >= 0 && feed.responseAge <= 3600)
         .map(({category,responseAge,revalidated}) => ({category,responseAge,revalidated:revalidated===true})) : [];
+      const responseAges = Array.isArray(snapshot.responseAges) ? snapshot.responseAges.slice(0,lootMaxFeedCount)
+        .filter(age => Number.isFinite(age) && age>=0 && age<=3600) : [];
+      const changes = decisions.slice(offset,offset+limit).filter(change => change && typeof change==='object')
+        .map(({priceId,...change}) => typeof priceId==='string' && /^[A-Za-z0-9_.-]{1,200}$/.test(priceId)
+          ? {...change,priceId} : change);
       return {
         heartbeat:current.heartbeat,available:true,checkedAt:snapshot.checkedAt,
-        verifiedProtection:snapshot.verifiedProtection === true,responseAges:snapshot.responseAges,feeds,
-        changeCount:snapshot.changeCount,changes:decisions.slice(offset,offset+limit),
+        verifiedProtection:snapshot.verifiedProtection === true,responseAges,feeds,
+        protectedChecks:Number.isSafeInteger(snapshot.protectedChecks) && snapshot.protectedChecks>=0 ? snapshot.protectedChecks : undefined,
+        changeCount:snapshot.changeCount,changes,
         nextOffset,truncated:snapshot.changeCount>decisions.length,
       };
     }

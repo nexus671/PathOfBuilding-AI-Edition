@@ -54,6 +54,8 @@ If a sync target was edited outside PoB, **External edits** compares the live fi
 
 **Copy diagnostics** exports a JSON report with recent run times, verified response ages, and available quote and simulated drop details. The report excludes local file paths and protected sample definitions.
 
+**Last review**, **Copy diagnostics**, and the read-only AI diff include the provider price ID for changed rules when the feed supplies an ID. The AI diff includes the protected check count and the freshness of every requested feed. For an unchanged managed rule, Last review shows the selected feed when a quote is missing or ambiguous.
+
 ## Optional background sync on Windows
 
 Select **Enable background sync** in **Daily price sync** to register a task for your Windows account. While you are signed in, Windows checks every five minutes for a due update, including when PoB is closed. PoB still uses your configured daily time, verified baseline, and protected samples. The task stays idle when sync is paused or disabled, and **Disable background sync** removes it.

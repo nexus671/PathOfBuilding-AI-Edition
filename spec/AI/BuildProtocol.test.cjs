@@ -179,10 +179,11 @@ test('reads loot sync status from the desktop heartbeat without queuing a write'
 test('pages the last verified cutoff diff without recording a request', t => {
   const f = fixture(t);
   assert.equal(f.call('get_loot_sync_diff',{}).available,false);
-  const changes = [{item:'Orb of Alteration',previousCutoff:6,proposedCutoff:4,samples:[{area:83,before:'Hide',action:'Unknown',afterMissing:['ItemLevel']},{area:60,before:'Unknown',beforeMissing:['DropLevel'],action:'Show'}]},
+  const changes = [{item:'Orb of Alteration',priceId:'orb-of-alteration',previousCutoff:6,proposedCutoff:4,samples:[{area:83,before:'Hide',action:'Unknown',afterMissing:['ItemLevel']},{area:60,before:'Unknown',beforeMissing:['DropLevel'],action:'Show'}]},
     {item:'Silver Oil',previousCutoff:4,proposedCutoff:1,quotedPrice:0.9}];
   const priceFeed = {category:'Currency',responseAge:8,revalidated:true};
-  f.state.lootSyncDiff = {checkedAt:100,verifiedProtection:true,responseAges:[8],changeCount:3,changes,
+  f.state.lootSyncDiff = {checkedAt:100,verifiedProtection:true,protectedChecks:600,responseAges:[8,'private',3601],changeCount:3,
+    changes:[changes[0],{...changes[1],priceId:'C:/private.filter'}],
     feeds:[{...priceFeed,privatePath:'C:/do-not-share.filter'},{category:'C:/private',responseAge:8},{category:'Oil',responseAge:3601}],
     privatePath:'C:/do-not-share.filter'};
   f.write('state',f.state);
@@ -191,6 +192,7 @@ test('pages the last verified cutoff diff without recording a request', t => {
   assert.equal(first.nextOffset,1);
   assert.equal(first.truncated,true);
   assert.equal(first.verifiedProtection,true);
+  assert.equal(first.protectedChecks,600);
   assert.equal(first.privatePath,undefined);
   assert.deepEqual(first.responseAges,[8]);
   assert.deepEqual(first.feeds,[priceFeed]);
@@ -200,6 +202,22 @@ test('pages the last verified cutoff diff without recording a request', t => {
   for (const args of [{limit:51},{offset:-1},{path:'private.filter'}]) {
     assert.throws(()=>f.call('get_loot_sync_diff',args),/arguments/);
   }
+  assert.equal(fs.existsSync(path.join(f.dir,'AI-build-request.json')),false);
+});
+
+test('returns every requested feed in a full economy audit',t=>{
+  const f = fixture(t);
+  const categories=['Currency','Fragment','Runegraft','AllflameEmber','Tattoo','Omen','DjinnCoin','Ducat',
+    'EnshroudingCrystal','Artifact','Oil','DeliriumOrb','Scarab','Astrolabe','Thread','Fossil','Resonator','Essence',
+    'DivinationCard','Map','BlightedMap','BlightRavagedMap','SkillGem'];
+  const feeds=categories.map((category,index)=>({category,responseAge:index,revalidated:false}));
+  const responseAges=feeds.map(feed=>feed.responseAge);
+  f.state.lootSyncDiff={verifiedProtection:true,responseAges:[...responseAges,24],changeCount:0,changes:[],
+    feeds:[...feeds,{category:'Extra',responseAge:24}]};
+  f.write('state',f.state);
+  const result=f.call('get_loot_sync_diff',{});
+  assert.deepEqual(result.feeds,feeds);
+  assert.deepEqual(result.responseAges,responseAges);
   assert.equal(fs.existsSync(path.join(f.dir,'AI-build-request.json')),false);
 });
 

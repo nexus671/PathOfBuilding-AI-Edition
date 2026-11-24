@@ -93,12 +93,15 @@ function M.Open(profile, raw, export)
 					"Missing or thin markets keep existing rules. Later filter rules can still affect visibility.",
 				}}}
 				for i, change in ipairs(changes) do
-					entries[#entries + 1] = {id = tostring(i), label = change.name, details = {
+					local details = {
 						"Hide up to " .. change.old .. " → " .. change.cutoff .. (change.maps and " in maps" or ""),
 						string.format("%.4g chaos each | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
 						change.gemLevel and string.format("Level %d, %d%% quality, %s",change.gemLevel,change.gemQuality,
 							change.corrupted and "corrupted" or "uncorrupted") or nil,
-					}}
+					}
+					local priceId = economy.evidencePriceId(change.priceId)
+					if priceId then details[#details+1] = "Price ID · "..priceId end
+					entries[#entries + 1] = {id = tostring(i), label = change.name, details = details}
 				end
 				status("Review complete.")
 				require("Classes.PlanningBrowserControl").Open("Review exchange prices", entries, {

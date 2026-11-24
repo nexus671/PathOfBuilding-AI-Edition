@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1242][2026/11/23]
+
+* Show the provider price ID and evidence for every requested market feed.
+
 VERSION[2.68.1-ai.preview1241][2026/11/23]
 
 * Choose exact exchange feeds for managed commodity rules and Allflame embers.

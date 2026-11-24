@@ -88,6 +88,7 @@ assert(sync.status:find("Protected drops verified",1,true) and read(target):find
 assert(calls==9 and not sync.configuration().lastFailure)
 local sample = sync.configuration().review.changes[1].sample
 assert(sample.action=="Show" and sample.count==5)
+assert(sync.configuration().review.changes[1].priceId=="alt")
 local exposed = sync.publicStatus(now)
 assert(exposed.state=="enabled" and exposed.adjustmentCount==1 and exposed.latestChanges[1].proposedCutoff==4)
 local payload=require("dkjson").encode(exposed)
@@ -771,7 +772,7 @@ local mapBodies = {}
 for index, category in ipairs(feedKinds) do mapBodies[index] = stash[category] or commodityBody end
 local promoted, mapCount, mapChanges, mapSkips = validate(mapBase,mapBodies,false,1,mapSamples,nil,nil,nil,{maps=5})
 assert(mapCount==1 and mapChanges[1].name=="Map (Tier 16)" and mapChanges[1].liquidityUnit=="listing samples")
-assert(mapChanges[1].sample.before=="Hide" and mapChanges[1].sample.action=="Show")
+assert(mapChanges[1].sample.before=="Hide" and mapChanges[1].sample.action=="Show" and mapChanges[1].priceId=="ordinary-16")
 assert(#mapSkips==3 and mapSkips[1].reason:find("Ambiguous",1,true) and mapSkips[3].reason:find("floor",1,true))
 assert(not pcall(validate,mapBase,missing,false,1,mapSamples))
 write(target,mapBase)
@@ -1427,6 +1428,8 @@ local function checkManagedGemPrices()
 	local actual = market.quotes(overview,"SkillGem",requests)
 	assert(actual[gems.key("Arc",20,20,false)].price==50)
 	assert(not actual[gems.key("Arc",20,19,true)])
+	local rememberedGems=market.remember(actual,{},"gem identity day",now)
+	assert(rememberedGems[gems.key("Arc",20,20,false)].providerId=="arc-exact")
 	assert(actual[gems.key("Fireball",20,20,false)]==false)
 	local reused = overview:gsub("arc%-corrupt%-19","arc-exact")
 	assert(market.quotes(reused,"SkillGem",requests)[gems.key("Arc",20,20,false)]==false)
@@ -1453,7 +1456,7 @@ local function checkManagedGemPrices()
 	local decision
 	for _, change in ipairs(state.review.changes) do if change.gemLevel then decision=change end end
 	assert(decision and decision.name=="Arc" and decision.gemLevel==20 and decision.gemQuality==20 and decision.corrupted==false)
-	assert(decision.sample.before=="Hide" and decision.sample.action=="Show")
+	assert(decision.sample.before=="Hide" and decision.sample.action=="Show" and decision.priceId=="arc-exact")
 	local function testItem(candidate,name,quality,corrupted,imbued,transfigured,area)
 		local parser = require("Modules.LootFilterParser")
 		return parser.simulate(parser.parse(candidate),{
@@ -1609,7 +1612,12 @@ print("Daily profiles bind verified sources, reset changed or legacy histories, 
 local function checkManagedExchangeSelections()
 	local core={}
 	for _,category in ipairs(market.categories) do core[category]=true end
-	assert(#market.exchangeCategories==18 and #market.categories==8)
+	assert(#market.exchangeCategories==18 and #market.categories==8 and market.maxFeedCount==23)
+	assert(market.evidencePriceId("harbinger-scarab_1.0")=="harbinger-scarab_1.0")
+	for _,id in ipairs({"",string.rep("a",201),"internal\0composite","C:/private/id","quote name"}) do
+		assert(not market.evidencePriceId(id))
+	end
+	assert(not market.evidencePriceId(false))
 	for _,category in ipairs(market.exchangeCategories) do
 		local entry={name="Fixture "..category,class="Stackable Currency",scope="maps",cutoff=6,exchangeCategory=category}
 		assert(market.validateManagedRules({entry})[1].exchangeCategory==category)
@@ -1638,15 +1646,19 @@ local function checkManagedExchangeSelections()
 	merge("Scarab",0.3)
 	assert(quotes["Harbinger Scarab"].source=="Currency")
 	local after,changes=market.review(raw,quotes,1)
-	assert(#changes==1 and changes[1].source=="Scarab" and changes[1].cutoff==3)
+	assert(#changes==1 and changes[1].source=="Scarab" and changes[1].cutoff==3 and changes[1].priceId=="scarab")
 	assert(after:find("# PoB economy: exchange Scarab\nHide",1,true) and #market.feedCategories(after)==9)
 	local second=market.review(after,quotes,1)
 	assert(second==after)
 	local remembered,snapshots=market.remember(quotes,{},"source day",now)
 	assert(snapshots[1].values["Currency:scarab"]==0.01 and snapshots[1].values["Scarab:scarab"]==0.3)
 	assert(market.review(raw,remembered,1)==after)
-	local missing=market.review(raw,{["Harbinger Scarab"]={id="wrong",price=100,volume=1000,source="Currency"}},1)
-	assert(missing==raw)
+	local missing,missingChanges,missingSkips=market.review(raw,{["Harbinger Scarab"]={id="wrong",price=100,volume=1000,source="Currency"}},1)
+	assert(missing==raw and #missingChanges==0 and missingSkips[1].source=="Scarab" and not missingSkips[1].priceId)
+	local _,_,ambiguousSkips=market.review(raw,{["\0Scarab:Harbinger Scarab"]=false},1)
+	assert(ambiguousSkips[1].source=="Scarab" and ambiguousSkips[1].reason=="Ambiguous price mapping" and not ambiguousSkips[1].priceId)
+	local _,_,unchanged=market.review(raw,{["\0Scarab:Harbinger Scarab"]={id="scarab-stable",price=0.01,volume=1000,source="Scarab"}},1)
+	assert(unchanged[1].source=="Scarab" and unchanged[1].priceId=="scarab-stable")
 	quotes={};merge("Scarab",2)
 	local removed,removedChanges=market.review(raw,quotes,1)
 	assert(#removedChanges==1 and not removed:find("# PoB economy: exchange Scarab",1,true) and #market.feedCategories(removed)==8)
@@ -1724,6 +1736,10 @@ local function checkManagedExchangeDailySync()
 	fixture.tick(now,true,false,id)
 	local state=fixture.configuration(id)
 	assert(#sent==10 and state.lastSuccess==now and state.review.protectedChecks==1,fixture.status)
+	local diff=fixture.publicDiff(now,id)
+	local identities={}
+	for _,change in ipairs(diff.changes) do identities[change.source]=change.priceId end
+	assert(identities.Scarab=="harbinger" and identities.AllflameEmber=="abyss" and identities.Currency=="alt")
 	local output=read(live)
 	assert(output~=raw and output:find("# PoB economy: exchange Scarab",1,true))
 	assert(not output:find("# PoB economy: exchange AllflameEmber",1,true))

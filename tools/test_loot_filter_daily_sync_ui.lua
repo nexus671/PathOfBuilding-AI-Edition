@@ -249,7 +249,8 @@ assert(not ggg.compare({trade},"Covens","Orb of Alteration"))
 local configMock, originalFetch = sync.configuration, launch.DownloadPage
 sync.configuration = function()
 	return {league="Covens", target=selected, enabled=true, hour=9, summary="Protected drops verified.",
-		review={checkedAt=reviewTime,changes={{name="Orb of Alteration",old=10,cutoff=6,price=0.21,volume=1000,maps=true}},
+		review={checkedAt=reviewTime,changes={{name="Orb of Alteration",old=10,cutoff=6,price=0.21,volume=1000,maps=true,
+			source="Currency",priceId="orb-of-alteration"}},
 			feeds={{category="Currency",age=128,revalidated=true}}}}
 end
 launch.DownloadPage = function(_, url, callback)
@@ -260,6 +261,7 @@ require("Classes.LootFilterDailySyncControl").Open()
 feedUI:click("review")
 assert(main.popups[1].title=="Daily filter sync review")
 feedUI:text("search","Orb of Alteration")
+assert(main.popups[1].controls.details.list[4][1]:find("orb-of-alteration",1,true))
 feedUI:click("secondary")
 assert(main.popups[1].title=="GGG trade comparison")
 sync.configuration, launch.DownloadPage = configMock, originalFetch
