@@ -80,11 +80,11 @@ Select **Use with next update**, then **Preview changes** to check the resulting
 
 In **Last review**, select **Pickup policy** to find caps that cannot tighten the fixed baseline. The review identifies exact names without an eligible rule and caps at or below every matching baseline cutoff.
 
-After a verified sync, use **Test observed stack** to enter a stackable item's exact name, stack size, and area level. If a rule needs the item level, enter it when known. PoB compares the fixed baseline with the verified filter and shows the matched lines and minimap marker. The comparison uses the entered observation and leaves both files untouched.
+After a verified sync, use **Test observed stack** to enter a stackable item's exact name, stack size, and area level. If a rule needs the item level, enter it when known. PoB compares the fixed baseline with the verified filter, previews their loot labels side by side, and shows matched lines and configured appearance, including colors, markers, beams and sounds. The illustration is an approximation of the game. The comparison uses the entered observation and leaves both files untouched.
 
 In **Preview changes**, **Offline price preview**, or **Review league change**, **Test observed stack** compares the current and proposed text shown in that preview. You can check the proposed visibility before saving the policy or league.
 
-Choose **Compare file** to review up to 250 recorded stacks at once. Use a JSON array with one entry per observed stack. Repeated entries count as separate observations. Add `ItemLevel` if known and `Class` if the name alone does not identify the stackable class.
+Choose **Compare file** to review up to 250 recorded stacks at once. Use a JSON array with one entry per observed stack. Repeated entries count as separate observations. Add `ItemLevel` if known and `Class` if the name alone does not identify the stackable class. The results can be grouped by item class or exact area level; these are counts from your file, not estimates of drop rates. Select a recorded stack and choose **Preview labels** for the side-by-side illustration. Results with unresolved includes or other preview assumptions are counted as unresolved, with the warning shown in the item details. When multiple rules match through `Continue`, their line numbers appear in match order.
 
 ```json
 [
