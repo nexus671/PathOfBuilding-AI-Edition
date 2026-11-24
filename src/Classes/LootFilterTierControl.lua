@@ -93,7 +93,7 @@ function M.Mount(c,profile,w,h,view,options)
 		end
 		return originalUp(self,key,...)
 	end
-	ui.description(c,"tierHelp",16,h-60,w-208,22,{"Drag or use Move item; class and stack rules stay."},12)
+	ui.description(c,"tierHelp",16,h-60,w-208,22,{"Drag or use Move item; tiers keep their rules."},12)
 	refresh();return {snapshot=function() return view end}
 end
 return M
