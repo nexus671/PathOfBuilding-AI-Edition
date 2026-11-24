@@ -1,6 +1,6 @@
 VERSION[2.69.0-ai.preview1285][2026/11/24]
 
-* Prevent duplicate daily filter sync profile IDs.
+* Prevent duplicate daily filter sync profile IDs and repeated revision tokens.
 
 VERSION[2.69.0-ai.preview1284][2026/11/24]
 

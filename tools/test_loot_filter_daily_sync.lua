@@ -59,6 +59,13 @@ do
 	local ok=pcall(fixture.createProfile,"Third")
 	assert(not ok and read(main.userPath.."LootFilterSyncProfiles.json")==before,"Repeated collisions must leave the registry unchanged")
 	assert(#fixture.profiles()==3,"Both distinct profiles must remain readable")
+	local oldRevision=string.rep("a",40)
+	write(main.userPath.."LootFilterDailySync.json",'{"enabled":true,"revision":"'..oldRevision..'"}')
+	calls=0
+	fixture.setBackground(true,oldRevision)
+	local updated=fixture.configuration()
+	assert(updated.revision==string.rep("b",40) and calls==3,"A colliding revision must be retried")
+	assert(not pcall(fixture.setBackground,false,oldRevision),"The prior revision must remain stale")
 	package.loaded.sha1,main.userPath=previousSha,previousPath
 end
 local now = os.time()
