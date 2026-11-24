@@ -320,7 +320,7 @@ do
 	assert(main.popups[1].title=="Recorded stack comparison")
 	local facts={}
 	for _, row in ipairs(main.popups[1].controls.details.list) do facts[#facts+1]=StripEscapes(row[1] or "") end
-	local summary=table.concat(facts," ")
+	local summary=table.concat(facts," "):gsub("%s+"," ")
 	assert(summary:find("1 recorded stack, 5 items in total",1,true) and summary:find("Became visible: 1",1,true))
 	assert(summary:find("they do not estimate drop rates",1,true))
 	if output then reviewUI:frame():write(output.."/"..reviewWidth.."-batch-observed-stack.json") end
