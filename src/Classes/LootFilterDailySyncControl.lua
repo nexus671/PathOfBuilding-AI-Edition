@@ -106,6 +106,35 @@ local function describeObservedOutcome(details, label, result)
 	end
 end
 
+local function showObservedComparison(item,before,after,beforeLabel,afterLabel)
+	local width=math.min(540,main.screenW-40)
+	local details={string.format("%s, stack of %d, area level %d",item.BaseType,item.StackSize,item.AreaLevel)}
+	if item.ItemLevel then details[#details+1]="Item level: "..item.ItemLevel end
+	describeObservedOutcome(details,beforeLabel,before)
+	describeObservedOutcome(details,afterLabel,after)
+	local resultControls={}
+	local visual=require("Modules.LootFilterVisuals")
+	resultControls.preview=new("Control"):Control(ui.anchor,{16,16,width-32,78})
+	function resultControls.preview:Draw()
+		local x,y=self:GetPos();local w,h=self:GetSize();local half=w/2
+		visual.floor(x,y,w,h,"Dark")
+		local function side(offset,heading,result)
+			local uncertain=result.action=="Unknown" or #(result.reasons or {})>0
+			visual.text(x+offset+6,y+4,12,heading.." | "..result.action..(uncertain and " (review)" or ""),"^xA6B3C6",half-12)
+			visual.chip(x+offset,y+20,half,h-20,item,result,false)
+		end
+		side(0,beforeLabel,before);side(half,afterLabel,after)
+	end
+	local rows=ui.rows(details,width-48,14)
+	local height=0
+	for _,row in ipairs(rows) do height=height+row.height end
+	local detailsHeight=math.min(height+8,math.max(80,main.screenH-208))
+	resultControls.details=new("TextListControl"):TextListControl(ui.anchor,{16,104,width-32,detailsHeight},nil,rows)
+	resultControls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-136,detailsHeight+116,120,28},"Close",function() main:ClosePopup() end)
+	ui.style(resultControls)
+	main:OpenPopup(width,detailsHeight+160,"Observed stack result",resultControls,nil,nil,"close")
+end
+
 local function compareStackFile(compare, beforeLabel, afterLabel)
 	require("Classes.LootFilterFileBrowser").Open(main.userPath,function(path)
 		local ok,summary,rows = pcall(compare,path)
@@ -137,9 +166,13 @@ local function compareStackFile(compare, beforeLabel, afterLabel)
 			if item.ItemLevel then details[#details+1] = "Item level: "..item.ItemLevel end
 			describeObservedOutcome(details,beforeLabel,row.before)
 			describeObservedOutcome(details,afterLabel,row.after)
-			entries[#entries+1] = {id=tostring(index),label=label,category=outcomes[row.group],details=details}
+			entries[#entries+1] = {id=tostring(index),label=label,category=outcomes[row.group],details=details,observation=row}
 		end
-		require("Classes.PlanningBrowserControl").Open("Recorded stack comparison",entries)
+		require("Classes.PlanningBrowserControl").Open("Recorded stack comparison",entries,{
+			action="Preview labels",closeOnChoose=false,
+			canChoose=function(entry) return entry.observation~=nil end,
+			choose=function(entry) local row=entry.observation;showObservedComparison(row.item,row.before,row.after,beforeLabel,afterLabel) end,
+		})
 	end,{title="Choose stack observation file",itemLabel="JSON",accept=function(name) return name:lower():match("%.json$") end})
 end
 
@@ -168,32 +201,8 @@ local function compareObservedStack(compare, compareBatch, beforeLabel, afterLab
 		local ok,before,after = pcall(compare,name,
 			tonumber(controls.size.buf),tonumber(controls.area.buf),level,controls.class:GetSelValueByKey("class"))
 		if not ok then main:OpenMessagePopup("Test observed stack",ui.errorText(before)); return end
-		local details = {string.format("%s, stack of %d, area level %d",name,tonumber(controls.size.buf),tonumber(controls.area.buf))}
-		describeObservedOutcome(details,beforeLabel,before)
-		describeObservedOutcome(details,afterLabel,after)
-		local resultControls = {}
-		local visual = require("Modules.LootFilterVisuals")
 		local itemClass = controls.class:GetSelValueByKey("class") or require("Modules.LootFilterLibrary").baseClass(name)
-		local item = {BaseType=name,Class=itemClass,Rarity="Normal"}
-		resultControls.preview = new("Control"):Control(ui.anchor,{16,16,width-32,78})
-		function resultControls.preview:Draw()
-			local x,y=self:GetPos();local w,h=self:GetSize();local half=w/2
-			visual.floor(x,y,w,h,"Dark")
-			local function side(offset,heading,result)
-				local uncertain=result.action=="Unknown" or #(result.reasons or {})>0
-				visual.text(x+offset+6,y+4,12,heading.." | "..result.action..(uncertain and " (review)" or ""),"^xA6B3C6",half-12)
-				visual.chip(x+offset,y+20,half,h-20,item,result,false)
-			end
-			side(0,beforeLabel,before);side(half,afterLabel,after)
-		end
-		local rows = ui.rows(details,width-48,14)
-		local height = 0
-		for _, row in ipairs(rows) do height=height+row.height end
-		local detailsHeight = math.min(height+8,math.max(80,main.screenH-208))
-		resultControls.details = new("TextListControl"):TextListControl(ui.anchor,{16,104,width-32,detailsHeight},nil,rows)
-		resultControls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,detailsHeight+116,120,28},"Close",function() main:ClosePopup() end)
-		ui.style(resultControls)
-		main:OpenPopup(width,detailsHeight+160,"Observed stack result",resultControls,nil,nil,"close")
+		showObservedComparison({BaseType=name,Class=itemClass,Rarity="Normal",StackSize=tonumber(controls.size.buf),AreaLevel=tonumber(controls.area.buf),ItemLevel=level},before,after,beforeLabel,afterLabel)
 	end
 	controls.test = new("ButtonControl"):ButtonControl(ui.anchor,{16,206,column,28},"Compare filters",run)
 	controls.importStacks = new("ButtonControl"):ButtonControl(ui.anchor,{24+column,206,column,28},"Compare file",function()

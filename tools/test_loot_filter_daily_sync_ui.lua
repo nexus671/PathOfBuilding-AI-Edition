@@ -334,6 +334,7 @@ do
 	local summary=table.concat(facts," "):gsub("%s+"," ")
 	assert(summary:find("1 recorded stack, 5 items in total",1,true) and summary:find("Became visible: 1",1,true))
 	assert(summary:find("they do not estimate drop rates",1,true))
+	assert(not main.popups[1].controls.choose:IsEnabled(),"Summary cannot be previewed as an item")
 	if output then reviewUI:frame():write(output.."/"..reviewWidth.."-batch-observed-stack.json") end
 	reviewUI:choose("category","Became visible")
 	local filtered=main.popups[1].controls
@@ -343,6 +344,11 @@ do
 	for _,row in ipairs(filtered.details.list) do warning[#warning+1]=StripEscapes(row[1] or "") end
 	assert(table.concat(warning," "):gsub("%s+"," "):find("Included file needs review.",1,true))
 	assert(table.concat(warning," "):gsub("%s+"," "):find("Matched lines in order: 1, 4",1,true))
+	assert(filtered.choose:IsEnabled())
+	reviewUI:click("choose")
+	assert(main.popups[1].title=="Observed stack result" and main.popups[1].controls.preview)
+	reviewUI:click("close")
+	assert(main.popups[1].title=="Recorded stack comparison","Preview must return to the selected observations")
 	reviewUI:choose("category","By area level")
 	assert(main.popups[1].controls.results.list[1].entry.label=="Area level 83")
 	reviewUI:choose("category","By item class")
