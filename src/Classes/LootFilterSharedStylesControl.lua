@@ -6,6 +6,25 @@ local visual=require("Modules.LootFilterVisuals")
 local M={}
 local names={Colour="Any colour",AlertSound="Any numbered alert",CustomSound="Any custom sound",SetTextColor="Text colour",SetBorderColor="Border colour",SetBackgroundColor="Background colour",PlayAlertSound="Alert sound",PlayAlertSoundPositional="Positional alert",CustomAlertSound="Custom sound",CustomAlertSoundOptional="Optional custom sound"}
 local function isColour(key) return key=="Colour" or key=="SetTextColor" or key=="SetBorderColor" or key=="SetBackgroundColor" end
+function M.previewStyles(profile,row,target)
+	local key=row.key=="Colour" and "SetTextColor" or row.key=="AlertSound" and "PlayAlertSound" or row.key=="CustomSound" and "CustomAlertSound" or row.key
+	local rows={"Show"}
+	if isColour(key) then
+		local colours={SetTextColor="255 235 175 255",SetBorderColor="105 195 245 255",SetBackgroundColor="20 30 45 255"}
+		local rgba=assert(appearance.fromHex(row.value),"Invalid source colour");colours[key]=table.concat(rgba," ")
+		for _,style in ipairs({"SetTextColor","SetBorderColor","SetBackgroundColor"}) do rows[#rows+1]=" "..style.." "..colours[style] end
+		rows[#rows+1]=" SetFontSize 32"
+	else
+		local value=(key=="CustomAlertSound" or key=="CustomAlertSoundOptional") and ('"'..row.value..'"') or row.value
+		rows[#rows+1]=" "..key.." "..value.." 100"
+	end
+	local replacements=copyTable(profile.sharedStyles or {});local found
+	for i,entry in ipairs(replacements) do if entry.key==row.key and entry.from==row.value then replacements[i]={key=row.key,from=row.value,to=target};found=true;break end end
+	if not found then replacements[#replacements+1]={key=row.key,from=row.value,to=target} end
+	local raw=shared.apply(table.concat(rows,"\n"),replacements)
+	raw=require("Modules.LootFilterDecorators").apply(raw,profile.appearance)
+	return require("Modules.LootFilterParser").parse(raw).rules[1].styles
+end
 local function edit(profile,row,onKeep)
 	local c={};local w,h=math.min(640,main.screenW-40),math.min(360,main.screenH-60)
 	local existing;for _,entry in ipairs(profile.sharedStyles or {}) do if entry.key==row.key and entry.from==row.value then existing=entry end end
@@ -30,9 +49,9 @@ local function edit(profile,row,onKeep)
 	end
 	if isColour(row.key) then
 		c.preview=new("Control"):Control(ui.anchor,{16,222,w-32,54})
-		function c.preview:Draw() local x,y=self:GetPos();local width=self:GetSize();local styles={SetTextColor={"255","235","175","255"},SetBorderColor={"105","195","245","255"},SetBackgroundColor={"20","30","45","255"},SetFontSize={"32"}};local rgba=appearance.fromHex(c.target.buf);if rgba then styles[row.key=="Colour" and "SetTextColor" or row.key]=rgba end;visual.floor(x,y,width,54);visual.chip(x,y,width,54,{BaseType="Example item"},{action="Show",styles=styles}) end
+		function c.preview:Draw() local x,y=self:GetPos();local width=self:GetSize();local styles=valid() and M.previewStyles(profile,row,c.target.buf) or {};visual.floor(x,y,width,54);visual.chip(x,y,width,54,{BaseType="Example item"},{action="Show",styles=styles}) end
 	else
-		c.previewSound=new("ButtonControl"):ButtonControl(ui.anchor,{16,226,160,28},"Preview sound",function() local key=row.key=="AlertSound" and "PlayAlertSound" or row.key=="CustomSound" and "CustomAlertSound" or row.key;local _,message=require("Modules.LootFilterAudio").play({[key]={c.target.buf,"100"}});main:OpenMessagePopup("Sound preview",message) end);c.previewSound.enabled=valid
+		c.previewSound=new("ButtonControl"):ButtonControl(ui.anchor,{16,226,160,28},"Preview sound",function() local _,message=require("Modules.LootFilterAudio").play(M.previewStyles(profile,row,c.target.buf));main:OpenMessagePopup("Sound preview",message) end);c.previewSound.enabled=valid
 	end
 	c.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-48,160,28},"Keep replacement",function()
 		local replacement=shared.validate({candidate()})[1];local next=copyTable(profile);next.sharedStyles=next.sharedStyles or {};local found

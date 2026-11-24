@@ -1,4 +1,5 @@
 -- Exact, simultaneous substitutions for declared filter styles.
+-- cspell:ignore jsontype
 local parser=require("Modules.LootFilterParser")
 local appearance=require("Modules.LootFilterAppearanceSettings")
 local M={}

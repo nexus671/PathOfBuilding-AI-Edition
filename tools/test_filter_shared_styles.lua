@@ -34,6 +34,12 @@ local groupedResult=shared.apply(grouped,{{key="Colour",from="FF0000FF",to="00FF
 assert(groupedResult:find("SetTextColor 0 255 0 255",1,true) and groupedResult:find("SetBackgroundColor 0 255 0 255",1,true),"Shared colour did not reach all matching uses")
 assert(groupedResult:find("SetBorderColor 0 0 255 255",1,true),"Specific replacement must take precedence over the shared group")
 assert(groupedResult:find("PlayAlertSound 6 100",1,true) and groupedResult:find("PlayAlertSoundPositional 6 200",1,true),"Shared alert did not preserve positional mode and volume")
+local preview=require("Classes.LootFilterSharedStylesControl").previewStyles
+local previewProfile={sharedStyles={{key="SetTextColor",from="FF0000FF",to="0000FFFF"}}}
+local shown=preview(previewProfile,{key="Colour",value="FF0000FF"},"00FF00FF");assert(table.concat(shown.SetTextColor,",")=="0,0,255,255","Preview ignored a more specific replacement")
+previewProfile.appearance={textColor={255,255,255,255},alertId=8,alertVolume=50}
+shown=preview(previewProfile,{key="Colour",value="FF0000FF"},"00FF00FF");assert(table.concat(shown.SetTextColor,",")=="255,255,255,255","Preview ignored the whole-filter colour")
+shown=preview(previewProfile,{key="AlertSound",value="2"},"6");assert(table.concat(shown.PlayAlertSound,",")=="8,50","Sound preview ignored whole-filter settings")
 assert(not pcall(shared.validate,{{key="SetTextColor",from="FF0000FF",to="00FF00FF"},{key="SetTextColor",from="FF0000FF",to="FFFFFFFF"}}),"Duplicate sources were accepted")
 newBuild();local filters=require("Modules.LootFilters");local profile=filters.profile("shared","Shared styles")
 profile.template="Show\n SetTextColor 255 0 0\n PlayAlertSound 2 200";profile.sharedStyles={entries[1],entries[4]}
