@@ -41,12 +41,13 @@ local function showListingSample(target, league, sample)
 	}
 	if sample.ambiguous>0 then details[#details+1]=string.format("%d conflicting listing IDs excluded",sample.ambiguous) end
 	for _, row in ipairs(sample.results) do
-		if row.median then
-			details[#details+1] = string.format("%s | Median %.4g | Range %.4g–%.4g | %d sellers",
-				row.currency,row.median,row.low,row.high,row.sellers)
-		elseif row.sellers>0 then
-			details[#details+1] = string.format("%s | Range %.4g–%.4g | %d sellers (three needed for a median)",
-				row.currency,row.low,row.high,row.sellers)
+		if row.sellers>0 then
+			local range = row.low==row.high and string.format("Ask %.4g",row.low)
+				or string.format("Range %.4g to %.4g",row.low,row.high)
+			local estimate = row.median and string.format(" | Median %.4g",row.median) or ""
+			local sellers = row.sellers==1 and "1 seller" or (row.sellers.." sellers")
+			local note = row.median and "" or " (three needed for a median)"
+			details[#details+1] = row.currency..estimate.." | "..range.." | "..sellers..note
 		end
 	end
 	details[#details+1] = "Asking prices from this file. Listing age and sale price are unknown."

@@ -1406,6 +1406,7 @@ Item Level: 86
 	for _, line in ipairs(main.popups[1].controls.details.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
 	local details=table.concat(rows," ")
 	assert(details:find("7 matching rolls",1,true) and details:find("Median 30",1,true),details)
+	assert(details:find("Range 10 to 50",1,true) and details:find("Ask 1.5 | 1 seller",1,true),details)
 	assert(details:find("Listing age and sale price are unknown.",1,true),details)
 	assert(not details:find("One#0001",1,true))
 	if output then gearUI:frame():write(output.."/gear-listing-snapshot.json") end
