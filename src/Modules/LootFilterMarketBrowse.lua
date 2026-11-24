@@ -157,7 +157,7 @@ function M.buildTargets(build)
 	local function add(target)
 		if not marketName(target.name) then return end
 		local key = table.concat({target.category,target.name,target.level or "",target.quality or "",
-			target.imbuedSupport or "",target.itemLevel or "",target.baseVariant or ""},"\0")
+			target.imbuedSupport or "",target.itemLevel or "",target.baseVariant or "",target.listingSlot or ""},"\0")
 		if not seen[key] then
 			seen[key] = true
 			target.id = tostring(#targets+1)
@@ -216,7 +216,9 @@ function M.buildTargets(build)
 				if category=="BaseType" then baseName,implicit=baseTradeIdentity(item.baseName) end
 				local itemLevel = item.itemLevel
 				if category~="BaseType" or implicit==false or not positive(itemLevel) or itemLevel>100 or itemLevel~=math.floor(itemLevel) then itemLevel=nil end
+				local listingItem = itemLevel and require("Modules.LootFilterGearListings").target(item,baseName)
 				add({name=baseName,category=category,baseTarget=true,itemLevel=itemLevel,baseImplicit=implicit or nil,
+					listingItem=listingItem,listingSlot=listingItem and slot.slotName or nil,
 					baseVariant=baseName~=item.baseName and item.baseName or nil,
 					label=label.." | "..item.baseName..(itemLevel and (" | Item level "..itemLevel) or ""),
 					details={"Compare this crafting base. The equipped modifiers have their own value."}})
