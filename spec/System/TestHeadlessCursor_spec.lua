@@ -28,4 +28,21 @@ describe("Headless text cursor", function()
 		assert.equal(5, DrawStringCursorIndex(16, "VAR", "aéz", 1000, 0))
 		main.popups = { }; ui:restore()
 	end)
+
+	it("edits a later line before and after a Unicode character", function()
+		newBuild(); main.popups = { }
+		local ui = require("Modules.HeadlessUI").install({ width = 960, height = 640 })
+		local anchor = new("Control"):Control(nil, { 0, 0, 0, 0 })
+		local controls = { }
+		controls.edit = new("EditControl"):EditControl({ "TOPLEFT", anchor, "TOPLEFT" }, { 20, 40, 300, 100 }, "a\néz", nil, nil, 100, nil, 16)
+		main:OpenPopup(340, 180, "Text test", controls); ui:frame()
+		local edit = main.popups[1].controls.edit
+		local x, y = edit:GetPos()
+		ui:clickAt(x + 3, y + 20); ui:dispatch(ui:activeHost(), { { type = "Char", key = "X" } })
+		assert.equal("a\nXéz", edit.buf)
+		local after = DrawStringWidth(16, "VAR", "Xé")
+		ui:clickAt(x + 2 + after + 1, y + 20); ui:dispatch(ui:activeHost(), { { type = "Char", key = "Y" } })
+		assert.equal("a\nXéYz", edit.buf)
+		main.popups = { }; ui:restore()
+	end)
 end)
