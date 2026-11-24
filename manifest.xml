@@ -3208,7 +3208,7 @@
 	<File name="Modules/LootFilterPriceAppearance.lua" part="program" sha1="ac023aaeca31d302340b29b15235055b8fe0fc47" />
 	<File name="Modules/LootFilterOfflinePrices.lua" part="program" sha1="73ea6e7affe77039ae8009e4f8fdcde597f6db44" />
 	<File name="Modules/LootFilterGemMarket.lua" part="program" sha1="ce0995f13759ec1b47f9f0f17a2d9bf0ae16c690" />
-	<File name="Modules/LootFilterMarketJSON.lua" part="program" sha1="395771f4a5812812f668fedc098c3fcb3202aff6" />
+	<File name="Modules/LootFilterMarketJSON.lua" part="program" sha1="0883c3b33441facef93fa3ae059ba06bae617da3" />
 	<File name="Classes/LootFilterSharedStylesControl.lua" part="program" sha1="3034e9508dd9c106b68014616ebc39573ed5ac7d" />
 	<File name="Modules/LootFilterSharedStyles.lua" part="program" sha1="9f1c299ea78c64c0c39f4d8b22ac066135471944" />
 </PoBVersion>
