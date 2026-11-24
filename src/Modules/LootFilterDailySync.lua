@@ -334,7 +334,12 @@ local failureReasons = {access_denied=true,rate_limited=true,provider_unavailabl
 	transport_error=true,stale=true,invalid_response=true,empty_response=true,cooldown=true,timeout=true,
 	league_unavailable=true,source_changed=true}
 function M.failedFeedEvidence(value)
-	if type(value)~="table" or not failureCategories[value.category] or not failureReasons[value.reason] then return nil end
+	if type(value)~="table" or not failureCategories[value.category] then return nil end
+	if value.reason=="coverage_drop" then
+		local evidence = market.coverageFailure(value.category,value.availableQuotes,value.usualQuotes)
+		return evidence
+	end
+	if not failureReasons[value.reason] then return nil end
 	local status = finiteNumber(value.httpStatus)
 	local league = value.reason=="league_unavailable" and market.tradeLeague(value.currentLeague) or nil
 	local verifiedAt = finiteNumber(value.verifiedAt)
@@ -1330,7 +1335,7 @@ local function reconcileRefresh(current, id)
 	return finishRefresh(nextState,id,raw,evidence,true), nextState
 end
 
-local function publish(config, bodies, feeds, day, force, now, id, confirmation)
+local function publish(config, bodies, feeds, day, force, now, id, confirmation, onCoverageFailure)
 	return lockSettings(function()
 		local current = get(id)
 		assert(sourceMatches(config) and current and sourceMatches(current), sourceChanged)
@@ -1349,7 +1354,7 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		local history = sameSource and current.priceHistory or nil
 		local continuity = sameSource and before==current.current and verifiedContinuity(current) or nil
 		local candidate, _, changes, skipped, snapshots, protectedChecks, nextContinuity = validate(
-			baseline, bodies, false, current.targetValue, current.protections, history, day, now, current.pickupPolicy, confirmation, continuity)
+			baseline, bodies, false, current.targetValue, current.protections, history, day, now, current.pickupPolicy, confirmation, continuity, onCoverageFailure)
 		keepExpected(candidate)
 		local digest = sha(candidate)
 		local ages = {}
@@ -1454,8 +1459,11 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id, onLea
 			if age > 3600 then finish(false,categories[index]..": snapshot expired before the refresh finished.",feedFailure(categories[index],"stale")); return end
 			feeds[index] = {category=categories[index],age=age,revalidated=response.revalidated}
 		end
-		local succeeded, result = pcall(complete,bodies,feeds,confirmation)
-		finish(succeeded,result)
+		local coverage
+		local succeeded, result = pcall(complete,bodies,feeds,confirmation,function(failure)
+			coverage = failure
+		end)
+		finish(succeeded,result,coverage)
 	end
 	local function confirmTightening()
 		local policy = config.pickupPolicy
@@ -1657,8 +1665,8 @@ function M.tick(now, force, scheduled, id, onAttemptFailure)
 		onFailure(M.status)
 		return
 	end
-	fetchPrices(config, baseline, now, function(bodies, feeds, confirmation)
-		return publish(config,bodies,feeds,day,force,now,id,confirmation)
+	fetchPrices(config, baseline, now, function(bodies, feeds, confirmation, onCoverageFailure)
+		return publish(config,bodies,feeds,day,force,now,id,confirmation,onCoverageFailure)
 	end, onFailure, id)
 end
 
@@ -1727,9 +1735,9 @@ function M.preview(target, baselineFile, league, options, callback, onFailure)
 	local continuity = matching and not saved.pending and saved.target==config.target and saved.current==config.current
 		and cutoffContinuity(saved,config.targetValue,config.pickupPolicy) or nil
 	local day = history and os.date("%Y-%m-%d", now) or nil
-	fetchPrices(config, baseline, now, function(bodies, feeds, confirmation)
+	fetchPrices(config, baseline, now, function(bodies, feeds, confirmation, onCoverageFailure)
 		local candidate = validate(baseline,bodies,false,config.targetValue,config.protections,
-			history,day,now,config.pickupPolicy,confirmation,continuity)
+			history,day,now,config.pickupPolicy,confirmation,continuity,onCoverageFailure)
 		local receipt
 		if reviewLeague then
 			local at = os.time()
