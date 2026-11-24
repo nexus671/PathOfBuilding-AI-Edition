@@ -75,4 +75,23 @@ describe("Petrification Statue", function()
 		assert.is_true(output.Duration >= 6 and output.Duration < 6.04)
 		assert.is_true(output.Cooldown >= 20 and output.Cooldown < 20.04)
 	end)
+
+	it("restores the granted skill and warning after reopening a build", function()
+		local item = new("Item"):Item("Rarity: UNIQUE\nGreater Chimeral Eye\nChimeral Eye\nImplicits: 1\nGrants Level 20 Petrification Statue")
+		build.itemsTab:AddItem(item)
+		build.itemsTab.slots["Wickerman Head"].selItemId = item.id
+		build.buildFlag = true; runCallback("OnFrame"); build.calcsTab:BuildOutput()
+		local xml = build:SaveDB("Statue roundtrip")
+		loadBuildFromXML(xml, "Statue roundtrip")
+		build.calcsTab:BuildOutput()
+		local count = 0
+		for _, active in ipairs(build.calcsTab.mainEnv.player.activeSkillList) do
+			if active.activeEffect.grantedEffect.id == "SummonPetrificationStatue" then
+				count = count + 1
+				assert.equal(1, active.activeEffect.level)
+			end
+		end
+		assert.equal(1, count)
+		assert.matches("Petrification Statue's enemy slow and petrification are not included", table.concat(build.controls.warnings.lines, "\n"))
+	end)
 end)
