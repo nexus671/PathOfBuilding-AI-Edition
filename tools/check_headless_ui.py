@@ -95,6 +95,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_global_compact_ui.lua")
     sources.append(ROOT / "tools/test_effects_compact_ui.lua")
     sources.append(ROOT / "tools/test_appearance_compact_ui.lua")
+    sources.append(ROOT / "tools/test_sample_compact_ui.lua")
     sources.append(ROOT / "tools/test_beast_max_sockets.lua")
     sources.append(ROOT / "tools/test_beast_max_sockets_ui.lua")
     sources.append(ROOT / "tools/test_unique_beast_sockets.lua")
@@ -334,6 +335,10 @@ def main():
                                         env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "appearance-compact-controls.log").write_text(compact_appearance.stdout)
     assert compact_appearance.returncode == 0, compact_appearance.stdout
+    compact_sample = subprocess.run(lua_command + ["../tools/test_sample_compact_ui.lua", str(frames)], cwd=ROOT / "src",
+                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "sample-compact-controls.log").write_text(compact_sample.stdout)
+    assert compact_sample.returncode == 0, compact_sample.stdout
     bundle_errors = subprocess.run(lua_command + ["../tools/test_planning_bundle_errors.lua", str(frames)], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "planning-bundle-errors.log").write_text(bundle_errors.stdout)
@@ -495,7 +500,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2547, f"Expected 2547 UI frames, found {len(paths)}"
+    assert len(paths) == 2556, f"Expected 2556 UI frames, found {len(paths)}"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):
