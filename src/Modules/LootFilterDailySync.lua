@@ -582,7 +582,20 @@ function M.compareObservedStack(id, name, size, area, itemLevel, itemClass)
 	local parser = require("Modules.LootFilterParser")
 	local properties = library.baseProperties(name,"Normal")
 	local item = {BaseType=name,Class=itemClass,StackSize=size,AreaLevel=area,ItemLevel=itemLevel,Rarity="Normal",
-		DropLevel=properties.DropLevel,Width=properties.Width,Height=properties.Height}
+		DropLevel=properties.DropLevel,Width=properties.Width,Height=properties.Height,Imbued=false,TransfiguredGem=false}
+	if library.hasNoSockets(itemClass) then
+		item.Sockets,item.LinkedSockets,item.SocketGroup,item.SocketColours = 0,0,"",""
+	end
+	-- Ordinary currency and cards have no equipment mods or unidentified tier.
+	if itemClass=="Stackable Currency" or itemClass=="Divination Cards" then
+		item.Identified = true
+		item.FracturedItem = false
+		item.SynthesisedItem = false
+		item.HasCruciblePassiveTree = false
+		item.HasInfluence = {"None"}
+		item.UnidentifiedItemTier = 0
+		item.HasExplicitMod = {}
+	end
 	return parser.simulate(parser.parse(baseline),item),parser.simulate(parser.parse(raw),item)
 end
 

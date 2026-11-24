@@ -22,6 +22,14 @@ Hide
     StackSize <= 6
 
 # PoB economy: end
+Show
+    Class == "Stackable Currency"
+    LinkedSockets >= 6
+
+Hide
+    Class == "Stackable Currency"
+    HasCruciblePassiveTree True
+
 Hide
     BaseType == "Orb of Chance"
     ItemLevel >= 70
