@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1270][2026/11/24]
+
+* Explain when a pickup cap cannot tighten any managed rule in the fixed filter baseline.
+
 VERSION[2.68.1-ai.preview1269][2026/11/24]
 
 * Compare Imbued gems in your build by gem and support when the market reports an aggregate quote.

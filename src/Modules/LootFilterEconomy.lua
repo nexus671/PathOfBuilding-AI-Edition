@@ -437,6 +437,7 @@ function M.review(raw, quotes, target, preferences, confirmation, priorContinuit
 	if not start or not stop then return raw, {}, nil, continuity end
 	local section = raw:sub(start, stop - 1)
 	local changes, skipped, highlights = {}, {}, {}
+	local capCutoffs = {}
 	local useHighlights = (policy.highlightChaos or policy.strongHighlightChaos) and appearanceSafe(raw)
 	if (policy.highlightChaos or policy.strongHighlightChaos) and not useHighlights then
 		skipped[#skipped+1] = {name="Price highlights",styleOnly=true,
@@ -513,6 +514,7 @@ function M.review(raw, quotes, target, preferences, confirmation, priorContinuit
 		for position, name in ipairs(base.values) do
 			local quote = quotes[quoteKey(name, card and "DivinationCard" or exchangeCategory)]
 			local limit = not card and not singleItem and policy.caps[name]
+			if limit then capCutoffs[name] = math.min(capCutoffs[name] or old,old) end
 			local comparison
 			if policy.confirmTightening and limit and limit>old then
 				local confirmed = confirmation and confirmation[name]
@@ -598,6 +600,17 @@ function M.review(raw, quotes, target, preferences, confirmation, priorContinuit
 		end
 	end
 	section = table.concat(output)
+	local unusedCaps = {}
+	for name, limit in pairs(policy.caps) do
+		if not capCutoffs[name] or limit<=capCutoffs[name] then unusedCaps[#unusedCaps+1]=name end
+	end
+	table.sort(unusedCaps)
+	for _, name in ipairs(unusedCaps) do
+		local old = capCutoffs[name]
+		skipped[#skipped+1] = {name=name,policyCap=policy.caps[name],old=old,
+			reason=old and "No managed stack cutoff is below the cap. Price-based tightening needs room above the baseline."
+				or "No eligible managed stack rule matches this exact item name in the fixed baseline."}
+	end
 	local candidate = raw:sub(1, start - 1) .. section .. raw:sub(stop)
 	return appearance.apply(candidate,highlights), changes, skipped, continuity
 end
