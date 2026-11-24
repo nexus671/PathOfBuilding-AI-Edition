@@ -8,7 +8,7 @@ local sha = require("sha1")
 -- Run registration away from the UI. Windows PowerShell is resolved from the
 -- system directory and invoked directly, with no command interpreter or PATH lookup.
 local registerScript = [=[
-local enable, taskName, workingDirectory, userPath, endpoint = ...
+local enable, taskName, workingDirectory, userPath, endpoint, executionSeconds = ...
 local ok, result = pcall(function()
 	local inspecting = enable=="inspect"
 	assert(inspecting or type(enable)=="boolean", "Invalid background task request")
@@ -66,9 +66,20 @@ local ok, result = pcall(function()
 		"; $userPath = " .. literal(userPath) ..
 		"; $env:POB_MARKET_CACHE_URL = " .. literal(endpoint or "") .. [[
 
+$script:syncSettingsReadFailed = $false
 function Read-JsonFile([string]$name) {
-    try { return Get-Content -LiteralPath (Join-Path $userPath $name) -Raw -Encoding UTF8 | ConvertFrom-Json }
-    catch { return $null }
+    try {
+        $text = Get-Content -LiteralPath (Join-Path $userPath $name) -Raw -Encoding UTF8
+        $prefix = if ($name -eq 'LootFilterSyncProfiles.json') { '[' } else { '{' }
+        if ($null -eq $text -or -not $text.TrimStart().StartsWith($prefix)) {
+            $script:syncSettingsReadFailed = $true
+            return $null
+        }
+        return ConvertFrom-Json -InputObject $text
+    } catch {
+        if ($_.CategoryInfo.Category -ne 'ObjectNotFound') { $script:syncSettingsReadFailed = $true }
+        return $null
+    }
 }
 function Read-SyncProfiles {
     $profiles = @{}
@@ -116,7 +127,8 @@ function Show-SyncNotification([string]$text, [bool]$failed) {
 
 $beforeProfiles = Read-SyncProfiles
 $enabled = $beforeProfiles.Values | Where-Object { $_.enabled -and $_.backgroundEnabled -and -not $_.paused } | Select-Object -First 1
-if (-not $enabled) { exit 0 }
+if (-not $enabled -and -not $script:syncSettingsReadFailed) { exit 0 }
+# Let the native worker diagnose unreadable settings.
 if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { exit 1 }
 $process = Start-Process -FilePath $exe -WorkingDirectory $dir -ArgumentList '--loot-filter-sync-scheduled' -WindowStyle Hidden -Wait -PassThru
 $afterProfiles = Read-SyncProfiles
@@ -157,6 +169,8 @@ try {
 if ($task -and $task.Description -ne $description) { exit 11 }
 ]]
 	if enable then
+		assert(type(executionSeconds)=="number" and executionSeconds>0 and executionSeconds==math.floor(executionSeconds), "Invalid task execution limit")
+		script = script .. "$executionSeconds = "..executionSeconds.."\n"
 		script = script .. "$powershell = "..literal(powershell).."\n"
 		if inspecting then
 			local arguments = launchArguments..encode(worker)
@@ -192,7 +206,7 @@ try {
         -not $trigger.Enabled -or $trigger.EndBoundary -or $trigger.Repetition.Duration -or
         [System.Xml.XmlConvert]::ToTimeSpan($trigger.Repetition.Interval).TotalMinutes -ne 5 -or
         $task.Settings.MultipleInstances -ne 'IgnoreNew' -or -not $task.Settings.StartWhenAvailable -or
-        [System.Xml.XmlConvert]::ToTimeSpan($task.Settings.ExecutionTimeLimit).TotalMinutes -ne 7) { exit 15 }
+        [System.Xml.XmlConvert]::ToTimeSpan($task.Settings.ExecutionTimeLimit).TotalSeconds -ne $executionSeconds) { exit 15 }
 } catch { exit 15 }
 if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { exit 16 }
 if ($task.State -eq 'Running') { exit 17 }
@@ -206,7 +220,7 @@ $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $action = New-ScheduledTaskAction -Execute $powershell -Argument $arguments
 $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Limited
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
-$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 7)
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Seconds $executionSeconds)
 Register-ScheduledTask -TaskName $name -TaskPath '\' -Description $description -Action $action -Principal $principal -Trigger $trigger -Settings $settings -Force | Out-Null
 exit 0
 ]]
@@ -244,7 +258,7 @@ return ok, result
 local function launchTaskCheck(mode)
 	local taskName = "PoB AI Loot Sync " .. sha(main.userPath:lower()):sub(1,16)
 	local endpoint = mode and assert(market.endpoint, market.endpointError) or ""
-	return LaunchSubScript(registerScript, "", "", mode, taskName, GetRuntimePath(), main.userPath, (endpoint:gsub("/$", "")))
+	return LaunchSubScript(registerScript, "", "", mode, taskName, GetRuntimePath(), main.userPath, (endpoint:gsub("/$", "")), sync.taskExecutionSeconds)
 end
 
 function M.inspect(callback)

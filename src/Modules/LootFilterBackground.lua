@@ -9,6 +9,7 @@ local function exitStatus(failed)
 end
 
 function M.start(app, scheduled)
+	local startedMs = app.startTime or GetTime()
 	local ok, problem = pcall(function()
 		assert(require("ffi").os == "Windows", "Loot filter background sync requires Windows")
 		local userPath
@@ -29,9 +30,18 @@ function M.start(app, scheduled)
 		end
 		local sync = require("Modules.LootFilterDailySync")
 		app.lootSyncStarted = os.time()
-		app.lootSyncDue = sync.dueProfiles(app.lootSyncStarted,scheduled)
+		-- GetTime and the native launch startTime are milliseconds. Reserve 30 seconds
+		-- for the final settings commit, process shutdown, and the Windows task wrapper.
+		app.lootSyncLatestStart = scheduled and startedMs + 1000 *
+			(sync.taskExecutionSeconds-sync.refreshTimeoutSeconds-sync.workerFinalizationSeconds) or nil
+		local errors
+		app.lootSyncDue, errors = sync.dueProfiles(app.lootSyncStarted,scheduled)
+		app.lootSyncFailed = #errors>0
+		for _, failure in ipairs(errors) do
+			ConPrintf("Loot filter background sync could not read profile %s: %s",failure.id,failure.message)
+		end
 		if #app.lootSyncDue == 0 then
-			exitStatus(false)
+			exitStatus(app.lootSyncFailed)
 			return
 		end
 		app.lootSync = sync
@@ -48,21 +58,34 @@ end
 
 function M.frame(app)
 	local sync = app.lootSync
+	local function failure(message)
+		app.lootSyncFailed = true
+		ConPrintf("Loot filter background sync attempt failed: %s",tostring(message))
+	end
+	local function advance(...)
+		local ok, problem = pcall(sync.tick,...)
+		if ok then return end
+		app.lootSyncFailed = true
+		local job = sync.busy
+		sync.busy = nil
+		if job and job.onFailure then
+			local recorded, why = pcall(job.onFailure,tostring(problem))
+			if not recorded then failure(why) end
+		else failure(problem) end
+	end
 	local ok, finished = pcall(function()
-		if sync.busy then sync.tick(os.time()) end
+		if sync.busy then advance(os.time()) end
 		if sync.busy then return false end
-		local completed = app.lootSyncDue[app.lootSyncIndex]
-		if completed then
-			local config = sync.configuration(completed.id)
-			local failure = config and config.lastFailure
-			if config and config.revision == completed.revision and failure and failure.startedAt >= app.lootSyncStarted then
-				app.lootSyncFailed = true
-			end
-		end
-		app.lootSyncIndex = app.lootSyncIndex + 1
-		local nextProfile = app.lootSyncDue[app.lootSyncIndex]
+		local nextIndex = app.lootSyncIndex + 1
+		local nextProfile = app.lootSyncDue[nextIndex]
 		if not nextProfile then return true end
-		sync.tick(os.time(),false,app.lootSyncScheduled,nextProfile.id)
+		if app.lootSyncLatestStart and GetTime()>=app.lootSyncLatestStart then
+			app.lootSyncDeferred = #app.lootSyncDue-app.lootSyncIndex
+			sync.status = string.format("Deferred %d profiles until the next scheduled check.",app.lootSyncDeferred)
+			return true
+		end
+		app.lootSyncIndex = nextIndex
+		advance(os.time(),false,app.lootSyncScheduled,nextProfile.id,failure)
 		return false
 	end)
 	if ok and not finished then return end

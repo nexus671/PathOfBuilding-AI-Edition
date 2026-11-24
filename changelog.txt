@@ -1,7 +1,15 @@
-VERSION[2.68.1-ai.preview1252][2026/11/23]
+VERSION[2.68.1-ai.preview1254][2026/11/24]
 
 * Fix skill-gem support effects with Mantle of Dreams, from upstream.
 * Fix defensive breakdowns for gear with no base value, from upstream.
+
+VERSION[2.68.1-ai.preview1253][2026/11/23]
+
+* Defer additional slow loot filter profiles before the Windows task reaches its execution limit.
+
+VERSION[2.68.1-ai.preview1252][2026/11/23]
+
+* Report the actual Windows background sync result when a failure cannot be saved.
 
 VERSION[2.68.1-ai.preview1251][2026/11/23]
 
