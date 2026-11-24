@@ -1793,6 +1793,8 @@ end
 
 -- Open the spectre library popup
 function buildMode:OpenSpectreLibrary()
+	local compact = main.screenW < 760
+	local compactPage = "Library"
 	local recommendedSpectreList = {}
 	local beastList, humanoidList, eldritchList, constructList, demonList, undeadList, corpseList = {}, {}, {}, {}, {}, {}, {}
 	local destList = copyTable(self.spectreList)
@@ -1987,7 +1989,17 @@ function buildMode:OpenSpectreLibrary()
 	end)
 	controls.noteLine1 = new("LabelControl"):LabelControl({"TOP",controls.save,"BOTTOM"}, {45, -60, 0, 16}, "^7Spectres in your Library must be assigned to an active")
 	controls.noteLine2 = new("LabelControl"):LabelControl({"TOP",controls.save,"BOTTOM"}, {45, -42, 0, 16}, "^7Raise Spectre gem for their buffs and curses to activate")
-	local spectrePopup = main:OpenPopup(720, 450, "Spectre Library", controls)
+	if compact then
+		controls.list.x = -150
+		controls.list.shown = function() return compactPage == "Library" end
+		controls.source.x = function() return compactPage == "Library" and 80 or -150 end
+		controls.noteLine1.shown, controls.noteLine2.shown = false, false
+		controls.compactLibrary = new("ButtonControl"):ButtonControl(nil, {-90, 380, 150, 26}, "Library", function() compactPage = "Library" end)
+		controls.compactDetails = new("ButtonControl"):ButtonControl(nil, {90, 380, 150, 26}, "Details", function() compactPage = "Details" end)
+		controls.compactLibrary.enabled = function() return compactPage ~= "Library" end
+		controls.compactDetails.enabled = function() return compactPage ~= "Details" end
+	end
+	local spectrePopup = main:OpenPopup(compact and math.min(720, main.screenW - 40) or 720, 450, "Spectre Library", controls)
 	spectrePopup:SelectControl(spectrePopup.controls.source.controls.searchText)
 	controls.minionNameLabel = new("LabelControl"):LabelControl({"TOP",controls.source,"TOP"}, {230, -50, 0, 18}, "Minion Stats")
 	controls.minionNameLabel.Draw = function(self, view)
@@ -2125,6 +2137,12 @@ function buildMode:OpenSpectreLibrary()
 		end
 	end
 	controls.spawnLocations = new("SpawnListControl"):SpawnListControl({"TOP", controls.movementSpeedLabel, "TOP"}, {2, 73, 244, 68}, self.data, nil, "^7Spawns:")
+	if compact then
+		local showDetails = function() return compactPage == "Details" end
+		controls.minionNameLabel.shown = showDetails
+		controls.lifeLabel.shown = showDetails
+		controls.energyshieldLabel.shown = showDetails
+	end
 end
 
 function buildMode:UpdateClassDropdowns(treeVersion)
