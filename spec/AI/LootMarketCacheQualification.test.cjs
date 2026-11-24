@@ -279,5 +279,11 @@ test('qualifies Imbued gems as advisory name and support variants without fabric
     [{...row,count:19}], [{...row,listingCount:19}], [row,{...row,count:1}],
     [row,{...row,chaosValue:99}], [row,{...row,detailsId:'other-id'}],
     [row,{...row,variant:'Different support'}], [{...row,detailsId:'bad/id'}],
-  ]) assert.equal((await probe(lines)).status,'failed');
+    [row,{...row,chaosValue:99},{...row,detailsId:'other-id'}],
+    [row,{...row,variant:'Different support'},{...row,detailsId:'other-id'}],
+    [row,{...row,variant:'Power Charge on Critical Support',detailsId:'other-id'}],
+  ]) {
+    assert.equal((await probe(lines)).status,'failed');
+    assert.equal((await probe([...lines].reverse())).status,'failed');
+  }
 });

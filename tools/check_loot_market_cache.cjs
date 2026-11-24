@@ -103,16 +103,19 @@ function exactMapTiers(rows, category) {
   return [...quotes].filter(([,quote])=>quote && quote.volume>=20).map(([tier])=>tier).sort((a,b)=>a-b);
 }
 
-function advisoryGemQuotes(candidates) {
+function advisoryGemQuotes(rows, candidates) {
   const variants=new Map();
-  for (const evidence of candidates.values()) {
-    if (!evidence) continue;
-    const {row,liquid}=evidence;
+  for (const row of rows) {
     if (!exchangeText(row.name) || !exchangeText(row.variant) || /["\\]/.test(row.name+row.variant)) continue;
-    const key=JSON.stringify([row.name,row.variant,row.baseType ?? null]);
-    variants.set(key,!variants.has(key) && liquid);
+    const support=row.variant.toLowerCase().replace(/ support$/,'');
+    if (!support) continue;
+    const key=JSON.stringify([row.name,support]);
+    const id=row.detailsId;
+    const prior=variants.get(key);
+    // Even an invalidated ID can have claimed this combination.
+    variants.set(key,prior===undefined || prior===id ? id ?? false : false);
   }
-  return [...variants.values()].filter(Boolean).length;
+  return [...variants.values()].filter(id=>id && candidates.get(id)?.liquid).length;
 }
 
 function priceEvidence(payload, category, kind) {
@@ -168,7 +171,7 @@ function priceEvidence(payload, category, kind) {
     return {priced:priced.length,listed:listed.length,exactMapTiers:tiers};
   }
   if (category==='ImbuedGem') {
-    const advisory=advisoryGemQuotes(candidates);
+    const advisory=advisoryGemQuotes(payload.lines,candidates);
     if (!advisory) throw new Error('No unambiguous listing-backed named gem and support variant');
     return {priced:priced.length,listed:listed.length,advisoryGemQuotes:advisory};
   }
