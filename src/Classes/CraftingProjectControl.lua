@@ -192,18 +192,19 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 	controls.undoRemove.enabled=function() return store.lastRemoved~=nil and not store.unreadable end
 	controls.undoRemove.tooltipText="Restore the last removed project, inventory and working draft. Available until another project is removed or this build is closed."
 	if layout then
+		local compact=height<550
 		ui.label(controls,"heading",16,14,"Crafting projects",24)
 		controls.projects.x=16;controls.projects.y=60;controls.projects.width=width-336
 		controls.new.x=width-304;controls.new.y=60;controls.new.width=136
 		controls.edit.x=width-156;controls.edit.y=60;controls.edit.width=140;controls.edit.label="Edit project"
 		ui.label(controls,"notice",16,43,store.notice and ui.fit(store.notice,width-32,ui.size(12)) or "",12)
 		controls.libraryPage=new("DropDownControl"):DropDownControl(ui.anchor,{16,102,360,28},{"Item","Plan","Sharing"})
-		ui.tabs(controls,controls.libraryPage,{{"tab_item","Item","Item"},{"tab_plan","Plan","Plan"},{"tab_sharing","Sharing","Sharing & tools"}},16,102,440)
+		ui.tabs(controls,controls.libraryPage,{{"tab_item","Item","Item"},{"tab_plan","Plan","Plan"},{"tab_sharing","Sharing","Sharing & tools"}},16,102,compact and width-240 or 440)
 		controls.inventory.x=width-196;controls.inventory.y=102
 		controls.details.x=16;controls.details.y=148;controls.details.width=width-32;controls.details.height=height-224
 		controls.details.shown=function() return controls.libraryPage:GetSelValue()=="Plan" end
-		controls.native.x=16;controls.native.y=404;controls.native.width=260;controls.native.height=32;controls.native.label=function() if #list>0 then workbenchReason(selected());if cachedUniqueQuality then return "Unique crafting" end end;return "Open workbench" end
-		controls.preview.x=16;controls.preview.y=448;controls.preview.width=260;controls.preview.height=32;controls.preview.label="Compare target with build"
+		controls.native.x=16;controls.native.y=compact and height-142 or 404;controls.native.width=260;controls.native.height=32;controls.native.label=function() if #list>0 then workbenchReason(selected());if cachedUniqueQuality then return "Unique crafting" end end;return "Open workbench" end
+		controls.preview.x=16;controls.preview.y=compact and height-106 or 448;controls.preview.width=260;controls.preview.height=32;controls.preview.label="Compare target with build"
 		for _,key in ipairs({"native","preview"}) do controls[key].shown=function() return #list>0 and controls.libraryPage:GetSelValue()=="Item" end end
 		controls.remove.x=16;controls.remove.y=height-56;controls.remove.width=126
 		controls.undoRemove.x=154;controls.undoRemove.y=height-56;controls.undoRemove.width=122
@@ -215,6 +216,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 			controls[key].shown=function() return controls.libraryPage:GetSelValue()=="Plan" end
 		end
 		controls.browseSteps.x=464;controls.browseSteps.y=height-56;controls.browseSteps.width=200
+		if compact then local third=math.floor((width-48)/3);for index,key in ipairs({"done","undoStep","browseSteps"}) do controls[key].x=16+(index-1)*(third+8);controls[key].width=third end end
 		controls.browseSteps.shown=function() return #list>0 and controls.libraryPage:GetSelValue()=="Plan" end
 		for index,key in ipairs({"copy","import","inspect","attach","copyExport","coe"}) do
 			controls[key].x=16+(index-1)%3*math.floor((width-32)/3);controls[key].y=164+math.floor((index-1)/3)*62;controls[key].width=math.floor((width-64)/3);controls[key].height=32
@@ -230,7 +232,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 			summary[#summary+1]="";summary[#summary+1]=#project.steps.." planned steps"
 			local ok,model=pcall(require("Modules.CraftingSimulator").model,project.targetItem and project.targetItem:match("%S") and project.targetItem or project.startingItem)
 			if ok then
-				local refreshItem=require("Modules.CraftingWorkbench").item(controls,"projectItem",304+math.floor((width-320-math.min(540,width-336))/2),148,math.min(540,width-336),height-188,model,function() return model.initial end,nil,{header=212,artSize=112})
+				local refreshItem=require("Modules.CraftingWorkbench").item(controls,"projectItem",304+math.floor((width-320-math.min(540,width-336))/2),148,math.min(540,width-336),compact and height-194 or height-188,model,function() return model.initial end,nil,{header=compact and 142 or 212,artSize=compact and 48 or 112,short=compact,compact=compact})
 				refreshItem()
 				controls.projectItem.shown=function() return controls.libraryPage:GetSelValue()=="Item" end
 				controls.projectItemMods.shown=controls.projectItem.shown
@@ -244,7 +246,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 				else summary[#summary+1]="Edit the item text to open a preview." end
 			end
 		end
-		controls.summary=new("TextListControl"):TextListControl(ui.anchor,{16,148,260,math.min(240,height-276)},nil,ui.rows(summary,230))
+		controls.summary=new("TextListControl"):TextListControl(ui.anchor,{16,148,260,compact and math.max(48,height-294) or math.min(240,height-276)},nil,ui.rows(summary,230))
 		controls.summary.shown=function() return #list>0 and controls.libraryPage:GetSelValue()=="Item" end
 		if #list==0 then
 			local cardWidth=math.min(540,width-336)

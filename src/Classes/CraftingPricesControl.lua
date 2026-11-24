@@ -122,6 +122,15 @@ function Panel.Open(model,state,actions,book,currency,onKeep,books,recipeState)
 		if not ok then ui.errorPopup("Resource prices",message) end
 	end)
 	controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-132,height-48,116,28},"Cancel",function() main:ClosePopup() end)
+	if width<700 then
+		controls.currency.width=108;controls.sourceLabel.x=136;controls.source.x=136;controls.source.width=width-152
+		controls.timeLabel.x=16;controls.timeLabel.y=80;controls.quotedAt.x=16;controls.quotedAt.y=100
+		controls.now.x=208;controls.now.y=100;controls.now.width=60;controls.copy.x=276;controls.copy.y=100;controls.copy.width=120
+		controls.search.y=140;controls.mode.y=140;controls.resources.y=180;controls.resources.height=height-250
+		controls.selected.y=180;controls.selected.height=40;controls.priceLabel.y=226;controls.price.y=246
+		controls.hint.shown=false;controls.price.tooltipText="Quote one unit. Zero means free; blank stays unknown."
+		controls.clear.y=height-120;controls.reset.y=height-88;controls.scope.shown=false
+	end
 	ui.style(controls,{keep=true});for _,control in pairs(controls) do control.layoutAudit="crafting-prices" end
 	refresh();main:OpenPopup(width,height,"Crafting resource prices",controls,nil,nil,"close");return controls
 end

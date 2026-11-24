@@ -56,6 +56,11 @@ function M.Open(routes)
 	c.stepCosts=new("ButtonControl"):ButtonControl(ui.anchor,{380,h-42,180,28},"Step spending",function() require("Classes.CraftingStepCostsControl").Open(routes) end)
 	c.stepCosts.tooltipText="Compare the average modeled spending of each visited step in one route."
 	c.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-42,140,28},"Close",function() main:ClosePopup() end)
+	if w<720 then
+		local cell=math.floor((w-56)/4)
+		for index,key in ipairs({"copy","notes","stepCosts","close"}) do c[key].x=16+(index-1)*(cell+8);c[key].width=cell end
+		c.copy.label="Copy CSV";c.copy.tooltipText="Copy the full chart data as CSV."
+	end
 	local function showPage()
 		page=math.max(1,math.min(page,math.max(1,math.ceil(#allData.series/3))))
 		data={};for key,value in pairs(allData) do data[key]=value end;data.series={}
