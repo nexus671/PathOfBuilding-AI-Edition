@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1241][2026/11/23]
+
+* Keep Atlas planning controls usable in smaller windows.
+
 VERSION[2.68.1-ai.preview1240][2026/11/23]
 
 * Keep the tiered-test protected drop checks when additional samples are configured.
