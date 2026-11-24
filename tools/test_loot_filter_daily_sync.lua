@@ -63,6 +63,8 @@ sync.preview(target,baseline,"Covens",options,function(before, after)
 	proposed=after
 end)
 assert(proposed and proposed:find("StackSize <= 4",1,true))
+local previewBefore,previewAfter=sync.compareObservedStackPreview(original,proposed,"Orb of Alteration",5,83)
+assert(previewBefore.action=="Hide" and previewAfter.action=="Show")
 assert(read(target)==original and not sync.configuration())
 stale=true
 local previewFailure

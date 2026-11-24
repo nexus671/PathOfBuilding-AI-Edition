@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1279][2026/11/24]
+VERSION[2.69.0-ai.preview1280][2026/11/24]
 
 * Explain duplicate and incompatible crafting target alternatives before adding them.
+
+VERSION[2.69.0-ai.preview1279][2026/11/24]
+
+* Test an observed stack against a price preview before saving any changes.
 
 VERSION[2.69.0-ai.preview1278][2026/11/24]
 
