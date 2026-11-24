@@ -93,7 +93,8 @@ function M.target(item)
 	end
 	local weapon = item.weaponData and (item.weaponData[1] or item.weaponData[2])
 	local range = weapon and weapon.range
-	return {sockets=sockets,quality=quality,properties=properties,class=item.base.type,range=range and range/10}
+	local class = item.base.weapon and item.base.subType or item.base.type
+	return {sockets=sockets,quality=quality,properties=properties,class=class,range=range and range/10}
 end
 
 local function propertyValue(values, expected, name)

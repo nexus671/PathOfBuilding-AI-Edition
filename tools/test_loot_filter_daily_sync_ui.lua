@@ -1543,6 +1543,7 @@ Item Level: 86
 		return value
 	end
 	local function sockets(colors, broken)
+		colors=colors:gsub("%-","")
 		local values={}
 		for index=1,#colors do
 			values[index]={sColour=colors:sub(index,index),group=broken and index==#colors and 1 or 0}
@@ -1570,12 +1571,12 @@ Item Level: 86
 	assert(not listings.target(new("Item"):Item(armour.raw:gsub("Energy Shield: 190\n",""))))
 	local defence={property("Quality","+20%"),property("Energy Shield","190")}
 	local armourMods={{description="+70 to maximum Life"}}
-	local candidate=equipmentRow(30,"Vaal Regalia",sockets("BBBBRG"),defence,armourMods)
-	local fewerLinks=equipmentRow(31,"Vaal Regalia",sockets("BBBBRG",true),defence,armourMods)
-	local differentColours=equipmentRow(32,"Vaal Regalia",sockets("BBBBGG"),defence,armourMods)
-	local differentDefence=equipmentRow(33,"Vaal Regalia",sockets("BBBBRG"),
+	local candidate=equipmentRow(30,"Vaal Regalia",sockets("B-B-B-B-R-G"),defence,armourMods)
+	local fewerLinks=equipmentRow(31,"Vaal Regalia",sockets("B-B-B-B-R-G",true),defence,armourMods)
+	local differentColours=equipmentRow(32,"Vaal Regalia",sockets("B-B-B-B-G-G"),defence,armourMods)
+	local differentDefence=equipmentRow(33,"Vaal Regalia",sockets("B-B-B-B-R-G"),
 		{property("Quality","+20%"),property("Energy Shield","189")},armourMods)
-	local differentQuality=equipmentRow(34,"Vaal Regalia",sockets("BBBBRG"),
+	local differentQuality=equipmentRow(34,"Vaal Regalia",sockets("B-B-B-B-R-G"),
 		{property("Quality","+19%"),property("Energy Shield","190")},armourMods)
 	local layout={next_change_id="cursor",stashes={stash(31,"Armour#0031",
 		{candidate,fewerLinks,differentColours,differentDefence,differentQuality})}}
@@ -1606,6 +1607,16 @@ Item Level: 86
 	local noAxeProps=equipmentRow(42,"Siege Axe",sockets("RRG"),{property("Quality","+20%")},axeMods)
 	layout.stashes[2]=stash(41,"Weapon#0041",{goodAxe,wrongAxe,noAxeProps})
 	assert(listings.compare(json.encode(layout),weaponTarget,"Covens").matched==1)
+	for _, variant in ipairs({{"Carving Knife","Rune Dagger"},{"Iron Staff","Warstaff"}}) do
+		local native = new("Item"):Item(weapon.raw:gsub("Siege Axe",variant[1]))
+		local known = assert(listings.target(native))
+		assert(known.equipment.class==variant[2])
+		local combat = {property("Quality","+20%"),{name=variant[2],values=assert(json.decode("[]"))}}
+		for name, value in pairs(known.equipment.properties) do combat[#combat+1]=property(name,tostring(value)) end
+		local listing=equipmentRow(50,variant[1],sockets("R-R-G"),combat,axeMods)
+		local variantPage={next_change_id="cursor",stashes={stash(50,"Subtype#0050",{listing})}}
+		assert(listings.compare(json.encode(variantPage),known,"Covens").matched==1)
+	end
 	local stocked=assert(json.encode(layout))
 	file=assert(io.open(path,"wb"));assert(file:write(stocked));assert(file:close())
 	local chosenBuild={itemsTab={orderedSlots={{slotName="Body Armour"},{slotName="Weapon 1"}},items={armour,weapon},
@@ -1618,7 +1629,9 @@ Item Level: 86
 	assert(main.popups[1].title=="Comparable asking prices")
 	local text={}
 	for _, line in ipairs(main.popups[1].controls.details.list) do text[#text+1]=StripEscapes(line[1] or "") end
-	assert(table.concat(text," "):find("Matched sockets: B-B-B-B-R-G | Quality: 20%",1,true))
+	local summary=table.concat(text," ")
+	assert(summary:find("Matched sockets: B-B-B-B-R-G | Quality: 20%",1,true))
+	assert(summary:find("Matched properties: Energy Shield 190",1,true))
 	if output then gearUI:frame():write(output.."/armour-listing-snapshot.json") end
 	require("Classes.LootFilterFileBrowser").Open=originalPicker
 	os.remove(path)
