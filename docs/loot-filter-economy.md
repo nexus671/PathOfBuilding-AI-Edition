@@ -99,6 +99,8 @@ In **Daily price sync**, open **Publish to account** after a successful refresh.
 Local and background sync do not publish account filters. An uncertain server result is shown for review before retrying.
 
 
+Use **Check Windows task** in daily sync to compare the profile's background preference with Task Scheduler. The check reports missing or disabled registrations, mismatched worker actions, account or trigger changes, and a missing PoB executable. The expected task checks for due profiles every five minutes while the user is signed in. If the profile already opts in, use **Repair task** to register the expected Windows task for recoverable problems.
+
 ## Shared cache for app distribution
 
 PoB can use an operator-managed HTTPS cache for all poe.ninja economy requests. Set `POB_MARKET_CACHE_URL` to the full public HTTPS prefix, such as `https://prices.example.test/pob-market/`, in the desktop and scheduled worker environment before starting them. A configured cache is the only destination for those requests. The existing direct source remains the default when the setting is empty.

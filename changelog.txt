@@ -1,11 +1,15 @@
-VERSION[2.68.1-ai.preview1238][2026/11/23]
+VERSION[2.68.1-ai.preview1239][2026/11/23]
 
 * Fit Atlas tree controls in smaller windows while keeping search and planning tools available.
 
-VERSION[2.68.1-ai.preview1237][2026/11/23]
+VERSION[2.68.1-ai.preview1238][2026/11/23]
 
 * Preserve damaged planning data, improve bundle recovery, and fit build reviews in small windows.
 * Keep loot-filter views and navigation usable in smaller windows, including search text.
+
+VERSION[2.68.1-ai.preview1237][2026/11/23]
+
+* Inspect and repair the Windows background task from daily sync.
 
 VERSION[2.68.1-ai.preview1236][2026/11/23]
 

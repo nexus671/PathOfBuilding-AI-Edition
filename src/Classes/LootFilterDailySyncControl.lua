@@ -429,7 +429,51 @@ function M.Open(profileId, profileName)
 				main:OpenPopup(360,126,"New sync profile",controls,nil,nil,"cancel")
 			end})
 	end)
-	ui.description(c,"backgroundHelp",16,504,width-210,25,{"Background updates run while you are signed in to Windows."},13)
+	c.backgroundStatus = new("ButtonControl"):ButtonControl(ui.anchor,{16,504,180,26},"Check Windows task",function()
+		local owner = main.popups[1]
+		local passed, err = pcall(background.inspect,function(ok,state)
+			if main.popups[1]~=owner then return end
+			local descriptions = {
+				ready="Windows has the expected background task.",
+				running="Windows is running the expected background task.",
+				missing="The Windows task is missing.",
+				foreign="A different Windows task uses the expected name.",
+				disabled="The Windows task is disabled.",
+				action_changed="The task runs a different action or PoB installation.",
+				account_changed="The task uses a different account or run mode.",
+				trigger_changed="The task uses a different trigger or execution policy.",
+				executable_missing="The task's PoB executable is missing.",
+				unavailable="The Windows task is currently unavailable.",
+			}
+			local message = ok and descriptions[state] or ui.errorText(state)
+			local preference = not config.enabled and "Price sync is disabled for this profile."
+				or config.backgroundEnabled and "Background sync is enabled for this profile."
+				or "This profile uses in-app sync."
+			message = preference.."\n"..(message or descriptions.unavailable)
+			local repairable = state=="missing" or state=="disabled" or state=="action_changed"
+				or state=="account_changed" or state=="trigger_changed"
+			if ok and config.enabled and config.backgroundEnabled and repairable then
+				main:OpenConfirmPopup("Windows background task",message,"Repair task",function()
+					local saved, problem = pcall(function()
+						local latest = assert(sync.configuration(profileId), "The sync profile is unavailable.")
+						assert(latest.enabled and latest.backgroundEnabled and latest.revision==config.revision,
+							"Sync settings changed. Check the task again.")
+						background.change(true,function(repaired,reason)
+							if main.popups[1]~=owner then return end
+							main:OpenMessagePopup("Windows background task",
+								repaired and "Windows accepted the repaired task registration." or ui.errorText(reason))
+						end,profileId)
+					end)
+					if not saved then main:OpenMessagePopup("Windows background task",ui.errorText(problem)) end
+				end)
+			else
+				main:OpenMessagePopup("Windows background task",message)
+			end
+		end)
+		if not passed then main:OpenMessagePopup("Windows background task",ui.errorText(err)) end
+	end)
+	c.backgroundStatus.enabled = function() return not background.busy end
+	ui.description(c,"backgroundHelp",206,503,width-402,27,{"Runs while you are signed in to Windows."},13)
 	c.account = new("ButtonControl"):ButtonControl(ui.anchor,{width-184,504,168,26},"Publish to account",function()
 		require("Classes.LootFilterSyncAccountControl").Open(profileId)
 	end)
