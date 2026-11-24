@@ -1688,7 +1688,8 @@ async function main(){
   generated.profile.campaign={weapons:['Bow'],defences:['Energy shield'],recipes:['Quality gems'],minAreaLevel:1,maxAreaLevel:70,upgradeWindow:15};
   generated.profile.sampleSets=[{id:'campaign-drop',title:'Early helmet',samples:[{BaseType:'Iron Hat',Class:'Helmets',Rarity:'Normal',AreaLevel:12,ItemLevel:12}]}];
   generated.profile.categoryStyles=[{category:'Currency',appearance:{minimumFontSize:40,alertVolume:0}}];
-  generated.profile.palettes=[{id:'gold',title:'Gold highlights',appearance:generated.profile.appearance,theme:'default',categoryStyles:generated.profile.categoryStyles}];
+  generated.profile.sharedStyles=[{key:'Colour',from:'ABCDEF12',to:'123456FF'}];
+  generated.profile.palettes=[{id:'gold',title:'Gold highlights',appearance:generated.profile.appearance,theme:'default',categoryStyles:generated.profile.categoryStyles,sharedStyles:generated.profile.sharedStyles}];
   assert.ok(generated.profile.rules.some(rule=>rule.origin==='craft:helmet'));
   assert.ok(generated.profile.rules.some(rule=>rule.origin==='gear:alternative' && rule.text.includes('BaseType == "Iron Hat"')),'Shared base lost its gear-source link');
   const surrenderPickup=generated.profile.rules.find(rule=>rule.origin==='gear:surrender');assert.ok(surrenderPickup);
@@ -1886,6 +1887,7 @@ async function main(){
   assert.deepEqual(importReport.report.unresolvedImports,[{name:'absent.filter',optional:true,cycle:false,count:1},{name:'inner.filter',optional:false,cycle:false,count:1},{name:'outer.filter',optional:false,cycle:true,count:1}]);
   await queued('propose_loot_filters',{title:'Keep pickup plan',baseRevision:context.revision,filters:{schemaVersion:1,activeId:'mapping',profiles:[generated.profile]}},'review');await host('apply');context=(await call('get_build_context')).context;
   const savedFilters=await call('get_loot_filters');assert.equal(savedFilters.filters.profiles.length,1);
+  assert.deepEqual(savedFilters.filters.profiles[0].sharedStyles,generated.profile.sharedStyles);assert.deepEqual(savedFilters.filters.profiles[0].palettes[0].sharedStyles,generated.profile.sharedStyles);
   const alteredFilters={...savedFilters.filters,profiles:savedFilters.filters.profiles.map(profile=>({...profile,trackBuildPickups:false}))};
   const filterReview=await queued('propose_loot_filters',{title:'Review pickup notices',baseRevision:context.revision,filters:alteredFilters},'review');
   assert.match(JSON.stringify(filterReview),/Build pickup notices: Enabled -> Disabled/);
