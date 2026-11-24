@@ -406,6 +406,19 @@ describe("Encounter reporting and comparisons",function()
 		assert.is_true(build.calcsTab.calcsOutput.RecoverySimulationSurvivalChance > 0)
 	end)
 
+	it("shows mana recovering in the trace after a tincture shuts off",function()
+		local tincture=new("Item"):Item("Rarity: Normal\nPrismatic Tincture")
+		build.itemsTab:AddItem(tincture);build.itemsTab.slots["Flask 1"].selItemId=tincture.id;build.itemsTab.slots["Flask 1"].active=true
+		calculate()
+		local input=build.configTab.input;input.recoverySimulationAttacking=false;input.recoverySimulationWindow=30
+		input.customMods="+3000 to maximum Life\n+60% to Cold Resistance\nRegenerate 1 Mana per second";input.multiplierManaBurnStacks=99
+		build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg)
+		local trace=build.calcsTab.calcsEnv.player.recoverySimulationTrace;local deactivated
+		for _,event in ipairs(trace.rows) do if event.event:find("Tincture deactivated",1,true) then deactivated=event;break end end
+		assert.is_truthy(deactivated);assert.is_true(deactivated.Mana==0)
+		local last=trace.points[#trace.points];assert.is_true(last.time>deactivated.time);assert.is_true(last.Mana>0)
+	end)
+
 	it("creates named scenarios using existing saved config sets",function()
 		calculate()
 		local original=build.configTab.activeConfigSetId
