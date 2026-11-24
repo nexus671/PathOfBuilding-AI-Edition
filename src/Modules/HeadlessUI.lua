@@ -85,13 +85,14 @@ function M.install(options)
 			local newline=text:find("\n",start,true)
 			local finish=newline and newline-1 or #text
 			if (y or 0)<=lineY or not newline then
-				local line=text:sub(start,finish);local index=1
+				local line=text:sub(start,finish);local index,width=1,0
 				while index<=#line do
 					local _,length=escape(line:sub(index))
 					if length then index=index+length
 					else
 						local char=line:sub(index):match("^[\194-\244][\128-\191]*") or line:sub(index,index)
-						if x<=measure(height,name,line:sub(1,index+#char-1)) then return start+index-1 end
+						width=width+measure(height,name,char)
+						if x<=width then return start+index-1 end
 						index=index+#char
 					end
 				end
