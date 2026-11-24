@@ -113,6 +113,12 @@ describe("Planning experience queries",function()
 		assert.are.equal("Choose a modifier",text([[C:\Program Files\PoB\Modules\CraftingSimulator.lua:73: ./Modules/CraftingAdvanced.lua:42: Choose a modifier]]))
 		assert.are.equal("Invalid choice",text('[string "module"]:12: Invalid choice'))
 	end)
+	it("retains multiline error details without source locations or stack traces",function()
+		local details=require("Modules.PlanningUI").errorDetails
+		assert.are.equal("First problem\nSecond problem",details("Modules/Example.lua:12: First problem\n  C:\\PoB\\Other.lua:34: Second problem\nstack traceback:\n  internal frame"))
+		assert.are.equal("Unable to complete this action.",details("\n"))
+		assert.are.equal("Crafting job cancelled",details("Crafting job cancelled"))
+	end)
 	it("preserves useful punctuation and handles empty validation messages",function()
 		local text=require("Modules.PlanningUI").errorText
 		assert.are.equal("Required: 5 chaos",text("Required: 5 chaos"))
