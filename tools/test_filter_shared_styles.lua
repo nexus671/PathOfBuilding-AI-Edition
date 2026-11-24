@@ -89,4 +89,9 @@ local checked=filters.validate({schemaVersion=1,activeId=large.id,profiles={larg
 newBuild();ui=require("Modules.HeadlessUI").install({width=960,height=640});ui:bind(build);local keptLarge
 require("Classes.LootFilterSharedStylesControl").Open(checked,function(value) keptLarge=value end);ui:text("search","00000258");ui:click("choose")
 assert(main.popups[1].controls.target.buf=="FFFFFFFF","A later saved replacement was not reachable");ui:click("remove");assert(#keptLarge.sharedStyles==599,"Removing a later replacement lost other entries");ui:restore()
+large.palettes={{id="large",title="Large palette",theme="default",appearance={},sharedStyles=large.sharedStyles}}
+build.savers.LootFilters:Upsert(large);local largeXml={};build.savers.LootFilters:Save(largeXml)
+local reopened=filters.new(build);reopened:Load(largeXml);local savedLarge=reopened.data.profiles[1]
+assert(#savedLarge.sharedStyles==600 and #savedLarge.palettes[1].sharedStyles==600,"Large shared styles did not survive save and reopen")
+savedLarge.sharedStyles={};local restoredLarge=collections.palette(savedLarge,"large");assert(#restoredLarge.sharedStyles==600 and restoredLarge.sharedStyles[600].from=="00000258","Large palette did not restore its replacements")
 print("FILTER_SHARED_STYLES_OK")
