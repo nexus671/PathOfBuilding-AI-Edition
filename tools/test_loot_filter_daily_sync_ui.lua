@@ -216,6 +216,20 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	for _,command in ipairs(harness.commands) do if command.kind=="text" then previewLabels[StripEscapes(command.text)]=true end end
 	assert(previewLabels["Fixed baseline | Hide"] and previewLabels["Verified filter | Show"],"Preview must identify both filter outcomes")
 	if output then harness:frame():write(output.."/"..size[1].."-observed-stack-review.json") end
+	if size[1]==720 then
+		harness:click("close")
+		local warning=string.rep("Check the included filter before using this result. ",35)
+		sync.compareObservedStack=function() return {action="Unknown",reasons={warning,warning,warning}}, {action="Show",styles={}} end
+		harness:click("test")
+		local long=main.popups[1].controls
+		harness:frame()
+		local scroll=long.details.controls.scrollBar
+		assert(scroll.enabled and scroll.offsetMax>0,"Long warnings must remain scrollable")
+		scroll:SetOffset(scroll.offsetMax)
+		assert(scroll.offset>0,"Could not reach the end of the warning")
+		local cx,cy=long.close:GetPos();local cw,ch=long.close:GetSize()
+		assert(cx>=0 and cy>=0 and cx+cw<=size[1] and cy+ch<=size[2],"Long warnings pushed Close off screen")
+	end
 	sync.compareObservedStack,sync.status=originalStack,previousStatus
 	reviewFixture = nil
 	print(string.format("Native setup and diagnostics controls passed at %dx%d.", unpack(size)))
