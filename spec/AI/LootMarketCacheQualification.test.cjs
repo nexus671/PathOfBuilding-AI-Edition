@@ -121,3 +121,73 @@ test('counts only unique unambiguous stash quotes and requires consistent listin
     {name:'ForbiddenJewel',status:'passed',freshnessSeconds:37,priced:2,listed:1});
   assert.match(report.probes.at(-1).reason,/No unambiguous priced stash variants/);
 });
+
+
+test('uses the lowest matching exchange volume and never revives invalid reference observations',async()=>{
+  const healthy={...exchange.lines[0],volumePrimaryValue:1000};
+  const other={id:'chaos',primaryValue:1,volumePrimaryValue:1000};
+  const observations=[
+    {...healthy,volumePrimaryValue:99},
+    {...healthy,volumePrimaryValue:0},
+    {...healthy,volumePrimaryValue:-1},
+    {...healthy,volumePrimaryValue:undefined},
+    {...healthy,volumePrimaryValue:'1000'},
+    {...healthy,primaryValue:0},
+    {...healthy,primaryValue:undefined},
+    {...healthy,primaryValue:'0.2'},
+    {...healthy,primaryValue:0.3},
+  ];
+  for (const observation of observations) {
+    for (const lines of [[healthy,observation,healthy],[observation,healthy,observation]]) {
+      const f=fixture({Currency:()=>response({...exchange,
+        items:[...exchange.items,{id:'chaos',name:'Chaos Orb'}],lines:[...lines,other]})});
+      const report=await qualifyCache(root,f);
+      assert.equal(report.status,'failed',JSON.stringify(observation));
+      assert.match(report.probes.find(probe=>probe.name==='Currency').reason,/liquid Orb/);
+    }
+  }
+});
+
+test('qualifies healthy duplicate exchange observations independently of order',async()=>{
+  const first={...exchange.lines[0],volumePrimaryValue:100};
+  const second={...exchange.lines[0],volumePrimaryValue:1000};
+  for (const lines of [[first,second,first],[second,first,second]]) {
+    const f=fixture({Currency:()=>response({...exchange,lines})});
+    const report=await qualifyCache(root,f);
+    assert.equal(report.status,'passed');
+    assert.equal(report.probes.find(probe=>probe.name==='Currency').priced,1);
+  }
+});
+
+test('keeps conflicting exchange item identities ineligible after later matching rows',async()=>{
+  const duplicateId={id:'second-alt',name:'Orb of Alteration'};
+  const other={id:'chaos',name:'Chaos Orb'};
+  const conflicting={...exchange.lines[0],id:duplicateId.id};
+  for (const lines of [
+    [exchange.lines[0],conflicting,exchange.lines[0]],
+    [conflicting,exchange.lines[0],conflicting],
+  ]) {
+    const f=fixture({Currency:()=>response({...exchange,items:[...exchange.items,duplicateId,other],
+      lines:[...lines,{id:other.id,primaryValue:1,volumePrimaryValue:1000}]})});
+    const report=await qualifyCache(root,f);
+    assert.equal(report.status,'failed');
+    assert.match(report.probes.find(probe=>probe.name==='Currency').reason,/liquid Orb/);
+  }
+});
+
+test('rejects malformed exchange item names and line identifiers using native text bounds',async()=>{
+  for (const value of ['', '   ', 'broken\u0000id', 'broken\u007fid', 'x'.repeat(201), '\u00e9'.repeat(101)]) {
+    for (const field of ['id','name']) {
+      const f=fixture({Currency:()=>response({...exchange,items:[{...exchange.items[0],[field]:value}]})});
+      const report=await qualifyCache(root,f);
+      assert.equal(report.status,'failed');
+      assert.match(report.probes.find(probe=>probe.name==='Currency').reason,/Invalid or conflicting exchange item ID/);
+    }
+    const f=fixture({Currency:()=>response({...exchange,lines:[...exchange.lines,{id:value,primaryValue:1,volumePrimaryValue:1000}]})});
+    const report=await qualifyCache(root,f);
+    assert.equal(report.status,'failed');
+    assert.match(report.probes.find(probe=>probe.name==='Currency').reason,/Invalid exchange price line ID/);
+  }
+  const conflicting=fixture({Currency:()=>response({...exchange,items:[...exchange.items,{id:'alt',name:'Different item'}]})});
+  assert.match((await qualifyCache(root,conflicting)).probes.find(probe=>probe.name==='Currency').reason,/conflicting exchange item ID/);
+});
