@@ -403,6 +403,7 @@ describe("Encounter reporting and comparisons",function()
 		end
 		assert.is_truthy(deactivated)
 		assert.is_true(deactivated.time > 0.7)
+		local last=trace.points[#trace.points];assert.is_true(last.time>deactivated.time);assert.is_true(last.Mana==0)
 		assert.is_true(build.calcsTab.calcsOutput.RecoverySimulationSurvivalChance > 0)
 	end)
 
