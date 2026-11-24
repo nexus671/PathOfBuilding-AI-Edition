@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1277][2026/11/24]
+
+* Make Calcs sections reachable in compact windows with horizontal scrolling.
+
 VERSION[2.69.0-ai.preview1276][2026/11/24]
 
 * Keep the build header and its menus usable in compact windows.
