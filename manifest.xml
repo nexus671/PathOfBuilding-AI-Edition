@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1253" />
+	<Version number="2.68.1-ai.preview1254" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="82a264ec7f8e756530e617455f4ead75455fcb26" />
+	<File name="changelog.txt" part="default" sha1="2bf285af79f828c6028b0e60fc349f2c7a86df83" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1710,7 +1710,7 @@
 	<File name="Classes/BuildListControl.lua" part="program" sha1="f60f0d7f6aecbe851db896913cd1aa707c7fb304" />
 	<File name="Classes/BuildProposalControl.lua" part="program" sha1="e1e40ca676cf0af747a0427cd6114f0270eeac61" />
 	<File name="Classes/ButtonControl.lua" part="program" sha1="7a58ec249f011107f2ddcdc3aa02f812643e5c5f" />
-	<File name="Classes/CalcBreakdownControl.lua" part="program" sha1="2bd418ddf600499f54288768fbd56c9cac259a7a" />
+	<File name="Classes/CalcBreakdownControl.lua" part="program" sha1="b4e200fb48b750a54ba40af4f35114019f3c00ff" />
 	<File name="Classes/CalcSectionControl.lua" part="program" sha1="ace88981a36381c6ccecbdb76ee1b9b04d1afeaf" />
 	<File name="Classes/CalcsTab.lua" part="program" sha1="7290661fb80361f13d1a52b09a12533f5bced504" />
 	<File name="Classes/CheckBoxControl.lua" part="program" sha1="021e4ea29d62a600ab14e69e6ed0ad33832d78ab" />
@@ -2161,7 +2161,7 @@
 	<File name="Modules/CalcOffence.lua" part="program" sha1="f277f8f1eb2c3b5de55fcce73039d5249c2efc4c" />
 	<File name="Modules/CalcPerform.lua" part="program" sha1="47113c4b26f811a4765e7f3b70bef29277121bea" />
 	<File name="Modules/CalcSections.lua" part="program" sha1="9e318621d31c3b7ba86200ba662d2cfdd4199ae7" />
-	<File name="Modules/CalcSetup.lua" part="program" sha1="1e9cb9e63b08f22a7e1598ac101c631ebd0a25de" />
+	<File name="Modules/CalcSetup.lua" part="program" sha1="a39f4439632ad7774632db02d47e8ca39f6b7a9d" />
 	<File name="Modules/CalcTime.lua" part="program" sha1="d640514a38d7580be4ba784bcc92ddfffba0bacf" />
 	<File name="Modules/CalcTools.lua" part="program" sha1="6d39e85eef9e3c71a9aa2e11e7031848f4c2fb9f" />
 	<File name="Modules/CalcTriggers.lua" part="program" sha1="e898893f6c7b9a0e3d2a54dd7b0216c0af14f99d" />
