@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1248][2026/11/23]
+
+* Browse all documented PoE 1 stash item categories with conservative variant and listing evidence.
+
 VERSION[2.68.1-ai.preview1247][2026/11/23]
 
 * Open a larger Atlas tree in compact windows to inspect and edit routes.

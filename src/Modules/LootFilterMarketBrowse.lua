@@ -33,12 +33,31 @@ M.categories = {
 	{ id="Fossil", label="Fossils", feed="exchange" },
 	{ id="Resonator", label="Resonators", feed="exchange" },
 	{ id="Essence", label="Essences", feed="exchange" },
+	{ id="Wombgift", label="Wombgifts", advisory=true },
+	{ id="Corpse", label="Corpses", advisory=true },
+	{ id="Viscera", label="Viscera", advisory=true },
+	{ id="Incubator", label="Incubators", advisory=true },
+	{ id="ForbiddenJewel", label="Forbidden jewels", advisory=true },
+	{ id="ShrineBelt", label="Shrine belts", advisory=true },
+	{ id="UniqueTincture", label="Unique tinctures", advisory=true },
+	{ id="UniqueRelic", label="Unique relics", advisory=true },
+	{ id="ClusterJewel", label="Cluster jewels", advisory=true },
+	{ id="ValdoMap", label="Valdo maps", advisory=true },
+	{ id="Invitation", label="Invitations", advisory=true },
+	{ id="Memory", label="Memories", advisory=true },
+	{ id="IncursionTemple", label="Incursion temples", advisory=true },
+	{ id="ScryingOrb", label="Scrying orbs", advisory=true },
+	{ id="Flask", label="Flasks", advisory=true },
+	{ id="Beast", label="Beasts", advisory=true },
+	{ id="Vial", label="Vials", advisory=true },
 }
 
 local gems = {SkillGem=true,ImbuedGem=true}
+local advisoryCategories = {}
+for _, category in ipairs(M.categories) do if category.advisory then advisoryCategories[category.id] = true end end
 
 function M.advisory(category)
-	return gems[category.id] or category.id=="BaseType"
+	return advisoryCategories[category.id] or gems[category.id] or category.id=="BaseType"
 end
 
 local function positive(value)
@@ -103,7 +122,7 @@ end
 local uniqueCategories = {
 	["Body Armour"]="UniqueArmour", Boots="UniqueArmour", Gloves="UniqueArmour", Helmet="UniqueArmour",
 	Shield="UniqueArmour", Quiver="UniqueArmour", Amulet="UniqueAccessory", Ring="UniqueAccessory",
-	Belt="UniqueAccessory", Jewel="UniqueJewel", Flask="UniqueFlask",
+	Belt="UniqueAccessory", Jewel="UniqueJewel", Flask="UniqueFlask", Tincture="UniqueTincture",
 }
 
 function M.buildTargets(build)
@@ -154,12 +173,17 @@ function M.buildTargets(build)
 		if item and marketName(item.baseName) then
 			local category = item.rarity=="UNIQUE" and (uniqueCategories[item.type]
 				or data and data.weaponTypeInfo and data.weaponTypeInfo[item.type] and "UniqueWeapon")
+			if item.rarity=="UNIQUE" and item.type=="Jewel" and (item.title=="Forbidden Flame" or item.title=="Forbidden Flesh") then
+				category = "ForbiddenJewel"
+			end
 			local label = slot.label or slot.slotName
 			if category and marketName(item.title) then
 				add({name=item.title,category=category,label=label.." | "..item.title,
 					details={"Compare the listed unique variants and rolls."}})
 			elseif item.rarity~="UNIQUE" then
-				add({name=item.baseName,category="BaseType",label=label.." | "..item.baseName,
+				local cluster = item.type=="Jewel" and (item.baseName=="Large Cluster Jewel" or item.baseName=="Medium Cluster Jewel" or item.baseName=="Small Cluster Jewel")
+				local baseCategory = ({Viscera="Viscera",Flask="Flask"})[item.type]
+				add({name=item.baseName,category=baseCategory or cluster and "ClusterJewel" or "BaseType",baseTarget=true,label=label.." | "..item.baseName,
 					details={"Compare this crafting base. The equipped modifiers have their own value."}})
 			end
 		end
@@ -171,22 +195,109 @@ local function supportedVolume(item)
 	return positive(item.count) and positive(item.listingCount) and math.min(item.count,item.listingCount)>=20
 end
 
-local function variantEvidence(lines)
-	local evidence = {}
+
+local function providerText(value, limit)
+	if type(value)~="string" or #value==0 or #value>limit or value:find("[%c]")
+		or value:find("://",1,true) or value:lower():find("www.",1,true) then return nil end
+	local text = value:gsub("%^%d",""):gsub("%^x%x%x%x%x%x%x","")
+	return text:match("%S") and text or nil
+end
+
+local function providerEvidence(item)
+	local details, complete = {}, true
+	local function text(field,label,limit)
+		if item[field]==nil or item[field]=="" then return end
+		local value = providerText(item[field],limit)
+		if value then details[#details+1]=label..value else complete=false end
+	end
+	local function number(field,label,maximum)
+		if item[field]==nil then return end
+		local value = item[field]
+		if type(value)=="number" and value>=0 and value<=maximum and value==math.floor(value) then
+			details[#details+1]=label..value
+		else complete=false end
+	end
+	text("itemType","Item type: ",100)
+	number("itemClass","Provider rarity class: ",20)
+	number("levelRequired","Required character level: ",100)
+	number("stackSize","Maximum stack size: ",1000000000)
+	text("mapRegion","Map region: ",100)
+	for _, field in ipairs({"implicitModifiers","explicitModifiers","mutatedModifiers"}) do
+		local label = ({implicitModifiers="Listed implicit: ",explicitModifiers="Listed explicit: ",mutatedModifiers="Listed mutated: "})[field]
+		local values = item[field]
+		if values~=nil then
+			if type(values)~="table" then complete=false
+			else
+				local count = 0
+				for _, entry in ipairs(values) do
+					count=count+1
+					if count>12 then complete=false;break end
+					local value = providerText(type(entry)=="table" and entry.text or entry,400)
+					if value then details[#details+1]=label..value else complete=false end
+				end
+				local keys = 0
+				for key in pairs(values) do
+					keys=keys+1
+					if keys>12 then complete=false;break end
+					if type(key)~="number" or key<1 or key>#values or key~=math.floor(key) then complete=false end
+				end
+			end
+		end
+	end
+	if item.metadata~=nil then
+		if type(item.metadata)~="table" then complete=false
+		else
+			local metadata, count = {}, 0
+			for key,value in pairs(item.metadata) do
+				count=count+1
+				if count>32 then complete=false;break end
+				local label = providerText(key,80)
+				local content = providerText(value,200)
+				if type(value)=="number" and value==value and math.abs(value)<=1e12 or type(value)=="boolean" then content=tostring(value) end
+				if label and content then metadata[#metadata+1]="Provider "..label..": "..content else complete=false end
+			end
+			table.sort(metadata)
+			for index,value in ipairs(metadata) do
+				if index>12 then complete=false;break end
+				details[#details+1]=value
+			end
+		end
+	end
+	return details,complete
+end
+
+local function variantEvidence(lines, extended)
+	local evidence, variants = {}, {}
 	for _, item in ipairs(lines) do
 		local id = type(item)=="table" and item.detailsId
+		if extended then id=require("Modules.LootFilterEconomy").evidencePriceId(id) end
 		if marketName(id) then
+			local details,complete = {},true
+			if extended then
+				details,complete = providerEvidence(item)
+				if not providerText(item.name,200) or item.baseType~=nil and item.baseType~="" and not providerText(item.baseType,200)
+					or item.variant~=nil and item.variant~="" and not providerText(item.variant,200) then complete=false end
+			end
+			local signature = extended and assert(json.encode(details)) or nil
 			local current = evidence[id]
 			if current then
-				current.supported = current.supported and supportedVolume(item)
-				for _, field in ipairs({"name","baseType","gemLevel","gemQuality","corrupted","variant","links","chaosValue"}) do
+				current.supported = current.supported and supportedVolume(item) and (not extended or complete)
+				if extended and current.signature~=signature then current.conflicting=true end
+				for _, field in ipairs({"name","baseType","gemLevel","gemQuality","corrupted","variant","links","chaosValue","mapTier"}) do
 					if current.item[field]~=item[field] then
 						current.conflicting = true
 						break
 					end
 				end
 			else
-				evidence[id] = {item=item,supported=supportedVolume(item)}
+				evidence[id] = {item=item,supported=supportedVolume(item) and (not extended or complete),signature=signature}
+			end
+			if extended then
+				local key=assert(json.encode({item.name,item.baseType or false,item.variant or false,item.corrupted or false,
+					item.links or false,item.gemLevel or false,item.gemQuality or false,item.mapTier or false,details}))
+				local previous=variants[key]
+				if previous and previous~=id then evidence[previous].conflicting,evidence[id].conflicting=true,true end
+				variants[key]=id
 			end
 		end
 	end
@@ -280,17 +391,22 @@ function M.rows(body, category, query, target, catalogue)
 		assert(type(data)=="table" and type(data.lines)=="table", "Invalid stash overview")
 		local unique = category.id:match("^Unique")
 		local advisory = M.advisory(category)
-		local variants = (unique or advisory) and variantEvidence(data.lines)
+		local variants = (unique or advisory) and variantEvidence(data.lines,advisoryCategories[category.id])
 		local uniqueEvidence = unique and uniqueBaseEvidence(data.lines,variants,catalogue)
 		local handled = {}
 		for _, item in ipairs(data.lines) do
 			assert(type(item)=="table", "Invalid stash overview entry")
+			local extended = advisoryCategories[category.id]
 			local identity = marketName(item.detailsId) and item.detailsId or nil
+			if extended then identity=require("Modules.LootFilterEconomy").evidencePriceId(item.detailsId) end
+			local name = extended and providerText(item.name,200) or not extended and item.name
+			local base = extended and providerText(item.baseType,200) or not extended and item.baseType
+			local variant = extended and providerText(item.variant,200) or not extended and item.variant
 			local advisoryId = advisory and identity
 			local comparable = not target or (target.level and item.name==target.name and item.gemLevel==target.level
 				and item.gemQuality==target.quality or not target.level and (item.name==target.name
-					or target.category=="BaseType" and item.baseType==target.name))
-			if marketName(item.name) and positive(item.chaosValue) and matches(item.name,item.baseType,item.variant,identity)
+					or (target.category=="BaseType" or target.baseTarget) and item.baseType==target.name))
+			if marketName(name) and positive(item.chaosValue) and matches(name,base,variant,identity)
 				and comparable and not (advisoryId and handled[advisoryId]) then
 				local corrupted
 				if type(item.corrupted)=="boolean" then corrupted=item.corrupted end
@@ -299,17 +415,20 @@ function M.rows(body, category, query, target, catalogue)
 					and item.gemQuality==math.floor(item.gemQuality) and item.gemQuality or nil
 				local evidence = variants and identity and variants[identity]
 				local conflicting = evidence and evidence.conflicting
-				local supported = variants and supportedVolume(item) and (not evidence or evidence.supported)
+				local supported = variants and identity and supportedVolume(item) and evidence and evidence.supported and not conflicting
+				local details,complete = providerEvidence(item)
+				if extended and (item.baseType~=nil and item.baseType~="" and not base or item.variant~=nil and item.variant~="" and not variant) then complete,supported=false,false end
 				if advisoryId then handled[advisoryId] = true end
 				out[#out+1] = {
-					name=item.name, price=not conflicting and item.chaosValue or nil, identity=identity,
+					name=name, price=not conflicting and item.chaosValue or nil, identity=identity,
 					conflicting=conflicting, supported=supported or nil,
-					incomplete=advisory and (not identity or gems[category.id]
+					incomplete=advisory and (not identity or advisoryCategories[category.id] and not complete or gems[category.id]
 						and (not gemLevel or gemQuality==nil or corrupted==nil)) or nil,
-					base=type(item.baseType)=="string" and item.baseType or nil,
-					variant=type(item.variant)=="string" and item.variant or nil,
+					base=type(base)=="string" and base or nil,
+					variant=type(variant)=="string" and variant or nil,
 					corrupted=corrupted,
 					baseEvidence=uniqueEvidence and uniqueEvidence[item.baseType] or nil,
+					providerEvidence=details,advisoryCategory=advisoryCategories[category.id] or nil,
 					links=positive(item.links) and item.links or nil,
 					gemLevel=gemLevel,
 					gemQuality=gemQuality,
