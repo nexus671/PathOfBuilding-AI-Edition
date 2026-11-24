@@ -34,7 +34,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Report modeled ingredient and service quantities separately from spending, with an illustrated resource browser.
 - [x] Apply quality enchantments with native item state, recipe goals and resource costs.
 - [ ] Complete and validate current crafting coverage, including incomplete socket, corruption and league mechanics and their probabilities.
-- [ ] Model raw-stat precision when displayed endpoints are rounded. For example, the pinned 3.30.0.4 `LifeRegeneration2` modifier stores 126–480 life per minute, while PoB displays 2.1–8 life per second. Matching single-stat life-regeneration tiers now sample these per-minute integers when the pinned bounds match PoB endpoints; other raw-stat formats still use illustrative normalized rolls. Actual in-game roll distributions remain unverified.
+- [ ] Model raw-stat precision when displayed endpoints are rounded. For example, the pinned 3.30.0.4 `LifeRegeneration2` modifier stores 126–480 life per minute, while PoB displays 2.1–8 life per second. Matching single-stat life- and mana-regeneration tiers now sample their per-minute integers when the pinned bounds match PoB endpoints; other raw-stat formats still use illustrative normalized rolls. Actual in-game roll distributions remain unverified.
 - [ ] Validate mixed Eldritch and synthesised implicits in the Locus against the live game; both use experimental replacement models. Vaal Orb replacement of an identified Eldritch or synthesised implicit uses an assumed uniform choice; ambiguous synthesised groups remain unavailable.
 - [x] Keep empirical assumptions visible; never present unknown weights as facts.
 
