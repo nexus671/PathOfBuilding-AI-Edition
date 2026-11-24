@@ -1153,8 +1153,13 @@ function Panel.Open(build,project,layout)
 		end
 	end
 	if compact then
-		-- Leave room for values when the fields shrink in a small window.
-		controls.budget.prompt="Budget";controls.price.prompt="Price";controls.baseCost.prompt="Base"
+		-- Put labels above the fields so values retain their full width.
+		for _,key in ipairs({"trials","budget","price","currency","baseCost"}) do controls[key].prompt=nil end
+		controls.trialsLabel.label="^7Trials";controls.priceLabel.label="^7Action cost"
+		label(controls,"compactBudgetLabel",controls.budget.x,88,"Action budget")
+		label(controls,"compactUnitLabel",controls.currency.x,136,"Unit")
+		label(controls,"compactBaseLabel",controls.baseCost.x,136,"Base cost")
+		for _,key in ipairs({"compactBudgetLabel","compactUnitLabel","compactBaseLabel"}) do controls[key].shown=function() return controls.page:GetSelValue()=="Simulate recipe" end end
 		local compactRows={
 			["Target conditions"]={targetLabel=96,target=112,addTarget=144,alternative=144,clearTargets=144,targetPicker=176,targetConditions=208,targetGroups=208,targetSummary=240},
 			["Simulate recipe"]={trialsLabel=88,trials=104,budget=104,priceLabel=136,price=152,currency=152,baseCost=152,simulate=184,runRecipe=184,editRecipe=216,resourcePrices=216,optimize=248,fossilResults=248,distribution=280,compareRecipes=280,resultSummary=312},
