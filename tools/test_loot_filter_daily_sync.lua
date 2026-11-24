@@ -1225,11 +1225,35 @@ profiles.tick(exchangeClock,true,false,coverageProfile)
 local incomplete = profiles.configuration(coverageProfile)
 assert(incomplete.lastSuccess==verifiedCoverage.lastSuccess and #incomplete.priceHistory==3 and read(coverageTarget)==coverageBytes)
 assert(incomplete.lastFailure and incomplete.lastFailure.message:find("Currency feed has fewer than a quarter",1,true))
+do
+	local failure = incomplete.lastFailure.failedFeed
+	assert(failure.category=="Currency" and failure.reason=="coverage_drop" and failure.availableQuotes==3
+		and failure.usualQuotes==24 and not failure.httpStatus)
+	local diagnostic = assert(codec.decode(profiles.diagnosticReport(exchangeClock,coverageProfile)))
+	assert(diagnostic.status.failedFeed.availableQuotes==3 and diagnostic.status.failedFeed.usualQuotes==24)
+	local previewFailure
+	profiles.preview(coverageTarget,baseline,"Covens",{profileId=coverageProfile,hour=0,targetValue=1,protectionFile=protections},
+		function() error("A preview should reject the same coverage drop") end,
+		function(_, evidence) previewFailure=evidence end)
+	assert(previewFailure and previewFailure.reason=="coverage_drop" and previewFailure.availableQuotes==3 and previewFailure.usualQuotes==24)
+	assert(read(coverageTarget)==coverageBytes and profiles.configuration(coverageProfile).lastSuccess==verifiedCoverage.lastSuccess)
+	local sanitized = profiles.failedFeedEvidence({category="Currency",reason="coverage_drop",availableQuotes=3,usualQuotes=24,
+		httpStatus=200,rawError="C:/private/filter"})
+	assert(sanitized and not sanitized.httpStatus and not sanitized.rawError)
+	for _, invalid in ipairs({{category="SkillGem",availableQuotes=3,usualQuotes=24},
+		{category="Currency",availableQuotes=6,usualQuotes=24},
+		{category="Currency",availableQuotes=3.5,usualQuotes=24},
+		{category="Currency",availableQuotes=0,usualQuotes=math.huge}}) do
+		invalid.reason="coverage_drop"
+		assert(not profiles.failedFeedEvidence(invalid))
+	end
+end
 extra, exchangeClock = 23, exchangeClock+86400
 profiles.tick(exchangeClock,true,false,coverageProfile)
 os.time = originalClock
 local recovered = profiles.configuration(coverageProfile)
 assert(recovered.lastSuccess==exchangeClock and #recovered.priceHistory==4 and not recovered.lastFailure)
+assert(not profiles.publicStatus(exchangeClock,coverageProfile).failedFeed)
 print("Weekly exchange coverage retains verified output through two thin feeds and resumes after recovery")
 
 local function checkAppearanceRoundTrip()

@@ -15,6 +15,7 @@ local feedFailureDescriptions = {
 	stale = "The price feed was too old to use.",
 	invalid_response = "The response was invalid for this feed.",
 	empty_response = "The feed returned no usable prices.",
+	coverage_drop = "Too few liquid quotes. PoB kept the verified filter.",
 	cooldown = "The provider cooldown exceeded this refresh window.",
 	timeout = "The price refresh ran out of time.",
 	league_unavailable = "The configured league is unavailable at the price provider.",
@@ -44,6 +45,9 @@ local function showLastAttempt(profileId)
 			local category = feed.category=="leagues" and "League list" or feed.category
 			details[#details+1] = category.." price feed"..(feed.httpStatus and " (HTTP "..feed.httpStatus..")" or "")
 			details[#details+1] = feedFailureDescriptions[feed.reason] or "The price feed check failed."
+			if feed.reason=="coverage_drop" then
+				details[#details+1] = string.format("Liquid quotes: %d available, %d recent median",feed.availableQuotes,feed.usualQuotes)
+			end
 			if feed.currentLeague then
 				details[#details+1] = ui.fit("Current challenge league: "..feed.currentLeague.id, math.min(488, main.screenW-72), 14)
 				local checked = attemptTime(feed.verifiedAt)

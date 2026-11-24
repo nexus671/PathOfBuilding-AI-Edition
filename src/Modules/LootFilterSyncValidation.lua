@@ -1,7 +1,7 @@
 local market = require("Modules.LootFilterEconomy")
 local parser = require("Modules.LootFilterParser")
 local protected = require("Modules.LootFilterProtectedDrops")
-return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy, confirmation, priorContinuity)
+return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy, confirmation, priorContinuity, onCoverageFailure)
 	assert(market.supports(raw), "Baseline has no economy section")
 	local quotes = {}
 	local categories, gemRequests = market.feedCategories(raw)
@@ -9,7 +9,7 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 	for index, body in ipairs(bodies) do market.merge(quotes, market.quotes(body, categories[index], gemRequests), categories[index]) end
 	assert(baselineOnly or quotes["Orb of Alteration"] and quotes["Orb of Alteration"].volume >= 100, "Currency feed lacks a liquid reference quote")
 	local snapshots
-	if day then quotes, snapshots = market.remember(quotes, history, day, now) end
+	if day then quotes, snapshots = market.remember(quotes, history, day, now, onCoverageFailure) end
 	local candidate, changes, skipped, continuity = market.review(raw, quotes, target, policy, confirmation, priorContinuity)
 	assert(#candidate <= 2*1024*1024, "Generated filter exceeds the sync file size limit")
 	local parsed = parser.parse(candidate)
