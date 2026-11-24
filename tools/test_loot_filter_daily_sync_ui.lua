@@ -49,6 +49,9 @@ task.change = function(wanted, callback, id)
 	backgroundEnabled = wanted
 	callback(true)
 end
+task.inspect = function(callback)
+	callback(true,backgroundEnabled and "ready" or "missing")
+end
 sync.setBackgroundNotifications = function(wanted)
 	notifyEnabled = wanted
 end
@@ -104,8 +107,24 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	harness:click("apply")
 	harness:click("enable")
 	assert(configured and main.popups[1].title == "Daily filter sync" and main.popups[1].controls.league.buf=="New Season")
+	harness:click("backgroundStatus")
+	assert(main.popups[1].title=="Windows background task" and main.popups[1].controls[2].label:find("missing",1,true))
+	harness:click("close")
 	harness:click("background")
 	assert(backgroundEnabled)
+	harness:click("backgroundStatus")
+	assert(main.popups[1].title=="Windows background task" and main.popups[1].controls[2].label:find("expected",1,true))
+	harness:click("close")
+	do
+		local original = task.inspect
+		task.inspect = function(callback) callback(true,"disabled") end
+		harness:click("backgroundStatus")
+		assert(main.popups[1].controls.confirm and main.popups[1].controls[2].label:find("disabled",1,true))
+		harness:click("confirm")
+		assert(main.popups[1].controls[1].label:find("accepted",1,true))
+		harness:click("close")
+		task.inspect = original
+	end
 	harness:click("backgroundNotify")
 	assert(notifyEnabled)
 	harness:click("background")
@@ -692,6 +711,8 @@ do
 	local ui = headless.install({width=720,height=600})
 	ui:bind(build)
 	local oldTime, oldDownload = os.time, launch.DownloadPage
+	local oldDirectory = main.userPath
+	main.userPath = output and output.."/" or nil
 	local time, requests = os.time(), 0
 	os.time = function() return time end
 	launch.DownloadPage = function(_,url,callback)
@@ -729,5 +750,6 @@ do
 	ui:click("get")
 	assert(requests==3 and main.popups[1].controls.status.label:find("Could not verify",1,true))
 	os.time, launch.DownloadPage = oldTime, oldDownload
+	main.userPath = oldDirectory
 end
 print("Manual price review and league selection honor the same provider cooldown as sync")

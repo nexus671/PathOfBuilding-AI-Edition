@@ -1,3 +1,15 @@
+VERSION[2.68.1-ai.preview1238][2026/11/23]
+
+* Make crafting, recipe planning and results easier to use in smaller windows.
+
+VERSION[2.68.1-ai.preview1237][2026/11/23]
+
+* Inspect and repair the Windows background task from daily sync.
+
+VERSION[2.68.1-ai.preview1236][2026/11/23]
+
+* Keep provider cooldowns across PoB windows and Windows background jobs.
+
 VERSION[2.68.1-ai.preview1235][2026/11/23]
 
 * Manage exact skill and support gem hides with listing-backed prices and preserve other variants.
