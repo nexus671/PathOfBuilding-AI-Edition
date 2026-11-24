@@ -1692,7 +1692,7 @@ local function checkManagedExchangeSelections()
 	assert(#decoded==23 and decoded[23]==allFeeds[23])
 end
 checkManagedExchangeSelections()
-print("Explicit exchange selections bind exact adjacent rules, isolate category prices, preserve rewrite metadata, and support non-stackable Allflames")
+print("Explicit exchange selections bind exact adjacent rules, isolate category prices, preserve rewrite metadata, and support Allflame embers")
 
 
 local function checkManagedExchangeDailySync()
