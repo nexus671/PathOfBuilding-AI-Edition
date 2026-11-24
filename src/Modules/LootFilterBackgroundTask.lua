@@ -223,16 +223,16 @@ exit 0
 	ffi.C.CloseHandle(process.thread)
 	local waited = ffi.C.WaitForSingleObject(process.process, 30000)
 	local exitCode = ffi.new("uint32_t[1]", 1)
-	if waited == 0 then ffi.C.GetExitCodeProcess(process.process, exitCode) end
+	local observed = waited==0 and ffi.C.GetExitCodeProcess(process.process,exitCode)~=0
 	if waited == 258 then ffi.C.TerminateProcess(process.process, 1) end
 	ffi.C.CloseHandle(process.process)
 	if inspecting then
-		assert(waited==0, "Windows Task Scheduler did not respond")
+		assert(observed, "Windows Task Scheduler did not return a status")
 		local states = {[0]="ready",[10]="missing",[11]="foreign",[12]="disabled",[13]="action_changed",
 			[14]="account_changed",[15]="trigger_changed",[16]="executable_missing",[17]="running",[18]="unavailable"}
 		return assert(states[tonumber(exitCode[0])], "Could not read the Windows task. Check permissions for the current user.")
 	end
-	assert(waited == 0 and exitCode[0] == 0, "Windows Task Scheduler did not accept the change. Check permissions for the current user.")
+	assert(observed and exitCode[0] == 0, "Windows Task Scheduler did not accept the change. Check permissions for the current user.")
 end)
 return ok, result
 ]=]
