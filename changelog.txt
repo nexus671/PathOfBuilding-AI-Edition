@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1253][2026/11/24]
+
+* Require a value for new loot filter conditions.
+
 VERSION[2.68.1-ai.preview1252][2026/11/23]
 
 * Fix skill-gem support effects with Mantle of Dreams, from upstream.
