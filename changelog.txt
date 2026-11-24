@@ -1,6 +1,6 @@
 VERSION[2.68.1-ai.preview1242][2026/11/23]
 
-* Use the bundled raw precision for matching mana-regeneration modifier rolls.
+* Use bundled raw precision for matching mana and percentage regeneration modifier rolls.
 
 VERSION[2.68.1-ai.preview1241][2026/11/23]
 

@@ -61,6 +61,11 @@ describe("Crafting modifier base-roll targets",function()
 		local result=sim.perform(rawJewel,{method="divine"},7,state);local tick=result.state.affixes[1].range*54
 		assert.is_true(math.abs(tick-math.floor(tick+0.5))<1e-8)
 	end)
+	it("samples pinned per-minute percentage regeneration rolls",function()
+		for _,case in ipairs({{"Rarity: NORMAL\nHubris Circlet\nItem Level: 86\nCrusader Item","EnergyShieldRegenInfluence1"},{"Rarity: NORMAL\nPlate Vest\nItem Level: 86\nElder Item","LifeRegenerationRatePercentUber1"}}) do
+			local model=sim.model(case[1]);local mod=assert(model.byId[case[2]]);assert.is_true(math.abs(sim.rollRange(mod,function() return 0.04 end)-1/30)<1e-9)
+		end
+	end)
 	it("preserves base-roll goals in saved crafting recipes",function()
 		newBuild();local recipe={steps={{method="alchemy"}},targets={{anyOf={"IncreasedLife4"},minBaseValue=65,maxBaseValue=67}}}
 		local store=build.savers.CraftingProjects;store:Upsert({id="roll-goal",title="Roll goal",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe=recipe})
