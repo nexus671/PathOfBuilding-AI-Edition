@@ -192,3 +192,23 @@ test('relays all documented exchange categories and rejects unknown or misrouted
   ]) assert.equal((await cache.request(path)).status,400);
   assert.equal(cache.requests.length,20);
 });
+
+test('relays all 29 documented stash item categories without changing their responses',async t=>{
+  const categories = ['Wombgift','Corpse','Viscera','Incubator','UniqueWeapon','UniqueArmour','UniqueAccessory','UniqueFlask',
+    'UniqueJewel','ForbiddenJewel','ShrineBelt','UniqueTincture','UniqueRelic','SkillGem','ImbuedGem','ClusterJewel','Map',
+    'BlightedMap','BlightRavagedMap','UniqueMap','ValdoMap','Invitation','Memory','IncursionTemple','ScryingOrb','BaseType',
+    'Flask','Beast','Vial'];
+  const body = JSON.stringify({lines:[{name:'Sample listing',detailsId:'sample',chaosValue:5,count:50,listingCount:40}]});
+  const cache=await fixture(t,(path,options,{now})=>snapshot(path==='/leagues' ? leagueBody : body,now));
+  for (const category of categories) {
+    const path='/stash/current/item/overview?league=Covens&type='+category;
+    const served=await cache.request(path);
+    assert.equal(served.status,200,category);
+    assert.equal(await served.text(),body);
+    assert.equal(cache.requests.at(-1).path,path);
+  }
+  assert.equal(cache.requests.length,30);
+  assert.equal((await cache.request('/exchange/current/overview?league=Covens&type=ForbiddenJewel')).status,400);
+  assert.equal((await cache.request('/stash/current/item/overview?league=Covens&type=InventedType')).status,400);
+  assert.equal(cache.requests.length,30);
+});

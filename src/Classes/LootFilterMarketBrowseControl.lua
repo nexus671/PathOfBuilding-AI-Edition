@@ -157,6 +157,8 @@ local function open(build, managedTarget)
 						details[#details+1]="An unidentified drop can be a different unique or variant."
 					end
 				if not row.conflicting then
+					if row.advisoryCategory then details[#details+1]="Compare the listed variant and modifiers with the item." end
+					for _,line in ipairs(row.providerEvidence or {}) do details[#details+1]=line end
 					show("Links: ",row.links);show("Gem level: ",row.gemLevel)
 					show("Gem quality: ",row.gemQuality);show("Map tier: ",row.mapTier)
 					show("Observations: ",row.count);show("Listings: ",row.listings)

@@ -7,8 +7,10 @@ const upstreamBase = 'https://poe.ninja/poe1/api/economy/';
 const exchange = new Set(['Currency', 'Fragment', 'Runegraft', 'AllflameEmber', 'Tattoo', 'Omen', 'DjinnCoin', 'Ducat',
   'EnshroudingCrystal', 'DivinationCard', 'Artifact', 'Oil', 'DeliriumOrb', 'Scarab', 'Astrolabe', 'Thread', 'Fossil',
   'Resonator', 'Essence']);
-const stash = new Set(['Map', 'BlightedMap', 'BlightRavagedMap', 'UniqueWeapon', 'UniqueArmour', 'UniqueAccessory',
-  'UniqueJewel', 'UniqueFlask', 'UniqueMap', 'SkillGem', 'ImbuedGem', 'BaseType']);
+const stash = new Set(['Wombgift', 'Corpse', 'Viscera', 'Incubator', 'UniqueWeapon', 'UniqueArmour', 'UniqueAccessory',
+  'UniqueFlask', 'UniqueJewel', 'ForbiddenJewel', 'ShrineBelt', 'UniqueTincture', 'UniqueRelic', 'SkillGem', 'ImbuedGem',
+  'ClusterJewel', 'Map', 'BlightedMap', 'BlightRavagedMap', 'UniqueMap', 'ValdoMap', 'Invitation', 'Memory',
+  'IncursionTemple', 'ScryingOrb', 'BaseType', 'Flask', 'Beast', 'Vial']);
 const stashLimit = 12 * 1024 * 1024;
 const cacheLimit = 48 * 1024 * 1024;
 const freshestAge = 3600;

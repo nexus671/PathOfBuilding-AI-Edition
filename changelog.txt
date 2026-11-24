@@ -1,6 +1,10 @@
-VERSION[2.68.1-ai.preview1248][2026/11/23]
+VERSION[2.68.1-ai.preview1249][2026/11/23]
 
 * Explain when actions in the enlarged Atlas tree are unavailable.
+
+VERSION[2.68.1-ai.preview1248][2026/11/23]
+
+* Browse all documented PoE 1 stash item categories with conservative variant and listing evidence.
 
 VERSION[2.68.1-ai.preview1247][2026/11/23]
 

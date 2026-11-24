@@ -928,9 +928,105 @@ local function checkExchangeMarketCategories()
 		local evidence=table.concat(details," ")
 		assert(evidence:find("Price ID: thin-id",1,true) and evidence:find("liquidity threshold",1,true))
 	end
-	assert(requests==19 and #browser.categories==31)
+	assert(requests==19 and #browser.categories==48)
 	assert(#require("Modules.LootFilterEconomy").categories==8)
 	launch.DownloadPage=originalDownload
 end
 checkExchangeMarketCategories()
 print("All 19 documented exchange categories browse through native controls with exact identities, ambiguity and liquidity evidence")
+
+
+local function checkAdvisoryStashCoverage()
+	local browser=require("Modules.LootFilterMarketBrowse")
+	local json=require("dkjson")
+	local added={"Wombgift","Corpse","Viscera","Incubator","ForbiddenJewel","ShrineBelt","UniqueTincture","UniqueRelic",
+		"ClusterJewel","ValdoMap","Invitation","Memory","IncursionTemple","ScryingOrb","Flask","Beast","Vial"}
+	local categories,stashCount={},0
+	for _,category in ipairs(browser.categories) do
+		categories[category.id]=category
+		if category.feed~="exchange" then stashCount=stashCount+1 end
+	end
+	assert(stashCount==29 and #browser.categories==48)
+	local function row(id)
+		return {name="Fixture item",baseType="Royal Plate",detailsId=id,variant="A",chaosValue=10,count=50,listingCount=40,
+			itemType="Body Armour",itemClass=3,levelRequired=64,stackSize=10,mapTier=16,mapRegion="Atlas region",
+			implicitModifiers={{text="^1+10 to maximum Life"}},explicitModifiers={{text="+20 to maximum Mana"}},
+			mutatedModifiers={{text="+1 to Level of all Skills"}},metadata={notable="One Step Ahead",ascendancy="Trickster"},
+			tradeInfo={url="https://private.example.test/secret"},tradeFilter={secret="SECRET_TRADE_FILTER"},icon="https://private.example.test/icon"}
+	end
+	newBuild()
+	local harness=headless.install({width=720,height=600})
+	harness:bind(build)
+	local oldDownload=launch.DownloadPage
+	for index,id in ipairs(added) do
+		local category=assert(categories[id])
+		assert(browser.categories[index+31].id==id and browser.advisory(category))
+		local good=row("fixture-exact")
+		local rows=browser.rows(assert(json.encode({lines={good}})),category,"Fixture")
+		assert(#rows==1 and rows[1].supported and rows[1].identity=="fixture-exact")
+		local details=table.concat(rows[1].providerEvidence," ")
+		assert(details:find("Required character level: 64",1,true) and details:find("Listed implicit: +10",1,true))
+		assert(not details:find("^1",1,true) and not details:find("SECRET",1,true) and not details:find("https://",1,true))
+		local duplicate=row("fixture-exact");duplicate.metadata.notable="Escape Artist"
+		local conflict=browser.rows(assert(json.encode({lines={good,duplicate}})),category,"Fixture")
+		assert(#conflict==1 and conflict[1].conflicting and not conflict[1].price and not conflict[1].supported)
+		duplicate=row("fixture-exact");duplicate.implicitModifiers=nil;duplicate.explicitModifiers={{text="^1+10 to maximum Life"}}
+		assert(browser.rows(assert(json.encode({lines={good,duplicate}})),category,"Fixture")[1].conflicting)
+		duplicate=row("different-exact-id")
+		local ambiguous=browser.rows(assert(json.encode({lines={good,duplicate}})),category,"Fixture")
+		assert(#ambiguous==2 and ambiguous[1].conflicting and ambiguous[2].conflicting)
+		local thin=row("thin-id");thin.count=1
+		assert(not browser.rows(assert(json.encode({lines={thin}})),category,"Fixture")[1].supported)
+		local incomplete=row("https://private.example.test/id")
+		local unsafe=browser.rows(assert(json.encode({lines={incomplete}})),category,"Fixture")[1]
+		assert(unsafe.incomplete and not unsafe.supported and not unsafe.identity)
+		local malformed=row("malformed-id");malformed.variant="https://private.example.test/variant"
+		local unverified=browser.rows(assert(json.encode({lines={malformed}})),category,"Fixture")[1]
+		assert(unverified.incomplete and not unverified.supported and not unverified.variant)
+		main.popups={}
+		local requests=0
+		launch.DownloadPage=function(_,url,callback,options)
+			requests=requests+1
+			assert(url==require("Modules.LootFilterEconomy").endpoint.."stash/current/item/overview?league=Covens&type="..id)
+			assert(options.followRedirects==false)
+			local date=os.date("!%a, %d %b %Y %H:%M:%S GMT")
+			callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\n\r\n",body=assert(json.encode({lines={good}}))})
+		end
+		require("Classes.LootFilterMarketBrowseControl").Open()
+		harness:text("league","Covens")
+		harness:choose("category",category.label)
+		harness:click("get")
+		assert(requests==0 and main.popups[1].controls.status.label:find("at least two",1,true))
+		harness:text("query","Fixture")
+		harness:click("get")
+		assert(requests==1 and main.popups[1].title==category.label.." market prices")
+		local lines={}
+		for _,entry in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=StripEscapes(entry[1] or "") end
+		local shown=table.concat(lines," ")
+		assert(shown:find("Required character level: 64",1,true) and shown:find("Listed mutated:",1,true))
+		assert(not shown:find("SECRET",1,true) and not shown:find("https://",1,true))
+	end
+	launch.DownloadPage=oldDownload
+	local collection={itemsTab={orderedSlots={},activeItemSet={},items={}}}
+	for index,item in ipairs({
+		{type="Tincture",rarity="UNIQUE",baseName="Oakbranch Tincture",title="The Battle Within"},
+		{type="Jewel",rarity="UNIQUE",baseName="Crimson Jewel",title="Forbidden Flame"},
+		{type="Jewel",rarity="RARE",baseName="Large Cluster Jewel"},
+		{type="Viscera",rarity="NORMAL",baseName="Scorched Arm"},
+		{type="Flask",rarity="MAGIC",baseName="Divine Life Flask"},
+	}) do
+		local slot="Slot "..index
+		collection.itemsTab.orderedSlots[index]={slotName=slot,label=slot}
+		collection.itemsTab.activeItemSet[slot]={selItemId=index}
+		collection.itemsTab.items[index]=item
+	end
+	local targets=browser.buildTargets(collection)
+	assert(targets[1].category=="UniqueTincture" and targets[2].category=="ForbiddenJewel")
+	assert(targets[3].category=="ClusterJewel" and targets[4].category=="Viscera" and targets[5].category=="Flask")
+	local first=row("forbidden-one");first.name="Forbidden Flame";first.baseType="Crimson Jewel"
+	local second=row("forbidden-two");second.name="Forbidden Flame";second.baseType="Crimson Jewel";second.metadata.notable="Escape Artist"
+	local variants=browser.rows(assert(json.encode({lines={first,second}})),categories.ForbiddenJewel,"=Forbidden Flame",targets[2])
+	assert(#variants==2 and variants[1].supported and variants[2].supported)
+end
+checkAdvisoryStashCoverage()
+print("All 29 stash market types preserve scoped native inspection, safe provider evidence, variant ambiguity and build routes")
