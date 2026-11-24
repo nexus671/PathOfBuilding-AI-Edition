@@ -31,4 +31,24 @@ describe("Compact Calcs navigation", function()
 			main.popups = { }; ui:restore()
 		end
 	end)
+
+	it("brings the recovery heading into view after horizontal panning", function()
+		newBuild(); main.popups = { }
+		local ui = require("Modules.HeadlessUI").install({ width = 640, height = 480 })
+		ui:bind(build); ui:frame(); ui:click("modeCalcs"); ui:frame()
+		local calcs = build.calcsTab
+		calcs.controls.scrollBarH:SetOffset(calcs.controls.scrollBarH.offsetMax)
+		calcs:ShowRecoverySimulation(); ui:frame()
+		local found
+		for _, section in ipairs(calcs.sectionList) do for index, subSection in ipairs(section.subSection) do
+			if subSection.label == "Recovery over Time" then
+				local _, y = section.controls["toggle" .. index]:GetPos()
+				assert.is_true(section.x >= 312 and section.x < 640)
+				assert.is_true(y >= 56 and y < 480)
+				found = true
+			end
+		end end
+		assert.is_true(found)
+		main.popups = { }; ui:restore()
+	end)
 end)

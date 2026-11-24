@@ -324,7 +324,11 @@ function CalcsTabClass:Draw(viewPort, inputEvents)
 			for i,subSection in ipairs(section.subSection) do
 				if subSection.label == "Recovery over Time" then
 					subSection.collapsed = false
-					self.controls.scrollBar.offset = m_min(m_max(0,maxY-viewPort.y-viewPort.height),m_max(0,section.y+section.controls["toggle"..i].y-viewPort.y-40))
+					self.controls.scrollBar:SetOffset(m_max(0, section.y + section.controls["toggle"..i].y - viewPort.y - 40))
+					if horizontal.enabled then
+						if section.width > horizontal.viewDim then horizontal:SetOffset(section.x - viewPort.x)
+						else horizontal:ScrollIntoView(section.x - viewPort.x, section.width) end
+					end
 				end
 			end
 		end
