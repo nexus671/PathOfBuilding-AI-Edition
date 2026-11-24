@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1247][2026/11/23]
+
+* Open a larger Atlas tree in compact windows to inspect and edit routes.
+
 VERSION[2.68.1-ai.preview1246][2026/11/23]
 
 * Show the failed price feed and reason in daily sync and diagnostics.

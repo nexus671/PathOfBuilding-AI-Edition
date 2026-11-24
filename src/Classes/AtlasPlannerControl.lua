@@ -599,9 +599,39 @@ function Panel.Open(build,source,layout)
 		end)
 		controls.matchBrowse.enabled=function() return not grantSteps and #controls.results.list>0 end
 		controls.matchBrowse.shown=function() return controls.page:GetSelValue()=="Tree" end
+		local function openLargeTree()
+			local w,h=math.min(1000,main.screenW-40),math.min(740,main.screenH-50);local large={}
+			ui.label(large,"hint",16,16,"Wheel: zoom | Drag: pan | Double click: connect or remove",14)
+			local function sync()
+				large.canvas.focus=controls.canvas.focus;large.canvas.preview=controls.canvas.preview;large.canvas.matches=controls.canvas.matches
+				large.canvas.comparison=controls.canvas.comparison;large.canvas.routeOverlay=controls.canvas.routeOverlay
+			end
+			large.canvas=new("AtlasTreeCanvas"):AtlasTreeCanvas({16,42,w-32,h-100},controls.canvas.tree,function() return draft end,function(id)
+				controls.canvas.focus=id;refresh(id);sync()
+			end)
+			large.canvas.centerX,large.canvas.centerY,large.canvas.scale=controls.canvas.centerX,controls.canvas.centerY,controls.canvas.scale
+			large.canvas.avoided=function() return avoided end
+			large.canvas.onIntent=function(id,kind) controls.canvas.focus=id;controls.canvas.onIntent(id,kind);sync() end
+			large.canvas.intentMode=controls.canvas.intentMode
+			large.canvas.onActivate=function() controls.canvas.onActivate();sync() end
+			local draw=large.canvas.Draw
+			function large.canvas:Draw() sync();draw(self) end
+			sync()
+			large.fit=button(16,h-42,100,"Fit tree",function() large.canvas:Fit() end)
+			large.connect=button(124,h-42,140,"Connect path",function() controls.allocate.onClick();sync() end)
+			large.connect.enabled=function() return controls.allocate:IsEnabled() end
+			large.remove=button(272,h-42,140,"Remove branch",function() controls.remove.onClick();sync() end)
+			large.remove.enabled=function() return controls.remove:IsEnabled() end
+			large.close=button(w-132,h-42,116,"Back",function()
+				controls.canvas.centerX,controls.canvas.centerY,controls.canvas.scale=large.canvas.centerX,large.canvas.centerY,large.canvas.scale
+				main:ClosePopup()
+			end)
+			ui.style(large,{connect=true});for _,control in pairs(large) do control.layoutAudit="atlas-large-tree" end
+			main:OpenPopup(w,h,"Large Atlas tree",large,nil,nil,"close")
+		end
 		controls.more=button(280,height-86,68,"More",function()
-			local entries={{id="routes",label="Compare routes"},{id="targets",label="Targets"},{id="tools",label="Plan tools"}}
-			browser.Open("Atlas tools",entries,{action="Open",closeOnChoose=false,canChoose=function(entry) return controls[entry.id]:IsEnabled() end,choose=function(entry) main:ClosePopup();controls[entry.id].onClick() end})
+			local entries={{id="large",label="Large tree"},{id="routes",label="Compare routes"},{id="targets",label="Targets"},{id="tools",label="Plan tools"}}
+			browser.Open("Atlas tools",entries,{action="Open",closeOnChoose=false,canChoose=function(entry) return entry.id=="large" or controls[entry.id]:IsEnabled() end,choose=function(entry) main:ClosePopup();if entry.id=="large" then openLargeTree() else controls[entry.id].onClick() end end})
 		end)
 		controls.more.shown=function() return controls.page:GetSelValue()=="Tree" and not grantSteps end
 	end

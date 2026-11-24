@@ -522,7 +522,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2691, f"Expected 2691 UI frames, found {len(paths)}"
+    assert len(paths) == 2694, f"Expected 2694 UI frames, found {len(paths)}"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):
