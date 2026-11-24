@@ -132,6 +132,22 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	harness:click("copyReport")
 	assert(harness.clipboard == '{"version":1}' and main.popups[1].title == "Sync diagnostics")
 	harness:frame()
+	harness:click("close")
+	main.popups = {}
+	reviewFixture = {enabled=true,target=selected,lastSuccess=1795449900,lastFailure={
+		checkedAt=1795453500,message="C:/private/filter",
+		failedFeed={category="Scarab",reason="empty_response",httpStatus=200,rawError="C:/private/filter"},
+	}}
+	require("Classes.LootFilterDailySyncControl").Open()
+	harness:click("lastAttempt")
+	local attempt = main.popups[1]
+	local rows = attempt.controls.message.list
+	assert(attempt.title=="Last sync attempt" and attempt.width<=size[1]-40 and rows[2][1]:find("Scarab",1,true)
+		and rows[2][1]:find("HTTP 200",1,true))
+	assert(StripEscapes(rows[3][1])=="The feed returned no usable prices."
+		and rows[4][1]:find("Last verified refresh",1,true))
+	harness:frame()
+	reviewFixture = nil
 	print(string.format("Native setup and diagnostics controls passed at %dx%d.", unpack(size)))
 end
 
