@@ -20,5 +20,6 @@ assert(restored[1].maps[1].freeThreads==2 and restored[2].maps[1].freeThreads==4
 local high=require("Classes.AtlasRegionsControl").Open({shapedRegions={{mechanic="Blight",maps={{name="Beach Map",freeThreads=101}}}}},function() end)
 high.region:SelByValue("Blight");high.region.selFunc();high.list.onClick({line=high.list.list[1]})
 assert(not high.threadCheck:IsEnabled() and high.status.label:find("supports up to 100",1,true) and high.threadCheck.tooltipText():find("supports up to 100",1,true),"Unsupported Thread count was not explained before checking")
+if output then ui:frame():write(output.."/"..width.."-atlas-region-thread-limit.json") end
 high.close:Click()
 print("ATLAS_REGION_HISTORY_UI_OK")
