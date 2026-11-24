@@ -1205,7 +1205,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(action)
 		local p={id="action-price-ui",title="Separate action and currency quotes",slot="Body Armour",startingItem=raw,goals={},steps={},preferredMethod="alchemy",nativeRecipe={steps={action},targets={},requirements={minAffixes=1}},priceBook={currency="chaos",source="Action scope quotes",quotedAt=1700000000,values={[alchemy]=1}}}
 		require("Classes.CraftingSimulatorControl").Open(build,p);ui:click("tab_simulate");ui:text("trials","2");ui:text("budget","1");ui:text("price","7");ui:click("runRecipe")
-		local function finish() local jobs=require("Modules.CraftingTasks");for i=1,1000 do if not jobs.job then return end;jobs.tick(build) end;error("Action price job did not complete") end
+		local function finish()
+			local jobs=require("Modules.CraftingTasks");local deadline=os.clock()+60
+			while jobs.job and os.clock()<deadline do jobs.tick(build) end
+			assert(not jobs.job,"Action price job did not complete within 60 CPU seconds")
+		end
 		local function summary(key) local lines={};for _,row in ipairs(main.popups[1].controls[key].list) do lines[#lines+1]=row[1] end;return table.concat(lines," ") end
 		finish();assert(summary("resultSummary"):find("Mean spent: 1.00 chaos",1,true));assert(summary("resultSummary"):find("override was not used",1,true));frame("crafting-action-override-unused")
 		ui:text("price","99");ui:text("budget","5");ui:click("distribution");frame("crafting-saved-recipe-results")
