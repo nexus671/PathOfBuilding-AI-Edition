@@ -66,6 +66,62 @@ describe("Stack style preview",function()
   assert.is_true(found)
  end)
 
+ it("updates the preview when the entered threshold cannot match the source",function()
+  local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
+  local p=filters.profile("preview","Preview")
+  local source=editing.newTier("low","Low",'Show\n BaseType == "Chaos Orb"\n StackSize < 5');source.items={"Chaos Orb"}
+  local target=editing.newTier("other","Other",'Show\n BaseType == "Divine Orb"');p.tiers={source,target}
+  require("Classes.LootFilterStackControl").Open(p,"low",function() end)
+  local function label()
+   ui:frame();for _,command in ipairs(ui.commands) do
+    if command.kind=="text" and (command.text=="Tier preview" or command.text=="Style preview") then return command.text end
+   end
+  end
+  assert.equal("Style preview",label())
+  local unavailable=false;for _,command in ipairs(ui.commands) do if command.kind=="text" and command.text=="Unavailable" then unavailable=true end end
+  assert.is_true(unavailable)
+  ui:text("stackSize","3");assert.equal("Tier preview",label())
+  ui:text("stackSize","5");assert.equal("Style preview",label())
+  ui:text("stackSize","");assert.equal("Style preview",label())
+ end)
+
+ it("shows a style-only preview when another continuing threshold excludes the new range",function()
+  local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
+  local p=filters.profile("preview","Preview")
+  local source=editing.newTier("low","Low",'Show\n BaseType == "Chaos Orb"\n StackSize >= 10\n Continue');source.items={"Chaos Orb"}
+  local target=editing.newTier("other","Other",'Show\n BaseType == "Divine Orb"')
+  source.stackRules={{minimum=10,styleTierId="other"}};p.tiers={source,target}
+  require("Classes.LootFilterStackControl").Open(p,"low",function() end);ui:frame()
+  local found;for _,command in ipairs(ui.commands) do if command.kind=="text" and command.text=="Style preview" then found=true end end
+  assert.is_true(found)
+ end)
+
+ it("does not promise a tier preview if another tier is invalid",function()
+  local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
+  local p=filters.profile("preview","Preview")
+  local source=editing.newTier("low","Low");source.items={"Chaos Orb"}
+  local target=editing.newTier("other","Other")
+  local invalid=editing.newTier("invalid","Invalid");invalid.stackRules={{minimum=5,styleTierId="missing"}}
+  p.tiers={source,target,invalid};require("Classes.LootFilterStackControl").Open(p,"low",function() end);ui:frame()
+  local found;for _,command in ipairs(ui.commands) do if command.kind=="text" and command.text=="Style preview" then found=true end end
+  assert.is_true(found)
+ end)
+
+ it("refreshes the preview after adding and removing a continuing threshold",function()
+  local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
+  local p=filters.profile("preview","Preview")
+  local source=editing.newTier("low","Low",'Show\n BaseType == "Chaos Orb"\n StackSize >= 10\n Continue');source.items={"Chaos Orb"}
+  local target=editing.newTier("other","Other");p.tiers={source,target}
+  require("Classes.LootFilterStackControl").Open(p,"low",function() end)
+  local function preview()
+   ui:frame();for _,command in ipairs(ui.commands) do if command.kind=="text" and (command.text=="Tier preview" or command.text=="Style preview") then return command.text end end
+  end
+  assert.equal("Tier preview",preview())
+  ui:text("stackSize","10");ui:click("stackAdd");ui:text("stackSize","5");assert.equal("Style preview",preview())
+  local list=main.popups[1].controls.stackList;local x,y=list:GetPos();ui:clickAt(x+10,y+10);ui:click("stackRemove")
+  assert.equal("Tier preview",preview())
+ end)
+
  it("uses the full tier preview for a continuing target",function()
   local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
   local p=filters.profile("preview","Preview");local source=editing.newTier("low","Low");source.items={"Chaos Orb"}
