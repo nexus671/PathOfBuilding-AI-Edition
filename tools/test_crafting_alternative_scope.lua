@@ -23,4 +23,13 @@ assert(controls.alternative:IsEnabled(), 'A distinct modifier in the same scope 
 ui:click('alternative')
 local targets=build.planningWorkspace.cache.crafting.layout.snapshot().targets
 assert(#targets==1 and #targets[1].anyOf==2 and targets[1].scope=='explicit', 'Alternative was not kept in the expected group')
+local simulator=require('Modules.CraftingSimulator')
+local model=simulator.model(project.startingItem)
+local implicitId=controls.target.list[implicit].val
+assert(pcall(simulator.validateTargetAvailability,model,targets,{}), 'Valid target group was rejected')
+local mixed={{scope='explicit',anyOf={targets[1].anyOf[1],implicitId}}}
+local ok,reason=pcall(simulator.validateTargetAvailability,model,mixed,{})
+assert(not ok and tostring(reason):find('scope',1,true), 'Mixed-scope API targets must be rejected')
+ok,reason=pcall(simulator.validateTargetAvailability,model,{},{{untilTargets=mixed}})
+assert(not ok and tostring(reason):find('scope',1,true), 'Mixed-scope step targets must be rejected')
 ui:restore();print('CRAFTING_ALTERNATIVE_SCOPE_OK')

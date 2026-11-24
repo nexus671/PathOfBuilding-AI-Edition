@@ -1076,7 +1076,7 @@ function M.validateState(model,state)
 end
 
 function M.validateTargetAvailability(model,targets,steps)
-	local available={}
+	local available,donorMods={},{}
 	for _,entry in ipairs(model.mods) do available[entry.id]=true end
 	for _,entry in ipairs(model.bench) do available[entry.id]=true end
 	for _,entry in ipairs(model.essences) do available[entry.modId]=true end
@@ -1090,11 +1090,14 @@ function M.validateTargetAvailability(model,targets,steps)
 	end end
 	for _,step in ipairs(steps or {}) do if (step.method=="recombine" or step.method=="recombine_predictable") and step.donorItem then
 		local donor=M.model(step.donorItem)
+		for id,mod in pairs(donor.byId) do donorMods[id]=donorMods[id] or mod end
 		for _,entry in ipairs(donor.mods) do available[entry.id]=true end
 		for _,entry in ipairs(donor.initial.affixes) do available[entry.id]=true end
 	end end
 	local function check(groups) for _,group in ipairs(groups) do for _,id in ipairs(group.anyOf) do
 		assert(available[id],"Target modifier ID is unavailable for this base: "..id)
+		local modifier=model.byId[id] or donorMods[id]
+		if modifier then assert(require("Modules.CraftingModifiers").scope(modifier)==(group.scope or "explicit"),"Target modifier scope does not match its group: "..id) end
 		if group.minBaseValue~=nil or group.maxBaseValue~=nil then
 			local mod=model.byId[id];assert(mod,"This modifier needs its own base-roll model")
 			local why=M.baseRollReason(mod,group.baseValueComponent);assert(not why,(why or "Unsupported base roll")..": "..id)
