@@ -82,6 +82,10 @@ function MinionSearchListClass:sortSourceList()
 			elseif sortOption.field == "totalHitPoints" then
 				valueA = minionA.life + (((minionA.energyShield or 0) * (data.gameConstants["EnergyShieldRatioOfLife"]) / 100) * minionA.life)
 				valueB = minionB.life + (((minionB.energyShield or 0) * (data.gameConstants["EnergyShieldRatioOfLife"]) / 100) * minionB.life)
+			elseif sortOption.field == "attackTime" then
+				-- Zero does not describe a usable attack speed; keep it after known values.
+				valueA = valueA and valueA > 0 and valueA or math.huge
+				valueB = valueB and valueB > 0 and valueB or math.huge
 			elseif sortOption.field == "energyShield" then
 				valueA = ((minionA.energyShield or 0) * (data.gameConstants["EnergyShieldRatioOfLife"]) / 100) * minionA.life
 				valueB = ((minionB.energyShield or 0) * (data.gameConstants["EnergyShieldRatioOfLife"]) / 100) * minionB.life

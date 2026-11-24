@@ -5,7 +5,7 @@
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="f9e5f2f0263e3ca934fbffbf1e0f7f97e430a9e6" />
+	<File name="changelog.txt" part="default" sha1="47dfdf62ff262508fd0ac20a4f4d5567311e1de3" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
@@ -1675,7 +1675,7 @@
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="d5efd3036d92bb2e568bc2e44209e0037fa0e94a" />
 	<File name="Classes/MapModifierControl.lua" part="program" sha1="233355ef5bf32aa8e07e4eeb1ba5e89dc45aac91" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="d63a953e0d3fb0cbbf6a5a98d4a8c33cf153418d" />
-	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="f3ee6ac8b32cd801984ec6e2864c02a1d94d502d" />
+	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="800d90172746125a73c07e23ae72793ebe9328c7" />
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />
 	<File name="Classes/ModList.lua" part="program" sha1="e36f14e085f220c6febf726f79c621410b55ffb6" />
 	<File name="Classes/ModStore.lua" part="program" sha1="f758568fe3775ff4b3ccda35862255ed43f32d07" />
