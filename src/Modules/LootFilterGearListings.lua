@@ -1,5 +1,6 @@
 -- cspell:ignore rareonly
 local marketJSON = require("Modules.LootFilterMarketJSON")
+local gearProperties = require("Modules.LootFilterGearProperties")
 local M = {}
 
 local maxPageBytes = 4 * 1024 * 1024
@@ -69,14 +70,20 @@ local function modList(item, channel, build)
 end
 
 function M.target(item, publicBase)
-	if item.rarity~="RARE" or not jewellery[item.type] or not item.base or item.unidentifiedMarker
+	if item.rarity~="RARE" or not item.base or item.unidentifiedMarker
 		or type(item.itemLevel)~="number" or item.itemLevel<1 or item.itemLevel>100 or item.itemLevel~=math.floor(item.itemLevel)
 		or item.variant or item.mirrored or item.twiceCorrupted or item.talismanTier or item.memoryStrands or item.intangibility
-		or item.crucible or item.vestigial
-		or (item.catalyst or 0)>0 or (item.catalystQuality or 0)>0 or (item.quality or 0)>0
-		or (item.base.socketLimit or 0)>0 or hasEntries(item.sockets) or hasEntries(item.scourgeModLines)
-		or hasEntries(item.crucibleModLines) then return end
-	local target = {base=publicBase or item.baseName,level=item.itemLevel}
+	or item.crucible or item.vestigial
+		or (item.catalyst or 0)>0 or (item.catalystQuality or 0)>0
+		or hasEntries(item.scourgeModLines) or hasEntries(item.crucibleModLines) then return end
+	local equipment
+	if item.base.armour or item.base.weapon then
+		equipment=gearProperties.target(item)
+		if not equipment then return end
+	elseif not jewellery[item.type] or (item.quality or 0)>0 or (item.base.socketLimit or 0)>0 or hasEntries(item.sockets) then
+		return
+	end
+	local target = {base=publicBase or item.baseName,level=item.itemLevel,equipment=equipment}
 	for _, key in ipairs(conditions) do target[key]=item[key]==true end
 	for key in pairs(influences) do target[key]=item[key]==true end
 	for _, channel in ipairs(channels) do
@@ -94,12 +101,14 @@ local function sameItem(item, target)
 		or item.lockedToCharacter or item.lockedToAccount or item.enshrouded or item.unmodifiable
 		or item.vestigial or item.delve or item.foreseeing or item.scourged~=nil or item.crucible~=nil
 		or item.incubatedItem~=nil or item.builtInSupport~=nil or item.monsterLevel~=nil
-		or item.unmodifiableExceptChaos or item.stackSize and item.stackSize~=1 or hasEntries(item.sockets)
+		or item.unmodifiableExceptChaos or item.stackSize and item.stackSize~=1
 		or hasEntries(item.socketedItems) or hasEntries(item.scourgeMods) or hasEntries(item.crucibleMods)
 		or hasEntries(item.veiledMods) or hasEntries(item.grantedSkills) then return false end
-	-- These comparisons only cover jewellery without extra item properties,
-	-- including catalyst quality, Intangibility and Memory Strands.
-	if item.properties~=nil and (type(item.properties)~="table" or next(item.properties)) then return false end
+	if target.equipment then
+		if not gearProperties.matches(item,target.equipment) then return false end
+	elseif hasEntries(item.sockets) or item.properties~=nil and (type(item.properties)~="table" or next(item.properties)) then
+		return false
+	end
 	for _,field in ipairs({"notableProperties","additionalProperties","utilityMods","ultimatumMods"}) do
 		local value=item[field]
 		if value~=nil and (type(value)~="table" or next(value)) then return false end
@@ -205,7 +214,7 @@ local function readStashes(raw, league)
 end
 
 function M.compare(raw, target, league)
-	assert(target,"Choose an identified rare ring, amulet, or belt with comparable rolls")
+	assert(target,"Choose identified rare gear with supported rolls and equipment properties")
 	assert(type(league)=="string" and #league<=80 and league:match("^[%w _-]+$") and league:find("%S"),"Enter the trade league ID")
 	local stashes, capture = readStashes(raw,league)
 	local listings = {}

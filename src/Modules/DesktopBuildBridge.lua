@@ -573,7 +573,11 @@ function M.poll(build, force)
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
 			local hasSlot=request.slot~=nil;local hasItem=request.itemText~=nil
 			assert(hasSlot~=hasItem,"Provide exactly one slot or itemText")
-			if hasSlot then assert(request.slot=="Ring 1" or request.slot=="Ring 2" or request.slot=="Amulet" or request.slot=="Belt","Choose an equipped jewellery slot") end
+			if hasSlot then
+				local slots = {["Ring 1"]=true,["Ring 2"]=true,["Ring 3"]=true,Amulet=true,Belt=true,["Weapon 1"]=true,["Weapon 2"]=true,
+					Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true}
+				assert(slots[request.slot],"Choose an equipped gear slot")
+			end
 			if hasItem then assert(type(request.itemText)=="string" and #request.itemText<=24000 and request.itemText:match("%S"),"Provide a copied item") end
 			local path=request.snapshotPath
 			assert(type(path)=="string" and #path<=1024 and not path:find("[%c]") and path:lower():match("%.json$")
@@ -582,10 +586,10 @@ function M.poll(build, force)
 			local browse=require("Modules.LootFilterMarketBrowse")
 			if hasItem then target=browse.listingTargetForItem(new("Item"):Item(request.itemText))
 			else for _,entry in ipairs(browse.buildTargets(build)) do if entry.listingSlot==request.slot then target=entry.listingItem;break end end end
-			assert(target,"The supplied item or selected slot does not contain supported comparable rare jewellery")
+			assert(target,"The supplied item or selected slot does not contain supported comparable rare gear")
 			local result=require("Modules.LootFilterGearListings").compareFile(path,target,request.league)
 			M.status={id=request.id,status="gearListings",gearListings={slot=request.slot,source=hasItem and "copied item" or "equipped item",league=request.league,comparison=result,
-				note="Asking prices from the supplied snapshot only; freshness, availability and completed sales are not established."}}
+				equipment=target.equipment,note="Asking prices from the supplied snapshot only; freshness, availability and completed sales are not established."}}
 			M.publishState();return
 		end
 		if request.kind=="review_same_base_vendor_items" then
