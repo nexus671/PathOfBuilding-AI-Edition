@@ -91,6 +91,11 @@ do
 	local warningSummary,warningRows=sync.compareObservedStackBatch(warningFilter,warningFilter,path)
 	assert(warningRows[1].before.action=="Show" and #warningRows[1].before.reasons>0)
 	assert(warningSummary.unknown==1 and warningSummary.unchanged==0 and warningSummary.byArea[1].unknown==1)
+	local continued='Show\n    BaseType == "Orb of Alteration"\n    Continue\nHide\n    BaseType == "Orb of Alteration"\n'
+	local clean='Show\n    BaseType == "Orb of Alteration"\n'
+	local precedence,precedenceRows=sync.compareObservedStackBatch(clean,continued,path)
+	assert(precedence.hidden==1 and precedenceRows[1].after.action=="Hide")
+	assert(precedenceRows[1].after.matches[1]==1 and precedenceRows[1].after.matches[2]==4)
 	for _,invalid in ipairs({first,"[null]","[]",observations.." trailing",'['..first:gsub('"StackSize"','"WrongSize"')..']'}) do
 		write(path,invalid)
 		assert(not pcall(sync.compareObservedStackBatch,original,proposed,path))

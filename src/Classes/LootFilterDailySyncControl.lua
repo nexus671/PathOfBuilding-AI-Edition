@@ -73,6 +73,11 @@ end
 
 local function describeObservedOutcome(details, label, result)
 	details[#details+1] = label.." | "..result.action..(result.line and (" at line "..result.line) or "")
+	if #(result.matches or {})>1 then
+		local lines={}
+		for index=1,math.min(#result.matches,20) do lines[#lines+1]=tostring(result.matches[index]) end
+		details[#details+1] = "Matched lines in order: "..table.concat(lines,", ")..(#result.matches>20 and ", ..." or "")
+	end
 	if result.action=="Unknown" then
 		local missing = require("Modules.LootFilterParser").safeMissingProperties(result.missingProperties)
 		details[#details+1] = missing and ("Needs "..table.concat(missing,", ")..".") or "A filter rule or included file could not be verified."

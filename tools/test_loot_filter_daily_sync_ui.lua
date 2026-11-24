@@ -312,7 +312,7 @@ do
 			byClass={{key="Stackable Currency",count=1,units=5,shown=1,hidden=0,unchanged=0,unknown=0}},
 			byArea={{key=83,count=1,units=5,shown=1,hidden=0,unchanged=0,unknown=0}}},{
 			{item={BaseType="Orb of Alteration",StackSize=5,AreaLevel=83,Class="Stackable Currency"},
-				before={action="Hide",line=1,reasons={"Included file needs review."}},after={action="Show",line=1,styles={}},group="shown"},
+				before={action="Hide",line=4,matches={1,4},reasons={"Included file needs review."}},after={action="Show",line=1,styles={}},group="shown"},
 		}
 	end
 	reviewUI:click("inspectStack")
@@ -331,6 +331,7 @@ do
 	local warning={}
 	for _,row in ipairs(filtered.details.list) do warning[#warning+1]=StripEscapes(row[1] or "") end
 	assert(table.concat(warning," "):gsub("%s+"," "):find("Included file needs review.",1,true))
+	assert(table.concat(warning," "):gsub("%s+"," "):find("Matched lines in order: 1, 4",1,true))
 	reviewUI:choose("category","By area level")
 	assert(main.popups[1].controls.results.list[1].entry.label=="Area level 83")
 	reviewUI:choose("category","By item class")
