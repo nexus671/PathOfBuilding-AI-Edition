@@ -1,3 +1,4 @@
+-- cspell:ignore katakohi
 local output,width,height,itemKind=arg[1],tonumber(arg[2]) or 640,tonumber(arg[3]) or 480,arg[4];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true;newBuild()
 local ui=require("Modules.HeadlessUI").install({width=width,height=height});ui:bind(build);build.planningWorkspace=require("Modules.PlanningWorkspace").new(build);build.viewMode="PLANNER"
 local project={id="compact-craft",title="Compact craft",slot=itemKind=="gloves" and "Gloves" or itemKind=="sword" and "Weapon 1" or "Body Armour",startingItem=itemKind=="gloves" and "Rarity: NORMAL\nRawhide Gloves\nItem Level: 86" or itemKind=="sword" and "Rarity: NORMAL\nRusted Sword\nItem Level: 86" or "Rarity: NORMAL\nPlate Vest\nItem Level: 86",goals={},steps={},preferredMethod="alchemy"};build.savers.CraftingProjects:Upsert(project);build.planningWorkspace:Show("crafting",{kind="workbench",project=project})
