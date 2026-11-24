@@ -5,6 +5,7 @@ local workspace=require('Modules.PlanningWorkspace').new(build);build.planningWo
 local draft=workspace.cache.atlas.layout.snapshot();local oldId=draft.id
 local recovery=require('Modules.PlanningRecovery');local view=workspace.cache.atlas.layout.viewState()
 assert(recovery.clean('atlas',{plan=draft,view=view}).view.newDraft==true,'Recovery lost new-draft state')
+local legacy=copyTable(view);legacy.newDraft=nil;assert(recovery.clean('atlas',{plan=draft,view=legacy}).view.newDraft==nil,'Legacy recovery state was rejected')
 local invalid=copyTable(view);invalid.newDraft='yes';assert(not pcall(recovery.clean,'atlas',{plan=draft,view=invalid}),'Invalid draft state was accepted')
 ui:text('title','My unsaved draft')
 local existing=copyTable(draft);existing.title='Created elsewhere';build.savers.AtlasPlans:Upsert(existing)
