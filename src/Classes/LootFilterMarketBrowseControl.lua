@@ -2,6 +2,7 @@ local market = require("Modules.LootFilterEconomy")
 local browse = require("Modules.LootFilterMarketBrowse")
 local ui = require("Modules.PlanningUI")
 local sync = require("Modules.LootFilterDailySync")
+local listings = require("Modules.LootFilterGearListings")
 local M = {}
 
 local function openTradeSearch(league, query)
@@ -17,9 +18,88 @@ local function openExactBase(target,league)
 	openTradeSearch(league,query)
 end
 
+local corruptionOptions = {{label="Uncorrupted",value="false"},{label="Corrupted",value="true"},{label="Either",value="any"}}
+
+local function boundsText(bounds)
+	if bounds.min and bounds.min==bounds.max then return tostring(bounds.min) end
+	if bounds.min and bounds.max then return bounds.min.." to "..bounds.max end
+	if bounds.min then return bounds.min.." or higher" end
+	if bounds.max then return bounds.max.." or lower" end
+	return "Any"
+end
+
+local function propertyDetails(criteria)
+	local corruption = criteria.corruption=="any" and "Either corruption state"
+		or criteria.corruption=="true" and "Corrupted" or "Uncorrupted"
+	local details={"Item level: "..boundsText(criteria.level).." | "..corruption}
+	if criteria.sockets and criteria.sockets>0 then
+		local links=criteria.links or {min=criteria.largest,max=criteria.largest}
+		details[#details+1]="Sockets: "..criteria.sockets.." | Largest link group: "..boundsText(links)
+	end
+	return details
+end
+
 local function reviewTradeRolls(target, league, compare, pinned)
 	local rolls = browse.tradeRolls(target)
 	local openReview
+	local propertySelection
+	local recentOnly = pinned~=nil
+	local function editProperties()
+		local criteria=listings.propertyFilters(target,propertySelection)
+		local width=math.min(490,main.screenW-40)
+		local c={}
+		local function range(prefix,y,values)
+			for index, bound in ipairs({"min","max"}) do
+				local x=index==1 and 16 or width/2
+				ui.label(c,prefix..bound.."Label",x,y,index==1 and "Minimum" or "Maximum",14)
+				c[prefix..bound]=new("EditControl"):EditControl(ui.anchor,{x,y+20,width/2-24,28},
+					tostring(values[bound] or ""),nil,nil,4)
+			end
+		end
+		local function readRange(prefix)
+			local values={}
+			for _, bound in ipairs({"min","max"}) do
+				local value=c[prefix..bound].buf
+				if value~="" then values[bound]=value:match("^%d+$") and tonumber(value) or value end
+			end
+			return values
+		end
+		ui.label(c,"itemLevel",16,14,"Item level (leave a bound blank for no limit)",14)
+		range("level",36,criteria.level)
+		ui.label(c,"corruptionLabel",16,94,"Corruption",14)
+		c.corruption=new("DropDownControl"):DropDownControl(ui.anchor,{16,114,width-32,28},corruptionOptions)
+		for index, option in ipairs(corruptionOptions) do if option.value==criteria.corruption then c.corruption:SetSel(index) end end
+		local y=156
+		if criteria.sockets and criteria.sockets>0 then
+			ui.label(c,"linksLabel",16,y,"Socket matching",14)
+			c.socketMatch=new("DropDownControl"):DropDownControl(ui.anchor,{16,y+20,width-32,28},{"Exact socket layout","Largest link group bounds"})
+			if criteria.links then c.socketMatch:SetSel(2) end
+			range("links",y+54,criteria.links or {min=criteria.largest,max=criteria.largest})
+			c.linksmin.enabled=function() return c.socketMatch.selIndex==2 end
+			c.linksmax.enabled=c.linksmin.enabled
+			y=y+110
+		end
+		if pinned then
+			ui.label(c,"sourceLabel",16,y,"Saved capture comparison",14)
+			c.source=new("DropDownControl"):DropDownControl(ui.anchor,{16,y+20,width-32,28},{"Recent observations","Full recorded sample"})
+			if not recentOnly then c.source:SetSel(2) end
+			y=y+60
+		end
+		c.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,y,132,28},"Apply filters",function()
+			local selection={level=readRange("level"),corruption=c.corruption:GetSelValue().value}
+			if c.socketMatch and c.socketMatch.selIndex==2 then selection.links=readRange("links") end
+			local ok, reason=pcall(listings.propertyFilters,target,selection)
+			if not ok then ui.errorPopup("Invalid item filters",reason);return end
+			propertySelection=selection
+			recentOnly=c.source and c.source.selIndex==1
+			main:ClosePopup()
+			main:ClosePopup()
+			openReview()
+		end)
+		c.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-126,y,110,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(c,{apply=true})
+		main:OpenPopup(width,y+46,"Trade item filters",c,nil,"levelmin","close")
+	end
 	local function edit(row)
 		local width = math.min(490,main.screenW-40)
 		local c = {}
@@ -52,22 +132,18 @@ local function reviewTradeRolls(target, league, compare, pinned)
 		main:OpenPopup(width,188,"Trade roll bounds",c,nil,"minimum","close")
 	end
 	openReview = function()
-		local query = browse.rolledTradeQuery(target,rolls)
+		local query = browse.rolledTradeQuery(target,rolls,propertySelection)
 		local filters = query.stats[1].filters
 		local matchesRolls = browse.listingRollMatcher(filters)
-		local socketFilters = query.filters.socket_filters
-		local info = {target.base,league.." | Identified rare | Item level "..target.level,
-			target.corrupted and "Corrupted" or "Uncorrupted",
+		local info = {target.base,league.." | Identified rare",
 			string.format("%d of %d item modifiers included",#filters,#rolls),
 		}
-		if socketFilters then
-			info[#info+1]=string.format("Sockets: %d | Largest link group: %d",
-				socketFilters.filters.sockets.min,socketFilters.filters.links.min)
-		end
+		for _, line in ipairs(propertyDetails(listings.propertyFilters(target,propertySelection))) do info[#info+1]=line end
+		if pinned then info[#info+1]=recentOnly and "Saved capture: Recent observations" or "Saved capture: Full recorded sample" end
 		info[#info+1]="Check influences, socket colors, and other item details in the Trade results."
 		info[#info+1]=matchesRolls and "Local comparisons also match item properties and base or layout identifiers."
 			or "Include a supported modifier to compare a local listing file."
-		local entries = {{id="summary",category="Search",label="Trade search for "..target.base,details=info}}
+		local entries = {{id="summary",category="Search",label="Edit item filters",details=info}}
 		for index, row in ipairs(rolls) do
 			local filter = row.enabled and "Included" or row.id and "Excluded" or "Unavailable"
 			local bounds = row.numeric and ("Minimum "..tostring(row.minimum or "any").." | Maximum "..tostring(row.maximum or "any"))
@@ -77,16 +153,18 @@ local function reviewTradeRolls(target, league, compare, pinned)
 		end
 		require("Classes.PlanningBrowserControl").Open("Review Trade search",entries,{
 			action="Edit or toggle",closeOnChoose=false,enterChooses=false,
-			canChoose=function(entry) return entry.roll and entry.roll.id~=nil end,
+			canChoose=function(entry) return entry.id=="summary" or entry.roll and entry.roll.id~=nil end,
 			choose=function(entry)
+				if entry.id=="summary" then editProperties();return end
 				if entry.roll.numeric then edit(entry.roll); return end
 				entry.roll.enabled = not entry.roll.enabled
 				main:ClosePopup()
 				openReview()
 			end,
 			secondary={label="Open official Trade",run=function() openTradeSearch(league,query) end},
-			tertiary={label=pinned and "Compare saved capture" or "Compare listing file",canRun=function() return matchesRolls~=nil end,
-				run=function() compare(filters) end},
+			tertiary={label=pinned and (recentOnly and "Compare recent asks" or "Compare recorded asks")
+				or "Compare listing file",canRun=function() return matchesRolls~=nil end,
+				run=function() compare(filters,propertySelection,recentOnly) end},
 		})
 	end
 	openReview()
@@ -124,7 +202,7 @@ end
 local function showListingSample(target, league, sample, filterCount, review, compareBuild)
 	local recent = sample.expiredListings~=nil
 	local details = {league .. " | Local public stash listing sample"}
-	if recent then details[#details+1]="Automatic comparison uses stash observations under one hour old." end
+	if recent then details[#details+1]="Recent asks use stash observations under one hour old." end
 	if recent and sample.priced==0 then
 		details[#details+1]="No recently observed matching asking prices. Inspect the saved capture for recorded asks."
 	end
@@ -137,6 +215,8 @@ local function showListingSample(target, league, sample, filterCount, review, co
 	if filterCount then
 		details[#details+1]=string.format("Filtered comparison | %d selected modifier %s",filterCount,filterCount==1 and "filter" or "filters")
 	end
+	local criteria=sample.propertyFilters
+	if criteria then for _, line in ipairs(propertyDetails(criteria)) do details[#details+1]=line end end
 	local equipment = target.listingItem.equipment
 	local cluster = target.listingItem.cluster
 	local seed = target.listingItem.blightcore
@@ -149,8 +229,8 @@ local function showListingSample(target, league, sample, filterCount, review, co
 			cluster.passives,cluster.sockets,cluster.sockets==1 and "" or "s")
 	end
 	if equipment then
-		details[#details+1] = string.format("Matched sockets: %s | Quality: %d%%",
-			equipment.sockets=="" and "None" or equipment.sockets,equipment.quality)
+		details[#details+1] = criteria and criteria.links and string.format("Matched quality: %d%%",equipment.quality)
+			or string.format("Matched sockets: %s | Quality: %d%%",equipment.sockets=="" and "None" or equipment.sockets,equipment.quality)
 		local properties = {}
 		for name, value in pairsSortByKey(equipment.properties) do properties[#properties+1]=name.." "..value end
 		if #properties>0 then details[#details+1] = "Matched properties: "..table.concat(properties,", ") end
@@ -185,10 +265,10 @@ local function showListingSample(target, league, sample, filterCount, review, co
 	showMarketDetails({label=target.label,details=details},"Comparable asking prices",review,compareBuild)
 end
 
-local function compareListingFile(target, league, filters)
+local function compareListingFile(target, league, filters, propertySelection)
 	require("Classes.LootFilterFileBrowser").Open(nil,function(path)
 		local matchesRolls=filters and browse.listingRollMatcher(filters)
-		local ok,sample=pcall(require("Modules.LootFilterGearListings").compareFile,path,target.listingItem,league,matchesRolls)
+		local ok,sample=pcall(listings.compareFile,path,target.listingItem,league,matchesRolls,nil,nil,propertySelection)
 		if ok then showListingSample(target,league,sample,filters and #filters)
 		else ui.errorPopup("Comparable asking prices",sample) end
 	end,{title="Choose a public stash JSON file",itemLabel="Snapshot",category="Snapshots",
@@ -200,17 +280,17 @@ local ok, result=pcall(function(path,league,encoded)
 	local json=require("dkjson")
 	local request=assert(json.decode(encoded))
 	local matchesRolls=request.filters and require("Modules.LootFilterMarketBrowse").listingRollMatcher(request.filters)
-	local sample=require("Modules.LootFilterGearListings").compareFile(path,request.target,league,matchesRolls,true,request.recentOnly)
+	local sample=require("Modules.LootFilterGearListings").compareFile(path,request.target,league,matchesRolls,true,request.recentOnly,request.properties)
 	return assert(json.encode(sample))
 end,...)
 return ok,tostring(result)
 ]=]
 
-local function compareSavedCapture(path,target,league,filters,stillCurrent,review,compareBuild,recentOnly)
+local function compareSavedCapture(path,target,league,filters,stillCurrent,review,compareBuild,recentOnly,propertySelection)
 	local json=require("dkjson")
 	local host=main.popups[1]
 	if host.savedCaptureJob then return end
-	local request=assert(json.encode({target=target.listingItem,filters=filters,recentOnly=recentOnly}))
+	local request=assert(json.encode({target=target.listingItem,filters=filters,recentOnly=recentOnly,properties=propertySelection}))
 	host.savedCaptureJob=LaunchSubScript(savedCaptureWorker,"","",path,league,request)
 	if not host.savedCaptureJob then
 		ui.errorPopup("Comparable asking prices","Could not start the saved capture comparison.")
@@ -417,9 +497,9 @@ local function open(build, managedTarget, overlay)
 			if not league:match("^[%w _-]+$") then status("Enter a valid league ID to search official trade."); return end
 			local selected=target
 			local pinned=overlay and overlay.snapshot
-			reviewTradeRolls(selected.listingItem,league,function(filters)
-				if pinned then compareSavedCapture(pinned,selected,league,filters,nil,nil,compareBuild)
-				else compareListingFile(selected,league,filters) end
+			reviewTradeRolls(selected.listingItem,league,function(filters,properties,recentOnly)
+				if pinned then compareSavedCapture(pinned,selected,league,filters,nil,nil,compareBuild,recentOnly,properties)
+				else compareListingFile(selected,league,filters,properties) end
 			end,pinned)
 		end)
 		controls.rolledTrade.enabled=function() return not busy and target and target.listingItem~=nil and not target.listingItem.blightcore end

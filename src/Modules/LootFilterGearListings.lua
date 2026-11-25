@@ -181,10 +181,41 @@ local function seedProperties(item, names)
 	return true
 end
 
-local function sameItem(item, target, matchesRolls)
+function M.propertyFilters(target, selection)
+	local level={min=target.level,max=target.level}
+	local corruption=tostring(target.corrupted)
+	local sockets, largest
+	if target.equipment then sockets,largest=gearProperties.socketCounts(target.equipment.sockets) end
+	local links
+	if selection then
+		assert(not target.blightcore and type(selection)=="table","Property filters require identified rare gear")
+		local function range(value, maximum, label)
+			assert(type(value)=="table","Enter "..label.." bounds")
+			for _, bound in pairs({value.min,value.max}) do
+				assert(type(bound)=="number" and bound==math.floor(bound) and bound>=1 and bound<=maximum,
+					"Enter "..label.." bounds from 1 to "..maximum)
+			end
+			assert(not value.min or not value.max or value.min<=value.max,"The "..label.." minimum cannot exceed the maximum")
+			return {min=value.min,max=value.max}
+		end
+		level=range(selection.level,100,"item level")
+		corruption=selection.corruption
+		assert(corruption=="true" or corruption=="false" or corruption=="any","Choose a corruption filter")
+		if selection.links~=nil then
+			assert(sockets and sockets>0,"This item has no configurable sockets")
+			links=range(selection.links,sockets,"link count")
+		end
+	end
+	return {level=level,corruption=corruption,sockets=sockets,largest=largest,links=links}
+end
+
+local function sameItem(item, target, matchesRolls, criteria)
 	local seed = target.blightcore
 	local rarity, frame = seed and "Unique" or "Rare", seed and 3 or 2
-	if item.identified~=true or item.rarity~=rarity or item.frameType~=nil and item.frameType~=frame or item.ilvl~=target.level or item.realm~=nil
+	local level=criteria.level
+	if type(item.ilvl)~="number" or item.ilvl~=math.floor(item.ilvl) or item.ilvl<1 or item.ilvl>100
+		or level.min and item.ilvl<level.min or level.max and item.ilvl>level.max then return false end
+	if item.identified~=true or item.rarity~=rarity or item.frameType~=nil and item.frameType~=frame or item.realm~=nil
 		or item.duplicated or item.doubleCorrupted or item.memoryItem or item.mutated or item.veiled
 		or item.lockedToCharacter or item.lockedToAccount or item.enshrouded or item.unmodifiable
 		or item.vestigial or item.delve or item.foreseeing or item.scourged~=nil or item.crucible~=nil
@@ -193,7 +224,7 @@ local function sameItem(item, target, matchesRolls)
 		or hasEntries(item.socketedItems) or hasEntries(item.scourgeMods) or hasEntries(item.crucibleMods)
 		or hasEntries(item.veiledMods) or hasEntries(item.grantedSkills) then return false end
 	if target.equipment then
-		if not gearProperties.matches(item,target.equipment) then return false end
+		if not gearProperties.matches(item,target.equipment,criteria.links) then return false end
 	else
 		if item.sockets~=nil and (type(item.sockets)~="table" or next(item.sockets)) then return false end
 		if seed then
@@ -207,7 +238,10 @@ local function sameItem(item, target, matchesRolls)
 	end
 	for _, key in ipairs(conditions) do
 		local value = item[key]
-		if value~=nil and type(value)~="boolean" or (value==true)~=target[key] then return false end
+		if value~=nil and type(value)~="boolean" then return false end
+		if key=="corrupted" then
+			if criteria.corruption~="any" and tostring(value==true)~=criteria.corruption then return false end
+		elseif (value==true)~=target[key] then return false end
 	end
 	if item.abyssJewel~=nil and item.abyssJewel~=target.abyssJewel then return false end
 	local active = item.influences or {}
@@ -322,10 +356,11 @@ local function readStashes(raw, league, requireCapture, now)
 	return latest,evidence
 end
 
-function M.compare(raw, target, league, matchesRolls, requireCapture, recentOnly)
+function M.compare(raw, target, league, matchesRolls, requireCapture, recentOnly, propertySelection)
 	assert(target,"Choose supported identified gear with complete rolls and equipment properties")
 	assert(not (target.blightcore and matchesRolls),"Putrid Seed requires an exact ordered comparison")
 	assert(type(league)=="string" and #league<=80 and league:match("^[%w _-]+$") and league:find("%S"),"Enter the trade league ID")
+	local criteria=M.propertyFilters(target,propertySelection)
 	local now=os.time()
 	local stashes, capture = readStashes(raw,league,requireCapture or recentOnly,now)
 	local listings = {}
@@ -357,7 +392,7 @@ function M.compare(raw, target, league, matchesRolls, requireCapture, recentOnly
 			inspected=inspected+1
 			if not listing then
 				ambiguous=ambiguous+1
-			elseif sameItem(listing.item,target,matchesRolls) then
+			elseif sameItem(listing.item,target,matchesRolls,criteria) then
 				matched=matched+1
 				local note = listing.item.note
 				if note==nil or note=="" then note=listing.stashNote end
@@ -384,14 +419,15 @@ function M.compare(raw, target, league, matchesRolls, requireCapture, recentOnly
 		results[#results+1]=summary
 	end
 	return {inspected=inspected,matched=matched,priced=priced,ambiguous=ambiguous,results=results,capture=capture,
+		propertyFilters=propertySelection and criteria or nil,
 		expiredListings=recentOnly and expired or nil}
 end
 
-function M.compareFile(path, target, league, matchesRolls, requireCapture, recentOnly)
+function M.compareFile(path, target, league, matchesRolls, requireCapture, recentOnly, propertySelection)
 	local file=assert(io.open(path,"rb"),"Could not open the selected public stash file")
 	local raw=file:read(maxBytes+1)
 	file:close()
-	return M.compare(raw,target,league,matchesRolls,requireCapture,recentOnly)
+	return M.compare(raw,target,league,matchesRolls,requireCapture,recentOnly,propertySelection)
 end
 
 return M

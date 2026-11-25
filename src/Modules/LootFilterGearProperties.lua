@@ -23,6 +23,15 @@ local function socketKey(sockets, colorKey)
 	return table.concat(parts)
 end
 
+function M.socketCounts(key)
+	local total, largest = 0, 0
+	for group in key:gmatch("%S+") do
+		local _, links = group:gsub("[RGBW]","")
+		total,largest=total+links,math.max(largest,links)
+	end
+	return total,largest
+end
+
 local function numberValue(value, name)
 	if type(value)~="string" or #value>64 then return end
 	value=value:gsub(" %(augmented%)$","")
@@ -130,13 +139,18 @@ local function propertyValue(values, expected, name)
 	return table.concat(ranges,",")
 end
 
-function M.matches(item, target)
+function M.matches(item, target, links)
 	local sockets, properties = item.sockets, item.properties
 	if target.class=="Quiver" then
 		if sockets==nil then sockets={} end
 		if properties==nil then properties={} end
 	end
-	if socketKey(sockets,"sColour")~=target.sockets or type(properties)~="table" then return false end
+	local key=socketKey(sockets,"sColour")
+	if key==nil or type(properties)~="table" then return false end
+	if links then
+		local count, largest=M.socketCounts(key)
+		if count~=M.socketCounts(target.sockets) or links.min and largest<links.min or links.max and largest>links.max then return false end
+	elseif key~=target.sockets then return false end
 	local seen = {}
 	for _, property in ipairs(properties) do
 		if type(property)~="table" or type(property.name)~="string" then return false end
