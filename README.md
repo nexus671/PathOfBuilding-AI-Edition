@@ -20,7 +20,9 @@ A Path of Exile build planner with encounter timelines and improved survival cal
 - Plan your Atlas with searchable nodes, connecting paths and saved farming strategies.
 - Connect milestones, gear goals, crafting, leveling and a shared resource budget in Journey.
 
-The encounter tools are experimental. See the [guide](docs/recovery-simulation.md), [crafting guide](docs/crafting.md), [Atlas guide](docs/atlas.md), or [Journey guide](docs/journey.md) to get started.
+Encounter simulations are experimental. Crafting odds and costs can be estimates, and some mechanics are not supported; check the [crafting coverage guide](docs/crafting-coverage.md) before spending currency. The Atlas and experimental Genesis planners use published data, but have not been fully checked against the live game.
+
+See the [encounter guide](docs/recovery-simulation.md), [crafting guide](docs/crafting.md), [Atlas guide](docs/atlas.md), or [Journey guide](docs/journey.md) to get started.
 
 The [planning UI guide](docs/ui-polish.md) covers navigation, project creation, comparisons, checklists and chart controls.
 
