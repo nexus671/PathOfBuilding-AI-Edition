@@ -1,6 +1,8 @@
 -- Enumerate the same illustrative cases used by the economy review, in pages.
 local parser = require("Modules.LootFilterParser")
 local library = require("Modules.LootFilterLibrary")
+local pickupAreas = require("Modules.LootFilterPickupAreas")
+local appearance = require("Modules.LootFilterPriceAppearance")
 local M = {}
 
 function M.prepare(change, before, after)
@@ -9,7 +11,7 @@ function M.prepare(change, before, after)
 	assert(change.highlights==nil or type(change.highlights)=="table" and #change.highlights<=50, "Decision highlights are unavailable")
 	for _,class in ipairs(change.classes) do assert(type(class)=="string" and #class<=100, "Invalid decision class") end
 	assert((type(before)=="string" or type(before)=="table") and (type(after)=="string" or type(after)=="table"), "Filter comparison is unavailable")
-	local areas = change.scope == "campaign" and {60,67} or change.scope == "maps" and (change.tier and {83} or {83,68}) or {83,60}
+	local areas = pickupAreas.samples(change.scope,change.tier)
 	local stack = change.old==change.cutoff and change.highlights and change.highlights[1] and change.highlights[1].firstStack or math.min(change.cutoff,change.old)+1
 	local stacks,seen = {stack},{[stack]=true}
 	for _,highlight in ipairs(change.highlights or {}) do
@@ -17,7 +19,7 @@ function M.prepare(change, before, after)
 		assert(type(threshold)=="number", "Invalid highlight threshold")
 		if not seen[threshold] then stacks[#stacks+1]=threshold;seen[threshold]=true end
 	end
-	local rarities=change.tier and {"Normal","Magic","Rare"} or {"Normal"}
+	local rarities=change.uniqueBase and {"Unique"} or change.tier and {"Normal","Magic","Rare"} or {"Normal"}
 	return {change=change,areas=areas,stacks=stacks,rarities=rarities,before=type(before)=="string" and parser.parse(before) or before,after=type(after)=="string" and parser.parse(after) or after,
 		total=#change.classes * #areas * #stacks * #rarities}
 end
@@ -43,7 +45,7 @@ function M.page(prepared, offset, limit)
 				results[#results+1]={action=after.action,line=after.line,before=before.action,beforeLine=before.line,
 					beforeMissing=parser.safeMissingProperties(before.missingProperties),afterMissing=parser.safeMissingProperties(after.missingProperties),
 					class=class,count=size,area=area,rarity=change.tier and rarity or nil,
-					marker=after.action=="Show" and after.styles.MinimapIcon and table.concat(after.styles.MinimapIcon," ") or nil}
+					actions=appearance.resultActions(after),marker=after.action=="Show" and after.styles.MinimapIcon and table.concat(after.styles.MinimapIcon," ") or nil}
 			end
 		end end
 	end end

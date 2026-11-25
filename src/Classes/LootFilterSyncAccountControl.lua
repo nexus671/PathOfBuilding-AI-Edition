@@ -96,6 +96,8 @@ local function reviewedPublication(profileId, plan)
 end
 
 function M.Open(profileId)
+	local unavailable = main.api and main.api.AccountAccessError and main.api:AccountAccessError()
+	if unavailable then main:OpenMessagePopup("Publish verified output",unavailable.." Local sync is available."); return end
 	local ok, raw, verified = pcall(sync.verifiedOutput,profileId)
 	if not ok then main:OpenMessagePopup("Publish verified output",ui.errorText(raw)); return end
 	if #parser.parse(raw).imports > 0 then

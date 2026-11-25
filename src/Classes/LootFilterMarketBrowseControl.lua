@@ -212,13 +212,16 @@ local function showListingSample(target, league, sample, filterCount, review, co
 		details[#details+1]=string.format("Excluded %d older same-base listings.",sample.expiredListings)
 	end
 	details[#details+1]=string.format("%d same-base listings checked | %d matching %s",sample.inspected,sample.matched,
-		filterCount and "listings" or "rolls")
+		(filterCount or target.listingItem.craftingBase) and "listings" or "rolls")
 	details[#details+1]=string.format("%d matching listings with a supported asking price",sample.priced)
 	if filterCount then
 		details[#details+1]=string.format("Filtered comparison | %d selected modifier %s",filterCount,filterCount==1 and "filter" or "filters")
 	end
 	local criteria=sample.propertyFilters
 	if criteria then for _, line in ipairs(propertyDetails(criteria)) do details[#details+1]=line end end
+	if target.listingItem.craftingBase then
+		details[#details+1] = "Normal items at item level "..target.listingItem.level.." with natural implicits, zero quality and up to four linked sockets."
+	end
 	local equipment = target.listingItem.equipment
 	local cluster = target.listingItem.cluster
 	local seed = target.listingItem.blightcore
@@ -264,7 +267,7 @@ local function showListingSample(target, league, sample, filterCount, review, co
 	end
 	details[#details+1] = capture and "Asking prices from a partial stream. Live availability and sales are unverified."
 		or "Asking prices from this file. Realm, age and completed sales are unverified."
-	showMarketDetails({label=target.label,details=details},"Comparable asking prices",review,compareBuild)
+	showMarketDetails({label=target.label,details=details},"Comparable asking prices",review,not (target.listingItem.map or target.listingItem.craftingBase) and compareBuild or nil)
 end
 
 local function compareListingFile(target, league, filters, propertySelection)
@@ -386,10 +389,6 @@ local function open(build, managedTarget, overlay)
 	controls.category.selFunc = clearTarget
 	controls.query.changeFunc = clearTarget
 	local buildTargets = build and browse.buildTargets(build) or {}
-	local canSearchBase
-	for _, entry in ipairs(buildTargets) do
-		canSearchBase = canSearchBase or entry.itemLevel~=nil
-	end
 	local function selectTarget(entry, message)
 		for index, category in ipairs(browse.categories) do
 			if category.id==entry.category then controls.category:SetSel(index); break end
@@ -413,7 +412,7 @@ local function open(build, managedTarget, overlay)
 		end)
 		controls.buildTarget.enabled = function() return not busy end
 	end
-	if canSearchBase then
+	if not managedTarget then
 		controls.exactBase=new("ButtonControl"):ButtonControl(ui.anchor,{32+2*actionWidth,320,actionWidth,28},"Search exact base",function()
 			local league=controls.league.buf:match("^%s*(.-)%s*$")
 			if not league:match("^[%w _-]+$") then status("Enter a valid league ID to search official trade."); return end
@@ -431,11 +430,24 @@ local function open(build, managedTarget, overlay)
 		local function selectCopiedItem(raw)
 			clearTarget()
 			if type(raw)~="string" or #raw>24000 or not raw:find("%S") then
-				status("Copy one identified rare item or an anointed Putrid Seed first.")
+				status("Copy an identified item, map, or anointed Putrid Seed first.")
 				return
 			end
-			local ok, comparison, base, reason = pcall(function()
+			if ("\n"..raw):match("\nItem Class: Maps[%c]") then
+				local ok, map = pcall(require("Modules.LootFilterMapListings").target,raw)
+				if not ok then status(ui.errorText(map)); return end
+				selectTarget({name=map.base,category=map.category,listingItem=map,
+					label="Copied map | "..map.base.." | Item level "..map.level,
+					details={"Compare a listing file for matching map properties and rolls."}},
+					"Map copied. Choose a league and compare a public stash JSON file.")
+				return
+			end
+			local ok, comparison, base, reason, implicit = pcall(function()
 				local item = new("Item"):Item(raw)
+				if item.rarity=="NORMAL" and not item.unidentifiedMarker then
+					local base, implicit = browse.craftingBaseForItem(item)
+					return base,item.baseName,nil,implicit
+				end
 				local target, unavailable = browse.listingTargetForItem(item)
 				return target,item.baseName,unavailable
 			end)
@@ -449,6 +461,13 @@ local function open(build, managedTarget, overlay)
 					return
 				end
 				status(reason or "The copied item lacks comparable rolls or supported equipment properties.")
+				return
+			end
+			if comparison.craftingBase then
+				selectTarget({name=comparison.base,category="BaseType",listingItem=comparison,itemLevel=comparison.level,
+					baseImplicit=implicit,baseTarget=true,label="Plain base | "..base.." | Item level "..comparison.level,
+					details={"Compare local asks for normal equipment with the same exact base and item level."}},
+					"Base copied. Choose a league and compare a public stash JSON file.")
 				return
 			end
 			local seed = comparison.blightcore
@@ -474,7 +493,7 @@ local function open(build, managedTarget, overlay)
 			selectCopiedItem(overlay.raw)
 			controls.compareBuild=new("ButtonControl"):ButtonControl(ui.anchor,{32+actionWidth*2,358,actionWidth,28},
 				"Compare in PoB",compareBuild)
-			controls.compareBuild.enabled=function() return not busy and target and (target.listingItem~=nil or target.buildItem) end
+			controls.compareBuild.enabled=function() return not busy and target and (target.listingItem~=nil and not (target.listingItem.map or target.listingItem.craftingBase) or target.buildItem) end
 		end
 		local pinned=overlay and overlay.snapshot
 		controls.listingSample=new("ButtonControl"):ButtonControl(ui.anchor,{24+actionWidth,320,actionWidth,28},"Compare listing file",function()
@@ -483,6 +502,18 @@ local function open(build, managedTarget, overlay)
 			compareListingFile(target,league)
 		end)
 		controls.listingSample.enabled=function() return not busy and target and target.listingItem~=nil end
+		if build then
+			controls.compareBase=new("ButtonControl"):ButtonControl(ui.anchor,{16,396,172,28},"Compare plain base",function()
+				local league=controls.league.buf:match("^%s*(.-)%s*$")
+				if not league:match("^[%w _-]+$") then status("Enter the trade league ID for the listing file."); return end
+				local base=target.plainBase
+				compareListingFile({listingItem=base,label="Plain base | "..(target.baseVariant or target.name)
+					.." | Item level "..base.level},league)
+			end)
+			controls.compareBase.shown=function() return target and target.plainBase~=nil end
+			controls.compareBase.enabled=function() return not busy and target and target.plainBase~=nil end
+		end
+
 		if pinned then
 			controls.savedListing=new("ButtonControl"):ButtonControl(ui.anchor,{16,320,actionWidth,28},"Inspect saved capture",function()
 				local league=controls.league.buf:match("^%s*(.-)%s*$")
@@ -504,10 +535,13 @@ local function open(build, managedTarget, overlay)
 				else compareListingFile(selected,league,filters,properties) end
 			end,pinned)
 		end)
-		controls.rolledTrade.enabled=function() return not busy and target and target.listingItem~=nil and not target.listingItem.blightcore end
+		controls.rolledTrade.enabled=function() return not busy and target and target.listingItem~=nil and not (target.listingItem.blightcore or target.listingItem.map or target.listingItem.craftingBase) end
 	end
 	controls.get=new("ButtonControl"):ButtonControl(ui.anchor,{16,282,138,28},"Show prices",function()
 		if busy then return end
+		if target and target.listingItem and target.listingItem.map then
+			status("Compare a listing file for this map. Clear the search for overview prices."); return
+		end
 		if not market.endpoint then status(market.endpointError); return end
 		if launch.noSSL then status("Enable HTTPS certificate verification first."); return end
 		local league=controls.league.buf:match("^%s*(.-)%s*$")
@@ -657,12 +691,12 @@ local function open(build, managedTarget, overlay)
 		selectTarget(managedTarget,"Exact managed target. Show prices to check its current quote.")
 	end
 	ui.style(controls)
-	local height = managedTarget and 330 or 404
+	local height = managedTarget and 330 or build and 440 or 404
 	popup=main:OpenPopup(width,height,"Browse loot market prices",controls,nil,nil,"close")
 	if quoteOnOpen then controls.get:Click()
 	elseif overlay and overlay.snapshot and target and target.listingItem and overlay.league~="" then
 		local selected,league=target,overlay.league
-		local review=not selected.listingItem.blightcore and function() controls.rolledTrade:Click() end or nil
+		local review=not (selected.listingItem.blightcore or selected.listingItem.map or selected.listingItem.craftingBase) and function() controls.rolledTrade:Click() end or nil
 		status("Comparing the saved listing capture...")
 		compareSavedCapture(overlay.snapshot,selected,league,nil,function()
 			if target==selected and controls.league.buf==league then

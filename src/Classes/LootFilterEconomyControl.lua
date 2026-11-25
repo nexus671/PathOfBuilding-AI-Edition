@@ -94,11 +94,14 @@ function M.Open(profile, raw, export)
 				}}}
 				for i, change in ipairs(changes) do
 					local details = {
-						"Hide up to " .. change.old .. " → " .. change.cutoff .. (change.maps and " in maps" or ""),
+						change.uniqueBase and "Unidentified unique base stays visible"
+							or "Hide up to " .. change.old .. " → " .. change.cutoff .. (change.maps and " in maps" or ""),
 						string.format("%.4g chaos each | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
 						change.gemLevel and string.format("Level %d, %d%% quality, %s",change.gemLevel,change.gemQuality,
 							change.corrupted and "corrupted" or "uncorrupted") or nil,
 					}
+					if change.reward then details[#details+1] = economy.rewardDescription(change.reward) end
+					if change.exampleUnique then details[#details+1] = "Highest supported variant: "..change.exampleUnique end
 					local priceId = economy.evidencePriceId(change.priceId)
 					if priceId then details[#details+1] = "Price ID · "..priceId end
 					entries[#entries + 1] = {id = tostring(i), label = change.name, details = details}

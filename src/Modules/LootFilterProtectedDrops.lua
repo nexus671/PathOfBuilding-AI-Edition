@@ -1,5 +1,31 @@
 local parser = require("Modules.LootFilterParser")
 local M = {}
+local rarities = {Normal=true,Magic=true,Rare=true,Unique=true}
+
+function M.validateSamples(samples)
+	assert(type(samples)=="table" and #samples>=1 and #samples<=500,"Provide 1 to 500 protected sample items")
+	local count = 0
+	for index, item in pairs(samples) do
+		count=count+1
+		assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#samples,
+			"Provide a complete list of protected samples")
+		assert(type(item)=="table" and type(item.BaseType)=="string" and #item.BaseType<=200
+			and item.BaseType:match("%S") and not item.BaseType:find("[%c]") and rarities[item.Rarity],
+			"Each protected sample needs an exact BaseType and a known Rarity")
+		local action, marker = item.ExpectedAction,item.ExpectedMarker
+		assert(action==nil or action=="Show" or action=="Hide","Choose Show or Hide for the expected action")
+		if marker~=nil then
+			assert(action~="Hide" and type(marker)=="string" and #marker<=40 and not marker:find("[%c]"),
+				"Set a valid expected minimap icon on a visible sample")
+			local mock = parser.parse("Show\n    MinimapIcon "..marker.."\n")
+			assert(#mock.diagnostics==0 and mock.rules[1].styles.MinimapIcon
+				and table.concat(mock.rules[1].styles.MinimapIcon," ")==marker, "Enter a valid minimap icon such as 0 Red Star")
+		end
+	end
+	assert(count==#samples,"Provide a complete list of protected samples")
+	return samples
+end
+
 local scrollMarker = "# CUSTOM: Hide Wisdom and Portal Scrolls"
 local fracturedMarker = "# CUSTOM: Show fractured magic equipment"
 local fatedMarker = "# CUSTOM: Show Fated equipment on rank A and B bases"

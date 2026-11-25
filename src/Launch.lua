@@ -8,6 +8,18 @@
 local startTime = GetTime()
 APP_NAME = "Path of Building AI Edition"
 
+-- Keep the fork separate from Community Edition in the Windows taskbar.
+if jit.os == "Windows" then
+	pcall(function()
+		local ffi = require("ffi")
+		ffi.cdef[[long __stdcall SetCurrentProcessExplicitAppUserModelID(const uint16_t *id);]]
+		local name = "PathOfBuilding.AIEdition"
+		local id = ffi.new("uint16_t[?]", #name + 1)
+		for index = 1, #name do id[index - 1] = name:byte(index) end
+		ffi.load("shell32").SetCurrentProcessExplicitAppUserModelID(id)
+	end)
+end
+
 SetWindowTitle(APP_NAME)
 ConExecute("set vid_mode 8")
 ConExecute("set vid_resizable 3")
@@ -31,6 +43,7 @@ end
 function launch:OnInit()
 	self.devMode = false
 	self.installedMode = false
+	self.localUpdates = false
 	self.versionNumber = "?"
 	self.versionBranch = "?"
 	self.versionPlatform = "?"
@@ -39,7 +52,26 @@ function launch:OnInit()
 	self.startTime = startTime
 	local syncOnly = arg and (arg[1] == "--loot-filter-sync" or arg[1] == "--loot-filter-sync-scheduled")
 	local overlayOnly = arg and arg[1] == "--trade-overlay"
-	local firstRunFile = not (syncOnly or overlayOnly) and io.open("first.run", "r")
+	local xml = require("xml")
+	local localManXML = xml.LoadXMLFile("manifest.xml") or xml.LoadXMLFile("../manifest.xml")
+	if localManXML and localManXML[1].elem == "PoBVersion" then
+		for _, node in ipairs(localManXML[1]) do
+			if type(node) == "table" then
+				if node.elem == "Version" then
+					self.versionNumber = node.attrib.number
+					self.versionBranch = node.attrib.branch
+					self.versionPlatform = node.attrib.platform
+					self.localUpdates = node.attrib.updates == "local"
+				end
+			end
+		end
+	end
+	if localManXML and not self.versionBranch and not self.versionPlatform then
+		-- Looks like a remote manifest, so we're probably running from a repository
+		-- Enable dev mode to disable updates and set user path to be the script path
+		self.devMode = true
+	end
+	local firstRunFile = not (self.localUpdates or syncOnly or overlayOnly) and io.open("first.run", "r")
 	if firstRunFile then
 		firstRunFile:close()
 		os.remove("first.run")
@@ -54,24 +86,6 @@ function launch:OnInit()
 			self:ApplyUpdate(updateMode)
 			return
 		end
-	end
-	local xml = require("xml")
-	local localManXML = xml.LoadXMLFile("manifest.xml") or xml.LoadXMLFile("../manifest.xml")
-	if localManXML and localManXML[1].elem == "PoBVersion" then
-		for _, node in ipairs(localManXML[1]) do
-			if type(node) == "table" then
-				if node.elem == "Version" then
-					self.versionNumber = node.attrib.number
-					self.versionBranch = node.attrib.branch
-					self.versionPlatform = node.attrib.platform
-				end
-			end
-		end
-	end
-	if localManXML and not self.versionBranch and not self.versionPlatform then
-		-- Looks like a remote manifest, so we're probably running from a repository
-		-- Enable dev mode to disable updates and set user path to be the script path
-		self.devMode = true
 	end
 	local installedFile = io.open("installed.cfg", "r")
 	if installedFile then
@@ -103,7 +117,7 @@ function launch:OnInit()
 		end
 	end
 
-	if not self.devMode and not firstRunFile then
+	if not self.devMode and not self.localUpdates and not firstRunFile then
 		-- Run a background update check if developer mode is off
 		self:CheckForUpdate(true)
 	end
@@ -165,7 +179,7 @@ function launch:OnFrame()
 		DrawString(0, screenH/2, "CENTER", 24, "FIXED", self.doRestart)
 		Restart()
 	end
-	if not self.devMode and (GetTime() - self.lastUpdateCheck) > 1000*60*60*12 then
+	if not self.devMode and not self.localUpdates and (GetTime() - self.lastUpdateCheck) > 1000*60*60*12 then
 		-- Do an update check every 12 hours if the user keeps the program open
 		self:CheckForUpdate(true)
 	end
@@ -377,6 +391,7 @@ function launch:DownloadPage(url, callback, params)
 	end
 end
 function launch:ApplyUpdate(mode)
+	if self.localUpdates then return end
 	if mode == "basic" then
 		-- Need to revert to the basic environment to fully apply the update
 		LoadModule("UpdateApply")("Update/opFile.txt")
@@ -391,7 +406,7 @@ function launch:ApplyUpdate(mode)
 end
 
 function launch:CheckForUpdate(inBackground)
-	if self.updateCheckRunning then
+	if self.localUpdates or self.updateCheckRunning then
 		return
 	end
 	self.updateCheckBackground = inBackground

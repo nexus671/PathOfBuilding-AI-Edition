@@ -1,9 +1,16 @@
 describe("PoEAPI auth", function()
 	local originalLaunchSubScript
+	local originalGetenv
 	local originalDownloadPage
 	local originalSubScripts
 
 	before_each(function()
+		originalGetenv = os.getenv
+		os.getenv = function(key)
+			if key=="POB_GGG_OAUTH_CLIENT_ID" then return "local-test-client" end
+			if key=="POB_GGG_OAUTH_CONTACT" then return "operator@example.test" end
+			return originalGetenv(key)
+		end
 		originalLaunchSubScript = _G.LaunchSubScript
 		originalDownloadPage = launch.DownloadPage
 		originalSubScripts = launch.subScripts
@@ -11,6 +18,7 @@ describe("PoEAPI auth", function()
 	end)
 
 	after_each(function()
+		os.getenv = originalGetenv
 		_G.LaunchSubScript = originalLaunchSubScript
 		launch.DownloadPage = originalDownloadPage
 		launch.subScripts = originalSubScripts
@@ -22,8 +30,13 @@ describe("PoEAPI auth", function()
 			authState = authUrl:match("state=([^&]+)")
 			return 123
 		end
-		launch.DownloadPage = function(_, url, callback)
+		launch.DownloadPage = function(_, url, callback, parameters)
 			assert.are.equals("https://www.pathofexile.com/oauth/token", url)
+			assert.is_true(parameters.body:find("client_id=local-test-client",1,true)~=nil)
+			local verifier=parameters.body:match("code_verifier=([^&]+)")
+			assert.are.equals(43,#verifier)
+			assert.is_true(verifier:match("^[%w_-]+$")~=nil)
+			assert.is_false(parameters.followRedirects)
 			callback(nil, "SSL connect error")
 		end
 
@@ -65,6 +78,50 @@ describe("PoEAPI auth", function()
 		assert.are.equals("OAuth state mismatch", callbackArgs.errMsg)
 		assert.is_nil(api.authToken)
 	end)
+	it("blocks the default and prevents inherited credentials from being sent", function()
+		_G.LaunchSubScript = function() error("The auth browser must not open") end
+		launch.DownloadPage = function() error("The network must not be used") end
+		local configured = os.getenv
+		for _, unauthorized in ipairs({"", "pob"}) do
+			os.getenv = function(key)
+				if key=="POB_GGG_OAUTH_CLIENT_ID" then return unauthorized end
+				return configured(key)
+			end
+			local api = new("PoEAPI"):PoEAPI("old-token","old-refresh",os.time()+1000,"pob")
+			assert.is_nil(api.authToken)
+			api:FetchAuthToken(function(problem)
+				assert.is_true(problem:find("approved for this edition",1,true)~=nil)
+			end)
+			api:DownloadWithRefresh("/character",function(response,problem)
+				assert.is_nil(response)
+				assert.is_true(problem:find("approved for this edition",1,true)~=nil)
+			end)
+		end
+		os.getenv = configured
+		local api = new("PoEAPI"):PoEAPI("old-token","old-refresh",os.time()+1000,"different-client")
+		assert.is_nil(api.authToken)
+		local saved = new("PoEAPI"):PoEAPI("same-token","same-refresh",os.time()+1000,"local-test-client")
+		assert.are.equals("same-token",saved.authToken)
+	end)
+
+	it("binds configured sessions and uses the approved identity for refresh", function()
+		local api = new("PoEAPI"):PoEAPI("old-test-token","old-test-refresh",os.time()-10,"local-test-client")
+		local savedClient
+		api.UpdateMain = function(self)
+			savedClient = self.clientId
+		end
+		launch.DownloadPage = function(_,url,callback,parameters)
+			assert.are.equals("https://www.pathofexile.com/oauth/token",url)
+			assert.is_true(parameters.body:find("client_id=local-test-client&grant_type=refresh_token",1,true)~=nil)
+			assert.is_true(parameters.header:find("OAuth local-test-client/",1,true)~=nil)
+			assert.is_false(parameters.followRedirects)
+			callback({body='{"access_token":"fresh-test-token","refresh_token":"fresh-test-refresh","expires_in":3600}'})
+		end
+		api:ValidateAuth(function(valid) assert.is_true(valid) end)
+		assert.are.equals("fresh-test-token",api.authToken)
+		assert.are.equals("local-test-client",savedClient)
+	end)
+
 	it("stays usable after an error", function()
 		local api = new("PoEAPI"):PoEAPI("token", "refresh", os.time() + 3600)
 

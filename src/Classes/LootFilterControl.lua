@@ -137,6 +137,8 @@ function M.Open(build,source,layout)
  return require("Classes.LootFilterWorkspace").Open(build,source,layout,M)
 end
 function M.Account(profile,import)
+	local unavailable = main.api and main.api.AccountAccessError and main.api:AccountAccessError()
+	if unavailable then main:OpenMessagePopup("Account filters",unavailable.." Local export is available."); return end
 	local account=require("Modules.LootFilterAccount");local c={};local w,h=math.min(900,main.screenW-40),math.min(560,main.screenH-60);local entries={};local selected;local status="No account request made."
 	ui.description(c,"help",16,28,w-32,70,{"Optional account sync needs account:item_filter permission from GGG. Log in requests that additional scope; it may require OAuth client approval. Local export works independently. Publishing is explicit and sends this profile's compiled filter."},14)
 	c.realm=new("DropDownControl"):DropDownControl(ui.anchor,{16,112,160,26},{"pc","xbox","sony"})

@@ -1,16 +1,21 @@
 local market = require("Modules.LootFilterEconomy")
 local parser = require("Modules.LootFilterParser")
 local protected = require("Modules.LootFilterProtectedDrops")
-return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy, confirmation, priorContinuity, onCoverageFailure)
+local pickupAreas = require("Modules.LootFilterPickupAreas")
+local appearance = require("Modules.LootFilterPriceAppearance")
+return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy, confirmation, priorContinuity, onCoverageFailure, recovered, pinned)
 	assert(market.supports(raw), "Baseline has no economy section")
 	local quotes = {}
 	local categories, gemRequests = market.feedCategories(raw)
+	local floors = market.liquidityFloors(policy and policy.liquidity)
 	assert(baselineOnly or #bodies == #categories, "Required market category responses are missing")
-	for index, body in ipairs(bodies) do market.merge(quotes, market.quotes(body, categories[index], gemRequests), categories[index]) end
+	for index, body in ipairs(bodies) do market.merge(quotes, market.quotes(body, categories[index], gemRequests, floors), categories[index]) end
 	assert(baselineOnly or quotes["Orb of Alteration"] and quotes["Orb of Alteration"].volume >= 100, "Currency feed lacks a liquid reference quote")
 	local snapshots
-	if day then quotes, snapshots = market.remember(quotes, history, day, now, onCoverageFailure) end
-	local candidate, changes, skipped, continuity = market.review(raw, quotes, target, policy, confirmation, priorContinuity)
+	if day then
+		quotes, snapshots = market.remember(quotes, history, day, now, onCoverageFailure, floors, recovered)
+	end
+	local candidate, changes, skipped, continuity = market.review(raw, quotes, target, policy, confirmation, priorContinuity, pinned)
 	assert(#candidate <= 2*1024*1024, "Generated filter exceeds the sync file size limit")
 	local parsed = parser.parse(candidate)
 	for _, diagnostic in ipairs(parsed.diagnostics) do
@@ -20,9 +25,7 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 		local earlier = parser.parse(raw)
 		local remaining = 500
 		for _, change in ipairs(changes) do
-			local areas = change.scope == "campaign" and {60} or change.scope == "maps" and {83} or {83, 60}
-			if change.scope == "campaign" then areas[#areas+1] = 67 end
-			if change.scope == "maps" and not change.tier then areas[#areas+1] = 68 end
+			local areas = pickupAreas.samples(change.scope,change.tier)
 			change.samples = {}
 			local stack = change.old==change.cutoff and change.highlights and change.highlights[1].firstStack
 				or math.min(change.cutoff,change.old)+1
@@ -33,7 +36,7 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 					stacks[#stacks+1], seenStacks[threshold] = threshold, true
 				end
 			end
-			local rarities = change.tier and {"Normal", "Magic", "Rare"} or {"Normal"}
+			local rarities = change.uniqueBase and {"Unique"} or change.tier and {"Normal", "Magic", "Rare"} or {"Normal"}
 			local expectedSamples = #change.classes * #areas * #stacks * #rarities
 			for _, itemClass in ipairs(change.classes) do
 				for _, area in ipairs(areas) do
@@ -65,7 +68,7 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 								action=after.action, line=after.line, before=before.action, beforeLine=before.line,
 								beforeMissing=parser.safeMissingProperties(before.missingProperties), afterMissing=parser.safeMissingProperties(after.missingProperties),
 								class=sample.Class, count=sample.StackSize, area=area, rarity=change.tier and rarity or nil,
-								marker=after.action=="Show" and after.styles.MinimapIcon and table.concat(after.styles.MinimapIcon," ") or nil,
+								actions=appearance.resultActions(after),marker=after.action=="Show" and after.styles.MinimapIcon and table.concat(after.styles.MinimapIcon," ") or nil,
 							}
 							remaining = remaining-1
 						end
@@ -85,10 +88,8 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 		protectedChecks = protectedChecks+1
 	end
 	if protections then
-		assert(type(protections) == "table" and #protections >= 1 and #protections <= 500, "Provide 1 to 500 protected sample items")
-		for _, item in ipairs(protections) do
-			assert(type(item) == "table" and type(item.BaseType) == "string" and type(item.Rarity) == "string", "Each protected sample needs BaseType and Rarity")
-			check(item)
+		for _, item in ipairs(protected.validateSamples(protections)) do
+			check(item,item.ExpectedMarker,item.ExpectedAction)
 		end
 	end
 	if not protections or protected.hasPersonalMarkerSet(raw) then

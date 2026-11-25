@@ -33,7 +33,9 @@ function M.request(api,method,id,payload,callback)
 	local function finish(value,err,wait) M.busy=false;M.nextRequest=os.time()+(wait or 1);callback(value,err) end
 	api:ValidateAuth(function(valid,err)
 		if not valid then finish(nil,"Account authorization failed. Log in with item-filter access first.");return end
-		local options={header="Authorization: Bearer "..api.authToken.."\r\nContent-Type: application/json",timeout=25,
+		local agent = api.AccountUserAgent and api:AccountUserAgent()
+		local options={header=(agent and agent.."\r\n" or "").."Authorization: Bearer "..api.authToken.."\r\nContent-Type: application/json",
+			followRedirects=false,timeout=25,
 			maxBytes=method=="GET" and not id and 12*1024*1024 or 4*1024*1024}
 		if method=="POST" then options.body=json.encode(payload) end
 		launch:DownloadPage("https://api.pathofexile.com/item-filter"..(id and "/"..id or "")..(method=="POST" and "?validate=true" or ""),function(response,errorMessage)
