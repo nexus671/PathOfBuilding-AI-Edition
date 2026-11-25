@@ -1710,7 +1710,10 @@ do
 				local warnings={{code="unique_crafting_scope",message="Only listed unique crafting actions are modeled. Continue using the returned item text."}}
 				if flaskRoll then warnings[#warnings+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."}
 				elseif action.method=="bench_flask_enchant" then warnings[#warnings+1]={code="flask_bench_assumptions",message="Flask enchantment bench costs use pinned client data; eligibility, recipe availability and replacement behavior are unverified in game."}
-				elseif divineRoll then warnings[#warnings+1]={code="unique_divine_estimate",message="Supported modifier values are sampled independently and uniformly at their modeled precision; actual roll correlations and distributions are unverified."}
+				elseif divineRoll then
+					warnings[#warnings+1]={code="unique_divine_estimate",message="Supported modifier values are sampled independently and uniformly at their modeled precision; actual roll correlations and distributions are unverified."}
+					local inspected=unique.inspect(raw)
+					if inspected.title=="Watcher's Eye" and not inspected.variantList then warnings[#warnings+1]={code="unique_copied_modifiers",message="Copied modifier identification assumes the item text is complete; a missing third aura modifier cannot be detected."} end
 				elseif blessedRoll then warnings[#warnings+1]={code="unique_blessed_estimate",message="A recognized ordinary base implicit is sampled uniformly with possible repeats. Current-game repeat behavior and roll distribution are unverified.",source="https://www.poewiki.net/wiki/Blessed_Orb"}
 				elseif sacredRoll then warnings[#warnings+1]={code="unique_sacred_estimate",message="Assumes 32 equally likely shared rolls; game odds are unverified.",source="https://github.com/LocalExile/LocalExile/blob/95835dc3809ad10e4681a4af9fdde10becd983d8/Agents/docs/protocol/13-items.md"}
 				elseif qualityRoll then warnings[#warnings+1]={code="tainted_quality_estimate",message="Tainted armour and weapon quality uses an assumed uniform 1-20% range; the minimum and distribution are unverified."}

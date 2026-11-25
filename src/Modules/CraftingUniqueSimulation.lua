@@ -115,6 +115,8 @@ function M.simulate(sim,raw,recipe,options)
 	local current,at,actions,executed,cost=raw,1,0,0,baseCost
 	local spent,missing,errors,usage,routes={},{},{},{},{}
 	local actionWarnings,seenWarnings={},{}
+	local copiedWatcher=start.title=="Watcher's Eye" and not start.variantList
+	if copiedWatcher then seenWarnings.unique_copied_modifiers=true end
 	local recovery={restarts=0,stopped=0,salvaged=0};local rejected=false;local actionPriceUses=0
 	local function target(text,requirements)
 		return (not recipe.rarity or recipe.rarity=="UNIQUE") and unique.matches(text,requirements)
@@ -172,6 +174,7 @@ function M.simulate(sim,raw,recipe,options)
 		engineVersion=2,dataPatch=sim.dataPatch,sourceVersion=launch.versionNumber,costCurrency=currency or "supplied price units",baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,
 		actionDistribution={{actions=actions,trials=trials,successes=successes}},executedActionDistribution={{actions=executed,trials=trials,successes=successes}},successfulActionQuantiles=hit and quantiles(actions) or nil,routeCounts=routes,budgetExhausted=not hit and at<=#recipe.steps and actions>=maxActions and trials or 0,
 		destroyedTrials=0,uniqueTrials=trials,uniqueDistribution={{name=start.title,trials=trials,successes=successes}},recovery=recovery,stepPriceKeys={},priceOverridesSupplied=suppliedPrices or suppliedActions,resourcePriceOverridesSupplied=suppliedPrices,actionPriceOverridesSupplied=suppliedActions,actionPriceOverridesApplied=actionPriceUses*trials}
+	if copiedWatcher then result.warnings[#result.warnings+1]={code="unique_copied_modifiers",message="Copied modifier identification assumes the item text is complete; a missing third aura modifier cannot be detected."} end
 	if rejected then result.warnings[#result.warnings+1]={code="rejected_model_actions",message=string.format("All %d modeled trials included a rejected action. Rejected attempts count toward the action budget and follow failure routes, but are not charged resources. Review the transition errors.",trials)} end
 	for _,warning in ipairs(actionWarnings) do result.warnings[#result.warnings+1]=warning end
 	for i,step in ipairs(recipe.steps) do result.stepPriceKeys[i]={step=i,method=step.method,priceKey=sim.priceKey(step)} end
