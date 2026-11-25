@@ -284,6 +284,14 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
       }
       const policy = responsePolicy(response.headers,response.status===304 ? prior : undefined);
       if (response.status === 304 && prior?.etag) {
+        const tag = response.headers.get('etag');
+        const matches = tag===null || validTag(tag) && (
+          tag===prior.etag || tag.startsWith('W/') && tag.slice(2)===prior.etag
+        );
+        if (!matches) {
+          remove(details.key);
+          throw new MarketError(502,'Provider validator does not match the cached response',undefined,'invalid_response');
+        }
         let timing;
         try {
           timing = ageSource(response.headers,at,prior);
@@ -291,7 +299,7 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
           remove(details.key);
           throw error;
         }
-        const entry = { ...prior, ...policy, sourceAt:timing.sourceAt,
+        const entry = { ...prior, ...policy, etag:tag ?? prior.etag, sourceAt:timing.sourceAt,
           validUntil:Math.min(timing.responseAt+policy.ttl*1000,timing.sourceAt+freshestAge*1000) };
         save(details.key,entry);
         validated();

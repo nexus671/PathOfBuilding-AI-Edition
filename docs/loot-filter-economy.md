@@ -235,6 +235,8 @@ The service accepts only the app's public economy routes and active leagues. It 
 
 Optionally set `POB_MARKET_SNAPSHOT_DIRECTORY` to a separate, private, writable directory kept across restarts. Give each relay process its own directory. Deploy the complete relay tools from the repository.
 
+When either PoB or the relay revalidates a cached response, a conflicting or malformed ETag on HTTP 304 discards that cached feed. The next request must download a full response for that feed. PoB keeps the last verified filter if a scheduled refresh cannot obtain valid prices.
+
 The relay atomically stores validated responses with a positive shared cache lifetime. It preserves the original HTTP freshness time and expiry on restart. An expired cache lifetime requires upstream revalidation before the response can be used again. Snapshots older than one hour, incomplete writes, and invalid records are discarded. Private, no-store, and immediate-revalidation responses stay out of the disk cache.
 
 The cache retains up to 48 entries and 48 MiB of response bodies. It evicts the least recently used entries and drops their snapshots. The **snapshots** section of **/health** reports restored and discarded snapshots and storage errors without exposing paths or payloads. The HTTPS qualification tool fails when it observes a storage error. Fix the private directory and restart to verify recovery.

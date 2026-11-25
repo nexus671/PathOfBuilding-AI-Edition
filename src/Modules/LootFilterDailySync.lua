@@ -1238,12 +1238,16 @@ local function responseAge(header, now, cachedAge)
 	return resident
 end
 
+local function validTag(tag)
+	return type(tag)=="string" and #tag<=160 and not tag:find("[%c]")
+		and (tag:match('^"[^"]*"$') or tag:match('^W/"[^"]*"$'))~=nil
+end
+
 function M.fresh(response, now)
 	local header = headers(response)
 	local resident = responseAge(header, now)
 	local tag = header.etag
-	if tag and (#tag > 160 or tag:find("[%c]") or not (tag:match('^"[^"]*"$') or tag:match('^W/"[^"]*"$'))) then tag = nil end
-	return response.body, resident, tag
+	return response.body, resident, validTag(tag) and tag or nil
 end
 
 local provider
@@ -1588,9 +1592,17 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id, onLea
 			local status = err and tonumber(err:match("^Response code: (%d+)$"))
 			local providerDelay = M.noteProviderLimit(response,status,time)
 			if err == "Response code: 304" and cached and time >= cached.sourceAt and time-cached.sourceAt <= 3600 then
-				local valid, age = pcall(function() return responseAge(headers(response), time, time-cached.sourceAt) end)
+				local validHeaders, header = pcall(headers,response)
+				local tag = validHeaders and header.etag
+				if not validHeaders or tag and (not validTag(tag) or tag~=cached.tag and tag:match("^W/(.*)$")~=cached.tag) then
+					removeFeed(url)
+					finish(false, category .. ": Cached response validator could not be confirmed.",feedFailure(category,"invalid_response",304))
+					return
+				end
+				local valid, age = pcall(responseAge, header, time, time-cached.sourceAt)
 				if not valid then finish(false, category .. ": " .. tostring(age),feedFailure(category,"stale",304)); return end
 				cached.sourceAt = time-age
+				cached.tag = tag or cached.tag
 				bodies[index], responses[index] = cached.body, {initialAge=age, checkedAt=time, revalidated=true}
 				fetch(index + 1, 1)
 				return

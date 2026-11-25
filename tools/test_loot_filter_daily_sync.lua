@@ -579,6 +579,33 @@ do
 	clock=clock+1
 	sync.tick(clock,true)
 	assert(sync.status:find("snapshot is stale",1,true) and read(target)==successfulOutput)
+
+	launch.DownloadPage = function(_, _, callback, params)
+		assert(params.header:find('If-None-Match: W/"fixture"',1,true))
+		callback({header='HTTP/1.1 304 Not Modified\r\nETag: "other feed"\r\n\r\n',body=""}, "Response code: 304")
+	end
+	local oldReview = sync.publicDiff(clock).feeds[1].responseAge
+	clock=clock+1
+	sync.tick(clock,true)
+	assert(sync.status:find("Cached response validator could not be confirmed",1,true) and read(target)==successfulOutput)
+	assert(sync.publicDiff(clock).feeds[1].responseAge==oldReview)
+	local failed = assert(sync.publicStatus(clock).failedFeed)
+	assert(failed.category=="Currency" and failed.reason=="invalid_response" and failed.httpStatus==304)
+
+	local recoveryRequests = 0
+	launch.DownloadPage = function(_, _, callback, params)
+		recoveryRequests = recoveryRequests+1
+		if recoveryRequests==1 then
+			assert(not params.header:find("If-None-Match",1,true))
+			callback({header=cachedHeader,body='{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.21,"volumePrimaryValue":1000}]}'})
+		else
+			assert(params.header:find('If-None-Match: W/"fixture"',1,true))
+			callback({header="HTTP/1.1 304 Not Modified\r\n\r\n",body=""}, "Response code: 304")
+		end
+	end
+	clock=clock+1
+	sync.tick(clock,true)
+	assert(recoveryRequests==8 and not sync.publicDiff(clock).feeds[1].revalidated and read(target)==successfulOutput)
 	sync.rollback()
 	sync.disable()
 	os.time=systemTime
