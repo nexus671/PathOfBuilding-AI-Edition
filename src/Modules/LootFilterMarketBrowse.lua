@@ -201,7 +201,7 @@ function M.buildTargets(build)
 				itemId = spec.jewels[slot.nodeId]
 			end
 		else
-			local selected = gear.activeItemSet and gear.activeItemSet[slot.slotName]
+			local selected = not slot.inactive and gear.activeItemSet and gear.activeItemSet[slot.slotName]
 			itemId = selected and selected.selItemId
 		end
 		local item = itemId and gear.items and gear.items[itemId]
@@ -211,7 +211,7 @@ function M.buildTargets(build)
 			if item.rarity=="UNIQUE" and item.type=="Jewel" and (item.title=="Forbidden Flame" or item.title=="Forbidden Flesh") then
 				category = "ForbiddenJewel"
 			end
-			local label = slot.label or slot.slotName
+			local label = item.type=="Jewel" and slot.slotName or slot.label or slot.slotName
 			if category and marketName(item.title) then
 				add({name=item.title,category=category,label=label.." | "..item.title,
 					details={"Compare the listed unique variants and rolls."}})
@@ -226,6 +226,7 @@ function M.buildTargets(build)
 				local listingItem = itemLevel and require("Modules.LootFilterGearListings").target(item,baseName)
 				add({name=baseName,category=category,baseTarget=true,itemLevel=itemLevel,baseImplicit=implicit or nil,
 					listingItem=listingItem,listingSlot=listingItem and slot.slotName or nil,
+					listingSocket=listingItem and slot.nodeId or nil,
 					baseVariant=baseName~=item.baseName and item.baseName or nil,
 					label=label.." | "..item.baseName..(itemLevel and (" | Item level "..itemLevel) or ""),
 					details={"Compare this crafting base. The equipped modifiers have their own value."}})

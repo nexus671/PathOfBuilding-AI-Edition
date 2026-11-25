@@ -35,6 +35,21 @@ for line in io.lines() do
 		elseif command.kind=="convert-tree" then
 			build.treeTab:ConvertToVersion(assert(command.version),true,false,true);frame();bridge.refresh(build)
 			return {treeVersion=build.spec.treeVersion,revision=bridge.revision(build)}
+		elseif command.kind=="equip-fixture-jewel" then
+			local gear,spec=build.itemsTab,build.spec
+			for _,slot in ipairs(gear.orderedSlots) do
+				local node=slot.nodeId and spec.nodes[slot.nodeId]
+				if node and node.path and not node.expansionJewel then
+					spec:AllocNode(node)
+					assert(spec.allocNodes[node.id])
+					local item=new("Item"):Item(assert(command.itemText))
+					gear:AddItem(item,true)
+					slot:SetSelItemId(item.id)
+					build.buildFlag=true;frame();bridge.refresh(build)
+					return {jewelSocketId=node.id}
+				end
+			end
+			error("No connected ordinary jewel socket in fixture")
 		elseif command.kind=="inject-crafting-error" or command.kind=="inject-planning-error" then
 			local simulator=command.kind=="inject-crafting-error" and require("Modules.CraftingSimulator") or require(assert(command.module))
 			local key=assert(command.method)

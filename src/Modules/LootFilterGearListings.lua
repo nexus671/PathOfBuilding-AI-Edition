@@ -73,14 +73,15 @@ function M.target(item, publicBase)
 	if item.rarity~="RARE" or not item.base or item.unidentifiedMarker
 		or type(item.itemLevel)~="number" or item.itemLevel<1 or item.itemLevel>100 or item.itemLevel~=math.floor(item.itemLevel)
 		or item.variant or item.mirrored or item.twiceCorrupted or item.talismanTier or item.memoryStrands or item.intangibility
-	or item.crucible or item.vestigial
+		or item.crucible or item.vestigial
 		or (item.catalyst or 0)>0 or (item.catalystQuality or 0)>0
 		or hasEntries(item.scourgeModLines) or hasEntries(item.crucibleModLines) then return end
 	local equipment
+	local jewel = item.type=="Jewel" and (not item.base.subType or item.base.subType=="Abyss")
 	if item.base.armour or item.base.weapon then
 		equipment=gearProperties.target(item)
 		if not equipment then return end
-	elseif not jewellery[item.type] or (item.quality or 0)>0 or (item.base.socketLimit or 0)>0 or hasEntries(item.sockets) then
+	elseif not (jewellery[item.type] or jewel) or (item.quality or 0)>0 or (item.base.socketLimit or 0)>0 or hasEntries(item.sockets) then
 		return
 	end
 	local target = {base=publicBase or item.baseName,level=item.itemLevel,equipment=equipment}

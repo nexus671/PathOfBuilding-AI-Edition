@@ -1676,6 +1676,47 @@ Item Level: 86
 	assert(summary:find("Matched sockets: B-B-B-B-R-G | Quality: 20%",1,true))
 	assert(summary:find("Matched properties: Energy Shield 190",1,true))
 	if output then gearUI:frame():write(output.."/armour-listing-snapshot.json") end
+	do
+		local rawJewel="Rarity: RARE\nFixture Jewel\nCobalt Jewel\nItem Level: 86\n7% increased maximum Life"
+		local jewel=new("Item"):Item(rawJewel)
+		local abyss=new("Item"):Item(rawJewel:gsub("Cobalt Jewel","Ghastly Eye Jewel")
+			:gsub("7%% increased maximum Life","+36 to maximum Life"))
+		local abyssMods={{description="+36 to maximum Life"}}
+		local exact=equipmentRow(51,"Ghastly Eye Jewel",nil,nil,abyssMods)
+		local lowerRoll=equipmentRow(52,"Ghastly Eye Jewel",nil,nil,{{description="+35 to maximum Life"}})
+		local wrongChannel=equipmentRow(53,"Ghastly Eye Jewel",nil,nil,nil)
+		wrongChannel.implicitMods=abyssMods
+		local corrupt=equipmentRow(54,"Ghastly Eye Jewel",nil,nil,abyssMods);corrupt.corrupted=true
+		local unknown=equipmentRow(55,"Ghastly Eye Jewel",nil,{property("Unverified","1")},abyssMods)
+		local wrongLevel=equipmentRow(56,"Ghastly Eye Jewel",nil,nil,abyssMods);wrongLevel.ilvl=85
+		local ordinary=equipmentRow(57,"Cobalt Jewel",nil,nil,{{description="7% increased maximum Life"}})
+		local jewelPage=json.encode({next_change_id="cursor",stashes={
+			stash(51,"Jewels#0051",{exact,lowerRoll,wrongChannel,corrupt,unknown,wrongLevel,ordinary}),
+		}})
+		assert(listings.compare(jewelPage,assert(listings.target(abyss)),"Covens").matched==1)
+		assert(listings.compare(jewelPage,assert(listings.target(jewel)),"Covens").matched==1)
+		assert(not listings.target(new("Item"):Item(rawJewel:gsub("Cobalt Jewel","Large Cluster Jewel"))))
+		local jewelBuild={itemsTab={orderedSlots={
+			{slotName="Jewel 123",label="Socket",nodeId=123},{slotName="Jewel 124",label="Socket",nodeId=124},
+			{slotName="Jewel 125",label="Socket",nodeId=125},{slotName="Belt Abyssal Socket",inactive=true},
+		},items={abyss,jewel},activeItemSet={["Belt Abyssal Socket"]={selItemId=1}}},
+			spec={allocNodes={[123]=true,[124]=true},jewels={[123]=1,[124]=1,[125]=1}}}
+		local targets=require("Modules.LootFilterMarketBrowse").buildTargets(jewelBuild)
+		assert(#targets==2 and targets[1].listingSocket and targets[2].listingSocket)
+		assert(targets[1].label~=targets[2].label)
+		file=assert(io.open(path,"wb"));assert(file:write(jewelPage));assert(file:close())
+		main.popups={}
+		require("Classes.LootFilterMarketBrowseControl").Open(jewelBuild)
+		gearUI:text("league","Covens");gearUI:click("buildTarget");gearUI:text("search","Jewel 123");gearUI:click("choose")
+		gearUI:click("listingSample")
+		assert(main.popups[1].title=="Comparable asking prices")
+		local details={}
+		for _,line in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(line[1] or "") end
+		local summary=table.concat(details," ")
+		assert(summary:find("1 matching rolls",1,true) and summary:find("Ask 50 | 1 seller",1,true),summary)
+		if output then gearUI:frame():write(output.."/jewel-listing-snapshot.json") end
+		print("Ordinary and Abyss jewel listing comparisons preserve roll, item state and allocated socket identity")
+	end
 	require("Classes.LootFilterFileBrowser").Open=originalPicker
 	os.remove(path)
 	launch.DownloadPage=oldDownload
