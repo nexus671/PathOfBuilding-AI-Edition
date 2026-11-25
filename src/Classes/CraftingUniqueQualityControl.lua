@@ -499,8 +499,11 @@ function M.Open(build,project,layout,snapshot)
 		controls.stat.maxDroppedWidth=dw-32
 		controls.stat:CheckDroppedWidth(true)
 		controls.stat.tooltipFunc=function(tooltip,mode,index,value)
+			tooltip:Clear()
 			local entry=mode=="HOVER" and value or controls.stat:GetSelValue()
-			if type(entry)=="table" and entry.label then tooltip:AddLine(14,entry.label) end
+			if type(entry)=="table" and entry.label then
+				for _,row in ipairs(ui.rows({entry.label},math.min(460,main.screenW-60),14)) do tooltip:AddLine(14,row[1]) end
+			end
 		end
 		controls.direction=new("DropDownControl"):DropDownControl(ui.anchor,{224,112,110,26},{"At least","At most"})
 		controls.target=new("EditControl"):EditControl(ui.anchor,{342,112,dw-358,26},"","Value",nil,10)

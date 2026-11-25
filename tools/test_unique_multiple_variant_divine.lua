@@ -56,6 +56,10 @@ assert(copiedPicker.stat:GetMatchCount()==1,"Searching the end of a long modifie
 local found;for index,entry in ipairs(copiedPicker.stat.list) do if copiedPicker.stat.searchInfos[index].matches then found=entry end end
 assert(found and found.label:find("affected by Grace",1,true),"The complete modifier must be available in the dropdown")
 assert(copiedPicker.stat.droppedWidth>copiedPicker.stat.width and copiedPicker.stat.droppedWidth<=468,"The modifier list should expand within the dialog")
+local tip={lines={}};function tip:Clear() self.lines={} end;function tip:AddLine(_,line) self.lines[#self.lines+1]=line end
+copiedPicker.stat.tooltipFunc(tip,"HOVER",1,found);local first=#tip.lines
+copiedPicker.stat.tooltipFunc(tip,"HOVER",1,found);assert(first>0 and #tip.lines==first,"Repeated hover must replace tooltip lines")
+assert(table.concat(tip.lines," "):find("affected by Grace",1,true),"Hover must show the full modifier")
 copiedPicker.stat:ResetSearch();copiedPicker.stat:SelByValue("modifier:1","val");copiedUI:text("target",tostring(copied[1].max));assert(copiedPicker.plan:IsEnabled());copiedUI:click("plan")
 local copiedXML=build:SaveDB("Copied Watcher");loadBuildFromXML(copiedXML,"Copied Watcher");copiedUI:bind(build)
 local copiedSaved=assert(build.savers.CraftingProjects.projects[1]);assert(copiedSaved.nativeRecipe.requirements.uniqueModifier.line==copied[1].line)
