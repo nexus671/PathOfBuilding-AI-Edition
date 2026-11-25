@@ -50,6 +50,12 @@ async function main(){
   }
   async function queued(name,args,status){diagnostics.push('Workflow request: '+name);const request=await call(name,args);let result;for(let i=0;i<100;i++){await host('tick',24,request.id,status);result=await call('get_proposal_status');assert.equal(result.proposal.id,request.id);if(result.proposal.status===status) return result.proposal;assert.notEqual(result.proposal.status,'failed',JSON.stringify(result.proposal));}assert.fail(JSON.stringify(result.proposal));}
   let context=(await call('get_build_context')).context;const baseLife=context.stats.LifeUnreserved;
+  const rawRegenAbyss='Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86';
+  const rawRegenInitial={affixes:[{id:'AbyssFlatManaShieldRegenerationJewel3',range:(196/60-3.3)/0.7}],corrupted:false,influences:[],intangibility:0,memoryStrands:0,mirrored:false,origin:createHash('sha1').update(rawRegenAbyss).digest('hex'),quality:0,rarity:'RARE',sockets:[]};
+  const rawRegenRecipe={initialState:rawRegenInitial,steps:[{method:'divine'}],targets:[{anyOf:['AbyssFlatManaShieldRegenerationJewel3'],minRoll:.02}]};
+  const rawRegenResult=await queued('simulate_crafting',{baseRevision:context.revision,itemText:rawRegenAbyss,recipe:rawRegenRecipe,options:{trials:5,maxActions:1,seed:13}},'crafted');
+  assert.equal(rawRegenResult.nativeCrafting.trials,5,'MCP simulation must accept a valid raw tick beyond a rounded display endpoint');
+  assert.ok(!rawRegenResult.nativeCrafting.warnings.some(entry=>entry.code==='affix_roll_outside_current_tier'));
   await host('request-test');await call('get_build_connection');await host('tick',1);
   const proof=await host('connection-proof');assert.equal(proof.client,'planning-workflow-test');assert.equal(proof.tested,true);assert.equal(proof.synced,true);
   const rareCopy='Item Class: Helmets\nRarity: Rare\nVortex Visage\nIron Hat\n--------\nItem Level: 80';
