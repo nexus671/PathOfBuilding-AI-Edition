@@ -4,10 +4,10 @@
 local M={}
 -- A displayed gem name can have multiple data records. Infer Exceptional only
 -- when all records for that name and class agree, and leave unknown names unset.
-local exceptionalNames
+local exceptionalNames,ordinaryNames
 local function exceptionalGem(name,class)
 	if not exceptionalNames then
-		exceptionalNames={}
+		exceptionalNames={};ordinaryNames={}
 		for _,gem in pairs(data.gems) do
 			local classes=gem.grantedEffect and {gem.grantedEffect.support and "Support Gems" or "Skill Gems"} or {"Skill Gems","Support Gems"}
 			local value=gem.grantedEffect and type(gem.tags)=="table" and (gem.tags.exceptional and "yes" or "no") or "ambiguous"
@@ -15,6 +15,9 @@ local function exceptionalGem(name,class)
 				if base then
 					local key=gemClass.."\0"..base:lower();local existing=exceptionalNames[key]
 					exceptionalNames[key]=existing and existing~=value and "ambiguous" or value
+					local ordinary=gem.grantedEffect and not gem.grantedEffect.support and not gem.vaalGem and type(gem.id)=="string" and not gem.id:match("Alt[XYZ]$") and type(gem.variantId)=="string" and type(gem.grantedEffectId)=="string" and gem.variantId:lower()==gem.grantedEffectId:lower() and gem.itemBaseName==base
+					local kind=ordinary and "ordinary" or "other";local prior=ordinaryNames[key]
+					ordinaryNames[key]=prior and prior~=kind and "ambiguous" or kind
 				end
 			end end
 		end
@@ -175,7 +178,7 @@ function M.parse(raw,area)
 					end
 				end
 				if found and not ambiguous then item.TransfiguredGem=found end
-			elseif id==gem.gameId then item.TransfiguredGem=false end
+			elseif class=="Skill Gems" and ordinaryNames and ordinaryNames[class.."\0"..item.BaseType:lower()]=="ordinary" then item.TransfiguredGem=false end
 		end
 	end
 	local sockets

@@ -1,6 +1,6 @@
 VERSION[2.69.0-ai.preview1306][2026/11/24]
 
-* Recognize exceptional gems in pasted filter previews.
+* Recognize exceptional and ordinary gems more accurately in pasted filter previews.
 
 VERSION[2.69.0-ai.preview1305][2026/11/24]
 

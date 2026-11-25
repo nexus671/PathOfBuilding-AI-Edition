@@ -145,7 +145,7 @@ Catalogue examples use the bundled client data to infer an item class when the e
 
 For current tier-based ordinary maps, pasted item names supply the map tier even when there is no separate tier line. Named quality lines such as `Quality (Pack Size)` also supply the quality value. Conflicting copied values are rejected; this has been tested with synthetic copies, not verified in game.
 
-For pasted gems, the `Exceptional` condition is inferred when the bundled gem records for that name and class agree. Unknown or ambiguous names remain unknown; the inference reflects the bundled data and has not been checked against the live game.
+For pasted gems, the `Exceptional` condition is inferred when the bundled gem records for that name and class agree. Known ordinary active gems can also be recognized even when their internal and game IDs differ. Unknown or ambiguous names remain unknown; these inferences reflect the bundled data and have not been checked against the live game.
 
 Modifier-count conditions with a separate `==` operator are preserved when edited, but their preview is uncertain until the combined syntax is verified in game.
 

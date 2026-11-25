@@ -239,14 +239,20 @@ describe("Copied loot-filter items",function()
 		data.gems.__filterTestC={itemBaseName="Other Test Support",tags={exceptional=true}}
 		data.gems.__filterTestD={itemBaseName="Conflicting Test Support",grantedEffect={support=true},tags={exceptional=true}}
 		data.gems.__filterTestE={itemBaseName="Conflicting Test Support",grantedEffect={support=true},tags={}}
+		data.gems.__filterTestF={id="__filterTestF",itemBaseName="Ambiguous Test Skill",name="Ambiguous Test Skill",gameId="__testGame",variantId="TestEffect",grantedEffectId="TestEffect",grantedEffect={support=false},tags={}}
+		data.gems.__filterTestG={id="__filterTestG",itemBaseName="Ambiguous Test Skill",vaalGem=true,grantedEffect={support=false},tags={}}
+		local oldLookup=data.gemForBaseName["ambiguous test skill"];data.gemForBaseName["ambiguous test skill"]="__filterTestF"
 		local ok,problem=pcall(function()
 			for _,name in ipairs({"Test Support","Other Test Support","Conflicting Test Support"}) do
 				local item=fresh.parse("Item Class: Support Skill Gems\nRarity: Gem\n"..name.."\n--------")
 				assert.is_nil(item.Exceptional)
 			end
+			local mixed=fresh.parse("Item Class: Active Skill Gems\nRarity: Gem\nAmbiguous Test Skill\n--------")
+			assert.is_nil(mixed.TransfiguredGem)
 		end)
 		data.gems.__filterTestA=nil;data.gems.__filterTestB=nil;data.gems.__filterTestC=nil
 		data.gems.__filterTestD=nil;data.gems.__filterTestE=nil
+		data.gems.__filterTestF=nil;data.gems.__filterTestG=nil;data.gemForBaseName["ambiguous test skill"]=oldLookup
 		assert.is_true(ok,problem)
 	end)
 	it("recognizes known copied transfigured gems while leaving unknown variants uncertain",function()
@@ -256,6 +262,8 @@ describe("Copied loot-filter items",function()
 		assert.equal("Hide",parser.simulate(parser.parse("Hide\n TransfiguredGem True\nShow"),transfigured).action)
 		local ordinary=gem("Fireball");assert.is_false(ordinary.TransfiguredGem)
 		assert.equal("Show",parser.simulate(parser.parse("Hide\n TransfiguredGem True\nShow"),ordinary).action)
+		local renamed=gem("Animate Guardian");assert.is_false(renamed.TransfiguredGem)
+		assert.equal("Show",parser.simulate(parser.parse("Hide\n TransfiguredGem True\nShow"),renamed).action)
 		local unknown=gem("Fireball of an Unknown Future Variant");assert.is_nil(unknown.TransfiguredGem)
 		assert.equal("unknown",parser.simulate(parser.parse("Hide\n TransfiguredGem True\nShow"),unknown).status)
 		local vaal=gem("Vaal Fireball");assert.is_nil(vaal.TransfiguredGem)
