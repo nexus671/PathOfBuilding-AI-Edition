@@ -107,7 +107,7 @@ local commonResponseEnd = [[
 </html>
 ]]
 
-ConPrintf("Authorization URL copied to clipboard: %s", url)
+ConPrintf("Authorization URL copied to clipboard.")
 Copy(url)
 OpenURL(url)
 

@@ -47,6 +47,9 @@ local function platform()
 		int __stdcall MoveFileExW(const uint16_t *, const uint16_t *, unsigned long);
 		void * __stdcall CreateFileW(const uint16_t *, unsigned long, unsigned long, void *, unsigned long, unsigned long, void *);
 		int __stdcall GetFileSizeEx(void *, int64_t *);
+		int __stdcall GetDiskFreeSpaceExW(const uint16_t *, uint64_t *, uint64_t *, uint64_t *);
+		uint32_t __stdcall GetCurrentProcessId(void);
+		uint32_t __stdcall GetLastError(void);
 		int __stdcall ReadFile(void *, void *, unsigned long, unsigned long *, void *);
 		int __stdcall SetFileInformationByHandle(void *, int, void *, unsigned long);
 	]]
@@ -60,15 +63,33 @@ local function platform()
 		assert(kernel.MultiByteToWideChar(65001, 8, path, -1, buffer, size) == size, "Invalid file path")
 		return buffer
 	end
+	local processId, probeNumber = tonumber(kernel.GetCurrentProcessId()), 0
 	windows = {
+		preflight = function(path, bytes, label)
+			local folder = assert(path:match("^(.*[/\\])"), "Windows write folder is unavailable")
+			local available = ffi.new("uint64_t[1]")
+			assert(kernel.GetDiskFreeSpaceExW(wide(folder),available,nil,nil)~=0,
+				"Could not check available space in the "..label.." folder.")
+			assert(tonumber(available[0]) >= bytes, "Not enough disk space in the "..label.." folder.")
+			probeNumber = probeNumber + 1
+			local probe = path..".pob-write-check-"..processId.."-"..probeNumber
+			-- A new, delete-on-close file tests actual access without opening the filter for writing.
+			local handle = kernel.CreateFileW(wide(probe),0x40010000,0,nil,1,0x04000100,nil)
+			assert(handle~=ffi.cast("void *",-1), "Could not create a temporary file in the "..label.." folder.")
+			assert(kernel.CloseHandle(handle)~=0, "Could not close the "..label.." write check.")
+		end,
 		replace = function(from, to)
 			assert(kernel.MoveFileExW(wide(from), wide(to), 9) ~= 0, "Could not replace the file. Check access and file locks.")
 		end,
-		acquire = function(path)
+		acquire = function(path, skipBusy)
 			-- Zero sharing serializes updates across app windows. Windows releases
 			-- the handle on exit, so a crash cannot leave a held lock.
 			local handle = kernel.CreateFileW(wide(path), 0x40000000, 0, nil, 4, 0x80, nil)
-			assert(handle ~= ffi.cast("void *", -1), "Another PoB window is updating this filter, or the directory is unavailable")
+			if handle == ffi.cast("void *", -1) then
+				local problem = kernel.GetLastError()
+				if skipBusy and (problem==32 or problem==33) then return nil end
+				error("Could not lock daily sync settings or refresh. Check the folder and permissions.")
+			end
 			return function() kernel.CloseHandle(handle) end
 		end,
 		prune = function(path, digest, limit)
@@ -422,9 +443,40 @@ function M.configuration(id, includeSkipped)
 	return get(id, includeSkipped~=false)
 end
 
+local function civilMinute(date)
+	return (((date.year*13+date.month)*32+date.day)*24+date.hour)*60+date.min
+end
+
 local function localSchedule(config, date)
-	date.hour, date.min, date.sec, date.isdst = config.hour or 9, config.minute or 0, 0, nil
-	return os.time(date)
+	-- Normalize a date that crossed a month boundary before resolving its time.
+	local noon = os.time({year=date.year,month=date.month,day=date.day,hour=12,min=0,sec=0})
+	date = os.date("*t",noon)
+	date.hour, date.min = config.hour or 9, config.minute or 0
+	local wanted = civilMinute(date)
+	local exact, before, after
+	local function observe(isdst)
+		local instant = os.time({year=date.year,month=date.month,day=date.day,
+			hour=date.hour,min=date.min,sec=0,isdst=isdst})
+		if not instant then return end
+		local localMinute = civilMinute(os.date("*t",instant))
+		if localMinute == wanted then exact = math.min(exact or instant,instant)
+		elseif localMinute < wanted then before = math.max(before or instant,instant)
+		else after = math.min(after or instant,instant) end
+		return instant
+	end
+	local automatic = observe(nil)
+	observe(false)
+	observe(true)
+	if exact then return exact end
+	-- A skipped time becomes due at the first real instant on the far side of the gap.
+	if before and after and before < after then
+		while after-before > 1 do
+			local midpoint = math.floor((before+after)/2)
+			if civilMinute(os.date("*t",midpoint)) < wanted then before = midpoint
+			else after = midpoint end
+		end
+	end
+	return after or automatic or noon
 end
 
 local function scheduledAt(config, now)
@@ -459,6 +511,7 @@ end
 
 
 local failureCategories = {DivinationCard=true,SkillGem=true,leagues=true}
+for _, category in ipairs(require("Modules.LootFilterUniqueMarket").feeds) do failureCategories[category]=true end
 for _, category in ipairs(market.exchangeCategories) do failureCategories[category] = true end
 for _, category in ipairs(require("Modules.LootFilterMapMarket").feeds) do failureCategories[category] = true end
 local failureReasons = {access_denied=true,rate_limited=true,provider_unavailable=true,http_error=true,redirect=true,
@@ -509,10 +562,21 @@ end
 
 -- The AI bridge gets a bounded, path-free view. File names, local settings,
 -- protected sample definitions and transport errors stay on the desktop.
+local function publicReviewToken(config, id)
+	if not config or config.pending or type(config.review)~="table" or not finiteNumber(config.lastSuccess)
+		or type(config.revision)~="string" or type(config.current)~="string" then return end
+	local latest = type(config.history)=="table" and config.history[1]
+	local key = type(latest)=="table" and latest.checkedAt==config.lastSuccess and latest.reviewKey
+	if type(key)~="string" or #key~=40 or not key:match("^[a-f0-9]+$") then
+		key=sha(require("Modules.PlanningData").encodeExact(config.review))
+	end
+	return sha(table.concat({id or "default",config.revision,config.current,config.lastSuccess,key},"\0"))
+end
+
 local publicCache
 function M.publicStatus(now, id)
 	id = id or "default"
-	if publicCache and publicCache.at == now and publicCache.id == id and publicCache.status == M.status then return publicCache.value end
+	publicCache=nil
 	local ok, config = pcall(get,id)
 	if not ok then return {configured=false,state="settings_error"} end
 	if not config then return {configured=false,state="unconfigured"} end
@@ -552,7 +616,7 @@ function M.publicStatus(now, id)
 				mapOnly=item.maps==true}
 		end
 	end
-	publicCache = {at=now, id=id, status=M.status, value=output, review=config.review, revision=config.revision}
+	publicCache = {at=now, id=id, status=M.status, value=output, review=config.review, reviewToken=publicReviewToken(config,id)}
 	return output
 end
 
@@ -560,14 +624,32 @@ local function safeText(value, limit)
 	if type(value) == "string" and #value <= limit and not value:find("[%c/\\]") then return value end
 end
 
+function M.publicProfiles()
+	local ok, profiles = pcall(M.profiles)
+	if not ok then return {{id="default",name="Default"}} end
+	local output = {}
+	for _, entry in ipairs(profiles) do
+		output[#output+1] = {id=entry.id,name=safeText(entry.name,80) or ("Profile "..entry.id:sub(1,8))}
+	end
+	return output
+end
+
+local function publicProfileId(id)
+	if id==nil or id=="default" then return "default" end
+	for _, entry in ipairs(M.publicProfiles()) do if entry.id==id then return id end end
+	error("Choose an available sync profile.",0)
+end
+
 local function publicImpactSample(sample)
 	if type(sample)~="table" then return nil end
 	local parser=require("Modules.LootFilterParser")
 	local rarity = sample.rarity
+	local actions = type(sample.actions)=="table" and sample.actions
 	return {action=safeText(sample.action,20),class=safeText(sample.class,100),count=finiteNumber(sample.count),
 		line=finiteNumber(sample.line),before=safeText(sample.before,20),beforeLine=finiteNumber(sample.beforeLine),area=finiteNumber(sample.area),
 		rarity=(rarity=="Normal" or rarity=="Magic" or rarity=="Rare") and rarity or nil,
-		marker=safeText(sample.marker,40),
+		marker=safeText(sample.marker,40),actions=actions and {sound=finiteNumber(actions.sound),
+			volume=finiteNumber(actions.volume),fontSize=finiteNumber(actions.fontSize)} or nil,
 		beforeMissing=sample.before=="Unknown" and parser.safeMissingProperties(sample.beforeMissing) or nil,
 		afterMissing=sample.action=="Unknown" and parser.safeMissingProperties(sample.afterMissing) or nil}
 end
@@ -577,48 +659,63 @@ local function publicDecision(change,index)
 	if not item or not finiteNumber(change.old) or not finiteNumber(change.cutoff) then return nil end
 	local samples={};if type(change.samples)=="table" then for i,entry in ipairs(change.samples) do if i>20 then break end;samples[#samples+1]=publicImpactSample(entry) end end
 	local corrupted;if type(change.corrupted)=="boolean" then corrupted=change.corrupted end
+	local evidence = type(change.stackEvidence)=="table" and change.stackEvidence
+	local stack = evidence and {count=finiteNumber(evidence.count),median=finiteNumber(evidence.median),
+		largest=finiteNumber(evidence.largest),inventoryMaximum=finiteNumber(evidence.inventoryMaximum)} or nil
+	local reward = type(change.reward)=="table" and change.reward
+	reward = reward and {currency=safeText(reward.currency,100),priceId=market.evidencePriceId(reward.priceId),
+		setSize=finiteNumber(reward.setSize),count=finiteNumber(reward.count),perCard=finiteNumber(reward.perCard)} or nil
 	return {item=item,decisionIndex=index,source=safeText(change.source,40),priceId=market.evidencePriceId(change.priceId),
-		previousCutoff=change.old,proposedCutoff=change.cutoff,retainedReason=safeText(change.retainedReason,100),
+		previousCutoff=change.old,proposedCutoff=change.cutoff,heldByMargin=change.heldByMargin==true or nil,highlightHeldByMargin=change.highlightHeldByMargin==true or nil,reward=reward,stackEvidence=stack,retainedReason=safeText(change.retainedReason,100),
 		quotedPrice=finiteNumber(change.currentPrice or change.price),priceUsed=finiteNumber(change.price),volume=finiteNumber(change.volume),
-		confirmedPrice=finiteNumber(change.confirmedPrice),liquidityUnit=safeText(change.liquidityUnit,40),
+		confirmedPrice=finiteNumber(change.confirmedPrice),confirmedTrade=require("Modules.LootFilterExchangeCrossCheck").evidence(change.confirmedTrade),
+		liquidityUnit=safeText(change.liquidityUnit,40),
 		gemLevel=finiteNumber(change.gemLevel),gemQuality=finiteNumber(change.gemQuality),corrupted=corrupted,
+		uniqueBase=change.uniqueBase==true or nil,exampleUnique=safeText(change.exampleUnique,200),
 		mapOnly=change.maps==true,scope=safeText(change.scope,20),sample=publicImpactSample(change.sample),samples=#samples>0 and samples or nil,
 		samplesTruncated=type(change.samples)=="table" and #change.samples>20 or nil,samplesLimited=change.samplesLimited==true or nil}
 end
 
 -- Share the verified cutoff decisions, not filter source, target paths or
 -- protected drop definitions. These decisions are saved after publication.
-function M.publicDiff(now, id)
-	local status = M.publicStatus(now,id)
-	if not status.configured or not publicCache or type(publicCache.review) ~= "table" then return nil end
-	if publicCache.diff then return publicCache.diff end
+function M.publicDiff(now, id, limit)
+	id=id or "default"
+	if not publicCache or publicCache.at~=now or publicCache.id~=id or publicCache.status~=M.status then M.publicStatus(now,id) end
+	if not publicCache or not publicCache.reviewToken then return nil end
+	if not limit and publicCache.diff then return publicCache.diff end
 	local review = publicCache.review
 	local changes = {}
 	local source = type(review.changes) == "table" and review.changes or {}
 	for index, change in ipairs(source) do
-		if index > 250 then break end
+		if index > (limit or 250) then break end
 		local entry=publicDecision(change,index);if entry then changes[#changes+1]=entry end
 	end
 	local ages = {}
 	for index, age in ipairs(type(review.ages) == "table" and review.ages or {}) do
 		if index > market.maxFeedCount then break end
 		local standardAge = finiteNumber(age)
-		if standardAge and standardAge >= 0 and standardAge <= 3600 then ages[#ages+1] = standardAge end
+		if standardAge and standardAge >= 0 and standardAge <= 7*86400 then ages[#ages+1] = standardAge end
 	end
 	local feeds = {}
 	for index, feed in ipairs(type(review.feeds) == "table" and review.feeds or {}) do
 		if index > market.maxFeedCount then break end
 		local category = type(feed) == "table" and safeText(feed.category,40)
 		local age = category and finiteNumber(feed.age)
-		if age and age >= 0 and age <= 3600 then
-			feeds[#feeds+1] = {category=category, responseAge=age, revalidated=feed.revalidated==true}
+		if age and age >= 0 and age <= (feed.recovered and 7*86400 or 3600) then
+			feeds[#feeds+1] = {category=category, responseAge=age, revalidated=feed.revalidated==true,recovered=feed.recovered==true}
 		end
 	end
-	publicCache.diff = {
-		checkedAt=finiteNumber(review.checkedAt), reviewRevision=type(publicCache.revision)=="string" and publicCache.revision:match("^[a-f0-9]+$") and #publicCache.revision==40 and publicCache.revision or nil, verifiedProtection=true,
+	local diff = {
+		checkedAt=finiteNumber(review.checkedAt), reviewRevision=publicCache.reviewToken, verifiedProtection=true,
 		responseAges=ages, feeds=feeds, changeCount=#source, changes=changes, protectedChecks=finiteNumber(review.protectedChecks),
 	}
-	return publicCache.diff
+	if not limit then publicCache.diff=diff end
+	return diff
+end
+
+function M.publicProfile(now, id)
+	id=publicProfileId(id)
+	return {profileId=id,status=M.publicStatus(now,id),diff=M.publicDiff(now,id,25)}
 end
 
 function M.diagnosticReport(now, id)
@@ -762,30 +859,40 @@ function M.reviewDecisionExamples(id, revision, index, offset, limit)
 end
 
 -- Bridge responses never include local paths or raw filter text.
-function M.publicDecisionExamples(revision,index,offset,limit)
+function M.publicDecisionExamples(revision,index,offset,limit,id)
+	id=publicProfileId(id)
 	assert(type(revision)=="string" and #revision==40 and revision:match("^[a-f0-9]+$"), "Refresh the latest sync review")
 	assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=1000000000, "Choose a listed decision")
-	local ok,page=pcall(M.reviewDecisionExamples,"default",revision,index,offset,limit)
+	local ok,page=pcall(function()
+		local config=assert(get(id))
+		assert(publicReviewToken(config,id)==revision)
+		local result=M.reviewDecisionExamples(id,config.revision,index,offset,limit)
+		assert(publicReviewToken(get(id),id)==revision)
+		return result
+	end)
 	assert(ok, "The review or verified filters changed, or this decision is unavailable. Refresh the sync review in PoB")
 	local results={};for _,entry in ipairs(page.results) do results[#results+1]=publicImpactSample(entry) end
-	return {decisionIndex=index,reviewRevision=revision,total=page.total,offset=page.offset,nextOffset=page.nextOffset,results=results,
-		limitations={"Illustrative cases use known base properties and leave item level unknown.","This compares the current verified default profile, not an archived review."}}
+	return {profileId=id,decisionIndex=index,reviewRevision=revision,total=page.total,offset=page.offset,nextOffset=page.nextOffset,results=results,
+		limitations={"Illustrative cases use known base properties and leave item level unknown.","This compares the current verified profile. Archived reviews are unavailable."}}
 end
 
-function M.publicDecisionPage(revision,offset,limit,kind)
+function M.publicDecisionPage(revision,offset,limit,id,kind)
+	id=publicProfileId(id)
 	assert(type(revision)=="string" and #revision==40 and revision:match("^[a-f0-9]+$"), "Refresh the latest sync review")
 	offset,limit=offset or 0,limit or 25
 	kind=kind or "decisions"
 	assert(kind=="decisions" or kind=="skipped", "Choose decisions or skipped rules")
 	assert(type(offset)=="number" and offset==math.floor(offset) and offset>=0 and offset<=1000000000, "Invalid decision offset")
 	assert(type(limit)=="number" and limit==math.floor(limit) and limit>=1 and limit<=50, "Use 1 to 50 decisions per page")
-	local loaded,config=pcall(get,"default",kind=="skipped")
+	local loaded,config=pcall(get,id)
 	assert(loaded and config, "Refresh the latest sync review")
-	assert(config.revision==revision and type(config.review)=="table" and type(config.review[kind=="skipped" and "skipped" or "changes"])=="table", "The sync review changed. Refresh it in PoB")
-	local ok=pcall(M.verifiedFilterPair,"default");assert(ok, "The verified filters changed or are unavailable. Refresh the sync review in PoB")
-	local reloaded,latest=pcall(get,"default")
+	assert(publicReviewToken(config,id)==revision, "The sync review changed. Refresh it in PoB")
+	if kind=="skipped" then config=assert(get(id,true), "Refresh the latest sync review") end
+	assert(type(config.review)=="table" and type(config.review[kind=="skipped" and "skipped" or "changes"])=="table", "The sync review changed. Refresh it in PoB")
+	local ok=pcall(M.verifiedFilterPair,id);assert(ok, "The verified filters changed or are unavailable. Refresh the sync review in PoB")
+	local reloaded,latest=pcall(get,id)
 	assert(reloaded and latest, "Refresh the latest sync review")
-	assert(latest.revision==revision, "The sync review changed. Refresh it in PoB")
+	assert(publicReviewToken(latest,id)==revision, "The sync review changed. Refresh it in PoB")
 	local source=config.review[kind=="skipped" and "skipped" or "changes"];local last=math.min(#source,offset+limit);local results={}
 	for index=offset+1,last do
 		local entry
@@ -798,8 +905,8 @@ function M.publicDecisionPage(revision,offset,limit,kind)
 		else entry=publicDecision(source[index],index) end
 		if entry then results[#results+1]=entry end
 	end
-	return {reviewRevision=revision,total=#source,offset=offset,nextOffset=last<#source and last or nil,kind=kind,decisions=results,
-		limitations={"The current verified default profile is shown; archived reviews are unavailable.","Invalid or unsafe stored entries are omitted from the page."}}
+	return {profileId=id,reviewRevision=revision,total=#source,offset=offset,nextOffset=last<#source and last or nil,kind=kind,decisions=results,
+		limitations={"The current verified profile is shown; archived reviews are unavailable.","Invalid or unsafe stored entries are omitted from the page."}}
 end
 
 function M.compareObservedStack(id, name, size, area, itemLevel, itemClass)
@@ -807,17 +914,20 @@ function M.compareObservedStack(id, name, size, area, itemLevel, itemClass)
 	return observedStackComparison(M.verifiedFilterPair(id))(item)
 end
 
-local observationFields = {BaseType=true,StackSize=true,AreaLevel=true,ItemLevel=true,Class=true}
+local observationFields = {BaseType=true,StackSize=true,AreaLevel=true,ItemLevel=true,Class=true,StackMaximum=true}
 local visibility = {Show=true,Minimal=true,Hide=false}
 
-function M.stackObservation(name, size, area, itemLevel, itemClass)
+function M.stackObservation(name, size, area, itemLevel, itemClass, stackMaximum)
 	local item = observedStackItem(name,size,area,itemLevel,itemClass)
 	local observation = {}
 	for field in pairs(observationFields) do observation[field] = item[field] end
+	assert(stackMaximum==nil or type(stackMaximum)=="number" and stackMaximum>=1 and stackMaximum<=1000000000
+		and stackMaximum==math.floor(stackMaximum),"Enter a valid whole inventory stack maximum or leave it blank")
+	observation.StackMaximum = stackMaximum
 	return observation
 end
 
-function M.compareObservedStackBatch(before, after, path)
+function M.loadStackObservations(path)
 	assert(type(path)=="string" and path:lower():match("%.json$"), "Choose a JSON observation file")
 	local raw = assert(readWithLimit(path,256*1024), "Observation file is unavailable or exceeds 256 KiB")
 	local list = require("Modules.LootFilterMarketJSON").decode(raw,nil,true)
@@ -827,10 +937,15 @@ function M.compareObservedStackBatch(before, after, path)
 		for field in pairs(value) do
 			assert(observationFields[field], "Observation "..index.." has an unsupported field")
 		end
-		local ok,item = pcall(observedStackItem,value.BaseType,value.StackSize,value.AreaLevel,value.ItemLevel,value.Class)
+		local ok,item = pcall(M.stackObservation,value.BaseType,value.StackSize,value.AreaLevel,value.ItemLevel,value.Class,value.StackMaximum)
 		assert(ok, "Observation "..index..": "..tostring(item):gsub("^.-%.lua:%d+:%s*",""))
 		items[index] = item
 	end
+	return items
+end
+
+function M.compareObservedStackBatch(before, after, path)
+	local items = M.loadStackObservations(path)
 	local compare = observedStackComparison(before,after)
 	local summary = {count=#items,units=0,shown=0,hidden=0,unchanged=0,unknown=0}
 	local classes, areas = {}, {}
@@ -843,7 +958,9 @@ function M.compareObservedStackBatch(before, after, path)
 	end
 	local rows = {}
 	for index, item in ipairs(items) do
-		local earlier, later = compare(item)
+		local sample = observedStackItem(item.BaseType,item.StackSize,item.AreaLevel,item.ItemLevel,item.Class)
+		sample.StackMaximum = item.StackMaximum
+		local earlier, later = compare(sample)
 		local wasVisible, isVisible = visibility[earlier.action],visibility[later.action]
 		local group = (wasVisible==nil or isVisible==nil or #(earlier.reasons or {})>0 or #(later.reasons or {})>0) and "unknown"
 			or wasVisible==isVisible and "unchanged" or isVisible and "shown" or "hidden"
@@ -851,7 +968,7 @@ function M.compareObservedStackBatch(before, after, path)
 		summary.units = summary.units+item.StackSize
 		record(classes,item.Class,item,group)
 		record(areas,item.AreaLevel,item,group)
-		rows[index] = {item=item,before=earlier,after=later,group=group}
+		rows[index] = {item=sample,before=earlier,after=later,group=group}
 	end
 	summary.byClass,summary.byArea={},{}
 	for _,entry in pairs(classes) do summary.byClass[#summary.byClass+1]=entry end
@@ -953,6 +1070,13 @@ function M.adoptExternalEdits(id, reviewed)
 	M.status = updated.summary
 end
 
+function M.loadProtectionFile(path)
+	assert(type(path)=="string" and path:lower():match("%.json$"), "Choose a protected sample JSON file")
+	local source = assert(read(path), "Protected sample file was not found")
+	local samples = assert(require("Modules.LootFilterMarketJSON").decode(source,nil,true),"Invalid protected sample JSON array")
+	return require("Modules.LootFilterProtectedDrops").validateSamples(samples)
+end
+
 local function prepare(target, baselineFile, league, options)
 	assert(market.endpoint, market.endpointError)
 	options = options or {}
@@ -970,11 +1094,11 @@ local function prepare(target, baselineFile, league, options)
 	local original = assert(read(target), "Target filter file was not found")
 	local baseline = assert(read(filterPath(baselineFile)), "Baseline filter was not found")
 	local protections
-	if options.protectionFile and options.protectionFile ~= "" then
-		assert(options.protectionFile:lower():match("%.json$"), "Choose a protected sample JSON file")
-		local samples = assert(read(options.protectionFile), "Protected sample file was not found")
-		local decoded, _, why = json.decode(samples)
-		protections = assert(decoded, why or "Invalid protected sample JSON")
+	if options.protectionSamples~=nil then
+		assert(not options.protectionFile or options.protectionFile=="","Use profile samples or a JSON file")
+		protections = require("Modules.LootFilterProtectedDrops").validateSamples(options.protectionSamples)
+	elseif options.protectionFile and options.protectionFile ~= "" then
+		protections = M.loadProtectionFile(options.protectionFile)
 	elseif not baseline:find("# CUSTOM: Always show Cord Belts", 1, true) then
 		error("Choose a protected sample JSON file for this baseline")
 	end
@@ -1015,7 +1139,7 @@ end
 
 local function verifiedContinuity(config)
 	local stored = config.cutoffContinuity
-	return type(stored)=="table" and stored.version==1 and stored.cuts or nil
+	return type(stored)=="table" and (stored.version==1 or stored.version==2) and stored.cuts or nil
 end
 
 local function cutoffContinuity(config, targetValue, pickupPolicy)
@@ -1056,7 +1180,8 @@ function M.previewOffline(now, id, settings)
 		if value==nil then value=config.targetValue end
 		assert(type(value)=="number" and value>0 and value<=1000, "Enter a stack target above 0 and up to 1,000 chaos")
 		local policy = settings.pickupPolicy or config.pickupPolicy
-		local candidate = validate(baseline,bodies,false,value,config.protections,config.priceHistory,
+		local history = market.sameLiquidity(config.pickupPolicy,policy) and config.priceHistory or nil
+		local candidate = validate(baseline,bodies,false,value,config.protections,history,
 			header.day,header.checkedAt,policy,header.confirmation,cutoffContinuity(config,value,policy))
 		return {before=original,after=candidate,age=age,checkedAt=header.checkedAt}
 	end)
@@ -1082,29 +1207,44 @@ local function backupRecords(config)
 end
 
 
-local reviewedLeague
-local function leagueReviewFingerprint(config, saved, id)
-	local encode = require("Modules.PlanningData").encodeExact
+local reviewedSetup
+local encodeSetup = require("Modules.PlanningData").encodeExact
+local function policyIdentity(config)
 	local protectionFile = config.protectionFile
 	if protectionFile and protectionFile~="" then
 		protectionFile=assert(platform().canonical(protectionFile),"Protected sample file could not be resolved")
 	else protectionFile=nil end
+	return encodeSetup({target=assert(platform().canonical(config.target),"Target filter could not be resolved"),
+		baseline=config.baselineHash,live=config.current,league=config.league,source=config.marketSourceHash,
+		targetValue=config.targetValue,pickupPolicy=market.pickupPolicy(config.targetValue,config.pickupPolicy),
+		protections=config.protections,protectionFile=protectionFile})
+end
+
+local function needsReview(candidate, saved)
+	return not saved or not saved.enabled or saved.pending~=nil or saved.pendingRefresh~=nil or saved.pendingRestore~=nil
+		or policyIdentity(candidate)~=policyIdentity(saved)
+end
+
+function M.requiresPolicyReview(target, baseline, league, options)
+	local candidate = prepare(target,baseline,league,options)
+	return needsReview(candidate,get(options and options.profileId))
+end
+
+local function setupFingerprint(config, saved, id)
 	local state = saved and {revision=saved.revision,enabled=saved.enabled,paused=saved.paused,current=saved.current,
 		league=saved.league,baselineHash=saved.baselineHash,source=saved.marketSourceHash,
 		pending=saved.pending,pendingRefresh=saved.pendingRefresh,pendingRestore=saved.pendingRestore} or false
-	return sha(encode({profile=id,target=assert(platform().canonical(config.target),"Target filter could not be resolved"),
-		baseline=config.baselineHash,live=config.current,league=config.league,source=config.marketSourceHash,
-		targetValue=config.targetValue,pickupPolicy=config.pickupPolicy,protections=config.protections,protectionFile=protectionFile,
+	return sha(encodeSetup({profile=id,policy=policyIdentity(config),
 		hour=config.hour,minute=config.minute,intervalDays=config.intervalDays,saved=state}))
 end
 
-local function verifyLeagueReview(expected, config, saved, id)
-	local receipt = reviewedLeague
-	assert(type(expected)=="table" and receipt and expected.version==1 and expected.token==receipt.token
+local function verifySetupReview(expected, config, saved, id, mode)
+	local receipt = reviewedSetup
+	assert(type(expected)=="table" and receipt and expected.version==1 and expected.token==receipt.token and receipt.mode==mode
 		and expected.league==receipt.league and expected.profileId==id and expected.verifiedAt==receipt.verifiedAt
 		and expected.expiresAt==receipt.expiresAt and os.time()>=receipt.verifiedAt and os.time()<=receipt.expiresAt
-		and leagueReviewFingerprint(config,saved,id)==receipt.fingerprint,
-		"League review changed or expired. Preview the current settings again.")
+		and setupFingerprint(config,saved,id)==receipt.fingerprint,
+		"Filter review changed or expired. Preview the current settings again.")
 end
 
 function M.configure(target, baselineFile, league, options)
@@ -1120,8 +1260,16 @@ function M.configure(target, baselineFile, league, options)
 				"The saved league changed. Reopen Daily price sync and review again.")
 		end
 		if options and options.expectedLeagueReview then
-			verifyLeagueReview(options.expectedLeagueReview,nextConfig,current,id)
+			verifySetupReview(options.expectedLeagueReview,nextConfig,current,id,"league")
 			if current then nextConfig.enabled, nextConfig.paused = current.enabled, current.paused end
+		elseif options and options.expectedPolicyReview then
+			assert(not current or not (current.pending or current.pendingRefresh or current.pendingRestore),
+				"Finish recovering the interrupted sync before saving a new policy.")
+			verifySetupReview(options.expectedPolicyReview,nextConfig,current,id,"policy")
+			nextConfig.paused = current and current.enabled and current.paused or nil
+		elseif options and options.requireReviewedPolicy then
+			assert(not needsReview(nextConfig,current), "Preview and review the changed filter policy before saving.")
+			nextConfig.paused = current and current.paused or nil
 		end
 		nextConfig.backgroundEnabled = current and current.backgroundEnabled == true
 		nextConfig.backgroundNotifications = current and current.backgroundNotifications == true
@@ -1130,7 +1278,9 @@ function M.configure(target, baselineFile, league, options)
 		nextConfig.offlinePriceDays = current and current.offlinePriceDays
 		if current and current.baselineHash == nextConfig.baselineHash then
 			local sameMarket = current.league == nextConfig.league and current.marketSourceHash == nextConfig.marketSourceHash
-			if sameMarket then nextConfig.priceHistory = current.priceHistory end
+			if sameMarket and market.sameLiquidity(current.pickupPolicy,nextConfig.pickupPolicy) then
+				nextConfig.priceHistory = current.priceHistory
+			end
 			if current.target == nextConfig.target and current.current == nextConfig.current and not current.pending then
 				if sameMarket and cutoffContinuity(current,nextConfig.targetValue,nextConfig.pickupPolicy) then
 					nextConfig.cutoffContinuity = current.cutoffContinuity
@@ -1140,13 +1290,16 @@ function M.configure(target, baselineFile, league, options)
 			end
 		end
 		nextConfig.revision = newRevision(current and current.revision)
-		if not read(nextConfig.baseline) then put(nextConfig.baseline, baseline) end
+		platform().preflight(target,#original,"filter destination")
+		local storedBaseline = read(nextConfig.baseline)
+		platform().preflight(settingsPath(id),#encodeSyncRecord(nextConfig)+(storedBaseline and 0 or #baseline),"sync profile")
+		if not storedBaseline then put(nextConfig.baseline, baseline) end
 		assert(read(nextConfig.baseline) == baseline, "Stored baseline does not match")
 		keepExpected(original)
 		save(nextConfig,id)
 		return nextConfig
 	end)
-	if options and options.expectedLeagueReview then reviewedLeague=nil end
+	if options and (options.expectedLeagueReview or options.expectedPolicyReview) then reviewedSetup=nil end
 	polls[id or "default"], nextSweep = nil, 0
 	M.status = config.paused and "Daily sync is paused." or not config.enabled and "Daily sync is disabled." or enabledStatus(config)
 end
@@ -1564,14 +1717,21 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation,
 		local sameSource = current.marketSourceHash == config.marketSourceHash
 		local history = sameSource and current.priceHistory or nil
 		local continuity = sameSource and before==current.current and verifiedContinuity(current) or nil
+		local recovered, pinned = {}, {}
+		for _, feed in ipairs(feeds) do
+			if feed.recovered then
+				recovered[feed.category]=true
+				if feed.age>3600 then pinned[feed.category]=true end
+			end
+		end
 		local candidate, _, changes, skipped, snapshots, protectedChecks, nextContinuity = validate(
-			baseline, bodies, false, current.targetValue, current.protections, history, day, now, current.pickupPolicy, confirmation, continuity, onCoverageFailure)
+			baseline, bodies, false, current.targetValue, current.protections, history, day, now, current.pickupPolicy, confirmation, continuity, onCoverageFailure,recovered,next(pinned) and pinned or nil)
 		keepExpected(candidate)
 		local digest = sha(candidate)
 		local ages = {}
 		for index, feed in ipairs(feeds) do ages[index] = feed.age end
 		local refresh = {day=day,sourceHash=config.marketSourceHash or sha(market.endpoint),priceHistory=snapshots,
-			cutoffContinuity=next(nextContinuity) and {version=1,cuts=nextContinuity} or nil,
+			cutoffContinuity=next(nextContinuity) and {version=2,cuts=nextContinuity} or nil,
 			review={changes=changes,skipped=skipped,checkedAt=now,backup=current.backup,ages=ages,feeds=feeds,
 				league=current.league,protectedChecks=protectedChecks}}
 		local replaced = candidate ~= original
@@ -1579,9 +1739,12 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation,
 		local completed, raw, evidence = prepareRefreshState(current,digest,refresh,replaced)
 		if replaced then
 			local backup = current.target .. ".before-pob-sync-" .. before .. ".bak"
-			if not read(backup) then put(backup, original) end
-			assert(read(backup) == original and read(current.target) == original, "Backup or target changed during sync")
+			local hasBackup = read(backup)~=nil
 			local receipt = encodeSyncRecord(refresh)
+			platform().preflight(current.target,#candidate+(hasBackup and 0 or #original),"filter destination")
+			platform().preflight(settingsPath(id),#receipt+#raw,"sync profile")
+			if not hasBackup then put(backup, original) end
+			assert(read(backup) == original and read(current.target) == original, "Backup or target changed during sync")
 			put(pendingRefreshPath(id),receipt)
 			assert(read(pendingRefreshPath(id)) == receipt, "Interrupted refresh review could not be saved")
 			current.current, current.pending, current.pendingRefresh = before, digest, sha(receipt)
@@ -1619,7 +1782,7 @@ local function storeFeed(url, entry)
 	cache[url], cacheCount, cacheBytes = entry,cacheCount+1,cacheBytes+#entry.body
 end
 
-local function fetchPrices(config, baseline, now, complete, onFailure, id, onLeagueVerified)
+local function fetchPrices(config, baseline, now, complete, onFailure, id, onLeagueVerified, releaseRefresh)
 	local validFeedList, categories, gemRequests = pcall(market.feedCategories, baseline)
 	if not validFeedList then
 		M.status = "Sync skipped: " .. tostring(categories)
@@ -1632,6 +1795,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id, onLea
 	local function finish(success, message, failedFeed)
 		M.busy = nil
 		M.status = success and message or ("Sync skipped: " .. tostring(message))
+		if success and releaseRefresh then releaseRefresh() end
 		if not success and onFailure then onFailure(M.status,M.failedFeedEvidence(failedFeed)) end
 		if ConPrintf then ConPrintf("%s", M.status) end
 	end
@@ -1667,8 +1831,9 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id, onLea
 		local feeds = {}
 		for index, response in ipairs(responses) do
 			local age = response.initialAge + math.max(0, finishedAt - response.checkedAt)
-			if age > 3600 then finish(false,categories[index]..": snapshot expired before the refresh finished.",feedFailure(categories[index],"stale")); return end
-			feeds[index] = {category=categories[index],age=age,revalidated=response.revalidated}
+			local maxAge = response.recovered and config.offlinePriceDays*86400 or 3600
+			if age > maxAge then finish(false,categories[index]..": snapshot expired before the refresh finished.",feedFailure(categories[index],"stale")); return end
+			feeds[index] = {category=categories[index],age=age,revalidated=response.revalidated,recovered=response.recovered}
 		end
 		local coverage
 		local succeeded, result = pcall(complete,bodies,feeds,confirmation,function(failure)
@@ -1684,16 +1849,20 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id, onLea
 		end
 		local exchange = require("Modules.LootFilterExchangeCrossCheck")
 		M.status = "Checking completed GGG trades for new hide cutoffs."
-		exchange.fetch(exchange.hour(os.time()),function(rows)
+		local hour = exchange.hour(os.time())
+		exchange.fetch(hour,function(rows)
 			if M.busy~=job then return end
-			local prices = {}
+			local evidence = {}
+			local age = os.time()-(hour+3600)
 			if rows then
 				for name in pairs(policy.caps) do
 					local trade = exchange.compare(rows,config.league,name)
-					if trade then prices[name]=trade.price end
+					if trade then
+						evidence[name]=exchange.evidence({hour=hour,age=age,count=trade.count,chaosVolume=trade.chaosVolume})
+					end
 				end
 			end
-			finishWithPrices(prices)
+			finishWithPrices(evidence)
 		end)
 	end
 	local function fetch(index, attempt)
@@ -1752,7 +1921,24 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id, onLea
 					defer(delay, category .. ": retrying the exchange request.", function() fetch(index, attempt + 1) end)
 					return
 				end
+				-- Reuse only a still-fresh, source-bound snapshot after a server
+				-- failure. A rate limit or rejected request retains the prior filter.
+				local recoveryUnavailable = false
+				if status and status>=500 and status<=599 and offlineDays(config.offlinePriceDays) then
+					local raw=readWithLimit(offlinePricePath(id),offline.maxSize)
+					local ok, saved=pcall(offline.recoveryFeeds,raw,config,categories,time,config.offlinePriceDays*86400)
+					local prior=ok and saved[category]
+					if prior then
+						bodies[index],responses[index]=prior.body,{initialAge=prior.age,checkedAt=time,recovered=true}
+						fetch(index+1,1)
+						return
+					end
+					recoveryUnavailable = true
+				end
 				local problem = category .. ": " .. err
+				if recoveryUnavailable then
+					problem = problem .. ". No eligible saved category response is available within this profile's offline price age limit; the existing filter was kept."
+				end
 				if index == 1 and status == 404 then diagnoseLeague(problem,failedFeed) else finish(false,problem,failedFeed) end
 				return
 			end
@@ -1849,9 +2035,15 @@ function M.tick(now, force, scheduled, id, onAttemptFailure)
 		M.status = config.lastFailure and failureStatus(config.lastFailure) or config.summary or enabledStatus(config)
 		return
 	end
+	local release
+	local function releaseRefresh()
+		if release then release(); release = nil end
+	end
 	local function onFailure(message, failedFeed)
+		local recorded, problem = pcall(rememberFailure,config,now,message,id,failedFeed)
+		releaseRefresh()
 		if onAttemptFailure then onAttemptFailure(message,failedFeed) end
-		rememberFailure(config, now, message, id, failedFeed)
+		assert(recorded,problem)
 	end
 	if not market.endpoint then
 		M.status = "Sync skipped: "..market.endpointError
@@ -1877,6 +2069,8 @@ function M.tick(now, force, scheduled, id, onAttemptFailure)
 		local raw = assert(read(config.baseline), "Baseline filter is missing")
 		assert(sha(raw) == config.baselineHash, "Baseline checksum changed")
 		verifyUnmanagedRules(original, raw)
+		platform().preflight(config.target,#original,"filter destination")
+		platform().preflight(settingsPath(id),#raw,"sync profile")
 		return raw
 	end)
 	if not ready then
@@ -1884,9 +2078,36 @@ function M.tick(now, force, scheduled, id, onAttemptFailure)
 		onFailure(M.status)
 		return
 	end
-	fetchPrices(config, baseline, now, function(bodies, feeds, confirmation, onCoverageFailure)
+	local locked, lock = pcall(platform().acquire,settingsPath(id)..".refresh.lock",true)
+	if not locked then
+		M.status = "Sync skipped: "..tostring(lock)
+		onFailure(M.status)
+		return
+	end
+	if not lock then
+		M.status = "This profile is refreshing in another PoB process."
+		return
+	end
+	release = lock
+	local loaded, latest = pcall(get,id)
+	if not loaded then
+		M.status = "Sync skipped: "..tostring(latest)
+		onFailure(M.status)
+		return
+	end
+	if not latest or not latest.enabled or latest.paused or latest.revision~=config.revision
+		or scheduled and not latest.backgroundEnabled or latest.pendingRefresh or not force and not M.isDue(latest,now) then
+		releaseRefresh()
+		return
+	end
+	local started, problem = pcall(fetchPrices,config,baseline,now,function(bodies,feeds,confirmation,onCoverageFailure)
 		return publish(config,bodies,feeds,day,force,now,id,confirmation,onCoverageFailure)
-	end, onFailure, id)
+	end,onFailure,id,nil,releaseRefresh)
+	if not started then
+		M.busy = nil
+		M.status = "Sync skipped: "..tostring(problem)
+		onFailure(M.status)
+	end
 end
 
 function M.dueProfiles(now, scheduled)
@@ -1942,14 +2163,21 @@ function M.preview(target, baselineFile, league, options, callback, onFailure)
 	local now = os.time()
 	local id = options and options.profileId or "default"
 	local found, saved = pcall(get,id)
-	local reviewLeague = options and options.reviewLeague==true
-	if reviewLeague then assert(found,saved);reviewedLeague=nil end
-	local fingerprint = reviewLeague and leagueReviewFingerprint(config,saved,id)
+	local reviewMode = options and (options.reviewLeague==true and "league" or options.reviewPolicy==true and "policy")
+	if reviewMode then
+		assert(found,saved)
+		if reviewMode=="policy" then
+			assert(not saved or not (saved.pending or saved.pendingRefresh or saved.pendingRestore),
+				"Finish recovering the interrupted sync before reviewing a new policy.")
+		end
+		reviewedSetup=nil
+	end
+	local fingerprint = reviewMode and setupFingerprint(config,saved,id)
 	local verifiedAt, expiresAt
 	local savedHold = found and saved and finiteNumber(saved.providerRetryAfter)
 	assert(not savedHold or now>=savedHold,"Wait before contacting the rate-limited exchange again")
 	local matching = found and saved and saved.league == config.league and saved.baselineHash == config.baselineHash
-		and saved.marketSourceHash == config.marketSourceHash
+		and saved.marketSourceHash == config.marketSourceHash and market.sameLiquidity(saved.pickupPolicy,config.pickupPolicy)
 	local history = matching and saved.priceHistory
 	local continuity = matching and not saved.pending and saved.target==config.target and saved.current==config.current
 		and cutoffContinuity(saved,config.targetValue,config.pickupPolicy) or nil
@@ -1958,17 +2186,17 @@ function M.preview(target, baselineFile, league, options, callback, onFailure)
 		local candidate = validate(baseline,bodies,false,config.targetValue,config.protections,
 			history,day,now,config.pickupPolicy,confirmation,continuity,onCoverageFailure)
 		local receipt
-		if reviewLeague then
+		if reviewMode then
 			local at = os.time()
 			for _, feed in ipairs(feeds) do expiresAt=math.min(expiresAt,at+3600-feed.age) end
-			assert(at<=expiresAt,"League review expired before the preview finished")
-			reviewedLeague={version=1,token=newRevision(),league=config.league,profileId=id,verifiedAt=verifiedAt,expiresAt=expiresAt,
+			assert(at<=expiresAt,"Filter review expired before the preview finished")
+			reviewedSetup={version=1,mode=reviewMode,token=newRevision(),league=config.league,profileId=id,verifiedAt=verifiedAt,expiresAt=expiresAt,
 				fingerprint=fingerprint}
-			receipt={version=1,token=reviewedLeague.token,league=config.league,profileId=id,verifiedAt=verifiedAt,expiresAt=expiresAt}
+			receipt={version=1,token=reviewedSetup.token,league=config.league,profileId=id,verifiedAt=verifiedAt,expiresAt=expiresAt}
 		end
 		callback(original, candidate,receipt)
 		return "Preview complete. Review the proposed filter before enabling sync."
-	end, onFailure, id, reviewLeague and function(at,expires) verifiedAt,expiresAt=at,expires end or nil)
+	end, onFailure, id, reviewMode and function(at,expires) verifiedAt,expiresAt=at,expires end or nil)
 end
 
 return M

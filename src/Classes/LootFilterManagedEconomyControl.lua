@@ -1,6 +1,7 @@
 local economy = require("Modules.LootFilterEconomy")
 local maps = require("Modules.LootFilterMapMarket")
 local gems = require("Modules.LootFilterGemMarket")
+local uniques = require("Modules.LootFilterUniqueMarket")
 local marketBrowse = require("Modules.LootFilterMarketBrowse")
 local ui = require("Modules.PlanningUI")
 local M = {}
@@ -26,18 +27,21 @@ local function edit(rules, index, save)
 	c.class = new("DropDownControl"):DropDownControl(ui.anchor,{16,102,width-202,26},classes)
 	c.class:SelByValue(existing.class,"label")
 	local mapTypes = {}
-	for _, category in ipairs(maps.feeds) do mapTypes[#mapTypes+1] = {label=maps.variants[category].label,val=category} end
+	for _, category in ipairs(maps.ruleTypes) do mapTypes[#mapTypes+1] = {label=maps.variants[category].label,val=category} end
 	local function isMap() return c.class:GetSelValueByKey("label") == "Maps" end
+	local function isNightmare() return isMap() and c.scope and c.scope:GetSelValueByKey("val")=="NightmareMap" end
 	local function isGem() return gems.classes[c.class:GetSelValueByKey("label")] end
 	local function itemFeed() return economy.exchangeItemClasses[c.class:GetSelValueByKey("label")] end
-	local function isCommodity() return not isMap() and not isGem() and not itemFeed() and c.class:GetSelValueByKey("label") ~= "Divination Cards" end
-	c.nameLabel.label = function() return isMap() and "Map tier (1–16)" or "Exact item name" end
+	local function isUnique() return c.class:GetSelValueByKey("label")==uniques.class end
+	local function isCommodity() return not isUnique() and not isMap() and not isGem() and not itemFeed() and c.class:GetSelValueByKey("label") ~= "Divination Cards" end
+	c.nameLabel.label = function() return isNightmare() and "Nightmare Map (tier 17)" or isMap() and "Map tier (1–16)" or isUnique() and "Exact base type" or "Exact item name" end
 	c.scopeLabel.label = function() return isMap() and "Map variant" or "Area" end
 	c.scope = new("DropDownControl"):DropDownControl(ui.anchor,{width-176,102,160,26},copyTable(isMap() and mapTypes or economy.managedAreas))
 	c.scope:SelByValue(existing.mapType or existing.scope,"val")
+	c.name.shown = function() return not isNightmare() end
 	ui.label(c,"cutoffLabel",16,144,"Baseline stack cutoff",14)
 	c.cutoff = new("EditControl"):EditControl(ui.anchor,{16,166,160,26},existing.cutoff and tostring(existing.cutoff) or "",nil,nil,10)
-	c.cutoff.shown = function() return not isMap() and not isGem() and not itemFeed() end
+	c.cutoff.shown = function() return not isUnique() and not isMap() and not isGem() and not itemFeed() end
 	c.cutoffLabel.shown = c.cutoff.shown
 	ui.label(c,"exchangeLabel",192,144,"Exchange feed",14)
 	c.exchangeCategory = new("DropDownControl"):DropDownControl(ui.anchor,{192,166,width-208,26},exchangeOptions)
@@ -57,6 +61,7 @@ local function edit(rules, index, save)
 	ui.description(c,"help",16,205,width-32,42,{},13)
 	local function updateHelp()
 		c.help.list = ui.rows({isMap() and "Uses the price for this tier and variant."
+			or isUnique() and "Always shows unidentified uniques on this base. Prices add a marker and beam."
 			or isGem() and "Applies to this exact gem, level, quality, and corruption."
 			or itemFeed() and "Uses the per-item price to relax the exact baseline hide."
 			or isCommodity() and "Choose a feed to use its exact item quote for this rule."
@@ -73,10 +78,12 @@ local function edit(rules, index, save)
 		local name = c.name.buf:match("^%s*(.-)%s*$")
 		local scope = c.scope:GetSelValueByKey("val")
 		if isMap() then
-			return {class=kind,tier=tonumber(name),mapType=scope}
+			return {class=kind,tier=isNightmare() and 17 or tonumber(name),mapType=scope}
 		elseif isGem() then
 			return {class=kind,name=name,scope=scope,
 				gemLevel=tonumber(c.gemLevel.buf),gemQuality=tonumber(c.gemQuality.buf),corrupted=c.corruption.selIndex==2}
+		elseif isUnique() then
+			return {name=name,class=kind,scope=scope}
 		elseif itemFeed() then
 			return {name=name,class=kind,scope=scope,exchangeCategory=itemFeed()}
 		end
@@ -100,7 +107,7 @@ local function edit(rules, index, save)
 		if not ok then ui.errorPopup("Check managed price",problem) end
 	end)
 	c.checkQuote.enabled = function()
-		return c.name.buf:match("%S") and (not isCommodity() or c.exchangeCategory:GetSelValueByKey("val")~="")
+		return (isNightmare() or c.name.buf:match("%S")) and (not isCommodity() or c.exchangeCategory:GetSelValueByKey("val")~="")
 	end
 	c.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,252,120,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(c)
@@ -109,7 +116,7 @@ end
 
 function M.Open(rules, save)
 	rules = rules or {}
-	local entries = {{id="add",label="Add a managed price rule",details={"Choose an exact item and establish its baseline hide cutoff."}}}
+	local entries = {{id="add",label="Add a managed price rule",details={"Choose an exact item, map variant, or unidentified unique base."}}}
 	for index, rule in ipairs(rules) do
 		local area = rule.scope == "maps" and "Maps" or rule.scope == "campaign" and "Campaign" or "All areas"
 		local feed = exchangeLabels[rule.exchangeCategory]
@@ -117,6 +124,7 @@ function M.Open(rules, save)
 			details={rule.class,area,rule.mapType and "Hide the tier and variant by default"
 				or rule.gemLevel and string.format("Level %d, %d%% quality, %s",rule.gemLevel,rule.gemQuality,
 					rule.corrupted and "corrupted" or "uncorrupted")
+				or rule.uniqueFeed and "Always show unidentified uniques on this base"
 				or rule.cutoff and "Hide stacks up to " .. rule.cutoff or "Hide by exact name",feed}}
 	end
 	local function keep(value)

@@ -63,23 +63,31 @@ for line in io.lines() do
 			local sync=require("Modules.LootFilterDailySync")
 			if savedFixturePair then sync.verifiedFilterPair=savedFixturePair;savedFixturePair=nil end
 			local baseline='Show\n    BaseType == "Cord Belt"\n# PoB economy: begin\nHide\n    Class == "Stackable Currency"\n    BaseType == "Orb of Alteration"\n    StackSize <= 6\n# PoB economy: end\nShow\n'
-			local output=baseline:gsub('StackSize <= 6','StackSize <= 4')
-			local baselinePath,targetPath=directory.."fixture-baseline.filter",directory.."fixture-target.filter"
+			local profileId=command.named and string.rep("a",40) or "default"
+			local suffix=command.named and "-named" or ""
+			local cutoff=command.named and 5 or 4
+			local output=baseline:gsub('StackSize <= 6','StackSize <= '..cutoff)
+			local baselinePath,targetPath=directory.."fixture-baseline"..suffix..".filter",directory.."fixture-target"..suffix..".filter"
 			local function write(path,value) local file=assert(io.open(path,"wb"));assert(file:write(value));assert(file:close()) end
 			write(baselinePath,baseline);write(targetPath,output)
-			local sha=require("sha1");local now=os.time()
+			local sha=require("sha1");local now=os.time()+(command.advanced and 10 or 0)
 			local config={enabled=true,revision=string.rep("b",40),target=targetPath,baseline=baselinePath,baselineHash=sha(baseline),current=sha(output),
-				lastSuccess=now,targetValue=1,league="Standard",protections={{BaseType="Cord Belt",Rarity="Normal"}},
-				review={checkedAt=now,changes={{name="Orb of Alteration",old=6,cutoff=4,classes={"Stackable Currency"}}},skipped={}}}
-			for i=2,300 do config.review.changes[i]={name="Orb of Alteration",old=6,cutoff=4,classes={"Stackable Currency"}} end
+				lastSuccess=now,targetValue=1,league=command.named and "Hardcore" or "Standard",protections={{BaseType="Cord Belt",Rarity="Normal"}},
+				review={checkedAt=now,changes={{name="Orb of Alteration",old=6,cutoff=cutoff,classes={"Stackable Currency"}}},skipped={}}}
+			for i=2,300 do config.review.changes[i]={name="Orb of Alteration",old=6,cutoff=cutoff,classes={"Stackable Currency"}} end
 			for i=1,280 do config.review.skipped[i]={name="Managed Hide "..i,reason="Preserved unsupported rule"} end
-			write(directory.."LootFilterDailySync.json",assert(json.encode(config)))
+			local configPath=directory.."LootFilterDailySync"..(command.named and "-"..profileId or "")..".json"
+			write(configPath,assert(json.encode(config)))
+			if command.named then
+				write(directory.."LootFilterSyncProfiles.json",assert(json.encode({{id=profileId,name="Fixture market"}})))
+			end
 			-- Daily sync accepts Windows paths only. Exercise the real page and
 			-- bridge on Linux using this fixture's files and the same hash checks.
 			-- The Windows workflow runs the unmodified verification path.
 			if command.portableFixture or require("ffi").os~="Windows" then
 				savedFixturePair=sync.verifiedFilterPair
-				sync.verifiedFilterPair=function()
+				sync.verifiedFilterPair=function(id)
+					if id~=profileId then return savedFixturePair(id) end
 					local function read(path) local file=assert(io.open(path,"rb"));local value=assert(file:read("*a"));file:close();return value end
 					local first,second=read(baselinePath),read(targetPath)
 					assert(sha(first)==config.baselineHash and sha(second)==config.current,"Fixture filters changed")
@@ -87,6 +95,7 @@ for line in io.lines() do
 				end
 			end
 			bridge.publishState()
+			return {profileId=profileId}
 		elseif command.kind=="restore-loot-fixture" then
 			if savedFixturePair then require("Modules.LootFilterDailySync").verifiedFilterPair=savedFixturePair;savedFixturePair=nil end
 		elseif command.kind=="request-test" then bridge.connectionTest={nonce="workflow-connection-test",requestedAt=os.time()};bridge.publishState()

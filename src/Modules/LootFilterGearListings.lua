@@ -181,6 +181,99 @@ local function seedProperties(item, names)
 	return true
 end
 
+local baseDefences = {Armour="Armour",["Evasion Rating"]="Evasion",["Energy Shield"]="EnergyShield",Ward="Ward"}
+local baseProperties = {["Physical Damage"]=true,["Elemental Damage"]=true,["Chaos Damage"]=true,
+	["Attacks per Second"]=true,["Critical Strike Chance"]=true,["Weapon Range"]=true,["Chance to Block"]=true}
+local modifiedBaseFlags = {"corrupted","doubleCorrupted","fractured","synthesised","split","duplicated","mirrored",
+	"memoryItem","mutated","veiled","lockedToCharacter","lockedToAccount","enshrouded","unmodifiable","vestigial",
+	"delve","foreseeing","scourged","crucible","builtInSupport","unmodifiableExceptChaos","intangible","abyssJewel"}
+local modifiedBaseCollections = {"influences","enchantMods","explicitMods","craftedMods","fracturedMods","mutatedMods",
+	"socketedItems","scourgeMods","crucibleMods","veiledMods","grantedSkills","notableProperties","additionalProperties",
+	"utilityMods","ultimatumMods"}
+
+local function naturalImplicit(mods)
+	local lines = {}
+	if not addMods(lines,mods,false,false) then return end
+	local template = require("Classes.TradeHelpers").modLineTemplate
+	for index, line in ipairs(lines) do
+		if line:sub(1,2)~="--" then return end
+		lines[index]=template(line:sub(3))
+	end
+	table.sort(lines)
+	return table.concat(lines,"\0")
+end
+
+function M.craftingBaseTarget(item, publicBase)
+	local base, level = item.base, item.itemLevel
+	if not base or base.hidden or item.rarity=="UNIQUE" or type(level)~="number" or level%1~=0
+		or level<1 or level>100 or item.type=="Quiver" and not quiverBase(item) then return end
+	if not (jewellery[item.type] or base.armour or base.weapon) or base.talismanTier then return end
+	local implicit = {}
+	for line in (base.implicit or ""):gmatch("[^\r\n]+") do
+		implicit[#implicit+1]=line:gsub("%([+-]?%d+%.?%d*%-[+-]?%d+%.?%d*%)","#")
+	end
+	local implicitTemplate = naturalImplicit(implicit)
+	if not implicitTemplate then return end
+	local defences={}
+	for name, key in pairs(baseDefences) do
+		local minimum, maximum = base.armour and base.armour[key.."BaseMin"],base.armour and base.armour[key.."BaseMax"]
+		if minimum and minimum>0 then defences[name]={minimum,maximum or minimum} end
+	end
+	local weaponType = base.weapon and data.weaponTypeInfo[base.type]
+	local class = weaponType and weaponType.label or base.subType~="Thrusting" and base.subType or base.type
+	return {craftingBase=true,base=publicBase or item.baseName,level=level,implicitTemplate=implicitTemplate,
+		defences=defences,class=class,socketLimit=base.socketLimit or 0,weapon=base.weapon~=nil}
+end
+
+local function plainBaseProperties(item, target)
+	if item.properties~=nil and not marketJSON.objectRows(item.properties) then return false end
+	local seen={}
+	for _, property in ipairs(item.properties or {}) do
+		local name,values=property.name,property.values
+		if name=="Evasion" then name="Evasion Rating" end
+		if type(name)~="string" or seen[name] or type(values)~="table" then return false end
+		seen[name]=true
+		local first = type(values[1])=="table" and values[1][1]
+		local range = target.defences[name]
+		if range then
+			local amount=type(first)=="string" and tonumber(first:match("^%d+$"))
+			if #values~=1 or not amount or amount<range[1] or amount>range[2] then return false end
+		elseif name=="Quality" then
+			if #values~=1 or first~="0%" and first~="+0%" then return false end
+		elseif name==target.class then
+			if next(values) then return false end
+		elseif not (baseProperties[name] and (target.weapon or name=="Chance to Block") and type(first)=="string") then
+			return false
+		end
+	end
+	for name in pairs(target.defences) do if not seen[name] then return false end end
+	return true
+end
+
+local function sameCraftingBase(item, target)
+	if item.ilvl~=target.level or item.identified~=true or item.realm~=nil or item.stackSize and item.stackSize~=1 then return false end
+	local rarity, frame, frameID = item.rarity,item.frameType,item.frameTypeId
+	if rarity~=nil and rarity~="Normal" or frame~=nil and frame~=0
+		or frameID~=nil and (type(frameID)~="string" or frameID:lower()~="normal")
+		or rarity==nil and frame==nil and frameID==nil then return false end
+	for _, key in ipairs(modifiedBaseFlags) do
+		if item[key]~=nil and item[key]~=false then return false end
+	end
+	for _, key in pairs(influences) do
+		if item[key]~=nil and item[key]~=false then return false end
+	end
+	for _, key in ipairs(modifiedBaseCollections) do
+		if item[key]~=nil and (type(item[key])~="table" or next(item[key])) then return false end
+	end
+	if item.sockets~=nil then
+		local sockets=gearProperties.listingSockets(item.sockets)
+		if not sockets then return false end
+		local count,largest=gearProperties.socketCounts(sockets)
+		if count>target.socketLimit or largest>4 then return false end
+	end
+	return naturalImplicit(item.implicitMods)==target.implicitTemplate and plainBaseProperties(item,target)
+end
+
 function M.propertyFilters(target, selection)
 	local level={min=target.level,max=target.level}
 	local corruption=tostring(target.corrupted)
@@ -364,8 +457,11 @@ end
 function M.compare(raw, target, league, matchesRolls, requireCapture, recentOnly, propertySelection)
 	assert(target,"Choose supported identified gear with complete rolls and equipment properties")
 	assert(not (target.blightcore and matchesRolls),"Putrid Seed requires an exact ordered comparison")
+	assert(not (target.map or target.craftingBase) or not (matchesRolls or propertySelection),
+		"This destination uses the selected listing match without gear roll filters")
 	assert(type(league)=="string" and #league<=80 and league:match("^[%w _-]+$") and league:find("%S"),"Enter the trade league ID")
-	local criteria=M.propertyFilters(target,propertySelection)
+	local criteria=not (target.map or target.craftingBase) and M.propertyFilters(target,propertySelection)
+	local compare=target.map and require("Modules.LootFilterMapListings").matches or target.craftingBase and sameCraftingBase or sameItem
 	local now=os.time()
 	local stashes, capture = readStashes(raw,league,requireCapture or recentOnly,now)
 	local listings = {}
@@ -375,7 +471,8 @@ function M.compare(raw, target, league, matchesRolls, requireCapture, recentOnly
 			and type(stash.items)=="table" then
 			local seller = stash.accountName:lower()
 			for _, item in ipairs(stash.items) do
-				if type(item)=="table" and item.baseType==target.base and (item.league==nil or item.league==league)
+				if type(item)=="table" and (item.baseType==target.base or target.alternateBase and item.baseType==target.alternateBase)
+					and (item.league==nil or item.league==league)
 					and validID(item.id) then
 					local id = item.id:lower()
 					if listings[id]~=nil then
@@ -397,7 +494,7 @@ function M.compare(raw, target, league, matchesRolls, requireCapture, recentOnly
 			inspected=inspected+1
 			if not listing then
 				ambiguous=ambiguous+1
-			elseif sameItem(listing.item,target,matchesRolls,criteria) then
+			elseif compare(listing.item,target,matchesRolls,criteria) then
 				matched=matched+1
 				local note = listing.item.note
 				if note==nil or note=="" then note=listing.stashNote end

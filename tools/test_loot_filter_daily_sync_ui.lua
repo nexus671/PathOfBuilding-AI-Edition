@@ -1,3 +1,4 @@
+-- cspell:ignore normalsound normalvolume strongfont
 local output, reviewWidth = arg[1], tonumber(arg[2]) or 960
 arg = {}
 dofile("HeadlessWrapper.lua")
@@ -27,11 +28,19 @@ end
 sync.configure = function(target, baseline, league, options)
 	assert(target == selected and baseline == "C:/PoE/baseline.filter" and league == "New Season")
 	assert(options.hour == 12 and options.minute == 37 and options.intervalDays == 3)
-	assert(options.profileId == namedId)
+	assert(options.profileId == namedId and options.expectedPolicyReview.proof=="test-policy-review")
+	assert(options.protectionFile=="" and #options.protectionSamples==1)
+	assert(options.protectionSamples[1].BaseType=="Cord Belt" and options.protectionSamples[1].Rarity=="Magic")
+	assert(options.protectionSamples[1].ExpectedMarker=="0 Red Star")
 	assert(options.pickupPolicy.campaign == 0.25 and options.pickupPolicy.maps == 2)
+	assert(options.pickupPolicy.earlyMaps == 1 and options.pickupPolicy.endgame == 3)
+	assert(options.pickupPolicy.liquidity.Currency==250 and options.pickupPolicy.liquidity.Map==nil)
+	assert(options.pickupPolicy.observedStacks[1].StackMaximum==20)
 	assert(options.pickupPolicy.caps["Orb of Alteration"] == 7)
 	assert(options.pickupPolicy.highlightChaos == 10 and options.pickupPolicy.strongHighlightChaos == 50)
 	assert(options.pickupPolicy.highlightStyle == "cyan-diamond" and options.pickupPolicy.strongHighlightStyle == "purple-star")
+	assert(options.pickupPolicy.highlightActions.sound==3 and options.pickupPolicy.highlightActions.volume==0)
+	assert(options.pickupPolicy.strongHighlightActions.fontSize==45)
 	assert(options.pickupPolicy.confirmTightening)
 	configured = true
 end
@@ -97,6 +106,8 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	harness:click("pickupPolicy")
 	assert(main.popups[1].title == "Pickup policy")
 	harness:text("campaign", "0.25")
+	harness:text("earlyMaps", "1")
+	harness:text("endgame", "3")
 	harness:text("maps", "2")
 	harness:click("addCap")
 	assert(main.popups[1].title == "Add item cap")
@@ -126,10 +137,91 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	harness:text("strongHighlightChaos","50")
 	harness:choose("highlightStyle","Cyan diamond","label")
 	harness:choose("strongHighlightStyle","Purple star","label")
+	harness:click("liquidity")
+	assert(main.popups[1].title=="Category liquidity")
+	harness:choose("category","Map","val")
+	harness:text("minimum","2.5")
+	harness:click("apply")
+	assert(main.popups[1].title=="Category minimum")
+	harness:click("close")
+	harness:text("minimum","30")
+	harness:click("apply")
+	harness:click("liquidity")
+	harness:choose("category","Map","val")
+	assert(main.popups[1].controls.minimum.buf=="30")
+	harness:text("minimum","")
+	harness:click("apply")
+	harness:click("liquidity")
+	harness:choose("category","Currency","val")
+	harness:text("minimum","250")
+	harness:click("apply")
+	harness:click("stackObservations")
+	assert(main.popups[1].title=="Stack observations")
+	do
+		local fileBrowser=require("Classes.LootFilterFileBrowser")
+		local rawOpen,rawLoad=fileBrowser.Open,sync.loadStackObservations
+		fileBrowser.Open=function(_,choose,options)
+			assert(options.accept("stacks.JSON"))
+			choose("C:/PoE/stacks.JSON")
+		end
+		sync.loadStackObservations=function(path)
+			assert(path=="C:/PoE/stacks.JSON")
+			return {{BaseType="Orb of Alteration",StackSize=5,StackMaximum=20,AreaLevel=83,Class="Stackable Currency"}}
+		end
+		harness:click("choose")
+		fileBrowser.Open,sync.loadStackObservations=rawOpen,rawLoad
+	end
+	assert(main.popups[1].title=="Pickup policy" and main.popups[1].controls.stackObservations.label():find("1",1,true))
+	harness:click("highlightActions")
+	assert(main.popups[1].title=="Sound and label size")
+	harness:text("normalsound","17")
+	harness:click("apply")
+	assert(main.popups[1].title=="Price highlight actions")
+	harness:click("close")
+	harness:text("normalsound","3")
+	harness:text("normalvolume","0")
+	harness:text("strongfontSize","45")
+	harness:click("apply")
+	assert(main.popups[1].title=="Pickup policy")
 	harness:click("confirmTightening")
 	harness:click("apply")
-	harness:click("enable")
-	assert(configured and main.popups[1].title == "Daily filter sync" and main.popups[1].controls.league.buf=="New Season")
+	harness:click("editProtection")
+	assert(main.popups[1].title=="Protected samples")
+	harness:click("choose")
+	assert(main.popups[1].title=="Protected sample")
+	harness:text("BaseType","Cord Belt")
+	harness:choose("Rarity","Magic")
+	harness:text("ExpectedMarker","0 Red Star")
+	harness:click("apply")
+	assert(main.popups[1].title=="Protected samples")
+	harness:text("search","Cord Belt")
+	harness:click("choose")
+	assert(main.popups[1].controls.ExpectedMarker.buf=="0 Red Star")
+	harness:click("close")
+	harness:click("close")
+	assert(main.popups[1].title=="Daily filter sync" and main.popups[1].controls.protectionFileLabel.label():find("1 in profile",1,true))
+	do
+		local oldRequires, oldPreview = sync.requiresPolicyReview,sync.preview
+		local receipt = {proof="test-policy-review"}
+		sync.requiresPolicyReview = function(target,baseline,league,draft)
+			assert(target==selected and baseline=="C:/PoE/baseline.filter" and league=="New Season")
+			assert(draft.requireReviewedPolicy and draft.profileId==namedId)
+			return not configured
+		end
+		sync.preview = function(_,_,_,draft,onReview)
+			assert(draft.reviewPolicy and not draft.reviewLeague and not configured)
+			onReview("Hide\n    Class == \"Stackable Currency\"\n","Show\n    Class == \"Stackable Currency\"\n",receipt)
+		end
+		harness:click("enable")
+		assert(not configured and main.popups[1].title=="Review pickup policy")
+		assert(main.popups[1].controls.summary.label:find("1 added / 1 removed",1,true))
+		harness:click("close")
+		assert(not configured and main.popups[1].title=="Daily filter sync")
+		harness:click("enable")
+		harness:click("reviewAction")
+		assert(configured and main.popups[1].title=="Daily filter sync" and main.popups[1].controls.league.buf=="New Season")
+		sync.requiresPolicyReview,sync.preview = oldRequires,oldPreview
+	end
 	harness:click("backgroundStatus")
 	assert(main.popups[1].title=="Windows background task" and main.popups[1].controls[2].label:find("missing",1,true))
 	harness:click("close")
@@ -272,9 +364,9 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 		exports.writeNew = originalWrite
 		assert(main.popups[1].title=="Stack observations saved" and not capture.saveStacks:IsEnabled())
 		assert(#written==3 and written[1].BaseType=="Orb of Alteration" and written[1].StackSize==5
-			and written[1].AreaLevel==83 and written[1].Class=="Stackable Currency" and written[1].Rarity==nil)
+			and written[1].AreaLevel==83 and written[1].StackMaximum==20 and written[1].Class=="Stackable Currency" and written[1].Rarity==nil)
 		assert(written[2].BaseType==written[1].BaseType and written[2].StackSize==written[1].StackSize)
-		assert(written[3].BaseType=="The Doctor" and written[3].Class=="Divination Cards" and written[3].StackSize==2)
+		assert(written[3].BaseType=="The Doctor" and written[3].Class=="Divination Cards" and written[3].StackSize==2 and written[3].StackMaximum==8)
 		if savedPath then
 			local result = sync.compareObservedStackBatch('Hide\n    BaseType == "Orb of Alteration"\n\nShow\n','Show\n',savedPath)
 			assert(result.count==3 and result.shown==2 and result.unchanged==1 and result.units==12)
@@ -719,14 +811,28 @@ rulesUI:choose("class","Embers of the Allflame","label")
 assert(not main.popups[1].controls.cutoff:IsShown())
 rulesUI:text("name","Allflame Ember of Abyss")
 rulesUI:click("save")
+rulesUI:text("search","Add a managed price rule")
+rulesUI:click("choose")
+rulesUI:choose("class","Unidentified unique","label")
+assert(not main.popups[1].controls.cutoff:IsShown())
+rulesUI:text("name","Heavy Belt")
+rulesUI:click("save")
+rulesUI:text("search","Add a managed price rule")
+rulesUI:click("choose")
+rulesUI:choose("class","Maps","label")
+rulesUI:choose("scope","NightmareMap","val")
+assert(not main.popups[1].controls.name:IsShown() and main.popups[1].controls.checkQuote:IsEnabled())
+rulesUI:click("save")
 rulesUI:click("close")
 rulesUI:click("keep")
 local saved = filters.find(build.savers.LootFilters.data,profile.id)
-assert(#saved.economyRules == 5 and saved.economyRules[1].cutoff == 6 and saved.economyRules[1].exchangeCategory==nil)
+assert(#saved.economyRules == 7 and saved.economyRules[1].cutoff == 6 and saved.economyRules[1].exchangeCategory==nil)
 assert(saved.economyRules[2].mapType == "BlightedMap" and saved.economyRules[2].tier == 16)
 assert(saved.economyRules[3].gemLevel==20 and saved.economyRules[3].gemQuality==20 and saved.economyRules[3].corrupted)
 assert(saved.economyRules[4].exchangeCategory=="Scarab" and saved.economyRules[4].cutoff==4)
 assert(saved.economyRules[5].exchangeCategory=="AllflameEmber" and saved.economyRules[5].cutoff==nil)
+assert(saved.economyRules[6].uniqueFeed=="UniqueAccessory" and saved.economyRules[6].baseClass=="Belts")
+assert(saved.economyRules[7].mapType=="NightmareMap" and saved.economyRules[7].tier==17)
 local raw = filters.compile(saved)
 assert(raw:find('GemLevel == 20\n    Quality == 20\n    Corrupted True\n    Imbued False\n    TransfiguredGem False',1,true))
 assert(market.supports(raw) and raw:find('BaseType == "Orb of Alteration"\n    StackSize <= 6',1,true))
@@ -734,7 +840,7 @@ local overlap = {saved.economyRules[1],{name="Orb of Alteration",class="Stackabl
 assert(not pcall(market.validateManagedRules,overlap))
 local existing = '# PoB economy: begin\nHide\n    Class == "Divination Cards"\n    BaseType == "The Apothecary"\n# PoB economy: end\n'
 local merged = market.addManagedSection(existing,saved.economyRules)
-assert(market.supports(merged) and #market.feedCategories(merged) == 13)
+assert(market.supports(merged) and #market.feedCategories(merged) == 15)
 assert(merged:find('BaseType == "The Apothecary"',1,true))
 print("Managed price rules round-tripped through the native workspace and compiled into the existing price engine")
 
@@ -1273,6 +1379,12 @@ account.request = function(_,method,id,payload,callback)
 		callback({filter={id=id,realm="pc",filter_name="Account mapping",filter=payload.filter,validation={valid=true}}})
 	end
 end
+local oldAccessCheck = main.api.AccountAccessError
+main.api.AccountAccessError = function() return "PoE account access requires an OAuth client approved for this edition." end
+require("Classes.LootFilterSyncAccountControl").Open("default")
+assert(main.popups[1].title=="Publish verified output" and not main.popups[1].controls.list and tokenRequests==0)
+main.popups = {}
+main.api.AccountAccessError = function() end
 local function openAccount()
 	require("Classes.LootFilterSyncAccountControl").Open("default")
 	accountUI:click("list")
@@ -1298,6 +1410,7 @@ accountUI:click("publish")
 assert(account.pending and writes==0)
 account.tick(os.time())
 assert(writes==1 and main.popups[1].title=="Account filter published")
+main.api.AccountAccessError = oldAccessCheck
 print("Reviewed account publication preserves the realm, rejects remote drift and sends the exact approved file")
 
 -- Manual browsing, league discovery, and the scheduler share the server cooldown.
@@ -2454,6 +2567,140 @@ Item Level: 86
 		overlay.frame(state)
 		assert(not state.active and minimized and main.popups[1].title=="PoB trade overlay setup")
 		sync.providerWait,Paste=previousWait,previousPaste
+	end
+	do
+		local mapListings=require("Modules.LootFilterMapListings")
+		local rawMap=table.concat({"Item Class: Maps","Rarity: Rare","Vortex Artifice","Map (Tier 5)","--------",
+			"Quality (Pack Size): +20% (augmented)","Item Quantity: +20% (augmented)","--------","Item Level: 68","--------",
+			"Monsters have 45% increased Area of Effect","--------",
+			"Travel to this Map by using it in a personal Map Device. Maps can only be used once.","--------","Note: ~price 2 chaos"},"\n")
+		local map=mapListings.target(rawMap)
+		assert(map.base=="Map (Tier 5)" and map.tier==5 and map.category=="Map" and map.level==68)
+		local function mapRow(id, amount)
+			return {id=string.format("%064x",id),baseType=map.base,ilvl=68,identified=true,frameTypeId="Rare",
+				note="~price "..amount.." chaos",explicitMods={{description="Monsters have 45% increased Area of Effect"}},
+				properties={{name="Map Tier",values={{"5",0}}},{name="Quality (Pack Size)",values={{"+20%",1}}},
+					{name="Item Quantity",values={{"+20%",1}}}}}
+		end
+		local wrongRoll,wrongTier,wrongQuality,wrongVariant,wrongState,wrongChannel,wrongLevel =
+			mapRow(10,1),mapRow(11,1),mapRow(12,1),mapRow(13,1),mapRow(14,1),mapRow(15,1),mapRow(16,1)
+		wrongRoll.explicitMods[1].description="Monsters have 44% increased Area of Effect"
+		wrongTier.properties[1].values[1][1]="6"
+		wrongQuality.properties[2].name="Quality (Item Quantity)"
+		wrongVariant.implicitMods={{description="Area is infested with Fungal Growths"}}
+		wrongState.doubleCorrupted=true
+		wrongChannel.enchantMods=wrongChannel.explicitMods; wrongChannel.explicitMods=nil
+		wrongLevel.ilvl=83
+		local recording = {next_change_id="map-cursor",stashes={
+			stash(1,"One#0001",{mapRow(1,20),mapRow(2,30),wrongRoll,wrongTier,wrongQuality,wrongVariant,wrongState,wrongChannel,wrongLevel}),
+			stash(2,"Two#0002",{mapRow(3,25)}),stash(3,"Three#0003",{mapRow(4,40)}),
+		}}
+		local encoded=assert(json.encode(recording))
+		local sample=listings.compare(encoded,map,"Covens")
+		assert(sample.inspected==11 and sample.matched==4 and sample.results[1].median==25)
+		assert(not pcall(mapListings.target,rawMap:gsub("Travel to this Map","Truncated text")))
+		local unused=mapRow(42,1);unused.identified=false
+		assert(not mapListings.matches(unused,map))
+		local blight=rawMap:gsub("\nMap %(Tier 5%)","\nBlighted Map (Tier 5)"):gsub("\nMonsters have","\nArea is infested with Fungal Growths (implicit)\n--------\nMonsters have",1)
+		local blighted=mapListings.target(blight)
+		assert(blighted.category=="BlightedMap")
+		local blightedRow=mapRow(43,20)
+		table.remove(blightedRow.properties,1)
+		local marketJSON=require("Modules.LootFilterMarketJSON")
+		assert(not mapListings.matches(assert(marketJSON.decode(assert(json.encode(blightedRow)))),blighted))
+		blightedRow.implicitMods={{description="Area is infested with Fungal Growths"}}
+		assert(mapListings.matches(assert(marketJSON.decode(assert(json.encode(blightedRow)))),blighted))
+		local ravaged=blight:gsub("\nBlighted Map","\nBlight-ravaged Map"):gsub("Growths %(implicit%)","Growths (implicit)\nCan be Anointed up to 9 times (implicit)")
+			:gsub("Monsters have 45%% increased Area of Effect","Unique Bosses are Possessed")
+		assert(mapListings.target(ravaged).category=="BlightRavagedMap")
+		local nightmare=rawMap:gsub("Map %(Tier 5%)","Nightmare Map"):gsub("Item Level: 68","Item Level: 84")
+			:gsub("Monsters have 45%% increased Area of Effect","Players are Cursed with Vulnerability\nPlayers are Cursed with Temporal Chains\nPlayers are Cursed with Elemental Weakness\n35%% more Threads found in Area")
+		assert(mapListings.target(nightmare).tier==17)
+		local file=assert(io.open(path,"wb"));assert(file:write(encoded));file:close()
+		local previousPaste=Paste
+		Paste=function() return rawMap end
+		main.popups={}
+		require("Classes.LootFilterMarketBrowseControl").Open({itemsTab={}})
+		local controls=main.popups[1].controls
+		gearUI:text("league","Covens")
+		gearUI:click("pasteItem")
+		assert(controls.query.buf=="=Map (Tier 5)" and controls.listingSample:IsEnabled() and not controls.rolledTrade:IsEnabled())
+		gearUI:click("listingSample")
+		assert(main.popups[1].title=="Comparable asking prices")
+		local details={}
+		for _,line in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(line[1] or "") end
+		local summary=table.concat(details," ")
+		assert(summary:find("4 matching rolls",1,true) and summary:find("Median 25",1,true),summary)
+		Paste=previousPaste
+		print("Rolled map asking prices require an exact visible match and distinct sellers")
+	end
+	do
+		local function baseRow(id, value)
+			return {id=string.format("%064x",id),baseType="Amethyst Ring",ilvl=86,identified=true,
+				rarity="Normal",note="~price "..value.." chaos",implicitMods={{description="+21% to Chaos Resistance"}}}
+		end
+		local wrongLevel,wrongRarity,fractured,influenced,wrongImplicit,quality =
+			baseRow(8,2),baseRow(9,3),baseRow(10,4),baseRow(11,5),baseRow(12,6),baseRow(13,7)
+		wrongLevel.ilvl=85
+		wrongRarity.rarity="Rare"
+		fractured.fractured=true
+		influenced.influences={shaper=true}
+		wrongImplicit.implicitMods={{description="+21% to Fire Resistance"}}
+		quality.properties={{name="Quality",values={{"+20%",1}}}}
+		local data={next_change_id="base-cursor",stashes={
+			stash(1,"One#0001",{baseRow(1,15),baseRow(2,30),wrongLevel,wrongRarity,fractured,influenced,wrongImplicit,quality}),
+			stash(2,"Two#0002",{baseRow(3,20)}),stash(3,"Three#0003",{baseRow(4,45)}),
+		}}
+		local marketBrowse=require("Modules.LootFilterMarketBrowse")
+		local base=assert(marketBrowse.craftingBaseForItem(item))
+		local prices=listings.compare(assert(json.encode(data)),base,"Covens")
+		assert(prices.matched==4 and prices.results[1].sellers==3 and prices.results[1].median==20)
+		local function sampleBase(raw, baseName, listed)
+			local normal=new("Item"):Item(raw)
+			local plain=assert(marketBrowse.craftingBaseForItem(normal))
+			local row={id=string.rep("f",64),baseType=baseName,ilvl=86,identified=true,frameType=0,note="~price 16 chaos",
+				properties=listed.properties,implicitMods=listed.implicitMods,sockets=listed.sockets}
+			return listings.compare(assert(json.encode({next_change_id="base",stashes={stash(1,"One#0001",{row})}})),plain,"Covens")
+		end
+		local armourRaw="Item Class: Body Armours\nRarity: Normal\nVaal Regalia\n--------\nEnergy Shield: 190\n--------\nItem Level: 86"
+		local armour={properties={{name="Energy Shield",values={{"190",0}}}}}
+		assert(sampleBase(armourRaw,"Vaal Regalia",armour).matched==1)
+		armour.sockets={{sColour="B",group=0},{sColour="B",group=0},{sColour="B",group=0},{sColour="G",group=0},{sColour="R",group=0}}
+		assert(sampleBase(armourRaw,"Vaal Regalia",armour).matched==0)
+		armour.sockets=nil
+		armour.properties[1].values[1][1]="200"
+		assert(sampleBase(armourRaw,"Vaal Regalia",armour).matched==0)
+		local bootsRaw="Item Class: Boots\nRarity: Normal\nTwo-Toned Boots\n--------\nArmour: 130\nEvasion Rating: 133\n--------\nItem Level: 86\n--------\n+19% to Fire and Cold Resistances (implicit)"
+		local boots={properties={{name="Armour",values={{"130",0}}},{name="Evasion Rating",values={{"133",0}}}},
+			implicitMods={{description="+17% to Fire and Cold Resistances"}}}
+		assert(sampleBase(bootsRaw,"Two-Toned Boots",boots).matched==1)
+		boots.implicitMods[1].description="+17% to Cold and Lightning Resistances"
+		assert(sampleBase(bootsRaw,"Two-Toned Boots",boots).matched==0)
+		local file=assert(io.open(path,"wb"));assert(file:write(assert(json.encode(data))));file:close()
+		local function medianDisplayed()
+			assert(main.popups[1].title=="Comparable asking prices")
+			local details={}
+			for _,line in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(line[1] or "") end
+			local summary=table.concat(details," ")
+			assert(summary:find("4 matching listings",1,true) and summary:find("Median 20",1,true),summary)
+		end
+		main.popups={}
+		require("Classes.LootFilterMarketBrowseControl").Open(collection)
+		gearUI:text("league","Covens");gearUI:click("buildTarget");gearUI:text("search","Ring 1");gearUI:click("choose")
+		assert(main.popups[1].controls.compareBase:IsEnabled())
+		gearUI:click("compareBase");medianDisplayed()
+		local previousPaste=Paste
+		Paste=function()
+			return "Item Class: Rings\nRarity: Normal\nAmethyst Ring\n--------\nItem Level: 86\n--------\n+21% to Chaos Resistance (implicit)"
+		end
+		main.popups={}
+		require("Classes.LootFilterMarketBrowseControl").Open({itemsTab={}})
+		gearUI:text("league","Covens");gearUI:click("pasteItem")
+		local controls=main.popups[1].controls
+		assert(controls.listingSample:IsEnabled() and controls.exactBase:IsEnabled() and not controls.rolledTrade:IsEnabled())
+		gearUI:click("listingSample");medianDisplayed()
+		Paste=previousPaste
+		print("Plain crafting base asks match actual item level, ordinary state, and natural variants")
 	end
 	require("Classes.LootFilterFileBrowser").Open=originalPicker
 	os.remove(path)

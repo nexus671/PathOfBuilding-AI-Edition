@@ -51,7 +51,7 @@ def payload(root, part, manifest_name, digest):
     return str(destination), data
 
 
-def build(root, output, branch, commit, check_source=None):
+def build(root, output, branch, commit, check_source=None, *, local_updates=False):
     if branch not in {"dev", "main"} or not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("A full commit ID and dev or main branch are required")
     root, output = Path(root), Path(output)
@@ -66,12 +66,17 @@ def build(root, output, branch, commit, check_source=None):
         raise ValueError("Updater manifest has no files")
     version.set("branch", branch)
     version.set("platform", "win32")
+    if version.get("updates") is not None:
+        raise ValueError("App update mode belongs in the portable package")
+    if local_updates:
+        version.set("updates", "local")
     local_manifest = ET.tostring(manifest, encoding="utf-8", xml_declaration=True)
     info = ("Path of Building AI Edition portable build\r\n"
             f"Version: {version.get('number')}\r\nCommit: {commit}\r\nUpdate branch: {branch}\r\n\r\n"
             "Extract to a writable folder and run Path of Building.exe.\r\n"
             "Builds and settings are stored in that folder. This package does not import existing builds.\r\n"
-            "The updater follows the stated branch; back up your builds before updating.\r\n").encode("utf-8")
+            + ("App updates use local packages. Daily market refreshes can still use the configured price source.\r\n"
+               if local_updates else "The updater follows the stated branch; back up your builds before updating.\r\n")).encode("utf-8")
     output.parent.mkdir(parents=True, exist_ok=True)
     temp = None
     try:
@@ -114,14 +119,16 @@ def build(root, output, branch, commit, check_source=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path, help="New ZIP path; existing files are never replaced")
+    parser.add_argument("--local-updates", action="store_true", help="Disable in-app updates from GitHub for this package")
     args = parser.parse_args()
-    branch, commit = git("branch", "--show-current"), git("rev-parse", "HEAD")
+    checkout_branch, commit = git("branch", "--show-current"), git("rev-parse", "HEAD")
+    branch = "dev" if args.local_updates and checkout_branch not in {"dev", "main"} else checkout_branch
     def check_source():
-        if (git("rev-parse", "HEAD") != commit or git("branch", "--show-current") != branch
+        if (git("rev-parse", "HEAD") != commit or git("branch", "--show-current") != checkout_branch
                 or subprocess.run(["git", "diff-index", "--quiet", "HEAD", "--"], cwd=ROOT).returncode):
             raise ValueError("The checkout changed or has tracked changes; commit them before packaging")
     check_source()
-    count, version = build(ROOT, args.output, branch, commit, check_source)
+    count, version = build(ROOT, args.output, branch, commit, check_source, local_updates=args.local_updates)
     print(f"Built {args.output}: {version}, {branch}, {commit}, {count} files")
 
 

@@ -1,8 +1,11 @@
+-- cspell:ignore normalsound
+local pickupAreas = require("Modules.LootFilterPickupAreas")
 local sync = require("Modules.LootFilterDailySync")
 local background = require("Modules.LootFilterBackgroundTask")
 local ui = require("Modules.PlanningUI")
 local market = require("Modules.LootFilterEconomy")
 local appearance = require("Modules.LootFilterPriceAppearance")
+local stackPolicy = require("Modules.LootFilterStackPolicy")
 local M = {}
 
 local feedFailureDescriptions = {
@@ -198,6 +201,7 @@ local function compareStackFile(compare, beforeLabel, afterLabel)
 			local label = string.format("%s | Stack %d | Area %d",item.BaseType,item.StackSize,item.AreaLevel)
 			local details = {label,item.Class}
 			if item.ItemLevel then details[#details+1] = "Item level: "..item.ItemLevel end
+			if item.StackMaximum then details[#details+1] = "Inventory stack maximum: "..item.StackMaximum end
 			describeObservedOutcome(details,beforeLabel,row.before)
 			describeObservedOutcome(details,afterLabel,row.after)
 			entries[#entries+1] = {id=tostring(index),label=label,category=outcomes[row.group],details=details,observation=row}
@@ -219,9 +223,11 @@ local function compareObservedStack(compare, compareBatch, beforeLabel, afterLab
 	end
 	input("name","Exact item name",16,16,width-32,200)
 	local column = math.floor((width-48)/3)
-	input("size","Stack size",16,76,column,5)
-	input("area","Area level",24+column,76,column,3)
-	input("level","Item level (optional)",32+2*column,76,column,3)
+	local fieldWidth = math.floor((width-56)/4)
+	input("size","Drop stack size",16,76,fieldWidth,5)
+	input("area","Area level",24+fieldWidth,76,fieldWidth,3)
+	input("level","Item level",32+2*fieldWidth,76,fieldWidth,3)
+	input("maximum","Inventory max",40+3*fieldWidth,76,fieldWidth,10)
 	ui.label(controls,"classLabel",16,136,"Item class",14)
 	local choices = {{label="Automatic from item name"}}
 	for _, class in ipairs(market.managedClasses) do
@@ -230,10 +236,11 @@ local function compareObservedStack(compare, compareBatch, beforeLabel, afterLab
 	controls.class = new("DropDownControl"):DropDownControl(ui.anchor,{16,156,width-32,26},choices)
 	local observations = {}
 	local function entry()
-		local level
+		local level, maximum
 		if controls.level.buf~="" then level=tonumber(controls.level.buf) or false end
+		if controls.maximum.buf~="" then maximum=tonumber(controls.maximum.buf) or false end
 		return controls.name.buf:match("^%s*(.-)%s*$"),tonumber(controls.size.buf),
-			tonumber(controls.area.buf),level,controls.class:GetSelValueByKey("class")
+			tonumber(controls.area.buf),level,controls.class:GetSelValueByKey("class"),maximum
 	end
 	local function run()
 		local name, size, area, level, class = entry()
@@ -258,6 +265,7 @@ local function compareObservedStack(compare, compareBatch, beforeLabel, afterLab
 		controls.name:SetText(item.BaseType)
 		controls.size:SetText(tostring(item.StackSize))
 		controls.level:SetText(item.ItemLevel and tostring(item.ItemLevel) or "")
+		controls.maximum:SetText(item.StackMaximum and tostring(item.StackMaximum) or "")
 		controls.class:SetSel(selected)
 	end)
 	controls.recordStack = new("ButtonControl"):ButtonControl(ui.anchor,{24+column,206,column,28},"Record stack",function()
@@ -327,24 +335,141 @@ local function editItemCap(width, target, caps, selected, save)
 	main:OpenPopup(width,204,selected and "Edit item cap" or "Add item cap",controls,nil,selected and "limit" or "item","cancel")
 end
 
+local function editLiquidity(width, saved, save)
+	local controls, choices = {}, {}
+	for _, category in ipairs(market.liquidityCategories()) do
+		local label = category:gsub("(%l)(%u)", "%1 %2")
+		if saved[category] then label = label.." (custom)" end
+		choices[#choices+1] = {label=label,val=category}
+	end
+	local function category()
+		return controls.category:GetSelValueByKey("val")
+	end
+	ui.label(controls,"categoryLabel",16,16,"Market category",14)
+	controls.category = new("DropDownControl"):DropDownControl(ui.anchor,{16,38,width-32,28},choices,function()
+		controls.minimum:SetText(saved[category()] and tostring(saved[category()]) or "")
+	end)
+	ui.label(controls,"minimumLabel",16,83,"",14).label = function()
+		local default, unit = market.liquidityDefault(category())
+		return string.format("Minimum %s (default %g)",unit,default)
+	end
+	controls.minimum = new("EditControl"):EditControl(ui.anchor,{16,106,160,28},
+		saved[category()] and tostring(saved[category()]) or "",nil,nil,16)
+	ui.label(controls,"minimumHelp",16,145,"Leave blank to use the default.",13)
+	local function apply()
+		local floors = copyTable(saved)
+		local text = controls.minimum.buf:match("^%s*(.-)%s*$")
+		floors[category()] = text~="" and (tonumber(text) or -1) or nil
+		local ok, checked = pcall(market.liquidityFloors,floors)
+		if not ok then main:OpenMessagePopup("Category minimum",ui.errorText(checked)); return end
+		main:ClosePopup()
+		save(checked or {})
+	end
+	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,182,145,28},"Use minimum",apply)
+	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,182,120,28},"Cancel",function() main:ClosePopup() end)
+	controls.minimum.enterFunc = apply
+	ui.style(controls,{apply=true})
+	main:OpenPopup(width,228,"Category liquidity",controls,nil,"minimum","cancel")
+end
+
+local function editStackObservations(rows, save)
+	local entries = {{id="import",label="Import recorded stacks",details={
+		string.format("%d stacks loaded.",#rows),
+		"Choose the JSON saved in Test observed stack to replace these observations.",
+	}}}
+	for _, group in pairs(stackPolicy.index(rows)) do
+		if group.scope~="all" and group.scope~="maps" then
+			entries[#entries+1] = {id=group.class..":"..group.item..":"..group.scope,label=group.item,
+				category=pickupAreas.bands[group.scope].label,details=stackPolicy.lines(group)}
+		end
+	end
+	table.sort(entries,function(a,b)
+		if a.id=="import" then return b.id~="import" end
+		if b.id=="import" then return false end
+		return a.id<b.id
+	end)
+	require("Classes.PlanningBrowserControl").Open("Stack observations",entries,{
+		action="Import file",closeOnChoose=false,canChoose=function(entry) return entry.id=="import" end,
+		choose=function()
+			require("Classes.LootFilterFileBrowser").Open(main.userPath,function(path)
+				local ok, checked = pcall(sync.loadStackObservations,path)
+				if not ok then main:OpenMessagePopup("Import stack observations",ui.errorText(checked)); return end
+				main:ClosePopup()
+				save(checked)
+			end,{title="Choose stack observation file",itemLabel="JSON",accept=function(name) return name:lower():match("%.json$") end})
+		end,
+		secondary={label="Clear observations",canRun=function() return #rows>0 end,run=function()
+			main:ClosePopup()
+			save({})
+		end},
+	})
+end
+
+local function editHighlightActions(width, normal, strong, save)
+	local controls = {}
+	local column = math.floor((width-48)/3)
+	local fields = {{"sound","Alert ID (1–16)"},{"volume","Volume (0–300)"},{"fontSize","Label size (1–45)"}}
+	for index, tier in ipairs({{title="Normal",key="normal",settings=normal},{title="Strong",key="strong",settings=strong}}) do
+		local top = 16+(index-1)*100
+		ui.label(controls,tier.key.."Heading",16,top,tier.title,14)
+		for fieldIndex, field in ipairs(fields) do
+			local key, label = field[1], field[2]
+			local x = 16+(fieldIndex-1)*(column+8)
+			ui.label(controls,tier.key..key.."Label",x,top+22,label,13)
+			local initial = tier.settings and tier.settings[key]
+			controls[tier.key..key] = new("EditControl"):EditControl(ui.anchor,{x,top+42,column,26},initial and tostring(initial) or "",nil,nil,3)
+		end
+	end
+	ui.label(controls,"instructions",16,195,"Blank keeps the baseline action. A new sound defaults to volume 50.",13)
+	local function readTier(tier)
+		local actions = {}
+		for _, field in ipairs(fields) do
+			local key = field[1]
+			local value = controls[tier..key].buf:match("^%s*(.-)%s*$")
+			actions[key] = value~="" and (tonumber(value) or -1) or nil
+		end
+		return appearance.settings(actions)
+	end
+	local function apply()
+		local ok, normalActions, strongActions = pcall(function() return readTier("normal"),readTier("strong") end)
+		if not ok then main:OpenMessagePopup("Price highlight actions",ui.errorText(normalActions)); return end
+		main:ClosePopup()
+		save(normalActions,strongActions)
+	end
+	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,225,150,28},"Use settings",apply)
+	controls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,225,120,28},"Cancel",function() main:ClosePopup() end)
+	ui.style(controls,{apply=true})
+	main:OpenPopup(width,269,"Sound and label size",controls,nil,"normalsound","close")
+end
+
+local function describeHighlightActions(details, actions)
+	if not actions then return end
+	if actions.sound then details[#details+1] = string.format("Alert %d at volume %d",actions.sound,actions.volume or 50) end
+	if actions.fontSize then details[#details+1] = string.format("Label size %d",actions.fontSize) end
+end
+
 local function editPickupPolicy(width, target, policy, save)
 	local controls = {}
 	ui.label(controls,"campaignLabel",16,16,"Campaign chaos per stack",14)
-	ui.label(controls,"mapsLabel",width/2+4,16,"Maps chaos per stack",14)
-	local function targetField(key,x)
-		controls[key] = new("EditControl"):EditControl(ui.anchor,{x,38,width/2-32,26},
+	ui.label(controls,"mapsLabel",width/2+4,16,"Map fallback (chaos per stack)",14)
+	local function targetField(key,x,y)
+		controls[key] = new("EditControl"):EditControl(ui.anchor,{x,y,width/2-32,26},
 			policy[key] and tostring(policy[key]) or "", nil, nil, 10)
 	end
-	targetField("campaign",16)
-	targetField("maps",width/2+4)
-	ui.label(controls,"stackTargetHelp",16,65,"Blank uses the default stack target.",13)
-	ui.label(controls,"capsLabel",16,88,"Per-item stack caps",14)
-	ui.description(controls,"capsHelp",16,108,width-32,36,{
+	targetField("campaign",16,38)
+	targetField("maps",width/2+4,38)
+	ui.label(controls,"earlyMapsLabel",16,71,"Early maps (levels 68–77)",14)
+	ui.label(controls,"endgameLabel",width/2+4,71,"Endgame (level 78+)",14)
+	targetField("earlyMaps",16,93)
+	targetField("endgame",width/2+4,93)
+	ui.label(controls,"stackTargetHelp",16,121,"A blank map stage uses the map fallback, then the default stack target.",13)
+	ui.label(controls,"capsLabel",16,144,"Per-item stack caps",14)
+	ui.description(controls,"capsHelp",16,164,width-32,36,{
 		"An item cap limits new hides after three earlier liquid daily quotes. It applies to rules managed by prices.",
 	},14)
 	local caps = copyTable(policy.caps or {})
 	local selectionWidth = width-310
-	controls.caps = new("DropDownControl"):DropDownControl(ui.anchor,{16,150,selectionWidth,28},{})
+	controls.caps = new("DropDownControl"):DropDownControl(ui.anchor,{16,206,selectionWidth,28},{})
 	local function refreshCaps(selected)
 		local names, entries = {}, {}
 		for name in pairs(caps) do names[#names+1]=name end
@@ -365,7 +490,7 @@ local function editPickupPolicy(width, target, policy, save)
 		refreshCaps(selected)
 	end
 	local function capButton(key,x,label,action)
-		controls[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,150,82,28},label,action)
+		controls[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,206,82,28},label,action)
 	end
 	capButton("addCap",width-280,"Add",function()
 		editItemCap(math.min(490,width),target,caps,nil,saveCaps)
@@ -380,10 +505,10 @@ local function editPickupPolicy(width, target, policy, save)
 	controls.caps.enabled = function() return next(caps)~=nil end
 	controls.editCap.enabled,controls.removeCap.enabled = controls.caps.enabled,controls.caps.enabled
 	refreshCaps()
-	ui.label(controls,"highlightLabel",16,206,"Highlight from (chaos, optional)",14)
-	ui.label(controls,"strongLabel",width/2+4,206,"Strong highlight from (chaos, optional)",14)
+	ui.label(controls,"highlightLabel",16,262,"Highlight from (chaos, optional)",14)
+	ui.label(controls,"strongLabel",width/2+4,262,"Strong highlight from (chaos, optional)",14)
 	local function highlightField(key,x)
-		controls[key] = new("EditControl"):EditControl(ui.anchor,{x,228,width/2-32,26},
+		controls[key] = new("EditControl"):EditControl(ui.anchor,{x,284,width/2-32,26},
 			policy[key] and tostring(policy[key]) or "", nil, nil, 10)
 	end
 	highlightField("highlightChaos",16)
@@ -391,7 +516,7 @@ local function editPickupPolicy(width, target, policy, save)
 	local function paletteField(key,x,defaultLabel)
 		local choices = {{label=defaultLabel}}
 		for _, preset in ipairs(appearance.presets) do choices[#choices+1] = preset end
-		controls[key] = new("DropDownControl"):DropDownControl(ui.anchor,{x,266,width/2-32,28},choices)
+		controls[key] = new("DropDownControl"):DropDownControl(ui.anchor,{x,322,width/2-32,28},choices)
 		for index, preset in ipairs(choices) do
 			if preset.val==policy[key] then controls[key]:SetSel(index); break end
 		end
@@ -399,28 +524,48 @@ local function editPickupPolicy(width, target, policy, save)
 	paletteField("highlightStyle",16,"Default (yellow circle)")
 	paletteField("strongHighlightStyle",width/2+4,"Default (orange star)")
 	local confirm = policy.confirmTightening==true
-	controls.confirmTightening = new("ButtonControl"):ButtonControl(ui.anchor,{16,310,width-32,28},"",function() confirm=not confirm end)
+	controls.confirmTightening = new("ButtonControl"):ButtonControl(ui.anchor,{16,366,width-32,28},"",function() confirm=not confirm end)
 	controls.confirmTightening.label = function() return "Require GGG trade confirmation for new hides: "..(confirm and "On" or "Off") end
-	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,356,180,28},"Use with next update",function()
+	local liquidity = copyTable(policy.liquidity or {})
+	local observed = policy.observedStacks or {}
+	local normalActions, strongActions = policy.highlightActions,policy.strongHighlightActions
+	controls.highlightActions = new("ButtonControl"):ButtonControl(ui.anchor,{224,404,180,28},"Sound and label size",function()
+		editHighlightActions(math.min(490,width),normalActions,strongActions,function(normal,strong)
+			normalActions,strongActions = normal,strong
+		end)
+	end)
+	controls.stackObservations = new("ButtonControl"):ButtonControl(ui.anchor,{16,404,200,28},"",function()
+		editStackObservations(observed,function(rows) observed=rows end)
+	end)
+	controls.stackObservations.label = function() return string.format("Stack observations (%d)",#observed) end
+	controls.liquidity = new("ButtonControl"):ButtonControl(ui.anchor,{212,446,180,28},"Category liquidity",function()
+		editLiquidity(math.min(480,width),liquidity,function(value) liquidity=value end)
+	end)
+	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,446,180,28},"Use with next update",function()
 		local passed, checked = pcall(function()
 			return market.pickupPolicy(target, {
 				campaign=controls.campaign.buf ~= "" and (tonumber(controls.campaign.buf) or -1) or nil,
 				maps=controls.maps.buf ~= "" and (tonumber(controls.maps.buf) or -1) or nil,
+				earlyMaps=controls.earlyMaps.buf ~= "" and (tonumber(controls.earlyMaps.buf) or -1) or nil,
+				endgame=controls.endgame.buf ~= "" and (tonumber(controls.endgame.buf) or -1) or nil,
 				highlightChaos=controls.highlightChaos.buf ~= "" and (tonumber(controls.highlightChaos.buf) or -1) or nil,
 				strongHighlightChaos=controls.strongHighlightChaos.buf ~= "" and (tonumber(controls.strongHighlightChaos.buf) or -1) or nil,
 				highlightStyle=controls.highlightStyle:GetSelValueByKey("val"),
 				strongHighlightStyle=controls.strongHighlightStyle:GetSelValueByKey("val"),
+				highlightActions=normalActions,strongHighlightActions=strongActions,
 				confirmTightening=confirm,
 				caps=caps,
+				liquidity=liquidity,
+				observedStacks=observed,
 			})
 		end)
 		if not passed then main:OpenMessagePopup("Pickup policy",ui.errorText(checked)); return end
 		main:ClosePopup()
 		save(checked)
 	end)
-	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,356,120,28},"Cancel",function() main:ClosePopup() end)
+	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,446,120,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(controls)
-	main:OpenPopup(width,402,"Pickup policy",controls,nil,nil,"cancel")
+	main:OpenPopup(width,492,"Pickup policy",controls,nil,nil,"cancel")
 end
 
 function M.Open(profileId, profileName, restored)
@@ -429,6 +574,12 @@ function M.Open(profileId, profileName, restored)
 	if not ok then main:OpenMessagePopup("Daily filter sync", ui.errorText(config)); return end
 	config = config or {}
 	local pickupPolicy = restored and restored.pickupPolicy or config.pickupPolicy or {}
+	local inlineProtections
+	if restored then
+		inlineProtections = restored.inlineProtections
+	elseif not config.protectionFile or config.protectionFile=="" then
+		inlineProtections = config.protections
+	end
 	local width = math.min(720, main.screenW - 40)
 	local c = {}
 	local buttonWidth = math.floor((width - 56) / 5)
@@ -445,7 +596,8 @@ function M.Open(profileId, profileName, restored)
 		local hour, minute = c.time.buf:match("^%s*(%d%d?):(%d%d)%s*$")
 		return {profileId=profileId,hour=tonumber(hour) or -1,minute=tonumber(minute) or -1,intervalDays=tonumber(c.intervalDays.buf) or -1,
 			targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf,pickupPolicy=pickupPolicy,
-			expectedSavedLeague=config.league or false}
+			protectionSamples=c.protectionFile.buf=="" and inlineProtections or nil,
+			expectedSavedLeague=config.league or false,requireReviewedPolicy=true}
 	end
 	local function attempt(action)
 		local passed, err = pcall(action)
@@ -520,8 +672,27 @@ function M.Open(profileId, profileName, restored)
 	field("time", 198, "Daily time (local, HH:MM)", string.format("%02d:%02d", config.hour or 9, config.minute or 0), 16, 195)
 	field("targetValue", 198, "Chaos per stack", tostring(config.targetValue or 1), 228, 160)
 	field("intervalDays", 198, "Repeat every (days)", tostring(config.intervalDays or 1), 404, 150)
-	field("protectionFile", 250, "Protected samples JSON", config.protectionFile or "", 16, width-128)
-	browse("protectionFile",270,width-98,{title="Choose protected samples",itemLabel="JSON",accept=function(name) return name:lower():match("%.json$") end})
+	field("protectionFile", 250, "Protected samples JSON", config.protectionFile or "", 16, width-244)
+	c.protectionFileLabel.label = function()
+		if c.protectionFile.buf=="" and inlineProtections then
+			return string.format("Protected samples (%d in profile)",#inlineProtections)
+		end
+		return "Protected samples JSON"
+	end
+	browse("protectionFile",270,width-214,{title="Choose protected samples",itemLabel="JSON",accept=function(name) return name:lower():match("%.json$") end})
+	c.editProtection = new("ButtonControl"):ButtonControl(ui.anchor,{width-124,270,108,26},"Edit samples",function()
+		local samples = inlineProtections
+		if c.protectionFile.buf~="" then
+			local passed,result = pcall(sync.loadProtectionFile,c.protectionFile.buf)
+			if not passed then main:OpenMessagePopup("Protected samples",ui.errorText(result));return end
+			samples=result
+		end
+		require("Classes.LootFilterProtectionControl").Open(samples,function(next)
+			inlineProtections=next
+			c.protectionFile:SetText("")
+		end)
+	end)
+	c.editProtection.enabled=function() return not sync.busy end
 	ui.description(c,"help",16,306,width-32,38,{"Profile: "..profileName, "PoB keeps a fixed copy of the baseline."},14)
 	c.status = new("LabelControl"):LabelControl(ui.anchor,{16,350,width-32,16},"",14)
 	local cachedAt, cachedStatus
@@ -540,25 +711,29 @@ function M.Open(profileId, profileName, restored)
 	local function leagueChanged()
 		return config.league and config.league~=selectedLeague()
 	end
-	local function previewChanges(rollover)
+	local function previewChanges(mode)
 		local owner = main.popups[1]
 		local target, baseline, league, draft = c.target.buf,c.baseline.buf,selectedLeague(),options()
-		draft.reviewLeague = rollover and true or nil
+		draft.reviewLeague = mode=="league" or nil
+		draft.reviewPolicy = mode=="policy" or nil
 		local passed, err = pcall(sync.preview,target,baseline,league,draft,function(before, after, receipt)
 			if main.popups[1] ~= owner then return end
 			local reviewOptions = {inspectStack=comparePreviewStack}
-			if rollover then
+			if mode then
+				local leagueReview = mode=="league"
+				local title = leagueReview and "Review league change" or "Review pickup policy"
 				if not receipt then
-					main:OpenMessagePopup("Review league change","The saved profile changed. Reopen Daily price sync and review again.")
+					main:OpenMessagePopup(title,"The saved profile changed. Reopen Daily price sync and review again.")
 					return
 				end
-				reviewOptions.title="Review league change"
+				reviewOptions.title=title
 				reviewOptions.note="Preview for "..league..". Saving updates the profile. The live filter updates after a successful fresh sync."
-				reviewOptions.label="Save reviewed league"
+				reviewOptions.label=leagueReview and "Save reviewed league" or "Save reviewed policy"
 				reviewOptions.run=function()
-					draft.expectedLeagueReview = receipt
+					local key = leagueReview and "expectedLeagueReview" or "expectedPolicyReview"
+					draft[key] = receipt
 					local saved, why = pcall(sync.configure,target,baseline,league,draft)
-					if not saved then main:OpenMessagePopup("Review league change",ui.errorText(why)); return end
+					if not saved then main:OpenMessagePopup(title,ui.errorText(why)); return end
 					main:ClosePopup()
 					main:ClosePopup()
 					M.Open(profileId,profileName)
@@ -571,7 +746,10 @@ function M.Open(profileId, profileName, restored)
 		if not passed then main:OpenMessagePopup("Daily filter sync", ui.errorText(err)) end
 	end
 	button("enable",16,"Enable / update",function()
-		if leagueChanged() then previewChanges(true)
+		if leagueChanged() then previewChanges("league"); return end
+		local passed, required = pcall(sync.requiresPolicyReview,c.target.buf,c.baseline.buf,selectedLeague(),options())
+		if not passed then main:OpenMessagePopup("Daily filter sync",ui.errorText(required)); return end
+		if required then previewChanges("policy")
 		else attempt(function() sync.configure(c.target.buf,c.baseline.buf,selectedLeague(),options()) end) end
 	end)
 	c.enable.label = function() return leagueChanged() and "Review league" or "Enable / update" end
@@ -630,17 +808,31 @@ function M.Open(profileId, profileName, restored)
 			for i, feed in ipairs(review.feeds or {}) do
 				entries[#entries+1] = {id="feed-"..i,label=feed.category,category="Price feeds",details={
 					string.format("poe.ninja response age at sync: %d seconds",feed.age),
-					feed.revalidated and "Server confirmed the saved response was unchanged." or "Downloaded response and verified its freshness.",
+					feed.recovered and "Reused a verified saved response after a server error."
+						or feed.revalidated and "Server confirmed the saved response was unchanged." or "Downloaded response and verified its freshness.",
 				}}
 			end
 			for i, change in ipairs(review.changes or {}) do
-				local scope = change.scope == "campaign" and " in campaign areas" or change.maps and " in maps" or ""
-				local details = {string.format("Hide cutoff from %d to %d%s", change.old, change.cutoff, scope)}
+				local band = pickupAreas.bands[change.scope]
+				local scope = band and (" in "..band.label) or change.maps and " in maps" or ""
+				local details = {change.uniqueBase and ("Unidentified unique base stays visible"..scope)
+					or string.format("Hide cutoff from %d to %d%s", change.old, change.cutoff, scope)}
+				if change.exampleUnique then details[#details+1] = "Highest supported variant: "..change.exampleUnique end
 				if change.retainedReason then
 					details[#details+1] = "Kept the last verified lower cutoff. "..change.retainedReason.."."
 				else
 					details[#details+1] = string.format("%.4g chaos used | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume")
 					details[#details+1] = string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0)
+				end
+				if change.heldByMargin then
+					details[#details+1] = "Kept the verified cutoff because the smallest visible stack still meets 85% of the target."
+				end
+				if change.highlightHeldByMargin then
+					details[#details+1] = "Kept the previously verified highlight within 15% of its threshold."
+				end
+				if change.reward then details[#details+1] = market.rewardDescription(change.reward) end
+				if change.stackEvidence then
+					for _, line in ipairs(stackPolicy.lines(change.stackEvidence)) do details[#details+1]=line end
 				end
 				local priceId = market.evidencePriceId(change.priceId)
 				if priceId then
@@ -652,9 +844,15 @@ function M.Open(profileId, profileName, restored)
 				end
 				if change.confirmedPrice then
 					details[#details+1] = string.format("GGG completed-hour trade average: %.4g chaos",change.confirmedPrice)
+					local trade = require("Modules.LootFilterExchangeCrossCheck").evidence(change.confirmedTrade)
+					if trade then
+						details[#details+1] = string.format("%s UTC | %g items for %g chaos | Hour ended %d min before the check",
+							os.date("!%Y-%m-%d %H:00",trade.hour),trade.count,trade.chaosVolume,math.floor(trade.age/60))
+					end
 				end
 				for _, highlight in ipairs(change.highlights or {}) do
 					details[#details+1] = string.format("Proposed highlight at %d items: %s",highlight.firstStack,highlight.icon)
+					describeHighlightActions(details,highlight.actions)
 				end
 				local samples = change.samples or (change.sample and {change.sample}) or {}
 				for _, sample in ipairs(samples) do
@@ -668,6 +866,7 @@ function M.Open(profileId, profileName, restored)
 						details[#details+1] = "This drop is still hidden after the cutoff was lowered."
 					end
 					if sample.marker then details[#details+1] = "Sample marker: "..sample.marker end
+					describeHighlightActions(details,sample.actions)
 					for _,phase in ipairs({{"Before",sample.before,sample.beforeMissing},{"After",sample.action,sample.afterMissing}}) do if phase[2]=="Unknown" then
 						local missing=require("Modules.LootFilterParser").safeMissingProperties(phase[3])
 						details[#details+1]=phase[1]..(missing and (": needs "..table.concat(missing,", ").." for this example.") or ": the preview cannot resolve a filter rule or included file.")
@@ -688,6 +887,9 @@ function M.Open(profileId, profileName, restored)
 			for i, item in ipairs(review.skipped or {}) do
 				local details = {item.reason}
 				if item.source then details[#details+1] = "Price feed · "..item.source end
+				if item.stackEvidence then
+					for _, line in ipairs(stackPolicy.lines(item.stackEvidence)) do details[#details+1]=line end
+				end
 				if item.policyCap then
 					details[#details+1] = "Configured cap: "..item.policyCap
 					if item.old then details[#details+1] = "Lowest baseline cutoff: "..item.old end
@@ -750,7 +952,7 @@ function M.Open(profileId, profileName, restored)
 		end
 		openReview(saved.review or {})
 	end,432)
-	button("preview",16+step,"Preview changes",function() previewChanges(leagueChanged()) end,432)
+	button("preview",16+step,"Preview changes",function() previewChanges(leagueChanged() and "league" or nil) end,432)
 	c.preview.enabled = function() return not sync.busy end
 	button("externalEdits",16+step*2,"External edits",function()
 		local passed,before,after = pcall(sync.externalDiff,profileId)
@@ -944,8 +1146,8 @@ function M.Open(profileId, profileName, restored)
 		local popupWidth = math.min(560,width)
 		local days = {0,1,3,7}
 		ui.description(controls,"help",16,18,popupWidth-32,54,{
-			"Keep prices from the latest verified refresh for offline review.",
-			"Preview your pending pickup settings in a read-only diff.",
+			"Save prices for offline review and server-error recovery.",
+			"Choose 3 days or more to cover a missed daily refresh.",
 		},14)
 		ui.label(controls,"maxAge",16,78,"Maximum age for offline prices",14)
 		controls.days = new("DropDownControl"):DropDownControl(ui.anchor,{16,100,popupWidth-32,28},
@@ -1039,7 +1241,7 @@ function M.Open(profileId, profileName, restored)
 			fields[key]={text=field.buf,caret=field.caret,sel=field.sel,undo=field.undo,redo=field.redo,lastUndoState=field.lastUndoState}
 			if popup.selControl==field then focus=key end
 		end
-		local replacement=M.Open(profileId,profileName,{fields=fields,pickupPolicy=pickupPolicy,page=page,focus=focus})
+		local replacement=M.Open(profileId,profileName,{fields=fields,pickupPolicy=pickupPolicy,inlineProtections=inlineProtections,page=page,focus=focus})
 		if replacement then
 			for index,entry in ipairs(main.popups) do if entry==popup then table.remove(main.popups,index);break end end
 		end

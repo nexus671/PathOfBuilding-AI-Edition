@@ -60,7 +60,10 @@ function M.Open(before,after, rawComparison, options)
 		button("copyAfter",16+2*copyStep,h-46,copyWidth,"Copy after",function() Copy(current) end);c.copyAfter.enabled=function() return current~=nil end
 	end
 	button("close",w-156,h-46,140,"Close",function() main:ClosePopup() end)
-	if options.run then button("reviewAction",16,h-128,212,options.label,options.run) end
+	if options.run then
+		button("reviewAction",16,h-128,212,options.label,options.run)
+		c.reviewAction.enabled=function() return review~=nil end
+	end
 	if options.inspectStack then
 		button("inspectStack",options.run and 244 or 16,h-128,168,"Test observed stack",function()
 			options.inspectStack(previous,current)

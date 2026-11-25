@@ -1,5 +1,6 @@
 local json = require("dkjson")
 local parser = require("Modules.LootFilterParser")
+local areas = require("Modules.LootFilterPickupAreas")
 local M = {}
 local begin = "# PoB price highlight begin "
 local stop = "# PoB price highlight end"
@@ -28,6 +29,61 @@ end
 
 function M.icon(tier, palette)
 	return assert(styleFor(tier,palette),"Invalid price highlight style").icon
+end
+
+local function whole(value, minimum, maximum)
+	return type(value)=="number" and value>=minimum and value<=maximum and value==math.floor(value)
+end
+
+function M.settings(settings)
+	if settings==nil then return nil end
+	assert(type(settings)=="table","Invalid price highlight actions")
+	local count = 0
+	for key in pairs(settings) do
+		assert(key=="sound" or key=="volume" or key=="fontSize","Unsupported price highlight action")
+		count=count+1
+	end
+	assert(settings.sound==nil or whole(settings.sound,1,16),"Choose a built-in sound from 1 to 16")
+	assert(settings.volume==nil or settings.sound and whole(settings.volume,0,300),"Choose a sound before setting its volume from 0 to 300")
+	assert(settings.fontSize==nil or whole(settings.fontSize,1,45),"Enter a label size from 1 to 45")
+	if count>0 then return {sound=settings.sound,volume=settings.volume,fontSize=settings.fontSize} end
+end
+
+local alertSounds = {PlayAlertSound=true,PlayAlertSoundPositional=true,CustomAlertSound=true,CustomAlertSoundOptional=true}
+local function replaced(keyword, settings)
+	return keyword=="MinimapIcon" or keyword=="PlayEffect"
+		or settings and (settings.sound and alertSounds[keyword] or settings.fontSize and keyword=="SetFontSize")
+end
+
+local function appendActions(lines, style, settings)
+	lines[#lines+1]="    MinimapIcon "..style.icon
+	lines[#lines+1]="    PlayEffect "..style.effect
+	if settings and settings.fontSize then lines[#lines+1]="    SetFontSize "..settings.fontSize end
+	if settings and settings.sound then lines[#lines+1]="    PlayAlertSound "..settings.sound.." "..(settings.volume or 50) end
+end
+
+function M.styleUnique(rule, tier, palette, settings, newline)
+	local lines = {}
+	for _, raw in ipairs(rule.rawLines) do
+		local line = raw:gsub("\r$","")
+		if not replaced(parser.tokens(line)[1],settings) then lines[#lines+1]=line end
+	end
+	appendActions(lines,assert(styleFor(tier,palette),"Invalid price highlight style"),settings)
+	return table.concat(lines,newline)..newline
+end
+
+function M.resultActions(result)
+	if result.action~="Show" then return nil end
+	local styles = result.styles
+	local alert = not (styles.CustomAlertSound or styles.CustomAlertSoundOptional)
+		and (styles.PlayAlertSoundPositional or styles.PlayAlertSound)
+	local sound, volume
+	if alert and whole(tonumber(alert[1]),1,16) then
+		sound = tonumber(alert[1])
+		volume = tonumber(alert[2]) or 50
+	end
+	local fontSize = styles.SetFontSize and tonumber(styles.SetFontSize[1])
+	if fontSize or sound then return {fontSize=fontSize,sound=sound,volume=volume} end
 end
 
 local function linesOf(raw)
@@ -71,8 +127,10 @@ local function duplicate(rule,spec,base)
 	assert(style and type(spec.name)=="string" and #spec.name<=200
 		and not spec.name:find('[%c"\\]') and contains(base,spec.name)
 		and validInteger(spec.firstStack) and (not spec.upper or validInteger(spec.upper) and spec.upper>spec.firstStack)
-		and (spec.area==nil or spec.area=="<" or spec.area==">="),
+		and (spec.area==nil or spec.area=="<" or spec.area==">=")
+		and (spec.band==nil or spec.area==nil and areas.bands[spec.band]),
 		"Invalid generated price highlight")
+	local settings = M.settings(spec.actions)
 	local lines = {"Show"}
 	for offset=2,#rule.rawLines do
 		local line = rule.rawLines[offset]
@@ -80,21 +138,23 @@ local function duplicate(rule,spec,base)
 		local keyword = parser.tokens(line)[1]
 		if keyword=="BaseType" then
 			lines[#lines+1]='    BaseType == "'..spec.name..'"'
-		elseif keyword~="MinimapIcon" and keyword~="PlayEffect" then
+		elseif not replaced(keyword,settings) then
 			lines[#lines+1]=line
 		end
 	end
 	lines[#lines+1]="    StackSize >= "..spec.firstStack
 	if spec.upper then lines[#lines+1]="    StackSize < "..spec.upper end
 	if spec.area then lines[#lines+1]="    AreaLevel "..spec.area.." 68" end
-	lines[#lines+1]="    MinimapIcon "..style.icon
-	lines[#lines+1]="    PlayEffect "..style.effect
+	if spec.band then
+		for _, condition in ipairs(areas.bands[spec.band].conditions) do lines[#lines+1]=condition end
+	end
+	appendActions(lines,style,settings)
 	return lines
 end
 
 local function render(rule,specs,base,newline)
 	-- cspell:ignore keyorder
-	local lines={begin..assert(json.encode(specs,{keyorder={"name","firstStack","upper","tier","area","style"}}))}
+	local lines={begin..assert(json.encode(specs,{keyorder={"name","firstStack","upper","tier","area","style","band","actions","sound","volume","fontSize"}}))}
 	for _, spec in ipairs(specs) do
 		for _, line in ipairs(duplicate(rule,spec,base)) do lines[#lines+1]=line end
 	end

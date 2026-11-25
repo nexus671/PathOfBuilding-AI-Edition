@@ -23,6 +23,25 @@ A fork-owned portable ZIP can be prepared without installing it:
    `PACKAGE-INFO.txt`; the extracted application stores its own builds and
    settings beside the program.
 
+To install a verified Windows package for the current user, extract it and run
+`Install AI Edition.cmd`. The installer checks each manifest-listed file,
+copies the app to a new commit-specific directory under Local AppData, and
+creates a Start menu shortcut named Path of Building AI Edition with its own
+icon. Installed mode uses the existing Documents build and settings directory.
+An existing installation directory is never overwritten. File checks establish
+integrity against the package manifest; verify the ZIP against the release's
+trusted source commit separately before installing.
+
+The Windows launcher has fork-specific icon and version resources. After
+changing the icon or edition version, regenerate them on Windows with
+`python tools/brand_windows_launcher.py "runtime/Path{space}of{space}Building.exe" src/Assets/AI-Edition.ico --version 1.0.1`,
+then regenerate the updater manifest and validate the resulting package.
+
+For a private, local installation, build with `--local-updates` and verify with
+`--require-local-updates`. This also accepts a clean local branch. The package
+keeps the usual portable build and settings folder and can refresh configured
+market prices. It obtains new application versions from separately checked ZIPs.
+
 On Windows, extract the verified ZIP into a new, empty folder and run:
 
 ```powershell
@@ -51,16 +70,15 @@ with the expected minimum for a different supported baseline. Run the check
 during the same local calendar day and load the approved filter in the PoE
 client separately.
 
-This produces a portable package, not an installer or a published release.
-A fork-owned release process still requires separate verification. The tool does
-not sign files or upload a release.
+This produces a portable package containing the fork-owned installer; it does
+not sign files or upload a release. Release publication requires separate
+source and package verification.
 
 The release and installer workflows below are inherited from Community Edition.
-The installer workflow uses the Community project's private installer and is
-guarded against running on this fork. AI Edition does not yet have a verified
-fork-owned installer or a documented 1.0 release procedure. Do not use the
-inherited workflow to create AI Edition installer assets. The upstream notes
-below are retained for data-maintenance reference, not fork release steps.
+The inherited installer workflow uses the Community project's private installer
+and is guarded against running on this fork. Do not use that workflow to create
+AI Edition installer assets. The upstream notes below are retained for
+data-maintenance reference, not fork release steps.
 
 ## Community Edition reference
 

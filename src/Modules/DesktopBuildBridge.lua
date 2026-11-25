@@ -396,7 +396,8 @@ end
 function M.publishState()
 	local now = os.time()
 	local lootSync = M.enabled and require("Modules.LootFilterDailySync")
-	writeFile(path("state"),{schemaVersion=1,session=M.session,enabled=M.enabled,heartbeat=now,revision=M.contextRevision,connectionTest=M.connectionTest,proposal=M.status,history=M.historySummary(),plan=M.plan,lootSyncStatus=lootSync and lootSync.publicStatus(now) or nil,lootSyncDiff=lootSync and lootSync.publicDiff(now) or nil,diagnostics={lastPoll=M.lastPoll,lastContext=M.lastContext,lastRequest=M.lastRequest,lastError=M.lastError,undoDepth=#M.undo}})
+	local lootStatus = lootSync and lootSync.publicStatus(now) or nil
+	writeFile(path("state"),{schemaVersion=1,session=M.session,enabled=M.enabled,heartbeat=now,revision=M.contextRevision,connectionTest=M.connectionTest,proposal=M.status,history=M.historySummary(),plan=M.plan,lootSyncProfiles=lootSync and lootSync.publicProfiles() or nil,lootSyncStatus=lootStatus,lootSyncDiff=lootSync and lootSync.publicDiff(now) or nil,diagnostics={lastPoll=M.lastPoll,lastContext=M.lastContext,lastRequest=M.lastRequest,lastError=M.lastError,undoDepth=#M.undo}})
 end
 
 function M.refresh(build)
@@ -569,14 +570,19 @@ function M.poll(build, force)
 		end
 		assert(not require("Modules.CraftingTasks").job,"Finish or cancel the active crafting job first")
 		assert(not require("Modules.JourneyUpgrades").job,"Finish or cancel upgrade measurements first")
+		if request.kind=="read_loot_sync_profile" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local result=require("Modules.LootFilterDailySync").publicProfile(os.time(),request.profileId)
+			M.status={id=request.id,status="lootProfile",lootProfile=result};M.publishState();return
+		end
 		if request.kind=="list_loot_sync_decisions" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
-			local result=require("Modules.LootFilterDailySync").publicDecisionPage(request.reviewRevision,request.offset,request.limit,request.kindFilter)
+			local result=require("Modules.LootFilterDailySync").publicDecisionPage(request.reviewRevision,request.offset,request.limit,request.profileId,request.kindFilter)
 			M.status={id=request.id,status="lootDecisions",lootDecisions=result};M.publishState();return
 		end
 		if request.kind=="review_loot_sync_examples" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
-			local result=require("Modules.LootFilterDailySync").publicDecisionExamples(request.reviewRevision,request.decisionIndex,request.offset,request.limit)
+			local result=require("Modules.LootFilterDailySync").publicDecisionExamples(request.reviewRevision,request.decisionIndex,request.offset,request.limit,request.profileId)
 			M.status={id=request.id,status="lootReview",lootReview=result};M.publishState();return
 		end
 		if request.kind=="compare_gear_listings" then

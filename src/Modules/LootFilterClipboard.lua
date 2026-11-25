@@ -151,6 +151,13 @@ function M.parse(raw,area)
 			end
 		end
 	end
+	for line in raw:gmatch("[^\n]+") do
+		local maximum = tonumber(line:match("^Stack Size:%s*%d+%s*/%s*(%d+)%s*$"))
+		if maximum and maximum>=1 and maximum<=1000000000 then
+			assert(not item.StackMaximum or item.StackMaximum==maximum,"Conflicting clipboard inventory stack maximum")
+			item.StackMaximum=maximum
+		end
+	end
 	if tierInName then
 		assert(item.MapTier==nil or item.MapTier==tierInName,"Conflicting clipboard map tier")
 		item.MapTier=tierInName

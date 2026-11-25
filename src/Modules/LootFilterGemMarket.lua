@@ -39,6 +39,7 @@ function M.variant(row)
 	return key, quality, corrupted, validTuple and regular or false, validTuple
 end
 
+local areas = require("Modules.LootFilterPickupAreas")
 local allowed = {
 	Class=true,BaseType=true,GemLevel=true,Quality=true,
 	Corrupted=true,Imbued=true,TransfiguredGem=true,AreaLevel=true,
@@ -48,7 +49,7 @@ function M.rule(rule)
 	if rule.action~="Hide" or rule.continue or next(rule.styles) then return nil end
 	local conditions = {}
 	for _, condition in ipairs(rule.conditions) do
-		if not allowed[condition.keyword] or conditions[condition.keyword] or #condition.values~=1 then return nil end
+		if not allowed[condition.keyword] or condition.keyword~="AreaLevel" and conditions[condition.keyword] or #condition.values~=1 then return nil end
 		conditions[condition.keyword] = condition
 	end
 	local function exact(name,operator)
@@ -62,14 +63,8 @@ function M.rule(rule)
 		or corrupt~="True" and corrupt~="False" then return nil end
 	local key = M.key(name,level,quality,corrupt=="True")
 	if not key then return nil end
-	local area = conditions.AreaLevel
-	local scope = "all"
-	if area then
-		if area.values[1]~="68" then return nil end
-		if area.operator==">=" then scope="maps"
-		elseif area.operator=="<" then scope="campaign"
-		else return nil end
-	end
+	local scope = areas.read(rule.conditions)
+	if not scope then return nil end
 	return {key=key,name=name,class=class,scope=scope,gemLevel=level,gemQuality=quality,corrupted=corrupt=="True"}
 end
 

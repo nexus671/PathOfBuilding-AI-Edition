@@ -23,11 +23,12 @@ def manifest_identity(root, local=False):
         if local and child.tag == "Version":
             attributes.pop("branch", None)
             attributes.pop("platform", None)
+            attributes.pop("updates", None)
         children.append((child.tag, tuple(sorted(attributes.items()))))
     return tuple(children)
 
 
-def verify(path, source_manifest=None, expected_commit=None, expected_branch=None):
+def verify(path, source_manifest=None, expected_commit=None, expected_branch=None, *, require_local_updates=False):
     with zipfile.ZipFile(path) as archive:
         entries = {}
         for info in archive.infolist():
@@ -41,6 +42,10 @@ def verify(path, source_manifest=None, expected_commit=None, expected_branch=Non
         version = local.find("Version")
         if local.tag != "PoBVersion" or version is None or version.get("platform") != "win32" or version.get("branch") not in {"dev", "main"}:
             raise ValueError("Invalid local update identity")
+        if version.get("updates") not in {None, "local"}:
+            raise ValueError("Invalid app update mode")
+        if require_local_updates and version.get("updates") != "local":
+            raise ValueError("Package does not disable network app updates")
         if expected_branch is not None and (expected_branch not in {"dev", "main"} or version.get("branch") != expected_branch):
             raise ValueError("Package update branch does not match the expected branch")
         expected = {"manifest.xml", "package-info.txt", "launch.cfg"}
@@ -84,13 +89,14 @@ def main():
     parser.add_argument("package", type=Path)
     parser.add_argument("--expected-commit", help="Full commit ID whose tracked manifest is trusted")
     parser.add_argument("--expected-branch", choices=("dev", "main"), help="Expected update branch")
+    parser.add_argument("--require-local-updates", action="store_true", help="Require app updates to be disabled in the package")
     args = parser.parse_args()
     source_manifest = None
     if args.expected_commit:
         if not re.fullmatch(r"[0-9a-f]{40}", args.expected_commit):
             parser.error("--expected-commit must be a full lowercase commit ID")
         source_manifest = subprocess.check_output(["git", "show", args.expected_commit + ":manifest.xml"], cwd=ROOT)
-    count, version, branch, commit = verify(args.package, source_manifest, args.expected_commit, args.expected_branch)
+    count, version, branch, commit = verify(args.package, source_manifest, args.expected_commit, args.expected_branch, require_local_updates=args.require_local_updates)
     outcome = "Source verified" if source_manifest is not None else "Internally consistent; source commit not independently verified"
     print(f"{outcome}: {count} files, {version}, {branch}, {commit}")
 

@@ -1,3 +1,4 @@
+-- cspell:ignore unhighlighted
 -- Windows integration check. Runs the actual native file operations using
 -- synthetic exchange responses and an isolated destination.
 local dir = assert(arg[1], "Supply an existing temporary directory")
@@ -174,8 +175,9 @@ do
 	local encode=require("Modules.PlanningData").encodeExact
 	assert(all.total==#config.review.changes[1].samples)
 	for i,entry in ipairs(all.results) do assert(encode(entry)==encode(config.review.changes[1].samples[i]),"Paged currency example differs from sync review") end
-	local public=sync.publicDecisionExamples(config.revision,1,0,1)
-	assert(public.decisionIndex==1 and public.reviewRevision==config.revision and public.results[1].action==sample.action)
+	local initialToken=assert(sync.publicDiff(now).reviewRevision)
+	local public=sync.publicDecisionExamples(initialToken,1,0,1)
+	assert(public.decisionIndex==1 and public.reviewRevision==initialToken and public.results[1].action==sample.action)
 	assert(not require("dkjson").encode(public):find(dir,1,true),"Public example exposed a local path")
 	local originalConfig=read(configFile);local expanded=require("dkjson").decode(originalConfig)
 	for i=2,300 do expanded.review.changes[i]={name="Orb of Alteration",old=6,cutoff=4,classes={"Stackable Currency"},corrupted=false} end
@@ -183,16 +185,21 @@ do
 	for i=1,280 do expanded.review.skipped[i]={name="Managed Hide "..i,reason="Preserved unsupported rule"} end
 	expanded.review.skipped[252]={name="Private",reason=dir.."/private"}
 	write(configFile,assert(require("dkjson").encode(expanded)))
-	local later=sync.publicDecisionPage(config.revision,250,50)
+	expanded.review.checkedAt=expanded.review.checkedAt+1
+	expanded.lastSuccess=expanded.lastSuccess+1
+	write(configFile,assert(require("dkjson").encode(expanded)))
+	local expandedToken=assert(sync.publicDiff(now+1).reviewRevision)
+	assert(initialToken~=expandedToken and not pcall(sync.publicDecisionPage,initialToken,0,1))
+	local later=sync.publicDecisionPage(expandedToken,250,50)
 	assert(later.total==300 and #later.decisions==50 and later.decisions[1].decisionIndex==251 and later.decisions[1].corrupted==false and not later.nextOffset)
-	assert(sync.publicDecisionExamples(config.revision,251,0,1).decisionIndex==251)
+	assert(sync.publicDecisionExamples(expandedToken,251,0,1).decisionIndex==251)
 	assert(not require("dkjson").encode(later):find(dir,1,true),"Decision page exposed a local path")
-	local skippedPage=sync.publicDecisionPage(config.revision,250,50,"skipped")
+	local skippedPage=sync.publicDecisionPage(expandedToken,250,50,nil,"skipped")
 	assert(skippedPage.total==280 and #skippedPage.decisions==29 and skippedPage.decisions[1].skipIndex==251 and skippedPage.decisions[29].skipIndex==280 and not skippedPage.nextOffset)
 	assert(not require("dkjson").encode(skippedPage):find(dir,1,true),"Skip page exposed a local path")
 	assert(not pcall(sync.publicDecisionPage,config.revision,0,1,"invalid"))
 	write(configFile,"invalid configuration "..dir)
-	local loaded,loadError=pcall(sync.publicDecisionPage,config.revision,0,1)
+	local loaded,loadError=pcall(sync.publicDecisionPage,expandedToken,0,1)
 	assert(not loaded and not tostring(loadError):find(dir,1,true),"Decision page exposed a settings path on failure")
 	write(configFile,assert(require("dkjson").encode(expanded)))
 	for i=1,5000 do expanded.review.skipped[i]={name="Managed Hide "..i,reason="Preserved unsupported rule"} end
@@ -225,7 +232,7 @@ do
 	io.open=originalOpen
 	assert(#hydrated.review.skipped==5000 and sidecarReads==1)
 	print(string.format("5,000 skipped entries: hydrated in %.3f seconds of headless CPU time",elapsed))
-	local last=sync.publicDecisionPage(config.revision,4999,1,"skipped")
+	local last=sync.publicDecisionPage(assert(sync.publicDiff(now+1).reviewRevision),4999,1,nil,"skipped")
 	assert(last.total==5000 and last.decisions[1].skipIndex==5000)
 	write(sidecar,intact.." ")
 	local damaged=sync.configuration()
@@ -250,7 +257,7 @@ assert(exposed.state=="enabled" and exposed.adjustmentCount==1 and exposed.lates
 local payload=require("dkjson").encode(exposed)
 assert(not payload:find("target.filter",1,true) and not payload:find("protect.json",1,true))
 local diff = sync.publicDiff(now)
-assert(diff.reviewRevision==sync.configuration().revision and diff.changes[1].decisionIndex==1)
+assert(#diff.reviewRevision==40 and diff.reviewRevision~=sync.configuration().revision and diff.changes[1].decisionIndex==1)
 assert(diff.verifiedProtection and diff.protectedChecks==1 and diff.changeCount==1 and #diff.changes==1)
 assert(#diff.feeds==8 and diff.feeds[1].category=="Currency" and not diff.feeds[1].revalidated
 	and diff.feeds[1].responseAge==diff.responseAges[1])
@@ -371,6 +378,8 @@ Show
     Class == "Stackable Currency"
     BaseType == "Orb of Alteration" "Chaos Orb"
     MinimapIcon 2 White Circle
+    SetFontSize 28
+    CustomAlertSoundOptional "baseline.mp3"
 Show
 ]]
 	local quotes = {["Orb of Alteration"]={price=0.2,volume=300,id="alt",source="Currency"}}
@@ -399,8 +408,30 @@ Show
 	local _, decimal = market.review(raw,boundaryQuotes,100,{highlightChaos=0.07,strongHighlightChaos=0.08000001})
 	assert(decimal[1].highlights[1].firstStack==7 and decimal[1].highlights[2].firstStack==9)
 	assert(appearance.strip(styled)==raw)
+	do
+		local opt = {highlightChaos=1,strongHighlightChaos=2}
+		local _, first, _, memory = market.review(raw,quote(0.24),1,opt)
+		assert(first[1].cutoff==4 and first[1].highlights[1].firstStack==5 and first[1].highlights[2].firstStack==9)
+		local _, near, _, still = market.review(raw,quote(0.19),1,opt,nil,memory)
+		assert(near[1].cutoff==4 and near[1].heldByMargin and near[1].highlightHeldByMargin)
+		assert(near[1].price==0.19 and near[1].highlights[1].firstStack==5 and near[1].highlights[2].firstStack==9)
+		local _, far = market.review(raw,quote(0.16),1,opt,nil,still)
+		assert(far[1].cutoff==6 and not far[1].heldByMargin and not far[1].highlightHeldByMargin)
+		assert(far[1].highlights[1].firstStack==7 and far[1].highlights[2].firstStack==13)
+		local rekeyed = quote(0.19)
+		rekeyed["Orb of Alteration"].id = "different-price-id"
+		local _, different = market.review(raw,rekeyed,1,opt,nil,memory)
+		assert(different[1].cutoff==6 and not different[1].heldByMargin and not different[1].highlightHeldByMargin)
+		local _, legacy = market.review(raw,quote(0.19),1,opt,nil,{["1:1"]=4})
+		assert(legacy[1].cutoff==6 and not legacy[1].heldByMargin)
+	end
 	assert(not pcall(market.pickupPolicy,100,{highlightStyle="invalid"}))
 	style.highlightStyle, style.strongHighlightStyle = "cyan-diamond", "purple-star"
+	style.highlightActions = {sound=3,volume=0,fontSize=36}
+	style.strongHighlightActions = {sound=9,volume=220,fontSize=45}
+	for _, invalid in ipairs({{sound=17},{volume=10},{fontSize=46},{sound=1,volume=-1}}) do
+		assert(not pcall(market.pickupPolicy,1,{highlightActions=invalid}))
+	end
 	local themed = market.review(raw,quotes,100,style)
 	local themedRules = parser.parse(themed)
 	assert(#themedRules.diagnostics==0 and appearance.strip(themed)==raw)
@@ -412,9 +443,13 @@ Show
 			if area==83 and stack==10 then
 				assert(table.concat(after.styles.MinimapIcon," ")=="0 Cyan Diamond")
 				assert(after.styles.PlayEffect[1]=="Cyan")
+				assert(after.styles.SetFontSize[1]=="36" and table.concat(after.styles.PlayAlertSound," ")=="3 0")
+				assert(not after.styles.CustomAlertSoundOptional)
 			elseif area==83 and stack==15 then
 				assert(table.concat(after.styles.MinimapIcon," ")=="0 Purple Star")
 				assert(after.styles.PlayEffect[1]=="Purple")
+				assert(after.styles.SetFontSize[1]=="45" and table.concat(after.styles.PlayAlertSound," ")=="9 220")
+				assert(not after.styles.CustomAlertSoundOptional)
 			else
 				local expected = table.concat(before.styles.MinimapIcon or {}," ")
 				if area==83 and stack>=10 and stack<20 and stack~=18 then
@@ -430,6 +465,9 @@ Show
 	for index = 1, #market.feedCategories(raw) do bodies[index] = body end
 	local _, _, reviewed = validation(raw,bodies,false,100,{{BaseType="Cord Belt",Rarity="Magic",Class="Belts"}},nil,nil,nil,style)
 	local medium, strong = reviewed[1].samples[1], reviewed[1].samples[2]
+	assert(medium.actions.sound==3 and medium.actions.volume==0 and medium.actions.fontSize==36)
+	assert(strong.actions.sound==9 and strong.actions.volume==220 and strong.actions.fontSize==45)
+	assert(not pcall(appearance.strip,(themed:gsub("SetFontSize 45","SetFontSize 44",1))))
 	assert(medium.area==83 and medium.count==10 and medium.marker=="0 Cyan Diamond")
 	assert(strong.area==83 and strong.count==15 and strong.marker=="0 Purple Star")
 	local mismatched = themed:gsub("cyan%-diamond","red-diamond",1)
@@ -785,6 +823,132 @@ assert(not refreshed:find('BaseType == "Orb of Alteration" "Cheap Card"',1,true)
 assert(refreshed:find('BaseType == "Compound Card"\n    Identified True',1,true))
 print("Managed cards: required category, broken feed, class-scoped same-name quotes and liquidity passed")
 
+do
+	local raw = market.addManagedSection([[Show
+    BaseType == "Cord Belt"
+Show
+    Class == "Divination Cards"
+    BaseType == "Loyalty"
+Show
+]],{
+		{class="Divination Cards",name="Loyalty",scope="all"},
+		{class="Divination Cards",name="Chaotic Disposition",scope="all"},
+		{class="Divination Cards",name="Emperor's Luck",scope="all"},
+	})
+	local json = require("dkjson")
+	local function response(rows)
+		local items, lines = {}, {}
+		for i, row in ipairs(rows) do
+			items[i] = {name=row[1],id=row[2]}
+			lines[i] = {id=row[2],primaryValue=row[3],volumePrimaryValue=row[4]}
+		end
+		return assert(json.encode({core={primary="chaos"},items=items,lines=lines}))
+	end
+	local bodies = {}
+	for _, category in ipairs(market.categories) do bodies[#bodies+1] = commodityBody end
+	local fusing = {"Orb of Fusing","fusing",4,500}
+	local loyalty = {"Loyalty","loyalty",0.2,500}
+	local function refresh()
+		bodies[1] = response({{"Orb of Alteration","alt",0.21,1000},fusing})
+		bodies[9] = response({loyalty,{"Chaotic Disposition","chaotic-disposition",0.2,900},
+			{"Emperor's Luck","emperors-luck",0.2,900}})
+		local filter, _, changes = validate(raw,bodies,false,1,samples,nil,"today",now,{highlightChaos=2})
+		local byName = {}
+		for _, change in ipairs(changes) do byName[change.name]=change end
+		return filter,byName
+	end
+	local result, decisions = refresh()
+	local allowed, dependencyError=pcall(market.review,raw,{},1,nil,nil,{}, {Currency=true})
+	assert(not allowed and tostring(dependencyError):find("card decision depends",1,true),
+		"Fresh card decisions must not depend on a recovered currency feed")
+	assert(math.abs(decisions.Loyalty.price-2.4)<1e-12 and decisions.Loyalty.currentPrice==0.2)
+	assert(decisions.Loyalty.reward.setSize==5 and decisions.Loyalty.reward.count==3
+		and decisions.Loyalty.reward.currency=="Orb of Fusing" and decisions.Loyalty.reward.priceId=="fusing")
+	assert(decisions.Loyalty.sample.action=="Show" and decisions.Loyalty.sample.marker=="1 Yellow Circle")
+	assert(decisions["Chaotic Disposition"].reward.perCard==5 and not decisions["Emperor's Luck"])
+	assert(result:find([[BaseType == "Emperor's Luck"]],1,true))
+	loyalty[3]=3
+	local _, dear = refresh()
+	assert(dear.Loyalty.price==3 and not dear.Loyalty.reward)
+	loyalty[3]=0.2
+	fusing[4]=99
+	local _, thinReward = refresh()
+	assert(not thinReward.Loyalty)
+	fusing[4]=500;fusing[2]="other-id"
+	local _, wrongReward = refresh()
+	assert(not wrongReward.Loyalty)
+	fusing[2]="fusing";loyalty[4]=499
+	local _, thinCard = refresh()
+	assert(not thinCard.Loyalty)
+	loyalty[4]=500;loyalty[2]="other-card"
+	local _, wrongCard = refresh()
+	assert(not wrongCard.Loyalty)
+	print("Card reward pricing normalizes set size and preserves thin, changed and random identities")
+end
+
+do
+	local marketJSON = require("dkjson")
+	local parser = require("Modules.LootFilterParser")
+	local raw = market.addManagedSection([[Hide
+    Rarity == Unique
+    BaseType == "Heavy Belt"
+Show
+]],{{class="Unidentified unique",name="Heavy Belt",scope="all"}})
+	local drop = {Rarity="Unique",Class="Belts",BaseType="Heavy Belt",AreaLevel=83,Identified=false}
+	local function check(filter) return parser.simulate(parser.parse(filter),drop) end
+	assert(check(raw).action=="Show")
+	drop.Identified=true
+	assert(check(raw).action=="Hide")
+	drop.Identified=false
+	assert(not pcall(market.feedCategories,raw:gsub("Identified False","Identified != False")))
+	assert(#market.feedCategories(original)==8 and market.feedCategories(raw)[9]=="UniqueAccessory")
+	local bodies = {}
+	for index=1,8 do bodies[index]=commodityBody end
+	local function row(name,id,price,linked,corrupted)
+		return {name=name,detailsId=id,baseType="Heavy Belt",chaosValue=price,count=100,listingCount=100,
+			links=linked,corrupted=corrupted}
+	end
+	local rows={row("Mageblood","mageblood",250),row("Dyadian Dawn","dawn",1),row("Mageblood","linked",10000,6),
+		row("Mageblood","corrupted",9000,nil,true),row("Foulborn Mageblood","foulborn",15000),
+		row("Mageblood","conflict",8000),row("Dyadian Dawn","conflict",2)}
+	bodies[9]=assert(marketJSON.encode({lines=rows}))
+	local candidate,adjusted,changes,_,_,_,uniqueContinuity=validate(raw,bodies,false,1,samples,nil,"today",now)
+	assert(adjusted==1 and changes[1].exampleUnique=="Mageblood" and changes[1].price==250 and changes[1].uniqueBase)
+	assert(changes[1].sample.action=="Show" and changes[1].sample.marker=="0 Orange Star")
+	assert(table.concat(assert(check(candidate).styles.MinimapIcon)," ")=="0 Orange Star")
+	local uniqueQuotes = {}
+	market.merge(uniqueQuotes,market.quotes(bodies[9],"UniqueAccessory"),"UniqueAccessory")
+	local pinned,pinnedChanges=market.review(raw,uniqueQuotes,1,nil,nil,uniqueContinuity,{UniqueAccessory=true})
+	assert(pinned==candidate and pinnedChanges[1].retainedReason and not pinnedChanges[1].price)
+	assert(not pcall(market.review,raw,uniqueQuotes,1,nil,nil,{}, {UniqueAccessory=true}),
+		"A pinned unique without a verified identity must fail closed")
+	local quietPolicy={highlightChaos=1000,strongHighlightChaos=2000}
+	local quiet,_,_,quietState=market.review(raw,uniqueQuotes,1,quietPolicy)
+	assert(quiet==raw and quietState["1:1"].cutoff==0 and not quietState["1:1"].normal and not quietState["1:1"].strong)
+	local pinnedQuiet,quietChanges,_,nextQuiet=market.review(raw,uniqueQuotes,1,quietPolicy,nil,quietState,{UniqueAccessory=true})
+	assert(pinnedQuiet==quiet and #quietChanges==0 and nextQuiet["1:1"].cutoff==0,
+		"A verified unhighlighted unique must remain unhighlighted when replayed")
+	local thinPolicy={liquidity={UniqueAccessory=101}}
+	local thinUnique,_,_,thinUniqueState=market.review(raw,uniqueQuotes,1,thinPolicy)
+	assert(thinUnique==raw and thinUniqueState["1:1"].cutoff==0)
+	local replayThin=market.review(raw,uniqueQuotes,1,thinPolicy,nil,thinUniqueState,{UniqueAccessory=true})
+	assert(replayThin==thinUnique,"A thin unique quote must replay the unhighlighted baseline")
+	assert(market.feedCategories(candidate)[9]=="UniqueAccessory")
+	local normal = validate(raw,bodies,false,1,samples,nil,nil,nil,{strongHighlightChaos=300})
+	assert(table.concat(assert(check(normal).styles.MinimapIcon)," ")=="1 Yellow Circle")
+	local thin = validate(raw,bodies,false,1,samples,nil,nil,nil,{liquidity={UniqueAccessory=101}})
+	assert(thin==raw and check(thin).action=="Show")
+	bodies[9]='{"lines":[]}'
+	local retained,_,retainedChanges,_,_,_,retainedContinuity=validate(raw,bodies,false,1,samples,nil,nil,nil,nil,nil,uniqueContinuity)
+	assert(retained==candidate and retainedChanges[1].retainedReason and not retainedChanges[1].price)
+	assert(retainedContinuity["1:1"].strong==1)
+	local resumed,_,resumedChanges=validate(raw,bodies,false,1,samples,nil,nil,nil,nil,nil,retainedContinuity)
+	assert(resumed==candidate and retainedChanges[1].retainedReason and resumedChanges[1].retainedReason)
+	assert(validate(raw,bodies,false,1,samples)==raw)
+	assert(not pcall(validate,raw,bodies,false,1,samples,nil,nil,nil,{liquidity={UniqueAccessory=2.5}}))
+	print("Unique tiers protect the whole unidentified base and skip thin, linked, corrupted, or conflicting variants")
+end
+
 -- A second window can pause while the first has an in-flight response.
 -- Load a second instance of the sync module to give each its own busy state.
 local secondWindow = assert(loadfile("Modules/LootFilterDailySync.lua"))()
@@ -808,6 +972,102 @@ waiting()
 assert(not sync.busy and sync.status:find("settings changed",1,true),sync.status)
 assert(read(target)==cardBaseline and sync.configuration().paused)
 secondWindow.pause(false)
+
+do
+	local oldDirectory,oldDownload = main.userPath,launch.DownloadPage
+	local isolated = dir.."/refresh-ownership"
+	assert(require("lfs").mkdir(isolated))
+	main.userPath = isolated.."/"
+	local file, fixed = isolated.."/filter.filter", isolated.."/fixed.filter"
+	write(file,cardBaseline)
+	write(fixed,cardBaseline)
+	local owner = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local competitor = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	owner.configure(file,fixed,"Covens",options)
+	owner.setBackground(true,owner.configuration().revision)
+	local first, requests, deferred = nil, 0, true
+	launch.DownloadPage=function(_,url,callback)
+		requests=requests+1
+		if deferred then
+			first=function() reply(url,callback) end
+			deferred=false
+		else
+			reply(url,callback)
+		end
+	end
+	owner.tick(now,false,true)
+	assert(first and requests==1 and owner.busy)
+	competitor.tick(now,true)
+	assert(requests==1 and not competitor.busy and competitor.status:find("another PoB process",1,true))
+	first()
+	assert(not owner.busy and owner.configuration().lastSuccess==now)
+	local successful = read(file)
+	competitor.tick(now+61,false,true)
+	assert(requests==9 and read(file)==successful)
+
+	deferred=true
+	competitor.tick(now+62,true)
+	assert(competitor.busy and requests==10)
+	owner.tick(now+62,true)
+	assert(requests==10 and not owner.busy)
+	competitor.tick(now+63+competitor.refreshTimeoutSeconds)
+	assert(not competitor.busy and competitor.status:find("timed out",1,true))
+	local afterTimeout=now+64+competitor.refreshTimeoutSeconds
+	owner.tick(afterTimeout,true)
+	assert(requests==19 and owner.configuration().lastSuccess==afterTimeout and read(file)==successful)
+	main.userPath,launch.DownloadPage=oldDirectory,oldDownload
+	print("One Windows process can own a profile refresh, with recovery after timeout")
+end
+
+do
+	local oldPath,oldDownload = main.userPath,launch.DownloadPage
+	local isolated = dir.."/destination-preflight"
+	assert(require("lfs").mkdir(isolated))
+	main.userPath=isolated.."/"
+	local localTarget,localBaseline=isolated.."/target.filter",isolated.."/fixed.filter"
+	write(localTarget,cardBaseline)
+	write(localBaseline,cardBaseline)
+	local service=assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local windows
+	for index=1,40 do
+		local name,value=debug.getupvalue(service.configure,index)
+		if name=="platform" then windows=value(); break end
+	end
+	assert(windows)
+	local preflight=windows.preflight
+	local requests=0
+	launch.DownloadPage=function(_,url,callback) requests=requests+1;reply(url,callback) end
+	windows.preflight=function(_,_,label) error("Not enough disk space in the "..label.." folder.") end
+	local saved,reason=pcall(service.configure,localTarget,localBaseline,"Covens",options)
+	assert(not saved and reason:find("Not enough disk space",1,true) and service.configuration()==nil)
+	windows.preflight=preflight
+	service.configure(localTarget,localBaseline,"Covens",options)
+	windows.preflight=function(path,bytes,label)
+		if label=="filter destination" then error("Could not create a temporary file in the "..label.." folder.") end
+		preflight(path,bytes,label)
+	end
+	service.tick(now,true)
+	assert(requests==0 and read(localTarget)==cardBaseline and service.status:find("Could not create a temporary file",1,true))
+	local destinationChecks=0
+	windows.preflight=function(path,bytes,label)
+		if label=="filter destination" then
+			destinationChecks=destinationChecks+1
+			if destinationChecks==2 then error("Not enough disk space in the filter destination folder.") end
+		end
+		preflight(path,bytes,label)
+	end
+	service.tick(now+1,true)
+	assert(requests==9 and destinationChecks==2 and read(localTarget)==cardBaseline and not service.configuration().pending)
+	assert(service.status:find("Not enough disk space",1,true))
+	windows.preflight=preflight
+	service.tick(now+2,true)
+	assert(requests==18 and service.configuration().lastSuccess==now+2 and read(localTarget)~=cardBaseline)
+	for name in require("lfs").dir(isolated) do
+		assert(not name:find(".pob-write-check-",1,true),"Write check left a file behind")
+	end
+	main.userPath,launch.DownloadPage=oldPath,oldDownload
+	print("Destination write and space checks preserve the filter before downloads and before replacement")
+end
 
 -- Inject a partial write at the same point a full volume can reject a
 -- buffered write. The real target and its recovery journal stay usable.
@@ -971,6 +1231,26 @@ assert(#diagnostics.lastReview.changes==2 and #diagnostics.successfulRuns==1)
 assert(not diagnostics.successfulRuns[1].backup)
 print("Daily scheduler respects minute precision and continues to read older hour-only settings")
 
+-- Fixed UTC instants for the two US Eastern transitions. The assertions run
+-- in that zone so the tests can use the platform's real local clock rules.
+local spring, fall = 1772953200, 1793511000
+if os.date("%Y-%m-%d %H:%M",spring-60)=="2026-03-08 01:59"
+	and os.date("%Y-%m-%d %H:%M",spring)=="2026-03-08 03:00"
+	and os.date("%Y-%m-%d %H:%M",fall)=="2026-11-01 01:30"
+	and os.date("%Y-%m-%d %H:%M",fall+1800)=="2026-11-01 01:00" then
+	local skipped = {enabled=true,hour=2,minute=30,day="2026-03-07"}
+	assert(not clockSync.isDue(skipped,spring-1))
+	assert(clockSync.isDue(skipped,spring))
+	assert(clockSync.nextEligible(skipped,spring-60)=="2026-03-08 03:00")
+	local repeated = {enabled=true,hour=1,minute=30,day="2026-10-31"}
+	assert(not clockSync.isDue(repeated,fall-1))
+	assert(clockSync.isDue(repeated,fall) and clockSync.isDue(repeated,fall+1800))
+	repeated.day="2026-11-01"
+	assert(not clockSync.isDue(repeated,fall+3600))
+	assert(clockSync.nextEligible(repeated,fall)=="2026-11-02 01:30")
+	print("Local scheduler handles skipped and repeated times across daylight-saving changes")
+end
+
 local gameConfig = dir.."/production_Config.ini"
 write(gameConfig,"[GENERAL]\r\nitem_filter=account-reference\r\n[UI]\r\nitem_filter=target.filter\r\n")
 assert(clockSync.selectedLocalFilter(dir)==target)
@@ -1019,6 +1299,101 @@ market.endpoint=testEndpoint
 print("Background opt-in and provider cooldown persist across independent Windows sync instances")
 
 -- Campaign and map policies only apply to the matching managed rules.
+do
+	local raw = [[Show
+    BaseType == "Cord Belt"
+# PoB economy: begin
+# PoB economy: exchange Currency
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    StackSize <= 10
+# PoB economy: end
+Show
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    MinimapIcon 2 White Circle
+Show
+]]
+	local parser = require("Modules.LootFilterParser")
+	local appearance = require("Modules.LootFilterPriceAppearance")
+	local quote = {price=1,volume=300,id="alt",source="Currency"}
+	local quotes = {}
+	market.merge(quotes,{["Orb of Alteration"]=quote},"Currency")
+	local policy = {campaign=2,earlyMaps=4,maps=10,highlightChaos=5}
+	local content, changes, skips, continuity = market.review(raw,quotes,10,policy)
+	assert(#changes==3 and #skips==0)
+	assert(changes[1].scope=="campaign" and changes[1].cutoff==1)
+	assert(changes[2].scope=="earlyMaps" and changes[2].cutoff==3)
+	assert(changes[3].scope=="endgame" and changes[3].cutoff==10)
+	assert(continuity["1:1:1"].cutoff==1 and continuity["1:1:2"].cutoff==3 and continuity["1:1:3"].normal==11)
+	assert(continuity["1:1:3"].cutoff==10, "An unchanged verified cutoff must be recorded")
+	local tightenedQuotes = {}
+	market.merge(tightenedQuotes,{["Orb of Alteration"]={price=0.1,highPrice=0.1,volume=300,id="alt",source="Currency"}},"Currency")
+	local _, tightChanges, _, tightContinuity = market.review(raw,tightenedQuotes,10,{caps={["Orb of Alteration"]=20}})
+	assert(tightChanges[1].cutoff==20 and tightContinuity["1:1"].cutoff==20,
+		"A stricter verified cutoff must be recorded")
+	local pinnedOutput, pinnedChanges, _, pinnedContinuity = market.review(raw,quotes,10,
+		{caps={["Orb of Alteration"]=20}},nil,tightContinuity,{Currency=true})
+	assert(pinnedChanges[1].cutoff==20 and pinnedChanges[1].retainedReason and not pinnedChanges[1].price)
+	assert(pinnedContinuity["1:1"].cutoff==20 and pinnedOutput:find("StackSize <= 20",1,true))
+	assert(not pcall(market.review,raw,quotes,10,{caps={["Orb of Alteration"]=20}},nil,{}, {Currency=true}),
+		"A pinned quote without a verified decision must fail closed")
+	assert(not pcall(market.review,raw,{},10,{caps={["Orb of Alteration"]=20}},nil,tightContinuity, {Currency=true}),
+		"A missing saved quote must not bypass the replay identity check")
+	local changedIdentity={}
+	market.merge(changedIdentity,{["Orb of Alteration"]={price=1,volume=300,id="different",source="Currency"}},"Currency")
+	assert(not pcall(market.review,raw,changedIdentity,10,{caps={["Orb of Alteration"]=20}},nil,tightContinuity, {Currency=true}),
+		"A changed saved quote identity must fail closed")
+	local many = "# PoB economy: begin\n" .. string.rep([[Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    StackSize <= 10
+
+]],5001) .. "# PoB economy: end\n"
+	local complete, problem = pcall(market.review,many,quotes,10)
+	assert(not complete and tostring(problem):find("Too many verified price decisions",1,true),
+		"An incomplete decision record must never be published silently")
+	assert(market.feedCategories(appearance.strip(content))[1]=="Currency")
+	local parsed = parser.parse(content)
+	assert(#parsed.diagnostics==0)
+	for _,case in ipairs({
+		{67,1,"Hide"}, {67,2,"Show","2 White Circle"}, {67,5,"Show","1 Yellow Circle"},
+		{68,3,"Hide"}, {68,4,"Show","2 White Circle"}, {68,5,"Show","1 Yellow Circle"},
+		{77,3,"Hide"}, {77,4,"Show"}, {78,4,"Hide"}, {78,10,"Hide"}, {78,11,"Show","1 Yellow Circle"},
+	}) do
+		local result = parser.simulate(parsed,{BaseType="Orb of Alteration",Class="Stackable Currency",AreaLevel=case[1],StackSize=case[2]})
+		assert(result.action==case[3],table.concat(case,", "))
+		if case[4] then assert(table.concat(assert(result.styles.MinimapIcon)," ")==case[4]) end
+	end
+	local retained, retainedChanges, _, nextContinuity = market.review(raw,{},10,policy,nil,continuity)
+	assert(retained==content and #retainedChanges==3,
+		"Missing prices must preserve the last verified highlight boundaries")
+	assert(nextContinuity["1:1:1"].cutoff==1 and nextContinuity["1:1:2"].cutoff==3)
+	assert(nextContinuity["1:1:3"].normal==11 and nextContinuity["1:1:3"].cutoff==10)
+	local thinQuotes = {}
+	market.merge(thinQuotes,{["Orb of Alteration"]={price=100,volume=1,id="alt",source="Currency"}},"Currency")
+	local thinBaseline,_,_,thinBaselineState=market.review(raw,thinQuotes,10,policy)
+	assert(thinBaselineState["1:1:1"].cutoff==10 and thinBaselineState["1:1:1"].priceId=="alt")
+	local pinnedThin=market.review(raw,thinQuotes,10,policy,nil,thinBaselineState,{Currency=true})
+	assert(pinnedThin==thinBaseline,"Thin saved quotes must replay the verified baseline without using their prices")
+	local thin, _, _, thinContinuity = market.review(raw,thinQuotes,10,policy,nil,nextContinuity)
+	assert(thin==content and thinContinuity["1:1:3"].normal==11,
+		"A thin quote must not change verified highlights or refresh their boundaries")
+	local recoveredQuotes = {}
+	market.merge(recoveredQuotes,{["Orb of Alteration"]={price=2,volume=300,id="alt",source="Currency"}},"Currency")
+	local refreshed, _, _, refreshedContinuity = market.review(raw,recoveredQuotes,10,policy,nil,thinContinuity)
+	assert(refreshed~=content and refreshedContinuity["1:1:3"].normal~=11,
+		"A fresh liquid quote must resume updating the saved highlight")
+	local scoped = raw:gsub("StackSize <= 10","AreaLevel >= 68\n    StackSize <= 10")
+	local changedScoped = market.review(scoped,quotes,10,policy)
+	local below = {BaseType="Orb of Alteration",Class="Stackable Currency",AreaLevel=67,StackSize=1}
+	assert(parser.simulate(parser.parse(changedScoped),below).action=="Show")
+	assert(not pcall(market.pickupPolicy,1,{earlyMaps=-1}))
+	assert(not pcall(market.pickupPolicy,1,{endgame=1001}))
+	print("Map-stage policies split exact rules, preserve priority and price highlights, and retain cutoffs by stage")
+end
+
 -- A cap is a ceiling, and a recent liquid spike prevents tightening.
 local scoped = [[Show
     BaseType == "Cord Belt"
@@ -1051,6 +1426,36 @@ local history = {}
 for days=1,3 do
 	local _, sample = market.remember(quote(0.21),{},"day "..days,now-days*86400)
 	history[days] = sample[1]
+end
+do
+	local stackPolicy = require("Modules.LootFilterStackPolicy")
+	local json = require("dkjson")
+	local rows = {}
+	for _, size in ipairs({2,4,5,6,20}) do
+		rows[#rows+1]=sync.stackObservation("Orb of Alteration",size,68,nil,nil,20)
+	end
+	for _, size in ipairs({15,16,18,24,25}) do
+		rows[#rows+1]=sync.stackObservation("Orb of Alteration",size,78,nil,nil,20)
+	end
+	local path=dir.."/cutoff-observations.json"
+	write(path,assert(json.encode(rows)))
+	local recorded=sync.loadStackObservations(path)
+	assert(recorded[1].StackMaximum==20 and recorded[10].StackSize==25)
+	local groups=stackPolicy.index(recorded)
+	local classes={"Stackable Currency"}
+	assert(stackPolicy.firstVisible(stackPolicy.forRule(groups,classes,"Orb of Alteration","earlyMaps"))==5)
+	assert(stackPolicy.firstVisible(stackPolicy.forRule(groups,classes,"Orb of Alteration","endgame"))==18)
+	local changed, _, details = validate(scoped,missing,false,1,samples,history,"today",now,
+		{campaign=0.3,earlyMaps=3,endgame=3,caps={["Orb of Alteration"]=7},observedStacks=recorded})
+	assert(changed:find("AreaLevel < 78",1,true))
+	assert(details[2].scope=="earlyMaps" and details[2].cutoff==4 and details[2].stackEvidence.median==5)
+	assert(details[3].scope=="endgame" and details[3].cutoff==7 and details[3].stackEvidence.median==18)
+	local fallback = stackPolicy.index({recorded[1],recorded[2]})
+	assert(stackPolicy.firstVisible(stackPolicy.forRule(fallback,classes,"Orb of Alteration","earlyMaps"))==20)
+	local oversized = stackPolicy.index({recorded[10]})
+	assert(stackPolicy.firstVisible(stackPolicy.forRule(oversized,classes,"Orb of Alteration","endgame"))==nil)
+	assert(not pcall(sync.stackObservation,"Orb of Alteration",1,83,nil,nil,1.5))
+	print("Recorded ground stacks bound area-specific tightening and retain distinct inventory maximum evidence")
 end
 local applied, count, decisions = validate(scoped,missing,false,1,samples,history,"today",now,policy)
 assert(count==2 and applied:find("AreaLevel < 68\n    StackSize <= 1",1,true))
@@ -1175,12 +1580,74 @@ drop.Rarity="Unique"
 assert(mapParser.simulate(mapParsed,drop).action=="Show")
 local feedKinds = market.feedCategories(mapBase)
 assert(#feedKinds==11 and feedKinds[9]=="Map" and feedKinds[10]=="BlightedMap" and feedKinds[11]=="BlightRavagedMap")
+do
+	local nightmare = [[{"lines":[
+		{"name":"Nightmare Map","detailsId":"nightmare","variant":"Gen-24","itemClass":2,"chaosValue":60,"count":40,"listingCount":100},
+		{"name":"Nightmare Map","detailsId":"nightmare-corrupt","variant":"Gen-24","corrupted":true,"chaosValue":500,"count":40,"listingCount":100},
+		{"name":"Nightmare Map","detailsId":"nightmare-rolled","variant":"Gen-24","explicitModifiers":[{"text":"Special roll"}],"chaosValue":500,"count":40,"listingCount":100},
+		{"name":"Map (Tier 16)","detailsId":"ordinary","variant":"Gen-24","chaosValue":3,"count":40,"listingCount":100},
+		{"name":"Map (Tier 16)","detailsId":"ordinary-implicit","variant":"Gen-24","implicitModifiers":[{"text":"Elder Guardian"}],"chaosValue":500,"count":40,"listingCount":100}
+	]}]]
+	local market = require("Modules.LootFilterEconomy")
+	local quotes = market.quotes(nightmare,"Map")
+	assert(quotes["Nightmare Map"].price==60 and quotes["Map (Tier 16)"].price==3)
+	local collision = nightmare:gsub("nightmare%-rolled","nightmare")
+	assert(market.quotes(collision,"Map")["Nightmare Map"]==false)
+	assert(not pcall(market.validateManagedRules,{{class="Maps",mapType="NightmareMap",tier=16}}))
+	assert(not pcall(market.validateManagedRules,{{class="Maps",mapType="Map",tier=17}}))
+	local rule = {class="Maps",mapType="NightmareMap",tier=17}
+	local raw = market.addManagedSection('Show\n    BaseType == "Cord Belt"\n\nShow\n    Class == "Maps"\n', {rule})
+	assert(raw:find('MapTier == 17\n    BaseType == "Nightmare Map"',1,true))
+	assert(#market.feedCategories(raw)==9 and market.feedCategories(raw)[9]=="Map")
+	local managed = browser.managedTarget(rule)
+	assert(managed.category=="Map" and managed.mapTier==17 and managed.name=="Nightmare Map")
+	assert(browser.managedQuote(nightmare,managed).row.price==60)
+	local bodies = {}
+	for index=1,8 do bodies[index]=commodityBody end
+	bodies[9] = nightmare
+	local _, count, decisions = validate(raw,bodies,false,10,mapSamples)
+	assert(count==1 and decisions[1].tier==17 and decisions[1].priceId=="nightmare")
+	assert(decisions[1].sample.before=="Hide" and decisions[1].sample.action=="Show")
+	local drop={BaseType="Nightmare Map",MapTier=17,Rarity="Rare",Class="Maps"}
+	for key in pairs(mapParser.booleans) do drop[key]=false end
+	assert(mapParser.simulate(mapParser.parse(raw),drop).action=="Hide")
+	for _, key in ipairs({"Corrupted","HasImplicitMod","AnyEnchantment","MirageMap","ZanaMemory"}) do
+		drop[key]=true
+		assert(mapParser.simulate(mapParser.parse(raw),drop).action=="Show")
+		drop[key]=false
+	end
+	print("Nightmare Map quotes stay separate from tier 16, modified and conflicting rows")
+end
 local stash = {Map=normalMap,BlightedMap=blightMap,BlightRavagedMap=ravagedMap}
 local mapBodies = {}
 for index, category in ipairs(feedKinds) do mapBodies[index] = stash[category] or commodityBody end
 local promoted, mapCount, mapChanges, mapSkips = validate(mapBase,mapBodies,false,1,mapSamples,nil,nil,nil,{maps=5})
 assert(mapCount==1 and mapChanges[1].name=="Map (Tier 16)" and mapChanges[1].liquidityUnit=="listing samples")
 assert(mapChanges[1].sample.before=="Hide" and mapChanges[1].sample.action=="Show" and mapChanges[1].priceId=="ordinary-16")
+do
+	local single=market.addManagedSection([[Show
+    BaseType == "Cord Belt"
+Show
+    Class == "Maps"
+]],{{class="Maps",tier=16,mapType="Map"}})
+	local feeds={}
+	for index,category in ipairs(market.feedCategories(single)) do feeds[index]=category=="Map" and normalMap or commodityBody end
+	local initial,_,_,_,_,_,saved=validate(single,feeds,false,1,mapSamples,nil,nil,nil,{maps=5})
+	local replayed,_,changes=validate(single,feeds,false,1,mapSamples,nil,nil,nil,{maps=5},nil,saved,nil,nil,{Map=true})
+	assert(replayed==initial and changes[1].retainedReason and not changes[1].price and not changes[1].currentPrice,
+		"Replayed map decisions must not present saved prices as current")
+end
+do
+	local output, _, changed = validate(mapBase,mapBodies,false,1,mapSamples,nil,nil,nil,{campaign=1000,earlyMaps=1,endgame=1000})
+	assert(changed[1].scope=="earlyMaps" and changed[1].samples[1].area==68 and changed[1].sample.action=="Show", require("dkjson").encode(changed[1]))
+	local parsed = mapParser.parse(output)
+	drop.Rarity="Rare"
+	for _, area in ipairs({67,68,77,78,83}) do
+		drop.AreaLevel=area
+		assert(mapParser.simulate(parsed,drop).action==((area==68 or area==77) and "Show" or "Hide"))
+	end
+	drop.AreaLevel=83
+end
 do
 	local pages=require("Modules.LootFilterDecisionSamples")
 	local prepared=pages.prepare(mapChanges[1],mapBase,promoted)
@@ -1554,6 +2021,7 @@ local function checkConfirmedTightening()
 	local id=profiles.createProfile("GGG confirmation fixture")
 	profiles.configure(target,fixed,"Covens",{profileId=id,hour=0,targetValue=1,protectionFile=protections,
 		pickupPolicy={caps={["Orb of Alteration"]=7},confirmTightening=true}})
+	profiles.setOfflinePriceDays(id,1,profiles.configuration(id).revision)
 	local clock, systemTime, chaosVolume=now,os.time,nil
 	os.time=function() return clock end
 	local exchange=require("Modules.LootFilterExchangeCrossCheck")
@@ -1585,6 +2053,15 @@ local function checkConfirmedTightening()
 	os.time=systemTime
 	local review=profiles.configuration(id).review
 	assert(read(target):find("StackSize <= 4",1,true) and review.changes[1].confirmedPrice==0.2)
+	local trade=review.changes[1].confirmedTrade
+	assert(trade.hour==exchange.hour(clock) and trade.age==clock-trade.hour-3600
+		and trade.count==500 and trade.chaosVolume==100)
+	local public=assert(profiles.publicDiff(clock,id)).changes[1].confirmedTrade
+	assert(public.hour==trade.hour and public.age==trade.age and public.count==500 and public.chaosVolume==100)
+	local offline=profiles.previewOffline(clock,id)
+	assert(offline.before==read(target) and offline.after==offline.before)
+	assert(not exchange.evidence({hour=trade.hour+1,age=trade.age,count=500,chaosVolume=100}))
+	assert(not exchange.evidence({hour=trade.hour,age=-1,count=500,chaosVolume=100}))
 	print("GGG confirmation vetoes a new hide on missing or higher historical trades")
 end
 checkConfirmedTightening()
@@ -1942,6 +2419,12 @@ local function checkManagedGemPrices()
 	local rememberedGems=market.remember(actual,{},"gem identity day",now)
 	assert(rememberedGems[gems.key("Arc",20,20,false)].providerId=="arc-exact")
 	assert(actual[gems.key("Fireball",20,20,false)]==false)
+	do
+		local quotes = {}
+		market.merge(quotes,actual,"SkillGem")
+		local _, changed = market.review(raw,quotes,20,{earlyMaps=20,endgame=100})
+		assert(#changed==1 and changed[1].scope=="earlyMaps" and changed[1].gemLevel==20)
+	end
 	local reused = overview:gsub("arc%-corrupt%-19","arc-exact")
 	assert(market.quotes(reused,"SkillGem",requests)[gems.key("Arc",20,20,false)]==false)
 	assert(not pcall(market.quotes,overview.."broken","SkillGem",requests))
@@ -2170,7 +2653,7 @@ print("Daily profiles bind verified sources, reset changed or legacy histories, 
 local function checkManagedExchangeSelections()
 	local core={}
 	for _,category in ipairs(market.categories) do core[category]=true end
-	assert(#market.exchangeCategories==18 and #market.categories==8 and market.maxFeedCount==23)
+	assert(#market.exchangeCategories==18 and #market.categories==8 and market.maxFeedCount==29)
 	assert(market.evidencePriceId("harbinger-scarab_1.0")=="harbinger-scarab_1.0")
 	for _,id in ipairs({"",string.rep("a",201),"internal\0composite","C:/private/id","quote name"}) do
 		assert(not market.evidencePriceId(id))
@@ -2261,6 +2744,31 @@ local function checkManagedExchangeSelections()
 	local offline=require("Modules.LootFilterOfflinePrices")
 	local packed=offline.encode(state,bodies,feeds,now,now,os.date("%Y-%m-%d",now))
 	local decoded=offline.decode(packed,state,allFeeds,now)
+	local bound={}
+	for key,value in pairs(state) do bound[key]=value end
+	bound.marketSourceHash=string.rep("a",40)
+	local sourceBound=offline.encode(bound,bodies,feeds,now,now,os.date("%Y-%m-%d",now))
+	assert(offline.decode(sourceBound,bound,allFeeds,now))
+	local recovery=offline.recoveryFeeds(sourceBound,bound,allFeeds,now+30,3600)
+	assert(recovery[allFeeds[1]].body==bodies[1] and recovery[allFeeds[1]].age==feeds[1].age+30)
+	assert(not pcall(offline.recoveryFeeds,packed,state,allFeeds,now,3600),"Legacy records cannot authorize automatic recovery")
+	local late=offline.recoveryFeeds(sourceBound,bound,allFeeds,now+3601,3600)
+	assert(not next(late),"Expired categories cannot be reused automatically")
+	feeds[1].age=86400-1
+	local mixedAge=offline.encode(bound,bodies,feeds,now,now,os.date("%Y-%m-%d",now))
+	local eligible=offline.recoveryFeeds(mixedAge,bound,allFeeds,now+2,86400)
+	assert(not eligible[allFeeds[1]] and eligible[allFeeds[2]].age==2,
+		"An expired category must not prevent recovery of another eligible category")
+	assert(not pcall(offline.decode,mixedAge,bound,allFeeds,now+2,true),
+		"A manual full-snapshot preview must still reject the expired category")
+	feeds[1].age=2*86400
+	local shortened=offline.encode(bound,bodies,feeds,now,now,os.date("%Y-%m-%d",now))
+	eligible=offline.recoveryFeeds(shortened,bound,allFeeds,now,86400)
+	assert(not eligible[allFeeds[1]] and eligible[allFeeds[2]],
+		"Reducing the age limit must still allow individually eligible categories")
+	bound.marketSourceHash=string.rep("b",40)
+	assert(not pcall(offline.decode,sourceBound,bound,allFeeds,now),"Offline prices from a different source must be rejected")
+	assert(not pcall(offline.recoveryFeeds,sourceBound,bound,allFeeds,now,3600),"Recovery must bind the saved price source")
 	assert(#decoded==23 and decoded[23]==allFeeds[23])
 end
 checkManagedExchangeSelections()
@@ -2760,6 +3268,20 @@ print("Windows task budget defers slow profiles and completes each on later trig
 
 
 local function checkIndividualQuoteContinuity()
+	do
+		local currency = {source="Currency",price=3,volume=150,id="currency"}
+		local card = {source="DivinationCard",price=3,volume=150,id="card"}
+		local map = {source="Map",price=3,volume=20,id="map"}
+		local floors = market.liquidityFloors({Currency=151,DivinationCard=150,Map=21})
+		assert(not market.liquid(currency,floors) and market.liquid(card,floors) and not market.liquid(map,floors))
+		assert(market.liquid(currency) and not market.liquid(card) and market.liquid(map))
+		assert(not pcall(market.liquidityFloors,{Map=2.5}) and not pcall(market.liquidityFloors,{Currency=0}))
+		assert(not pcall(market.liquidityFloors,{Gear=6}) and not pcall(market.liquidityFloors,{Currency=math.huge}))
+		assert(market.sameLiquidity(nil,{liquidity={Currency=100,Map=20}}))
+		local _, snapshot = market.remember({currency=currency,card=card,map=map},{}, "today",now,nil,floors)
+		local key = assert(next(snapshot[1].values))
+		assert(key:match("^DivinationCard:") and next(snapshot[1].values,key)==nil)
+	end
 	local json = require("dkjson")
 	local module = "Modules/LootFilterDailySync.lua"
 	local service = assert(loadfile(module))()
@@ -2794,7 +3316,7 @@ local function checkIndividualQuoteContinuity()
 		local body
 		if category=="Currency" then
 			local rows = {{"alt","Orb of Alteration",0.21},{"trans","Orb of Transmutation",mode=="liquid" and 0.01 or 0.5}}
-			if mode~="missing" then rows[#rows+1] = {"fusing","Orb of Fusing",mode=="liquid" and 1.3 or 0.01} end
+			if mode~="missing" then rows[#rows+1] = {"fusing","Orb of Fusing",mode=="liquid" and 1.3 or mode=="margin" and 0.9 or 0.01} end
 			body = exchange(rows)
 		elseif category=="DivinationCard" then
 			body = exchange({{"doctor","The Doctor",mode=="cheap" and 0.1 or 8,mode=="missing" and 1 or 1000}})
@@ -2824,6 +3346,15 @@ local function checkIndividualQuoteContinuity()
 	local initial = service.configuration(id)
 	assert(initial.review and initial.cutoffContinuity and initial.review.protectedChecks==1,service.status)
 	assert(decisions(initial.review.changes)["Orb of Fusing"].cutoff==0)
+	assert(initial.cutoffContinuity.version==2)
+	local initialOutput = read(live)
+	mode,clock = "margin",clock+1
+	service = assert(loadfile(module))()
+	service.tick(clock,true,false,id)
+	local held = decisions(service.configuration(id).review.changes)["Orb of Fusing"]
+	assert(held and held.heldByMargin and held.price==0.9)
+	local publicHeld = decisions(assert(service.publicDiff(clock,id)).changes)["Orb of Fusing"]
+	assert(publicHeld.heldByMargin and publicHeld.priceUsed==0.9)
 	local firstOutput = read(live)
 
 	mode,clock = "missing",clock+1
@@ -2842,7 +3373,7 @@ local function checkIndividualQuoteContinuity()
 	assert(byName.Arc.corrupted==false and byName.Arc.gemQuality==20)
 	assert(byName["Orb of Transmutation"].cutoff==1 and not byName["Orb of Transmutation"].retainedReason)
 	local output = read(live)
-	assert(output==proposed and output~=firstOutput and read(fixed)==raw)
+	assert(output==proposed and output~=initialOutput and read(fixed)==raw)
 	local offline = assert(service.previewOffline(clock,id,{targetValue=1,pickupPolicy={}}))
 	assert(offline.after==output and offline.before==output)
 	local changedPolicy = service.previewOffline(clock,id,{targetValue=2})
@@ -2879,14 +3410,117 @@ local function checkIndividualQuoteContinuity()
 	mode,clock = "missing",clock+1
 	service.tick(clock,true,false,id)
 	assert(read(live):find('"Orb of Fusing"',1,true))
+	options.targetValue = 1
+	service.configure(live,fixed,"Covens",options)
+	mode,clock = "liquid",clock+1
+	service.tick(clock,true,false,id)
+	local original = read(live)
+	assert(not original:find('"Orb of Fusing"',1,true))
+	local newPolicy = {liquidity={Currency=1001,Map=51},highlightChaos=1}
+	local candidate = service.previewOffline(clock,id,{pickupPolicy=newPolicy}).after
+	assert(candidate:find('"Orb of Fusing"',1,true) and not candidate:find("PoB price highlight",1,true))
+	assert(read(live)==original and service.configuration(id).priceHistory)
+	options.pickupPolicy = newPolicy
+	service.configure(live,fixed,"Covens",options)
+	local saved = service.configuration(id)
+	assert(saved.pickupPolicy.liquidity.Currency==1001 and saved.pickupPolicy.liquidity.Map==51)
+	assert(not saved.cutoffContinuity and not saved.priceHistory and read(live)==original)
+	clock = clock+1
+	service.tick(clock,true,false,id)
+	local result = service.configuration(id)
+	assert(result.review and result.review.protectedChecks==1 and read(live)==candidate)
+	local quotes = decisions(result.review.changes)
+	assert(quotes.Arc and quotes["The Doctor"] and not quotes["Orb of Fusing"] and not quotes["Map (Tier 16)"])
+	local skips = decisions(result.review.skipped)
+	assert(skips["Orb of Fusing"].reason:find("1000 of 1001 chaos volume",1,true))
+	assert(skips["Map (Tier 16)"].reason:find("50 of 51 listing samples",1,true))
+	assert(read(fixed)==raw)
 	os.time,launch.DownloadPage = oldTime,oldDownload
 end
 
 checkIndividualQuoteContinuity()
+
+
 print("Missing, thin, and ambiguous quotes retain only the exact previously verified lower cutoff")
 
 
 local function checkReviewedLeagueRollover()
+	do
+		local service = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+		local validator = require("Modules.LootFilterSyncValidation")
+		local input = original:gsub('BaseType == "Cord Belt"', 'BaseType == "Cord Belt"\n    MinimapIcon 0 Red Star', 1)
+		input = 'Hide\n    BaseType == "Scroll of Wisdom"\n' .. input
+		local samples = {
+			{BaseType="Cord Belt",Rarity="Magic",ExpectedMarker="0 Red Star"},
+			{BaseType="Scroll of Wisdom",Rarity="Normal",ExpectedAction="Hide"},
+		}
+		local _, _, _, _, _, protected = validator(input,{},true,1,samples)
+		assert(protected==2)
+		assert(not pcall(validator,(input:gsub("0 Red Star","1 Red Star")),{},true,1,samples))
+		assert(not pcall(validator,(input:gsub('Hide\n    BaseType == "Scroll of Wisdom"','Show\n    BaseType == "Scroll of Wisdom"')),{},true,1,samples))
+		local id = service.createProfile("Embedded protection example")
+		local live, fixed = dir.."/embedded-protection-live.filter",dir.."/embedded-protection-fixed.filter"
+		write(live,input);write(fixed,input)
+		service.configure(live,fixed,"Covens",{profileId=id,protectionSamples=samples})
+		local stored = service.configuration(id)
+		assert(not stored.protectionFile and #stored.protections==2 and stored.protections[1].ExpectedMarker=="0 Red Star")
+		assert(stored.protections[2].ExpectedAction=="Hide" and read(live)==input)
+		assert(not pcall(validator,input,{},true,1,{{BaseType="Cord Belt",Rarity="Magic",ExpectedMarker="0 Invisible Star"}}))
+		assert(not pcall(service.configure,live,fixed,"Covens",{profileId=id,protectionSamples=samples,protectionFile=protections}))
+		print("Embedded protection samples preserve expected visibility and markers in the named profile")
+	end
+
+	do
+		local json = require("dkjson")
+		local service = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+		local oldDownload = launch.DownloadPage
+		local id = service.createProfile("Reviewed pickup settings")
+		local live, baseline = dir.."/review-policy-live.filter",dir.."/review-policy-base.filter"
+		local raw = original
+		write(live,raw);write(baseline,raw)
+		local protectionPath=dir.."/review-policy-protection.json"
+		write(protectionPath,assert(json.encode(samples)))
+		local options={profileId=id,protectionFile=protectionPath,requireReviewedPolicy=true,reviewPolicy=true}
+		local requests=0
+		launch.DownloadPage=function(_,url,callback)
+			requests = requests+1
+			local date="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT").."\r\n\r\n"
+			local body = url:match("/leagues$") and '[{"id":"Covens","name":"Covens"}]' or commodityBody
+			callback({header=date,body=body})
+		end
+		assert(service.requiresPolicyReview(live,baseline,"Covens",options))
+		assert(not pcall(service.configure,live,baseline,"Covens",options))
+		assert(not service.configuration(id) and read(live)==raw and requests==0)
+		local function review()
+			local proof
+			service.preview(live,baseline,"Covens",options,function(before,after,receipt)
+				assert(before==raw and type(after)=="string")
+				proof=receipt
+			end,function(info) error(info) end)
+			return assert(proof,service.status)
+		end
+		options.expectedPolicyReview = review()
+		options.targetValue=2
+		assert(not pcall(service.configure,live,baseline,"Covens",options) and not service.configuration(id))
+		options.targetValue=1
+		options.expectedPolicyReview = review()
+		service.configure(live,baseline,"Covens",options)
+		assert(service.configuration(id).enabled and read(live)==raw)
+		assert(not pcall(service.configure,live,baseline,"Covens",options))
+		options.expectedPolicyReview=nil
+		options.reviewPolicy=nil
+		options.hour=11
+		assert(not service.requiresPolicyReview(live,baseline,"Covens",options))
+		local n=requests
+		service.configure(live,baseline,"Covens",options)
+		assert(service.configuration(id).hour==11 and read(live)==raw and requests==n)
+		options.targetValue=2
+		assert(service.requiresPolicyReview(live,baseline,"Covens",options))
+		assert(not pcall(service.configure,live,baseline,"Covens",options))
+		launch.DownloadPage=oldDownload
+		print("Policy approval binds the verified diff to the proposed setup and keeps schedule edits independent of feeds")
+	end
+
 	local json = require("dkjson")
 	local service = assert(loadfile("Modules/LootFilterDailySync.lua"))()
 	local oldTime, download, endpoint = os.time, launch.DownloadPage, market.endpoint
@@ -3000,6 +3634,106 @@ local function checkReviewedLeagueRollover()
 end
 
 checkReviewedLeagueRollover()
+
+;(function()
+	local oldTime, oldDownload = os.time, launch.DownloadPage
+	local clock = now - now%86400 + 86390
+	local service = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local id = service.createProfile("Category recovery fixture")
+	local live, fixed = dir.."/category-recovery-live.filter",dir.."/category-recovery-fixed.filter"
+	local mixed = original:gsub("# PoB economy: end", [[Hide
+    Class == "Stackable Currency"
+    BaseType == "Clear Oil"
+    StackSize <= 6
+
+# PoB economy: end]])
+	write(live,mixed);write(fixed,mixed)
+	service.configure(live,fixed,"Covens",{profileId=id,hour=0,targetValue=1,protectionFile=protections})
+	service.setOfflinePriceDays(id,1,service.configuration(id).revision)
+	os.time=function() return clock end
+	local failed, oilPrice = false, 10
+	launch.DownloadPage=function(_,url,callback)
+		if failed and url:find("type=Currency",1,true) then
+			callback(nil,"Response code: 503")
+		elseif url:find("type=Oil",1,true) then
+			local body='{"core":{"primary":"chaos"},"items":[{"id":"clear","name":"Clear Oil"}],"lines":[{"id":"clear","primaryValue":'..oilPrice..',"volumePrimaryValue":1000}]}'
+			callback({header="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n",body=body})
+		else
+			callback({header="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n",body=commodityBody})
+		end
+	end
+	service.tick(clock,true,false,id)
+	assert(service.configuration(id).lastSuccess==clock)
+	-- A scheduled run starts a new process, so discard all in-memory feed data.
+	service=assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	clock=clock+20
+	failed=true
+	service.tick(clock,true,false,id)
+	for _=1,20 do
+		clock=clock+10
+		service.tick(clock,true,false,id)
+		if not service.busy then break end
+	end
+	local result=service.configuration(id)
+	assert(result.lastSuccess and result.lastSuccess>now-now%86400+86390,service.status)
+	assert(result.review.feeds[1].recovered and result.review.feeds[1].age>=20)
+	assert(result.review.protectedChecks==1)
+	assert(service.publicDiff(clock,id).feeds[1].recovered)
+	local market=require("Modules.LootFilterEconomy")
+	local quote={price=0.21,volume=1000,id="alt",source="Currency"}
+	local _, fresh=market.remember({["Orb of Alteration"]=quote},{},"same-day",clock)
+	local _, reused=market.remember({["Orb of Alteration"]=quote},fresh,"same-day",clock+30,nil,nil,{Currency=true})
+	assert(next(reused[1].values),"A same-day recovery must preserve its earlier fresh observation")
+	assert(#reused==1,"A same-day recovery must not create another observation")
+	service.setOfflinePriceDays(id,3,service.configuration(id).revision)
+	local previousOutput = read(live)
+	oilPrice=0.1
+	clock=clock+86401
+	service=assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	service.tick(clock,true,false,id)
+	for _=1,20 do
+		clock=clock+10
+		service.tick(clock,true,false,id)
+		if not service.busy then break end
+	end
+	local daily=service.configuration(id)
+	assert(daily.lastSuccess>result.lastSuccess and daily.review.feeds[1].recovered and daily.review.feeds[1].age>86400,service.status)
+	local parser=require("Modules.LootFilterParser")
+	local function action(filter,name)
+		return parser.simulate(parser.parse(filter),{BaseType=name,Class="Stackable Currency",StackSize=1,
+			LinkedSockets=0,HasCruciblePassiveTree=false,ItemLevel=83}).action
+	end
+	assert(action(previousOutput,"Orb of Alteration")==action(read(live),"Orb of Alteration"))
+	assert(action(previousOutput,"Clear Oil")=="Show" and action(read(live),"Clear Oil")=="Hide",
+		"Oil actions: "..action(previousOutput,"Clear Oil").." -> "..action(read(live),"Clear Oil"))
+	assert(daily.review.protectedChecks==1)
+	assert(service.publicDiff(clock,id).feeds[1].responseAge>86400)
+	local freshOil=false
+	for key in pairs(daily.priceHistory[1].values) do
+		assert(not key:match("^Currency:"),"Old currency must not become a new daily observation")
+		if key:match("^Oil:") then freshOil=true end
+	end
+	assert(freshOil,"The fresh category must retain its new daily observation")
+	result=daily
+	local lastSuccess, verified = result.lastSuccess, read(live)
+	clock=clock+3*86400
+	service.tick(clock,true,false,id)
+	for _=1,20 do
+		clock=clock+10
+		service.tick(clock,true,false,id)
+		if not service.busy then break end
+	end
+	local expired=service.configuration(id)
+	assert(expired.lastSuccess==lastSuccess and expired.lastFailure and read(live)==verified,
+		"An expired saved response must keep the verified filter")
+	assert(service.status:find("offline price age limit",1,true) and service.status:find("existing filter was kept",1,true),
+		"A failed recovery must explain the age limit and preserved filter")
+	local _, noFresh=market.remember({["Orb of Alteration"]=quote},fresh,"new-day",clock+86400,nil,nil,{Currency=true})
+	assert(not next(noFresh[1].values),"Recovered feed must not add a daily observation")
+	os.time,launch.DownloadPage=oldTime,oldDownload
+	print("A fresh saved category survives a server outage without adding a daily observation")
+end)()
+
 print("Retired league diagnosis, guarded rollover save, and a fresh new-league sync passed")
 
 -- Exercise large-report persistence through an actual publish and restart.

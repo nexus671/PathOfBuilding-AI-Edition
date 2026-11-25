@@ -93,30 +93,46 @@ function Read-SyncProfiles {
     }
     return $profiles
 }
-function Get-AdjustedCutoffs($review) {
-    $cutoffs = New-Object 'System.Collections.Generic.Dictionary[string,int]' ([StringComparer]::Ordinal)
+function Get-ManagedChanges($review) {
+    $rules = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
     foreach ($change in $review.changes) {
-        if ($null -eq $change.cutoff -or $change.old -eq $change.cutoff) { continue }
+        if ($null -eq $change.cutoff) { continue }
         $scope = $change.scope
         if (-not $scope) { $scope = if ($change.maps) { 'maps' } else { 'all' } }
+        # Keep drop conditions separate from the visibility and appearance they produce.
         $conditions = @(
-            $change.name, (@($change.classes | Sort-Object) -join ','),
+            $change.name, (@($change.classes | Sort-Object -Unique) -join ','),
             $scope, $change.old, $change.tier, $change.blighted, $change.ravaged,
-            $change.gemLevel, $change.gemQuality, $change.corrupted
+            $change.gemLevel, $change.gemQuality, $change.corrupted, [bool]$change.uniqueBase
         )
         $key = ConvertTo-Json -InputObject $conditions -Compress
-        if (-not $cutoffs.ContainsKey($key) -or $change.cutoff -gt $cutoffs[$key]) {
-            $cutoffs[$key] = [int]$change.cutoff
+        $outcome = $null
+        if ($change.old -ne $change.cutoff) { $outcome = 'cutoff:' + $change.cutoff }
+        $styles = foreach ($highlight in $change.highlights) {
+            if ($null -eq $highlight.firstStack -or -not $highlight.icon) { continue }
+            $actions = $highlight.actions
+            $volume = $actions.volume
+            if ($null -ne $actions.sound -and $null -eq $volume) { $volume = 50 }
+            ConvertTo-Json -InputObject @(
+                $highlight.firstStack, $highlight.icon, $actions.sound, $volume, $actions.fontSize
+            ) -Compress
         }
+        if (-not $outcome -and -not $styles) { continue }
+        if (-not $rules.ContainsKey($key)) {
+            $rules[$key] = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        }
+        $values = $rules[$key]
+        if ($outcome) { [void]$values.Add($outcome) }
+        foreach ($style in $styles) { [void]$values.Add($style) }
     }
-    return ,$cutoffs
+    return ,$rules
 }
-function Count-ChangedCutoffs($before, $after) {
-    $old = Get-AdjustedCutoffs $before
-    $new = Get-AdjustedCutoffs $after
+function Count-ChangedManagedRules($before, $after) {
+    $old = Get-ManagedChanges $before
+    $new = Get-ManagedChanges $after
     $count = 0
     foreach ($key in $old.Keys) {
-        if (-not $new.ContainsKey($key) -or $old[$key] -ne $new[$key]) { $count++ }
+        if (-not $new.ContainsKey($key) -or -not $old[$key].SetEquals($new[$key])) { $count++ }
     }
     foreach ($key in $new.Keys) {
         if (-not $old.ContainsKey($key)) { $count++ }
@@ -164,12 +180,13 @@ try {
             -not $after.enabled -or $after.paused -or $after.revision -ne $before.revision) { continue }
         if ($process.ExitCode -ne 0 -and $after.lastFailure -and $after.lastFailure.message -ne $before.lastFailure.message) {
             $failures++
-        } elseif ($after.current -ne $before.current -and $after.lastSuccess -ne $before.lastSuccess) {
-            $changed += Count-ChangedCutoffs $before.review $after.review
+        } elseif ($after.current -ne $before.current -and $after.lastSuccess -ne $before.lastSuccess -and
+            $after.review.protectedChecks -gt 0) {
+            $changed += Count-ChangedManagedRules $before.review $after.review
         }
     }
     if ($failures -gt 0) { Show-SyncNotification 'A scheduled update failed. Review the last attempt in Daily price sync.' $true }
-    elseif ($changed -ge 5) { Show-SyncNotification "$changed managed cutoffs changed after checking protected drops." $false }
+    elseif ($changed -ge 5) { Show-SyncNotification "$changed managed loot rules changed after checking protected drops." $false }
 } catch {
     # Notification handling cannot change the native worker's result.
 }
