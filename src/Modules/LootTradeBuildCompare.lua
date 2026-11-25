@@ -64,6 +64,21 @@ local function slotAvailable(gear,item,slot)
 		and gear:IsItemValidForSlot(item,slot.slotName)
 end
 
+local function showStats(lines)
+	local ui=require("Modules.PlanningUI")
+	local width=math.min(560,main.screenW-40)
+	local rows=ui.rows(lines,width-50,14)
+	local contentHeight=0
+	for _, row in ipairs(rows) do contentHeight=contentHeight+row.height end
+	local height=math.min(main.screenH-40,contentHeight+80)
+	local controls={
+		details=new("TextListControl"):TextListControl(ui.anchor,{16,18,width-32,height-72},nil,rows),
+		close=new("ButtonControl"):ButtonControl(ui.anchor,{width-136,height-42,120,28},"Close",function() main:ClosePopup() end),
+	}
+	ui.style(controls,{close=true})
+	main:OpenPopup(width,height,"Build comparison",controls,nil,nil,"close")
+end
+
 function M.open(build,raw)
 	assert(itemText(raw),"Invalid copied item")
 	local item=new("Item"):Item(raw)
@@ -97,9 +112,7 @@ function M.open(build,raw)
 				return lines
 			end)
 			if not ok then ui.errorPopup("Build comparison",lines);return end
-			require("Classes.PlanningBrowserControl").Open("Build comparison",{
-				{id="stats",label=entry.label,details=lines}
-			})
+			showStats(lines)
 		end,
 	})
 end

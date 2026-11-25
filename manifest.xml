@@ -2152,7 +2152,7 @@
 	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="ac03d4a4072e0d4c0e691210f75d9baca96e4a8c" />
 	<File name="Modules/LootFilterVisuals.lua" part="program" sha1="44f913b3183554afb21b36adb6a43a9db2520bbd" />
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="4707a76b68b0a805db8d941c3dd2f5af8978cc06" />
-	<File name="Modules/LootTradeBuildCompare.lua" part="program" sha1="e308ef16931f9357422622ea95edd63b69a24dea" />
+	<File name="Modules/LootTradeBuildCompare.lua" part="program" sha1="e3c88ae48f49647bba58529edc4962502131555f" />
 	<File name="Modules/LootTradeOverlay.lua" part="program" sha1="4b531cbddf6442d1334eddfa7640a40ba744951e" />
 	<File name="Modules/LootTradeOverlayCapture.lua" part="program" sha1="615cdb68e6355a54e80938418470f8f2a9284a2a" />
 	<File name="Modules/LootTradeOverlayWindows.lua" part="program" sha1="e55e8801795e5619db6fad6605276f735738b3f4" />
