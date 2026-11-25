@@ -21,6 +21,7 @@ build.buildFlag=true;frame();ui:bind(build)
 bridge.enable(build)
 io.stderr:write("Native workflow: bridge ready\n")
 local function respond(value) io.stdout:write("WORKFLOW\t"..json.encode(value).."\n") end
+local injected={}
 respond({ready=true,revision=bridge.revision(build)})
 for line in io.lines() do
 	local command=assert(json.decode(line))
@@ -34,6 +35,12 @@ for line in io.lines() do
 		elseif command.kind=="convert-tree" then
 			build.treeTab:ConvertToVersion(assert(command.version),true,false,true);frame();bridge.refresh(build)
 			return {treeVersion=build.spec.treeVersion,revision=bridge.revision(build)}
+		elseif command.kind=="inject-crafting-error" then
+			local simulator=require("Modules.CraftingSimulator")
+			local key=assert(command.method)
+			assert(key=="catalog" or key=="beastCatalog" or key=="allflameProfile")
+			if command.restore then simulator[key]=assert(injected[key]);injected[key]=nil
+			else assert(not injected[key]);injected[key]=simulator[key];simulator[key]=function() error("Modules/Example.lua:12: First problem\nC:/PoB/Other.lua:34: Second problem\nstack traceback:\n internal frame",0) end end
 		elseif command.kind=="request-test" then bridge.connectionTest={nonce="workflow-connection-test",requestedAt=os.time()};bridge.publishState()
 		elseif command.kind=="connection-proof" then return {client=bridge.client and bridge.client.name,tested=bridge.connectionTest and bridge.connectionTest.passed,synced=bridge.client and bridge.client.contextRevision==bridge.contextRevision}
 		elseif command.kind=="apply" then
