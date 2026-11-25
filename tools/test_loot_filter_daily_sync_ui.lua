@@ -423,6 +423,23 @@ local reviewTime = 1795449900
 local hour = ggg.hour(reviewTime)
 local itemId = assert(ggg.itemId("Orb of Alteration"))
 local chaosId = "Metadata/Items/Currency/CurrencyRerollRare"
+do
+	local fixtures = {
+		["Breach Thread"] = "Metadata/Items/Threads/ThreadBreach",
+		["Expedition Thread"] = "Metadata/Items/Threads/ThreadExpedition",
+		["Potent Chaotic Resonator"] = "Metadata/Items/Delve/DelveStackableSocketableCurrencyReroll2",
+	}
+	for name, id in pairs(fixtures) do
+		assert(ggg.itemId(name)==id)
+		local trades = {{
+			league="Covens",market_pair={chaosId,id},volume_traded={[id]=20,[chaosId]=100},
+		}}
+		local result = assert(ggg.compare(trades,"Covens",name))
+		assert(result.price==5 and result.count==20)
+		assert(ggg.review(trades,"Covens")[1].name==name)
+		assert(not ggg.compare(trades,"Standard",name))
+	end
+end
 local trade = {league="Covens",market_pair={chaosId,itemId},volume_traded={[itemId]=500,[chaosId]=120}}
 local encode = require("dkjson").encode
 local valid = encode({next_change_id=hour+3600,markets={trade}})
