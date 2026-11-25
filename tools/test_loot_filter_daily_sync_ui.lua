@@ -1607,6 +1607,28 @@ Item Level: 86
 	assert(sample.results[1].sellers==3 and sample.results[1].low==10 and sample.results[1].median==30 and sample.results[1].high==50)
 	assert(sample.results[2].sellers==1 and sample.results[2].low==1.5 and not sample.results[2].median)
 	assert(listings.compare(encoded,target,"Hardcore").matched==0)
+	local browse=require("Modules.LootFilterMarketBrowse")
+	local filteredRolls=browse.tradeRolls(target)
+	for _, filter in ipairs(filteredRolls) do
+		if filter.line=="+79 to maximum Life" then filter.minimum=78
+		elseif filter.kind=="implicit" then filter.enabled=false end
+	end
+	local function filterMatcher(gear, rolls)
+		return assert(browse.listingRollMatcher(browse.rolledTradeQuery(gear,rolls).stats[1].filters))
+	end
+	local matchesRolls=filterMatcher(target,filteredRolls)
+	local filtered=listings.compare(encoded,target,"Covens",matchesRolls)
+	assert(filtered.matched==9 and filtered.results[1].low==1 and filtered.results[1].median==30)
+	local outside, repeated, crafted, absent, extra = row(31,"~price 1 chaos"),row(32,"~price 1 chaos"),
+		row(33,"~price 1 chaos"),row(34,"~price 1 chaos"),row(35,"~price 1 chaos")
+	outside.explicitMods[2].description="+80 to maximum Life"
+	table.insert(repeated.explicitMods,{description="+78 to maximum Life"})
+	crafted.craftedMods={table.remove(crafted.explicitMods).description}
+	table.remove(absent.explicitMods)
+	table.insert(extra.explicitMods,{description="+37% to Fire Resistance"})
+	local near={next_change_id="cursor",stashes={stash(31,"Seller#0031",{outside,repeated,crafted,absent,extra})}}
+	assert(listings.compare(json.encode(near),target,"Covens",matchesRolls).matched==1)
+	assert(not browse.listingRollMatcher({}))
 	local specialCaptureRow=row(26,"~price 1 chaos");specialCaptureRow.crucible={nodes={}}
 	local capture = {format="pob-public-stash-capture-v1",realm="pc",league="Covens",capturedAt=1700000000,pages={
 		{requestCursor="start",response={next_change_id="next",stashes={
@@ -1672,6 +1694,12 @@ Item Level: 86
 		assert(listings.compare(json.encode(samplePage),variantTarget,"Covens").matched==1)
 		listed.implicitMods[1].description="+15% to Cold and Lightning Resistances"
 		assert(listings.compare(json.encode(samplePage),variantTarget,"Covens").matched==0)
+		local variantRolls=browse.tradeRolls(variantTarget)
+		for _, roll in ipairs(variantRolls) do roll.enabled=roll.kind=="explicit" and roll.id~=nil end
+		local variantFilter=filterMatcher(variantTarget,variantRolls)
+		assert(listings.compare(json.encode(samplePage),variantTarget,"Covens",variantFilter).matched==0)
+		listed.implicitMods[1].description="+15% to Fire and Cold Resistances"
+		assert(listings.compare(json.encode(samplePage),variantTarget,"Covens",variantFilter).matched==1)
 	end
 	local path=os.tmpname()..".json"
 	local file=assert(io.open(path,"wb"))
@@ -1832,6 +1860,18 @@ Item Level: 86
 		assert(main.popups[1].title=="Review Trade search" and not opened)
 		gearUI:text("search","maximum Life")
 		if output then gearUI:frame():write(output.."/rolled-trade-review.json") end
+		gearUI:click("tertiary")
+		assert(main.popups[1].title=="Comparable asking prices" and not opened)
+		local filteredDetails={}
+		for _, line in ipairs(main.popups[1].controls.details.list) do
+			filteredDetails[#filteredDetails+1]=StripEscapes(line[1] or "")
+		end
+		filteredDetails=table.concat(filteredDetails," "):gsub("%s+"," ")
+		assert(filteredDetails:find("3 matching listings",1,true) and filteredDetails:find("1 selected modifier filter",1,true),
+			filteredDetails)
+		assert(filteredDetails:find("three needed for a median",1,true),filteredDetails)
+		if output then gearUI:frame():write(output.."/filtered-quiver-listing-snapshot.json") end
+		gearUI:click("close")
 		gearUI:click("secondary")
 		OpenURL=previousOpen
 		local prefix="https://www.pathofexile.com/trade/search/Covens/"
@@ -1851,6 +1891,9 @@ Item Level: 86
 		assert(presenceQuery.stats[1].filters[1].id==presence[1].id and presenceQuery.stats[1].filters[1].value==nil)
 		local socketQuery=browse.rolledTradeQuery(ornate,browse.tradeRolls(ornate))
 		assert(socketQuery.filters.socket_filters.filters.sockets.min==1 and socketQuery.filters.socket_filters.filters.links.max==1)
+		gearUI:click("choose")
+		gearUI:click("toggle")
+		assert(not main.popups[1].controls.tertiary:IsEnabled())
 		print("Quiver pricing verifies copied and equipped rolls and excludes ambiguous legacy bases")
 	end
 	local armour = new("Item"):Item([[Rarity: RARE
@@ -2060,6 +2103,9 @@ Item Level: 86
 		local snapshot=json.encode({next_change_id="cursor",stashes={stash(62,"Clusters#0062",
 			{exact,differentCount,differentSocket,differentEffect,differentNotable,incomplete,wrongLevel,missingFracture})}})
 		assert(listings.compare(snapshot,clusterTarget,"Covens").matched==1)
+		local clusterRollFilter=assert(browse.listingRollSelection(clusterTarget,{{kind="explicit",line=rolls[1].description}}))
+		assert(listings.compare(snapshot,clusterTarget,"Covens",clusterRollFilter).matched==2,
+			"A different notable may match the selected roll, but the Cluster layout must still match")
 		file=assert(io.open(path,"wb"));assert(file:write(snapshot));assert(file:close())
 		local clusterBuild={itemsTab={orderedSlots={{slotName="Jewel 321",nodeId=321}},items={cluster}},
 			spec={allocNodes={[321]=true},jewels={[321]=1}}}

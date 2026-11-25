@@ -235,6 +235,52 @@ function M.rolledTradeQuery(target, rolls)
 	return query
 end
 
+function M.listingRollMatcher(filters)
+	if #filters==0 then return end
+	return function(modifiers)
+		if modifiers.explicitMods=="" then return false end
+		local byID = {}
+		for _, row in ipairs(M.tradeRolls(modifiers)) do
+			if row.id then byID[row.id]=row end
+		end
+		for _, filter in ipairs(filters) do
+			local row = byID[filter.id]
+			if not row then return false end
+			local bounds = filter.value
+			if bounds then
+				local value = row.minimum
+				if not value or bounds.min and value<bounds.min or bounds.max and value>bounds.max then return false end
+			end
+		end
+		return true
+	end
+end
+
+function M.listingRollSelection(target, selection)
+	assert(type(selection)=="table" and #selection>=1 and #selection<=64,"Choose 1 to 64 modifier filters")
+	for index in pairs(selection) do
+		assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#selection,
+			"Expected a modifier filter array")
+	end
+	local rows = M.tradeRolls(target)
+	local byLine = {}
+	for _, row in ipairs(rows) do
+		row.enabled = false
+		if row.id then byLine[row.kind.."\0"..row.line]=row end
+	end
+	for _, choice in ipairs(selection) do
+		assert(type(choice)=="table" and tradeKinds[choice.kind] and type(choice.line)=="string" and #choice.line<=1200,
+			"Choose a supported modifier from the item")
+		for key in pairs(choice) do
+			assert(key=="kind" or key=="line" or key=="min" or key=="max","Unknown modifier filter field")
+		end
+		local row=assert(byLine[choice.kind.."\0"..choice.line],"The selected modifier is unavailable on this item")
+		assert(not row.enabled,"Choose each modifier at most once")
+		row.enabled,row.minimum,row.maximum = true,choice.min,choice.max
+	end
+	return M.listingRollMatcher(M.rolledTradeQuery(target,rows).stats[1].filters)
+end
+
 function M.buildTargets(build)
 	local targets, seen = {}, {}
 	local function add(target)

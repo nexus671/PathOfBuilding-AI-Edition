@@ -11,6 +11,11 @@ const object = (properties,required = []) => ({type:'object',properties,required
 const array = (items,maxItems) => ({type:'array',items,maxItems});
 const boolean = {type:'boolean'};
 const number = (minimum,maximum) => ({type:'number',minimum,maximum});
+const gearModifierFilters = {...array(object({
+  kind:{enum:['implicit','explicit','enchant','crafted','fractured']},
+  line:{...string(1200),minLength:1},
+  min:number(-1e6,1e6),max:number(-1e6,1e6)
+},['kind','line']),64),minItems:1};
 const quoteSchema = object({amount:number(0,1e12),currency:{type:'string',pattern:'^[A-Za-z][A-Za-z0-9 _-]{0,23}$'},quotedAt:integer(0,4102444800),source:string(240)},['amount','currency','quotedAt','source']);
 const journeyId={type:'string',pattern:'^[A-Za-z0-9_-]{1,64}$'};
 const journeyList=items=>({type:'array',items});
@@ -140,7 +145,7 @@ function validate(value,schema) {
 }
 const readOnly = {readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false};
 const tools = [
-  {name:'compare_gear_listings',description:'Compare eligible rare jewellery, armour, weapons, quivers, and ordinary, Abyss, or Cluster jewels with a local public-stash JSON page up to 4 MiB or captured pages up to 16 MiB. Supply exactly one equipment slot, allocated passive jewelSocketId, or copied itemText. Returns aggregate asking prices and seller counts from the supplied file. Poll get_proposal_status and match the request ID.',inputSchema:object({baseRevision:string(40),slot:{enum:['Ring 1','Ring 2','Ring 3','Amulet','Belt','Weapon 1','Weapon 2','Helmet','Body Armour','Gloves','Boots']},jewelSocketId:integer(1,2147483647),itemText:string(24000),snapshotPath:string(1024),league:string(80)},['baseRevision','snapshotPath','league']),annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}},
+  {name:'compare_gear_listings',description:'Compare eligible rare gear with a local Public Stashes JSON page up to 4 MiB or capture up to 16 MiB. Supply exactly one equipped slot, allocated passive jewelSocketId, or copied itemText. Omit modifierFilters for exact rolls, or provide modifier kind, exact line text from the source item, and optional numeric bounds to compare selected modifiers. Returns aggregate asking prices and seller counts. Poll get_proposal_status and match the request ID.',inputSchema:object({baseRevision:string(40),slot:{enum:['Ring 1','Ring 2','Ring 3','Amulet','Belt','Weapon 1','Weapon 2','Helmet','Body Armour','Gloves','Boots']},jewelSocketId:integer(1,2147483647),itemText:string(24000),snapshotPath:string(1024),league:string(80),modifierFilters:gearModifierFilters},['baseRevision','snapshotPath','league']),annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}},
   {name:'measure_journey_upgrades',description:'Calculate each planned wishlist target against the exact current native build without applying it. Targets come from exact item text or linked crafting targets. Poll get_proposal_status for measured deltas, constraints and ratios per supplied resource. No currency conversion or measured benefit is assumed.',inputSchema:object({baseRevision:string(40)},['baseRevision']),annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}},
   {name:'get_build_journey',description:'Read the saved roadmap, gear wishlist, leveling guide, actual resource ledger, reservations and explained next actions. Prices are user supplied. No live inventory or currency conversion is inferred.',inputSchema:object({}),annotations:readOnly},
   {name:'get_loot_sync_status',description:'Read the captured desktop loot filter sync status, failed price feed, last successful run and up to 40 cutoff changes. This reads no arbitrary files and exposes no local paths. It does not request prices or publish a filter.',inputSchema:object({}),annotations:readOnly},

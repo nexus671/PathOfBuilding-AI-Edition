@@ -2083,6 +2083,22 @@ async function main(){
   const capturedListings=await queued('compare_gear_listings',{baseRevision:context.revision,slot:'Ring 1',snapshotPath,league:'Standard'},'gearListings');
   assert.equal(capturedListings.gearListings.comparison.matched,2);assert.equal(capturedListings.gearListings.comparison.capture.pages,2);
   assert.deepEqual(fs.readFileSync(snapshotPath),captureBytes);assert.equal((await call('get_build_context')).context.revision,context.revision);
+  captured.pages[1].response.stashes[0].items[0].explicitMods=[{description:'+75 to maximum Life'},{description:'+32% to Fire Resistance'}];
+  fs.writeFileSync(snapshotPath,JSON.stringify(captured));
+  const filteredCaptureBytes=fs.readFileSync(snapshotPath);
+  const modifierFilter={line:'+79 to maximum Life',kind:'explicit',min:75,max:79};
+  const comparisonArgs={baseRevision:context.revision,itemText:listingRing,snapshotPath,league:'Standard'};
+  const exactNewCapture=await queued('compare_gear_listings',comparisonArgs,'gearListings');
+  assert.equal(exactNewCapture.gearListings.mode,'exact');assert.equal(exactNewCapture.gearListings.comparison.matched,1);
+  const filtered=await queued('compare_gear_listings',{...comparisonArgs,modifierFilters:[modifierFilter]},'gearListings');
+  assert.equal(filtered.gearListings.mode,'filtered');assert.deepEqual(filtered.gearListings.modifierFilters,[modifierFilter]);
+  assert.equal(filtered.gearListings.comparison.matched,2);assert.equal(filtered.gearListings.comparison.results[0].sellers,2);
+  assert.equal(filtered.gearListings.comparison.results[0].median,undefined);
+  for(const modifierFilters of [[{...modifierFilter,line:'+80 to maximum Life'}],[{...modifierFilter,min:80}],
+    [{...modifierFilter,kind:'crafted'}],[modifierFilter,modifierFilter]]) {
+    await queued('compare_gear_listings',{...comparisonArgs,modifierFilters},'failed');
+  }
+  assert.deepEqual(fs.readFileSync(snapshotPath),filteredCaptureBytes);assert.equal((await call('get_build_context')).context.revision,context.revision);
   const twoStone=listingRing.replace('Amethyst Ring','Two-Stone Ring (Fire/Cold)').replace('+23% to Chaos Resistance','+15% to Fire and Cold Resistances');
   const variant={...listing,baseType:'Two-Stone Ring',implicitMods:[{description:'+15% to Fire and Cold Resistances'}]};
   fs.writeFileSync(snapshotPath,JSON.stringify({next_change_id:'cursor',stashes:[{id:'2'.repeat(64),public:true,league:'Standard',accountName:'Seller#0001',items:[variant]}]}));

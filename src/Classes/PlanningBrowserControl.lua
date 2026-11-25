@@ -66,12 +66,19 @@ function M.Open(title,entries,options)
 	button("nextPage",width-172,height-86,156,"Next page",function() turn(1) end);controls.nextPage.enabled=function() return page*pageSize<#filtered end
 	local function available() return selected~=nil and (not options.canChoose or options.canChoose(selected)) and true or false end
 	local function choose() if available() and options.choose then options.choose(selected);if options.closeOnChoose~=false then main:ClosePopup() end end end
-	button("choose",16,height-48,180,options.action or "Select",choose)
+	local actionWidth=options.tertiary and math.floor((width-176)/3) or 180
+	button("choose",16,height-48,actionWidth,options.action or "Select",choose)
 	controls.choose.shown=options.choose~=nil;controls.choose.enabled=available
 	if options.secondary then
 		assert(not options.favorites,"Choose either a secondary action or a favorite toggle")
-		button("secondary",208,height-48,180,options.secondary.label,function() if selected then options.secondary.run(selected) end end)
+		button("secondary",28+actionWidth,height-48,actionWidth,options.secondary.label,function() if selected then options.secondary.run(selected) end end)
 		controls.secondary.enabled=function() return selected~=nil and (not options.secondary.canRun or options.secondary.canRun(selected)) end
+	end
+	if options.tertiary then
+		button("tertiary",40+actionWidth*2,height-48,actionWidth,options.tertiary.label,function()
+			if selected then options.tertiary.run(selected) end
+		end)
+		controls.tertiary.enabled=function() return selected~=nil and (not options.tertiary.canRun or options.tertiary.canRun(selected)) end
 	end
 	if options.favorites then
 		button("favorite",208,height-48,180,"Toggle favorite",function() if selected then options.favorites[selected.id]=not options.favorites[selected.id] or nil;refresh() end end)
