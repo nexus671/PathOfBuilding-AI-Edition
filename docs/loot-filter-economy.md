@@ -16,6 +16,8 @@ Enable GGG trade confirmation in Pickup policy to require a liquid direct-chaos 
 
 ## Daily sync on Windows
 
+Price history matches the feed, provider price ID and exact item identity. Existing snapshots recorded by older builds still establish the usual feed coverage. Only snapshots with an exact identity contribute historical prices to the weekly median or to the three earlier observations required to tighten a cutoff above the fixed baseline.
+
 Open **Loot Filter → Profile tools → Daily price sync**. Choose the live .filter file, fixed baseline, and PoE 1 PC trade league. Use **Choose league** to verify the provider's current PC league list. Existing profiles keep the league you saved. The Browse buttons open a local file picker. **Use PoE selection** fills in the local filter currently selected in the Path of Exile 1 client. Select **Enable / update**. PoB keeps a checksum-verified baseline copy. Use **Sync now** to run the first check immediately, or let PoB check at or after 9:00 a.m. local time while the app is open.
 
 When the provider confirms that a configured league is no longer listed, **Last attempt** shows the verified current challenge league. **Choose league** lists the active PC trade leagues and marks the current challenge league. To switch an existing profile, select a league, open **Review league**, and select **Save reviewed league** after checking the diff. PoB verifies a fresh league list and the price feeds for the proposed league. A later fresh refresh from the fixed baseline writes the live filter. Paused profiles stay paused.

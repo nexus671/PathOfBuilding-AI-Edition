@@ -173,7 +173,10 @@ function M.remember(quotes, history, day, now, onCoverageFailure)
 	local adjusted = {}
 	for name, quote in pairs(quotes) do
 		if M.liquid(quote) and quote.id then
-			local key = (quote.source or "") .. ":" .. quote.id
+			local marketName = name:gsub("^%z[^:]+:", "")
+			-- A scoped quote and its default lookup describe the same item. The
+			-- exact name binds its ID to this item, even if the provider reuses it.
+			local key = (quote.source or "") .. ":\0" .. #marketName .. ":" .. marketName .. quote.id
 			snapshot.values[key] = quote.price
 			local prices = {}
 			for _, entry in ipairs(previous) do
