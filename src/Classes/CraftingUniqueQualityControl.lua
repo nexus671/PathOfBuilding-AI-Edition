@@ -492,10 +492,19 @@ function M.Open(build,project,layout,snapshot)
 		ui.description(controls,"help",16,25,dw-32,50,{"Preview a roll or plan a stat or modifier target.","Modifier-value probabilities are estimates."},14)
 		local stats=require("Modules.CraftingItemStats");local values=stats.itemValues(item);local options,selection={},{}
 		for _,field in ipairs(stats.fields) do if values[field[1]] and values[field[1]]>0 then options[#options+1]={label=field[2],val=field[1]};selection[field[1]]={kind="stat",label=field[2],current=values[field[1]]} end end
-		for index,row in ipairs(unique.divineOptions(raw) or {}) do local key="modifier:"..index;local part=row.components>1 and (" ["..row.component.."/"..row.components.."]") or "";options[#options+1]={label=ui.fit("Roll"..part..": "..row.line,190,14),val=key};selection[key]={kind="modifier",line=row.line,component=row.component,components=row.components,min=row.min,max=row.max,current=row.current,step=row.step} end
+		for index,row in ipairs(unique.divineOptions(raw) or {}) do local key="modifier:"..index;local part=row.components>1 and (" ["..row.component.."/"..row.components.."]") or "";options[#options+1]={label="Roll"..part..": "..row.line,val=key};selection[key]={kind="modifier",line=row.line,component=row.component,components=row.components,min=row.min,max=row.max,current=row.current,step=row.step} end
 		if #options==0 then options[1]={label="No supported target",val=""} end
 		ui.label(controls,"statLabel",16,90,"Stat or modifier roll",14)
 		controls.stat=new("DropDownControl"):DropDownControl(ui.anchor,{16,112,200,26},options)
+		controls.stat.maxDroppedWidth=dw-32
+		controls.stat:CheckDroppedWidth(true)
+		controls.stat.tooltipFunc=function(tooltip,mode,index,value)
+			tooltip:Clear()
+			local entry=mode=="HOVER" and value or controls.stat:GetSelValue()
+			if type(entry)=="table" and entry.label then
+				for _,row in ipairs(ui.rows({entry.label},math.min(460,main.screenW-60),14)) do tooltip:AddLine(14,row[1]) end
+			end
+		end
 		controls.direction=new("DropDownControl"):DropDownControl(ui.anchor,{224,112,110,26},{"At least","At most"})
 		controls.target=new("EditControl"):EditControl(ui.anchor,{342,112,dw-358,26},"","Value",nil,10)
 		ui.label(controls,"attemptsLabel",16,155,"Attempt limit (1-2000)",14)
