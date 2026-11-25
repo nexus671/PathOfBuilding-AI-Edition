@@ -1672,6 +1672,31 @@ Item Level: 86
 	local combined=listings.compare(bundled,target,"Covens")
 	assert(combined.matched==3 and combined.results[1].low==25 and combined.results[1].median==45 and combined.results[1].high==55)
 	assert(combined.capture.pages==4 and combined.capture.updated==2 and combined.capture.withdrawn==1)
+	local aged=listings.compare(bundled,target,"Covens",nil,true,true)
+	assert(aged.expiredListings==4 and aged.priced==0 and aged.results[1].sellers==0)
+	local rolling=copyTable(capture)
+	local now=os.time()
+	rolling.capturedAt=now-3600
+	rolling.pages[1].collectedAt=rolling.capturedAt
+	for index=2,#rolling.pages do rolling.pages[index].collectedAt=now-30 end
+	table.insert(rolling.pages[1].response.stashes,stash(27,"Expired#0027",{row(27,"~price 2 chaos")}))
+	local recentBytes=assert(json.encode(rolling))
+	local recent=listings.compare(recentBytes,target,"Covens",nil,true,true)
+	assert(recent.expiredListings==1 and recent.priced==3 and recent.results[1].median==45
+		and recent.results[1].low==25 and recent.capture.withdrawn==1)
+	local archive=listings.compare(recentBytes,target,"Covens")
+	assert(archive.expiredListings==nil and archive.priced==4 and archive.results[1].low==2)
+	local priorOwner=stash(28,"Conflict#0028",{row(25,"~price 2 chaos")})
+	table.insert(rolling.pages[1].response.stashes,priorOwner)
+	local duplicate=listings.compare(json.encode(rolling),target,"Covens",nil,true,true)
+	assert(duplicate.ambiguous==1 and duplicate.priced==2 and not duplicate.results[1].median)
+	table.remove(rolling.pages[1].response.stashes)
+	rolling.pages[3].collectedAt=now+86400
+	assert(not pcall(listings.compare,json.encode(rolling),target,"Covens",nil,true,true))
+	rolling.pages[3].collectedAt=now-31
+	assert(not pcall(listings.compare,json.encode(rolling),target,"Covens",nil,true,true))
+	rolling.pages[1].collectedAt=now-3599
+	assert(not pcall(listings.compare,json.encode(rolling),target,"Covens",nil,true,true))
 	assert(not pcall(listings.compare,bundled,target,"Standard"))
 	capture.realm="xbox"
 	assert(not pcall(listings.compare,json.encode(capture),target,"Covens"))
@@ -2259,21 +2284,40 @@ Item Level: 86
 		assert(attempts==1 and main.popups[1].title=="Browse loot market prices")
 		complete()
 		assert(main.popups[1].title=="Comparable asking prices")
-		local lines={}
-		for _, line in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=StripEscapes(line[1] or "") end
-		local result=table.concat(lines," ")
-		assert(result:find("Median 45",1,true) and result:find("Over one hour old",1,true),result)
+		local function resultText()
+			local lines={}
+			for _, line in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=StripEscapes(line[1] or "") end
+			return table.concat(lines," ")
+		end
+		local result=resultText()
+		assert(result:find("No recently observed matching asking prices",1,true)
+			and result:find("Excluded 4 older same-base listings",1,true) and not result:find("Median",1,true),result)
+		if output then gearUI:frame():write(output.."/overlay-expired-capture.json") end
+		gearUI:click("close")
+		gearUI:click("savedListing")
+		assert(attempts==2)
+		complete()
+		result=resultText()
+		assert(result:find("Median 45",1,true) and result:find("Recorded sample includes pages at least one hour old",1,true),result)
+		if output then gearUI:frame():write(output.."/overlay-recorded-capture.json") end
+		file=assert(io.open(path,"wb"));assert(file:write(recentBytes));assert(file:close())
+		main.popups={}
+		controller.OpenForOverlay(raw,"Covens",path)
+		assert(attempts==3)
+		complete()
+		result=resultText()
+		assert(result:find("Median 45",1,true) and result:find("Excluded 1 older same-base listings",1,true),result)
 		if output then gearUI:frame():write(output.."/overlay-saved-capture.json") end
 		gearUI:click("review")
 		gearUI:click("tertiary")
-		assert(attempts==2)
+		assert(attempts==4)
 		complete()
 		assert(main.popups[1].title=="Comparable asking prices")
 		main.popups={}
 		controller.OpenForOverlay(raw,"Covens",path)
 		gearUI:text("league","Standard")
 		complete()
-		assert(main.popups[1].title=="Browse loot market prices" and attempts==3 and #requests==2)
+		assert(main.popups[1].title=="Browse loot market prices" and attempts==5 and #requests==2)
 		assert(not pcall(listings.compare,encoded,target,"Covens",nil,true))
 		LaunchSubScript,launch.RegisterSubScript=previousLaunch,previousRegister
 		main.popups,main.inputEvents={},{}
