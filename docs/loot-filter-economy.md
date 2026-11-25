@@ -193,7 +193,7 @@ The cache retains up to 48 entries and 48 MiB of response bodies. It evicts the 
 
 ### Deploy the relay container
 
-The Compose package runs the Node relay as an unprivileged user with a read-only root filesystem. The named state volume keeps cached snapshots and provider cooldowns across container replacement. The relay publishes a loopback port for a reverse proxy on the same host.
+The Compose package runs the Node relay as an unprivileged user with a read-only root filesystem. The named state volume keeps cached snapshots and provider cooldowns across container replacement. Use Docker Engine 28 or newer for the published loopback port to stay restricted to the host. [Docker port publishing](https://docs.docker.com/engine/network/port-publishing/)
 
 Set `POB_MARKET_UPSTREAM_AGENT` to the application name and an operator contact, then start the service from the repository root.
 

@@ -23,6 +23,7 @@ global.fetch = async (url, options) => {
     throw new Error('Unexpected provider request');
   }
   if (process.env.POB_RELAY_FIXTURE_MODE==='outage') throw new Error('Fixture provider outage');
+  if (upstream.searchParams.get('type')==='Scarab') return new Response(null,{status:429,headers:{'Retry-After':'120'}});
   const data = upstream.pathname.endsWith('/leagues') ? [{id:'Covens',name:'Covens of Umbra'}] :
     {core:{primary:'chaos'},items:[{id:'alt',name:'Orb of Alteration'}],
       lines:[{id:'alt',primaryValue:0.2,volumePrimaryValue:400}]};
@@ -115,6 +116,9 @@ async function main() {
     const warm = await (await relay('/health')).json();
     assert.equal(warm.requests,9);
     assert.equal(warm.cached,9);
+    const limited = await relay('/exchange/current/overview?league=Covens&type=Scarab');
+    assert.equal(limited.status,429);
+    assert.equal(limited.headers.get('retry-after'),'120');
 
     configuration('outage',sourceDate);
     compose('up','-d','--force-recreate','--wait','--wait-timeout','60');
@@ -123,9 +127,14 @@ async function main() {
     assert.equal(report.status,'passed');
     assert.equal(report.probes.length,10);
     assert.deepEqual(report.probes[0].snapshots,{restored:9,discarded:0,errors:0});
+    assert.equal(report.probes[0].provider.state,'cooldown');
+    assert.ok(report.probes[0].provider.cooldownSeconds>0);
     assert.ok(report.probes.slice(1).every(probe=>probe.freshnessSeconds>=30));
+    const held = await relay('/exchange/current/overview?league=Covens&type=Scarab');
+    assert.equal(held.status,429);
+    assert.ok(Number(held.headers.get('retry-after'))>0);
     assert.equal((await (await relay('/health')).json()).requests,0);
-    console.log('Market relay image restored nine responses after recreation and passed ten HTTPS probes without upstream requests.');
+    console.log('Market relay image restored nine responses and the provider cooldown, then passed ten HTTPS probes without upstream requests.');
   } finally {
     compose('down','--volumes','--rmi','local');
     rmSync(directory,{recursive:true,force:true});
