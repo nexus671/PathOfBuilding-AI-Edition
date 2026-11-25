@@ -5,6 +5,7 @@ import argparse
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from hashlib import sha256
 from http.client import HTTPException
 import json
 import math
@@ -26,6 +27,8 @@ from build_public_stash_capture import (
 ENDPOINT = "https://api.pathofexile.com/public-stash-tabs"
 TOKEN_VARIABLE = "POB_GGG_PUBLIC_STASH_TOKEN"
 WINDOW_SECONDS = 24 * 60 * 60
+DEFAULT_RETRY_SECONDS = 60
+COOLDOWN_FORMAT = "pob-public-stash-cooldown-v1"
 
 
 class CaptureRequestError(Exception):
@@ -84,36 +87,42 @@ def triples(value):
             yield tuple(map(int, fields))
 
 
-def fetch_page(opener, cursor, token, agent):
+def fetch_page(opener, cursor, token, agent, on_cooldown=None):
     query = urlencode({"id": cursor})
     request = Request(f"{ENDPOINT}?{query}", headers={
         "Authorization": f"Bearer {token}", "User-Agent": agent,
         "Accept": "application/json", "Accept-Encoding": "identity",
     })
+    delay = 0
     try:
         with opener.open(request, timeout=15) as response:
+            delay = rate_limit_wait(response.headers)
+            if delay and on_cooldown is not None:
+                on_cooldown(delay)
             if response.status != 200:
-                raise CaptureRequestError(f"Unexpected GGG HTTP status {response.status}")
+                raise CaptureRequestError(f"Unexpected GGG HTTP status {response.status}", delay or None)
             header = response.headers.get("Content-Length", "")
             length = int(header) if re.fullmatch(r"[0-9]{1,10}", header) else None
             if length is not None and length > PAGE_LIMIT:
-                raise CaptureRequestError("The GGG page exceeds the 4 MiB capture page limit")
+                raise CaptureRequestError("The GGG page exceeds the 4 MiB capture page limit", delay or None)
             body = response.read(PAGE_LIMIT + 1)
             if len(body) > PAGE_LIMIT:
-                raise CaptureRequestError("The GGG page exceeds the 4 MiB capture page limit")
+                raise CaptureRequestError("The GGG page exceeds the 4 MiB capture page limit", delay or None)
             if length is not None and len(body) != length:
-                raise CaptureRequestError("GGG returned an incomplete capture page")
-            return body, rate_limit_wait(response.headers)
+                raise CaptureRequestError("GGG returned an incomplete capture page", delay or None)
+            return body, delay
     except HTTPError as error:
         try:
+            delay = rate_limit_wait(error.headers or {})
             if error.code in (429, 503):
-                delay = rate_limit_wait(error.headers) or 60
-                raise CaptureRequestError(f"GGG returned HTTP {error.code}", delay) from None
-            raise CaptureRequestError(f"GGG returned HTTP {error.code}") from None
+                delay = delay or DEFAULT_RETRY_SECONDS
+            if delay and on_cooldown is not None:
+                on_cooldown(delay)
+            raise CaptureRequestError(f"GGG returned HTTP {error.code}", delay or None) from None
         finally:
             error.close()
     except (OSError, HTTPException):
-        raise CaptureRequestError("Could not read a complete HTTPS response from GGG") from None
+        raise CaptureRequestError("Could not read a complete HTTPS response from GGG", delay or None) from None
 
 
 def read_capture(path, league):
@@ -186,10 +195,13 @@ def collect(league, cursor, page_limit, fetch, pause=time.sleep):
                      "retryAfterSeconds": delay}
 
 
+def lock_path(path):
+    return path.with_name(path.name + ".lock")
+
+
 @contextmanager
 def refresh_lock(path):
-    lock_path = path.with_name(path.name + ".lock")
-    with lock_path.open("a+b") as lock:
+    with lock_path(path).open("a+b") as lock:
         try:
             if os.name == "nt":
                 import msvcrt
@@ -199,8 +211,60 @@ def refresh_lock(path):
                 import fcntl
                 fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as error:
-            raise ValueError("Could not lock the capture for refresh") from error
+            raise ValueError("Could not acquire the collector lock") from error
         yield
+
+
+def read_cooldown(path, client):
+    if path.is_symlink():
+        raise ValueError("The collector cooldown must be a regular state file")
+    try:
+        with path.open("rb") as source:
+            raw = source.read(1025)
+    except FileNotFoundError:
+        return 0
+    try:
+        record = json.loads(raw) if len(raw) <= 1024 else None
+    except (ValueError, RecursionError):
+        record = None
+    if (not isinstance(record, dict) or record.get("format") != COOLDOWN_FORMAT
+            or record.get("client") != client or type(record.get("notBefore")) is not int
+            or not 0 <= record["notBefore"] <= 100_000_000_000):
+        raise ValueError("The collector cooldown state is invalid for this GGG client")
+    return record["notBefore"]
+
+
+def fetch_with_cooldown(path, client, fetch, cursor):
+    remaining = math.ceil(read_cooldown(path, client) - time.time())
+    if remaining > 0:
+        raise CaptureRequestError("GGG collector cooldown is still active", remaining)
+
+    def save(wait):
+        until = math.ceil(time.time() + wait) if wait else 0
+        record = {"format": COOLDOWN_FORMAT, "client": client, "notBefore": until}
+        publish_capture(path, encode_response(record), replace=True)
+
+    recorded = False
+
+    def remember(wait):
+        nonlocal recorded
+        try:
+            save(wait)
+        except OSError as error:
+            raise ValueError("Could not save the GGG retry deadline") from error
+        recorded = True
+
+    # Leave a short hold if the process exits before it receives the headers.
+    save(DEFAULT_RETRY_SECONDS)
+    try:
+        body, delay = fetch(cursor, remember)
+    except CaptureRequestError as error:
+        if not recorded:
+            save(error.retry_after)
+        raise
+    if not recorded:
+        save(delay)
+    return body, delay
 
 
 def refresh_capture(path, league, page_limit, fetch, pause=time.sleep):
@@ -257,6 +321,7 @@ def main():
     parser.add_argument("--client-id", required=True)
     parser.add_argument("--contact", required=True)
     parser.add_argument("--max-pages", type=int, default=8)
+    parser.add_argument("--cooldown-file", type=Path, help="Shared rate state for this GGG client on the backend")
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--cursor", help="A known cursor from the authorized PC stream")
     source.add_argument("--resume-from", type=Path, help="The preceding capture in the same league")
@@ -272,17 +337,28 @@ def main():
         if not args.output.parent.is_dir():
             raise ValueError("The capture output folder does not exist")
         agent = identification(args.client_id, args.contact)
+        client = sha256(args.client_id.encode("ascii")).hexdigest()
+        state = args.cooldown_file or args.output.parent / f".pob-stash-{client[:24]}.cooldown.json"
+        state = state.parent.resolve() / state.name
+        captures = {path.resolve() for path in (args.output, args.resume_from) if path is not None}
+        capture_locks = {lock_path(path).resolve() for path in captures}
+        if {state.resolve(), lock_path(state).resolve()} & (captures | capture_locks):
+            raise ValueError("Choose a cooldown file separate from the capture files")
         opener = build_opener(RejectRedirects())
 
-        def fetch(value):
-            return fetch_page(opener, value, token, agent)
+        def request(cursor, remember):
+            return fetch_page(opener, cursor, token, agent, on_cooldown=remember)
 
-        if args.refresh:
-            report = refresh_capture(args.output, args.league, args.max_pages, fetch)
-        else:
-            cursor = args.cursor if args.cursor is not None else capture_start(args.resume_from, args.league)
-            capture, report = collect(args.league, cursor, args.max_pages, fetch)
-            publish_capture(args.output, capture)
+        def fetch(value):
+            return fetch_with_cooldown(state, client, request, value)
+
+        with refresh_lock(state):
+            if args.refresh:
+                report = refresh_capture(args.output, args.league, args.max_pages, fetch)
+            else:
+                cursor = args.cursor if args.cursor is not None else capture_start(args.resume_from, args.league)
+                capture, report = collect(args.league, cursor, args.max_pages, fetch)
+                publish_capture(args.output, capture)
     except CaptureRequestError as error:
         print(json.dumps({"error": str(error), "retryAfterSeconds": error.retry_after}), file=sys.stderr)
         return 75 if error.retry_after else 1
