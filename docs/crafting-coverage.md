@@ -25,7 +25,9 @@ legacy-item provenance.
 For example, the sampled 196–240
 mana-per-minute Abyss tier displays as 3.3–4 per second. PoB's item and character
 calculations still use the displayed precision, and uniform raw sampling and
-current-game availability remain unverified.
+current-game availability remain unverified. The 62–80 per-minute veiled life
+regeneration record also has a raw upper endpoint beyond its rounded display;
+its raw ticks were compared with PoB's translator, not observed in game.
 
 The experimental Bestiary **maximum sockets** action for ordinary equipment and supported unique items uses one Black Morrigan and one Craicic Shield Crab. It assumes the natural item-level and base limit applies, existing colours and links are retained, and added sockets are white and unlinked. Eligibility and socket behavior need in-game verification. The workbench, recipes and MCP share these assumptions; unique items with fixed or restricted sockets remain unavailable. The [Bestiary recipe list](https://www.poewiki.net/wiki/Beastcrafting) documents the two beasts and maximum-socket outcome.
 

@@ -358,6 +358,12 @@ local function unknownSocketWarning(warnings)
 end
 
 local rollModifierIds=setmetatable({},{__mode="k"})
+function M.registerRollModifierIds(model)
+	for id,mod in pairs(model.byId) do
+		local previous=rollModifierIds[mod]
+		if previous==nil then rollModifierIds[mod]=id elseif previous~=id then rollModifierIds[mod]=false end
+	end
+end
 
 function M.model(raw)
 	assert(type(raw) == "string" and #raw <= 24000,"Invalid starting item")
@@ -458,10 +464,7 @@ function M.model(raw)
 	assert(c.Prefix <= caps.Prefix and c.Suffix <= caps.Suffix,"Starting item exceeds affix limits")
 	assert(renderLines(reconstructed) == renderLines(item),"Starting modifiers could not be resolved exactly. Use a blank base or advanced item text with recognized modifier IDs.")
 	model.initial=state
-	for id,mod in pairs(model.byId) do
-		local previous=rollModifierIds[mod]
-		if previous==nil then rollModifierIds[mod]=id elseif previous~=id then rollModifierIds[mod]=false end
-	end
+	M.registerRollModifierIds(model)
 	return model
 end
 

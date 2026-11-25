@@ -486,6 +486,7 @@ function A.extend(M,api)
 			end
 		end
 		if tagged > 0 and not model.unresolvedEldritch then model.initial.implicits=imported end
+		M.registerRollModifierIds(model)
 		return model
 	end
 	local function pool(model,state,options)

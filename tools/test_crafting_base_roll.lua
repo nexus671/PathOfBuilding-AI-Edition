@@ -6,6 +6,14 @@ local regen=assert(model.byId.LifeRegeneration2)
 local influenced=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86\nShaper Item")
 local suppression=assert(influenced.byId.ChanceToDodgeAttacksInfluence2)
 local describe=LoadModule("Modules/StatDescriber")
+local veiledRegen=assert(model.byId.JunMasterVeiledLifeRegeneration)
+for rawValue=62,80 do
+ local range=sim.rollRange(veiledRegen,function() return (rawValue-62+0.1)/19 end)
+ local expected=tonumber(describe({["life_regeneration_rate_per_minute_%"]=rawValue},"stat_descriptions")[1]:match("Regenerate ([%d%.]+)"))
+ assert(sim.baseRollValue(veiledRegen,range)==expected,"Veiled regeneration translation mismatch")
+ assert(math.abs(1.03+range*0.3-rawValue/60)<1e-9,"Veiled regeneration raw tick was lost")
+ if rawValue==80 then assert(range>1 and sim.isRawRegenRange(veiledRegen,range),"Rounded upper endpoint did not preserve its raw tick") end
+end
 local abyss=sim.model("Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86")
 local abyssId="AbyssFlatManaShieldRegenerationJewel3";local abyssMod=assert(abyss.byId[abyssId])
 local counts={}
