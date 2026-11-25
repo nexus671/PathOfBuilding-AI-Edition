@@ -1,10 +1,14 @@
-VERSION[2.69.0-ai.preview1302][2026/11/24]
+VERSION[2.69.0-ai.preview1303][2026/11/24]
 
 * Preserve regeneration rolls hidden by rounded range endpoints.
 
-VERSION[2.69.0-ai.preview1301][2026/11/24]
+VERSION[2.69.0-ai.preview1302][2026/11/24]
 
 * Correct recognized legacy spell-block crafting rolls.
+
+VERSION[2.69.0-ai.preview1301][2026/11/24]
+
+* Compare exact rolled prices for ordinary and Abyss jewels from local stash captures.
 
 VERSION[2.69.0-ai.preview1300][2026/11/24]
 

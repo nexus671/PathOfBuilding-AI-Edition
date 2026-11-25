@@ -571,12 +571,18 @@ function M.poll(build, force)
 		assert(not require("Modules.JourneyUpgrades").job,"Finish or cancel upgrade measurements first")
 		if request.kind=="compare_gear_listings" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
-			local hasSlot=request.slot~=nil;local hasItem=request.itemText~=nil
-			assert(hasSlot~=hasItem,"Provide exactly one slot or itemText")
+			local hasSlot, hasItem, hasSocket = request.slot~=nil, request.itemText~=nil, request.jewelSocketId~=nil
+			assert((hasSlot and 1 or 0)+(hasItem and 1 or 0)+(hasSocket and 1 or 0)==1,
+				"Provide exactly one slot, jewelSocketId or itemText")
 			if hasSlot then
 				local slots = {["Ring 1"]=true,["Ring 2"]=true,["Ring 3"]=true,Amulet=true,Belt=true,["Weapon 1"]=true,["Weapon 2"]=true,
 					Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true}
 				assert(slots[request.slot],"Choose an equipped gear slot")
+			end
+			if hasSocket then
+				local socket = request.jewelSocketId
+				assert(type(socket)=="number" and socket>=1 and socket<=2147483647 and socket==math.floor(socket),
+					"Choose an allocated jewel socket ID")
 			end
 			if hasItem then assert(type(request.itemText)=="string" and #request.itemText<=24000 and request.itemText:match("%S"),"Provide a copied item") end
 			local path=request.snapshotPath
@@ -585,10 +591,17 @@ function M.poll(build, force)
 			local target
 			local browse=require("Modules.LootFilterMarketBrowse")
 			if hasItem then target=browse.listingTargetForItem(new("Item"):Item(request.itemText))
-			else for _,entry in ipairs(browse.buildTargets(build)) do if entry.listingSlot==request.slot then target=entry.listingItem;break end end end
+			else
+				for _, entry in ipairs(browse.buildTargets(build)) do
+					if hasSlot and entry.listingSlot==request.slot or hasSocket and entry.listingSocket==request.jewelSocketId then
+						target=entry.listingItem
+						break
+					end
+				end
+			end
 			assert(target,"The supplied item or selected slot does not contain supported comparable rare gear")
 			local result=require("Modules.LootFilterGearListings").compareFile(path,target,request.league)
-			M.status={id=request.id,status="gearListings",gearListings={slot=request.slot,source=hasItem and "copied item" or "equipped item",league=request.league,comparison=result,
+			M.status={id=request.id,status="gearListings",gearListings={slot=request.slot,jewelSocketId=request.jewelSocketId,source=hasItem and "copied item" or "equipped item",league=request.league,comparison=result,
 				equipment=target.equipment,note="Asking prices from the supplied snapshot only; freshness, availability and completed sales are not established."}}
 			M.publishState();return
 		end
