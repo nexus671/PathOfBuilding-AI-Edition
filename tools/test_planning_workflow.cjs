@@ -2148,7 +2148,7 @@ async function main(){
   assert.equal(equippedJewel.gearListings.comparison.matched,1);
   assert.deepEqual(equippedJewel.gearListings.comparison,copiedJewel.gearListings.comparison);
   const missingJewel=await queued('compare_gear_listings',{baseRevision:context.revision,jewelSocketId:2147483647,snapshotPath,league:'Standard'},'failed');
-  assert.match(missingJewel.error,/supported comparable rare gear/);
+  assert.match(missingJewel.error,/supported comparable gear/);
   assert.equal((await call('get_build_context')).context.revision,context.revision);
   const clusterEnchants=['Adds 8 Passive Skills','2 Added Passive Skills are Jewel Sockets','Added Small Passive Skills grant: 12% increased Attack Damage while holding a Shield'];
   const clusterMod='1 Added Passive Skill is Heavy Hitter';
@@ -2159,6 +2159,27 @@ async function main(){
   const clusterListings=await queued('compare_gear_listings',{baseRevision:context.revision,itemText:clusterText,snapshotPath,league:'Standard'},'gearListings');
   assert.equal(clusterListings.gearListings.comparison.matched,1);
   assert.deepEqual(clusterListings.gearListings.cluster,{passives:8,sockets:2});
+  const passives=['Constitution','Heart of Oak'];
+  const growth=passives.map(name=>'1 Added Passive Skill is '+name);
+  const seedMods=['Grows four random Passive Skills when Anointed','Passive Skills grown are influenced by Oils used when Anointing'];
+  const seedText=['Rarity: Unique','Putrid Seed','Mycelium Core','Limited to: 1','Item Level: 86',
+    ...growth.map(line=>line+' (enchant)'),...seedMods].join('\n');
+  const {jewelSocketId:seedSocket}=await host('equip-fixture-jewel',{itemText:seedText,large:true});
+  context=(await call('get_build_context')).context;
+  const seedAsk={...jewelAsk,baseType:'Mycelium Core',typeLine:'Mycelium Core',name:'Putrid Seed',rarity:'Unique',frameType:3,
+    properties:[{name:'Limited to',values:[['1',0]],displayMode:0}],enchantMods:growth,explicitMods:seedMods.map(description=>({description}))};
+  const swappedSeed={...seedAsk,id:'8'.repeat(64),enchantMods:growth.slice().reverse()};
+  fs.writeFileSync(snapshotPath,JSON.stringify({next_change_id:'cursor',stashes:[{id:'2'.repeat(64),public:true,league:'Standard',accountName:'Seller#0001',items:[seedAsk,swappedSeed]}]}));
+  const seedSnapshot=fs.readFileSync(snapshotPath);
+  const seedArgs={baseRevision:context.revision,snapshotPath,league:'Standard'};
+  const copiedSeed=await queued('compare_gear_listings',{...seedArgs,itemText:seedText},'gearListings');
+  const socketedSeed=await queued('compare_gear_listings',{...seedArgs,jewelSocketId:seedSocket},'gearListings');
+  assert.equal(copiedSeed.gearListings.comparison.matched,1);
+  assert.deepEqual(copiedSeed.gearListings.blightcore,passives);
+  assert.deepEqual(socketedSeed.gearListings.comparison,copiedSeed.gearListings.comparison);
+  await queued('compare_gear_listings',{...seedArgs,itemText:seedText,modifierFilters:[{kind:'enchant',line:growth[0]}]},'failed');
+  assert.deepEqual(fs.readFileSync(snapshotPath),seedSnapshot);
+  assert.equal((await call('get_build_context')).context.revision,context.revision);
   const invalidListing=await queued('compare_gear_listings',{baseRevision:context.revision,slot:'Ring 1',snapshotPath:'relative.json',league:'Standard'},'failed');
   assert.match(invalidListing.error,/absolute local JSON/);
   await host('quit');

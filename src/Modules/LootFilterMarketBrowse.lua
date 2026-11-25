@@ -335,8 +335,11 @@ function M.buildTargets(build)
 			end
 			local label = item.type=="Jewel" and slot.slotName or slot.label or slot.slotName
 			if category and marketName(item.title) then
+				local listingItem = item.title=="Putrid Seed" and M.listingTargetForItem(item) or nil
 				add({name=item.title,category=category,label=label.." | "..item.title,
-					details={"Compare the listed unique variants and rolls."}})
+					listingItem=listingItem,listingSocket=listingItem and slot.nodeId or nil,listingSlot=listingItem and slot.slotName or nil,
+					details={listingItem and "A listing file compares this jewel's granted passives in order."
+						or "Compare the listed unique variants and rolls."}})
 			elseif item.rarity~="UNIQUE" then
 				local cluster = item.type=="Jewel" and (item.baseName=="Large Cluster Jewel" or item.baseName=="Medium Cluster Jewel" or item.baseName=="Small Cluster Jewel")
 				local baseCategory = ({Viscera="Viscera",Flask="Flask"})[item.type]
