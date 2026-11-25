@@ -1,5 +1,7 @@
 # Loot filter economy review
 
+<!-- cspell:ignore lupa -->
+
 In PoB AI Edition, open **Loot Filter → Profile tools → Review exchange prices** on a Normal-mode profile that imports your filter. Leave League ID blank to use the current PC trade league or enter the exact poe.ninja league ID. Review the proposed stack changes, then export a separate filter.
 
 Use **Profile tools → Managed price rules** to add exact commodity, divination card, map-tier, or gem hides in a Normal-mode profile. Export the profile to get the managed section automatically. To author the section by hand, add standalone comments `# PoB economy: begin` and `# PoB economy: end` around the exact item-name stack hides you want to review. Existing personal filters with the original tiered-test section headings also work.
@@ -239,5 +241,11 @@ For `Map`, `BlightedMap`, and `BlightRavagedMap`, check `exactMapTiers` for the 
 
 1. Arrange production hosting and confirm the allowed integration with the provider. Run the loopback relay behind the deployment's TLS reverse proxy and configure its descriptive User-Agent and operator contact.
 2. Run the qualification command from the intended client network. Request the eight core feeds and the optional categories the pilot profile uses. Keep the report with the source version and the time of the check.
-3. On one copied or test profile, run **Preview changes** and one due refresh from the pinned baseline. Verify the output, protected drops, and rollback. If the pilot uses Windows background sync, confirm the task uses the same HTTPS endpoint.
+3. Qualify the packaged Windows worker on a fresh portable extraction and a copy of the intended fixed baseline. Require each optional category that the pilot needs. The worker review reports the verified source mode, feed ages, protected check count, and filter checksum. The pilot checks that a same-day rerun keeps identical bytes.
 4. Observe the pilot before pointing additional profiles at the relay. On repeated failures, stop expanding the rollout and keep each client's last verified output. Respect the provider's retry window. Resume after qualification passes from the deployed host.
+
+```powershell
+python tools/smoke_portable_windows.py <fresh-extraction-folder> --loot-filter <fixed-baseline.filter> --league Covens --market-cache https://prices.example.test/pob-market/ --require-feed SkillGem
+```
+
+Run this from the client network after installing the pilot's Python dependency with `python -m pip install lupa==2.8`. Use a baseline outside the extraction folder. For a custom filter, pass `--protected-samples <samples.json>` and set `--protected-checks` to the minimum check count expected for that pilot. The tool writes its settings, filter and reports to the extraction. Then run **Preview changes** on the intended profile, verify rollback and check the saved Windows task's source if it uses background sync.
