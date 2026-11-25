@@ -84,13 +84,18 @@ def build_capture(league, captured_at, inputs):
     return assemble_capture(league, captured_at, read_pages(), len(inputs))
 
 
-def publish_capture(path, body):
+def publish_capture(path, body, *, replace=False):
     temporary = None
     try:
         with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".pob-stash-", delete=False) as output:
             temporary = Path(output.name)
             output.write(body)
-        os.link(temporary, path)
+            output.flush()
+            os.fsync(output.fileno())
+        if replace:
+            os.replace(temporary, path)
+        else:
+            os.link(temporary, path)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
