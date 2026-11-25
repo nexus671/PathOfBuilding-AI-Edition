@@ -40,6 +40,11 @@ local function showListingSample(target, league, sample)
 		string.format("%d matching listings with a supported asking price",sample.priced),
 	}
 	local equipment = target.listingItem.equipment
+	local cluster = target.listingItem.cluster
+	if cluster then
+		details[#details+1] = string.format("Passive layout: %d passives | %d jewel socket%s",
+			cluster.passives,cluster.sockets,cluster.sockets==1 and "" or "s")
+	end
 	if equipment then
 		details[#details+1] = string.format("Matched sockets: %s | Quality: %d%%",
 			equipment.sockets=="" and "None" or equipment.sockets,equipment.quality)
@@ -198,7 +203,7 @@ local function open(build, managedTarget)
 				status("The copied item lacks comparable rolls or supported equipment properties.")
 				return
 			end
-			selectTarget({name=comparison.base,category="BaseType",listingItem=comparison,
+			selectTarget({name=comparison.base,category=comparison.cluster and "ClusterJewel" or "BaseType",listingItem=comparison,
 				label="Copied item | "..base.." | Item level "..comparison.level,
 				details={"Market estimates are for the base. Compare a listing file for matching item rolls."}},
 				"Item copied. Choose a league and compare a public stash JSON file.")
