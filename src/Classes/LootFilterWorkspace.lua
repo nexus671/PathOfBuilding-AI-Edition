@@ -242,7 +242,7 @@ function M.Open(build,source,layout,controller)
 		local summary = {
 			string.format("%d shown, %d hidden, %d unresolved outside the Rank A/B list.",result.shown,result.hidden,result.unknown),
 			"Samples are unidentified, uncorrupted Tier 5 rares at item level 86 in area level 83, with no sockets or special flags.",
-			"Counts cover eligible bases in PoB's item catalogue. They do not estimate drop frequency or value.",
+			"Counts describe eligible bases in PoB's item catalogue.",
 		}
 		if result.missing>0 then summary[#summary+1]=result.missing.." bases lack the metadata needed for a sample." end
 		local entries = {{label="Audit summary",category="Summary",details=summary}}
@@ -252,7 +252,7 @@ function M.Open(build,source,layout,controller)
 				label=item.BaseType, category=decision.action=="Show" and "Shown outside rank list" or "Unresolved",
 				search=item.Class.." "..(decision.line and "line "..decision.line or ""), sample=item,
 				details=function()
-					local details = {item.Class, decision.action..(decision.line and " at compiled filter line "..decision.line or " (default rule)")}
+					local details = {item.Class, decision.action..(decision.line and " at compiled filter line "..decision.line or " from the default filter behavior")}
 					if #decision.matches>1 then details[#details+1]="Matched lines in order: "..table.concat(decision.matches,", ") end
 					for _, reason in ipairs(decision.reasons) do details[#details+1]=reason end
 					if rule then details[#details+1]=StripEscapes(table.concat(rule.rawLines,"\n")) end
