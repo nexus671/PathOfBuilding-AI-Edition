@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1336][2026/11/25]
+
+* Keep unspecified modifiers unknown in filter scene examples.
+
 VERSION[2.69.0-ai.preview1335][2026/11/25]
 
 * Compare Betrayal examples in the loot filter simulator.

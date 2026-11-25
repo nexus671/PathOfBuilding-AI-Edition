@@ -68,6 +68,6 @@ Exact budget titles also recognize selected oils, tattoos, currency shards, Soul
 
 A unique item in the gear wishlist or a crafting project adds a pickup for unique items of its base type, whether it is the project's starting item or target. This can include other uniques sharing that base; the copied item's item level is not used as a minimum.
 
-The simulator includes a Betrayal catalogue scene for comparing Threads, veiled currency and a scarab. These examples do not establish current drop availability. The remaining offline polish includes additional starter presets and encounter sample collections. Hosted economy updates remain separate service work. The release checklist tracks implementation and repeated workflow verification.
+Scene examples do not invent explicit modifier lists for magic, rare or unique items; when a rule depends on missing modifiers the preview remains uncertain. The simulator includes a Betrayal catalogue scene for comparing Threads, veiled currency and a scarab. These examples do not establish current drop availability. The remaining offline polish includes additional starter presets and encounter sample collections. Hosted economy updates remain separate service work. The release checklist tracks implementation and repeated workflow verification.
 
 Reference screenshots were captured outside the repository during the review. Third-party advertising scripts logged browser errors; the main anonymous customizer and simulator remained usable. No login, publication, purchase or subscription was performed.

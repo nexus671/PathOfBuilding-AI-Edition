@@ -1,5 +1,20 @@
 arg={};dofile('HeadlessWrapper.lua');newBuild()
 local filters=require('Modules.LootFilters');local lib=require('Modules.LootFilterLibrary')
+do
+ local parser=require('Modules.LootFilterParser')
+ local parsed=parser.parse('Hide\n HasExplicitMod "of the Whale"')
+ for _,kind in ipairs({'Mixed drops','Flasks & tinctures','Maps & threads','Map tiers','Fated gear','Foulborn gear','Tiered gear','Abyss'}) do
+  local checked=false
+  for _,item in ipairs(lib.scene(nil,build,kind,0,83,86)) do
+   if item.Rarity=='Rare' or item.Rarity=='Magic' or item.Rarity=='Unique' then
+    checked=true;assert(item.HasExplicitMod==nil,kind..' invented an empty modifier list')
+    local result=parser.simulate(parsed,item);assert(result.status=='unknown',kind..' hid unknown modifier evidence')
+   end
+  end
+  assert(checked,kind..' lacks a relevant example')
+ end
+ local currency=lib.scene(nil,build,'Currency',0,83,86)[1];assert(type(currency.HasExplicitMod)=='table' and #currency.HasExplicitMod==0)
+end
 local function warning(report) for _,d in ipairs(report.diagnostics) do if d.warning and d.warning:find('Bottled Faith',1,true) then return d end end end
 local p=filters.profile('review','Review');p.strictness=6;p.rules={{id='unique-sulphur',title='Old disabled rule',text='Hide',enabled=false}}
 local raw,report=filters.compile(p);local w=assert(warning(report));assert(w.line and w.warning:find('sample',1,true))
