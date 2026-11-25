@@ -321,7 +321,7 @@ function M.Open(build,source,layout,controller)
 			{id="dailySync",label="Daily price sync",details={"Set up the fixed baseline and update your local filter while PoB is open."}},
 			{id="marketBrowse",label="Browse market prices",details={"Inspect cards, maps, uniques, gems and crafting bases by league."}},
 			{id="economy",label="Review exchange prices",details={"Compare managed hides with current PC trade prices and export a candidate."}},
-			{id="economyRules",label="Managed price rules",details={"Choose the exact commodity or card hides used by price-based updates."}},
+			{id="economyRules",label="Managed price rules",details={"Choose exact commodity, card, map or gem hides used by price-based updates."}},
 			{id="rareTierAudit",label="Tier 5 rare exceptions",details={"See which bases outside the Rank A/B list can show and which rule decided."}},
 			{id="fileChanges",label="Full file changes",details={"Compare the kept and working compiled filter or original base text, then copy exact sources."}},
 			{id="delete",label="Delete this profile",details={"This changes the working draft. Keep and Save to persist."}},
