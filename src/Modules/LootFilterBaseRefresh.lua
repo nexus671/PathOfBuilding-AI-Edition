@@ -46,23 +46,27 @@ end
 function M.evaluate(previous, candidate, sampleSets)
 	local summary, removed, added = changesBetween(previous,candidate)
 	local result = {removedConditions=summary,removedCount=removed,addedCount=added,warnings={},blocks={},checked=0,examplesChecked=0}
-	local unresolved=0
+	local unresolved, assumedProtected=0,0
 	for _, sample in ipairs(protected.samples()) do
 		local item = sample.item
 		local old = parser.simulate(previous,item)
+		local assumed = old.action~="Unknown" and #(old.reasons or {})>0
 		if old.action=="Unknown" then unresolved=unresolved+1
 		elseif protected.explicitlyShown(old) then
 			result.checked = result.checked+1
 			local new = parser.simulate(candidate,item)
+			assumed = assumed or new.action~="Unknown" and #(new.reasons or {})>0
 			local marker = protected.marker(old)
 			if not protected.explicitlyShown(new) or marker == sample.marker and protected.marker(new) ~= marker then
 				result.blocks[#result.blocks+1] = string.format("%s %s (identified %s, corrupted %s): %s",
 					item.Rarity,item.BaseType,tostring(item.Identified),tostring(item.Corrupted),new.action)
 			end
 		end
+		if assumed then assumedProtected=assumedProtected+1 end
 	end
 	if unresolved>0 then result.warnings[#result.warnings+1]=unresolved.." protected examples have an unknown previous result; review them in the game or supply exact item properties." end
-	local skippedExamples, uncertainExamples = 0, 0
+	if assumedProtected>0 then result.warnings[#result.warnings+1]=assumedProtected.." protected examples have preview assumptions or unresolved details; review the imports and item properties." end
+	local skippedExamples, uncertainExamples, assumedExamples = 0, 0, 0
 	for _, set in ipairs(sampleSets or {}) do
 		for _, item in ipairs(set.samples) do
 			if result.examplesChecked >= 100 then
@@ -70,6 +74,7 @@ function M.evaluate(previous, candidate, sampleSets)
 			else
 				result.examplesChecked = result.examplesChecked+1
 				local old, new = parser.simulate(previous,item), parser.simulate(candidate,item)
+				if old.action~="Unknown" and #(old.reasons or {})>0 or new.action~="Unknown" and #(new.reasons or {})>0 then assumedExamples=assumedExamples+1 end
 				if old.action == "Unknown" or new.action == "Unknown" then
 					uncertainExamples = uncertainExamples + 1
 				elseif old.action ~= new.action then
@@ -79,6 +84,7 @@ function M.evaluate(previous, candidate, sampleSets)
 		end
 	end
 	if uncertainExamples>0 then result.warnings[#result.warnings+1]=string.format("%d saved example%s %s an unknown result; review in the game or supply exact item properties.",uncertainExamples,uncertainExamples==1 and "" or "s",uncertainExamples==1 and "has" or "have") end
+	if assumedExamples>0 then result.warnings[#result.warnings+1]=string.format("%d saved example%s %s preview assumptions or unresolved details; review the imports and item properties.",assumedExamples,assumedExamples==1 and "" or "s",assumedExamples==1 and "has" or "have") end
 	if skippedExamples>0 then result.warnings[#result.warnings+1]=string.format("%d saved example%s %s not checked (the review checks at most 100).",skippedExamples,skippedExamples==1 and "" or "s",skippedExamples==1 and "was" or "were") end
 	return result
 end

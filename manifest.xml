@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.69.0-ai.preview1327" />
+	<Version number="2.69.0-ai.preview1328" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="16a1acbf59bfe666d05d503171ce92479fe7b3e3" />
+	<File name="changelog.txt" part="default" sha1="995d1612e74e329864acde46d1c9d14805854e9e" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
@@ -2116,7 +2116,7 @@
 	<File name="Modules/LootFilterAudio.lua" part="program" sha1="be558b4b26daea559d591f63c8c1839746d92750" />
 	<File name="Modules/LootFilterBackground.lua" part="program" sha1="2dcf95cb77c17cd9fe6ef9a4c8ca2f890ec05995" />
 	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="c4beda6d9d5b5197aaaa53215fb86b43e4b9a61c" />
-	<File name="Modules/LootFilterBaseRefresh.lua" part="program" sha1="2a9b4160eae5308362d13e40489ffa84e1ef98fe" />
+	<File name="Modules/LootFilterBaseRefresh.lua" part="program" sha1="c716bda8a878b6db8af8fda903d882d692d1d9c2" />
 	<File name="Modules/LootFilterCampaign.lua" part="program" sha1="90254b52f511ae8b9f22cf5d8c3854fbb97e782b" />
 	<File name="Modules/LootFilterCategoryStyles.lua" part="program" sha1="4c8f8e6a1aef62f216496dcd7cb55fd7ba9f0716" />
 	<File name="Modules/LootFilterClipboard.lua" part="program" sha1="b922bd84814fc95ca90dc8bbc26280b76888d260" />
