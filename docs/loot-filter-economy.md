@@ -160,7 +160,11 @@ A successful run prints how many pages it fetched, the next cursor, the stop rea
 
 Capture time records when the tool pulled the pages. The stream is delayed and a recorded cursor can refer to historical changes, so listings can be older than the capture. [GGG Public Stashes reference](https://www.pathofexile.com/developer/docs/reference#public-stashes)
 
-### Rolled-jewel regression fixtures
+Use **Check quote** in the rule editor to open a read-only lookup for the selected feed and exact item or variant. Choose the intended league before requesting prices. The lookup shows the current quote and liquidity evidence without saving the rule or publishing a filter.
+
+Choose **Embers of the Allflame** for an exact ember. PoB uses its per-item quote and can remove the baseline hide. An exported fixed baseline carries these feed selections into daily sync. Each explicit extra category is fetched once per refresh. If a required feed is unavailable, stale, or contains malformed rows, daily sync keeps the last verified output. Missing, ambiguous, or thin item quotes keep their baseline rules. [Market API reference](https://poe.ninja/docs/api)
+
+## Rolled-jewel regression fixtures
 
 On the authorized backend, keep the original PC capture private. To prepare a regression fixture for the three Cluster Jewel sizes and Putrid Seed, run the exporter on that file.
 
@@ -171,10 +175,6 @@ python tools/export_rolled_jewel_fixture.py --league Covens covens-capture.json 
 The exporter replaces seller names, stash and item IDs, stream cursors, the league and capture dates. It keeps the rolled-jewel fields used by the matcher, within-file seller and listing relationships, and recognized chaos and divine ask amounts. Free-text price notes become an unpriced marker when necessary to preserve their precedence over a tab price. Other items and unrelated metadata are omitted. Share an output only after reviewing its retained game text, rolls and prices under your source terms.
 
 In the market browser, select league `Fixture` and use **Inspect saved capture** to compare against the historical sample. The fixed January 2020 date keeps the rows out of recent comparisons. The collector rejects the fixture as a resume point.
-
-Use **Check quote** in the rule editor to open a read-only lookup for the selected feed and exact item or variant. Choose the intended league before requesting prices. The lookup shows the current quote and liquidity evidence without saving the rule or publishing a filter.
-
-Choose **Embers of the Allflame** for an exact ember. PoB uses its per-item quote and can remove the baseline hide. An exported fixed baseline carries these feed selections into daily sync. Each explicit extra category is fetched once per refresh. If a required feed is unavailable, stale, or contains malformed rows, daily sync keeps the last verified output. Missing, ambiguous, or thin item quotes keep their baseline rules. [Market API reference](https://poe.ninja/docs/api)
 
 ## Managed maps
 
