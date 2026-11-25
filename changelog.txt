@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1337][2026/11/25]
+
+* Reject conflicting cache validators before reusing market prices.
+
 VERSION[2.69.0-ai.preview1336][2026/11/25]
 
 * Keep unspecified modifiers unknown in filter scene examples.

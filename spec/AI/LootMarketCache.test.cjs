@@ -188,6 +188,50 @@ test('coalesces concurrent clients, canonicalizes query order and preserves orig
   assert.equal(metrics.pending,0);
 });
 
+test('discards old prices when a 304 cannot validate the stored entity tag',async t=>{
+  const snapshotDirectory = mkdtempSync(join(tmpdir(),'pob-market-validator-'));
+  t.after(()=>rmSync(snapshotDirectory,{recursive:true,force:true}));
+  let responseTag;
+  const cache = await fixture(t,(path,_,{now})=>{
+    if (path==='/leagues') return snapshot(leagueBody,now);
+    if (responseTag!==undefined) return new Response(null,{status:304,headers:{
+      date:new Date(now).toUTCString(),etag:responseTag, 'cache-control':'max-age=300',
+    }});
+    return snapshot(priceBody,now,{etag:'"initial"'});
+  },undefined,{snapshotDirectory});
+
+  assert.equal(await (await cache.request(currencyPath)).text(),priceBody);
+  responseTag='W/"initial"';
+  cache.advance(301000);
+  const weak = await cache.request(currencyPath);
+  assert.equal(await weak.text(),priceBody);
+  assert.equal(weak.headers.get('age'),'301');
+  assert.equal(weak.headers.get('etag'),responseTag);
+  assert.equal(cache.requests.at(-1).tag,'"initial"');
+
+  for (const rejected of ['"initial"','"different"','W/"initial", W/"other"']) {
+    responseTag=rejected;
+    cache.advance(301000);
+    const failed = await cache.request(currencyPath,{headers:{'If-None-Match':'W/"initial"'}});
+    assert.equal(failed.status,502);
+    assert.equal(failed.headers.get('x-pob-market-failure'),'invalid_response');
+    assert.equal((await (await cache.request('/health')).json()).provider.lastFailure.httpStatus,304);
+    assert.equal(readdirSync(snapshotDirectory).length,1);
+
+    const unsolicited = await cache.request(currencyPath);
+    assert.equal(unsolicited.status,502);
+    assert.equal(cache.requests.at(-1).tag,undefined);
+
+    responseTag=undefined;
+    assert.equal(await (await cache.request(currencyPath)).text(),priceBody);
+    assert.equal(cache.requests.at(-1).tag,undefined);
+    assert.equal(readdirSync(snapshotDirectory).length,2);
+    responseTag='W/"initial"';
+    cache.advance(301000);
+    assert.equal((await cache.request(currencyPath)).status,200);
+  }
+});
+
 test('carries provider cooldown and never falls back to expired quotes',async t=>{
   let mode = 'good';
   const cache = await fixture(t, (path,options,{ now })=>{
