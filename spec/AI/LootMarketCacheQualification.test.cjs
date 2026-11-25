@@ -46,6 +46,7 @@ test('qualifies the core market and only the optional feeds requested',async()=>
 test('includes bounded relay diagnostics while qualifying actual feed responses',async()=>{
   const f=fixture({health:()=>response({
     status:'ready',cached:2,pending:0,cachedBytes:500,serviceable:1,hits:8,requests:5,
+    snapshots:{restored:2,discarded:1,errors:0,unexpected:'private file path'},
     rejections:{client:2,queue:0,cooldown:1,unexpected:'private metadata'},
     provider:{state:'degraded',lastValidatedAt:now-1000,cooldownSeconds:0,cooldownPersistence:'ready',successes:4,failures:1,
       lastFailure:{at:now,reason:'invalid_response',httpStatus:200,message:'private provider body'}},
@@ -55,12 +56,23 @@ test('includes bounded relay diagnostics while qualifying actual feed responses'
   assert.equal(report.status,'passed');
   assert.deepEqual(report.probes[0],{
     name:'Cache health',status:'passed',cached:2,pending:0,cachedBytes:500,serviceable:1,hits:8,requests:5,
+    snapshots:{restored:2,discarded:1,errors:0},
     rejections:{client:2,queue:0,cooldown:1},
     provider:{state:'degraded',lastValidatedAt:now-1000,cooldownSeconds:0,cooldownPersistence:'ready',successes:4,failures:1,
       lastFailure:{at:now,reason:'invalid_response',httpStatus:200}},
   });
   assert.equal(f.requests.length,10);
   assert.doesNotMatch(JSON.stringify(report),/private/);
+});
+
+test('stops qualification when optional snapshot persistence has failed',async()=>{
+  const f=fixture({health:()=>response({
+    status:'ready',cached:5,pending:0,snapshots:{restored:0,discarded:0,errors:1},
+  })});
+  const report=await qualifyCache(root,f);
+  assert.equal(report.status,'failed');
+  assert.deepEqual(f.requests,['health']);
+  assert.equal(report.probes[0].reason,'Market snapshot storage is unavailable');
 });
 
 test('stops qualification when the configured relay cannot persist cooldown',async()=>{
