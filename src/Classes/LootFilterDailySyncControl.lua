@@ -194,23 +194,69 @@ local function compareObservedStack(compare, compareBatch, beforeLabel, afterLab
 		if market.stackClass(class) then choices[#choices+1]={label=class,class=class} end
 	end
 	controls.class = new("DropDownControl"):DropDownControl(ui.anchor,{16,156,width-32,26},choices)
-	local function run()
-		local name = controls.name.buf:match("^%s*(.-)%s*$")
+	local observations = {}
+	local function entry()
 		local level
 		if controls.level.buf~="" then level=tonumber(controls.level.buf) or false end
-		local ok,before,after = pcall(compare,name,
-			tonumber(controls.size.buf),tonumber(controls.area.buf),level,controls.class:GetSelValueByKey("class"))
-		if not ok then main:OpenMessagePopup("Test observed stack",ui.errorText(before)); return end
-		local itemClass = controls.class:GetSelValueByKey("class") or require("Modules.LootFilterLibrary").baseClass(name)
-		showObservedComparison({BaseType=name,Class=itemClass,Rarity="Normal",StackSize=tonumber(controls.size.buf),AreaLevel=tonumber(controls.area.buf),ItemLevel=level},before,after,beforeLabel,afterLabel)
+		return controls.name.buf:match("^%s*(.-)%s*$"),tonumber(controls.size.buf),
+			tonumber(controls.area.buf),level,controls.class:GetSelValueByKey("class")
 	end
-	controls.test = new("ButtonControl"):ButtonControl(ui.anchor,{16,206,column,28},"Compare filters",run)
-	controls.importStacks = new("ButtonControl"):ButtonControl(ui.anchor,{24+column,206,column,28},"Compare file",function()
+	local function run()
+		local name, size, area, level, class = entry()
+		local ok,before,after = pcall(compare,name,size,area,level,class)
+		if not ok then main:OpenMessagePopup("Test observed stack",ui.errorText(before)); return end
+		local itemClass = class or require("Modules.LootFilterLibrary").baseClass(name)
+		showObservedComparison({BaseType=name,Class=itemClass,Rarity="Normal",StackSize=size,AreaLevel=area,ItemLevel=level},before,after,beforeLabel,afterLabel)
+	end
+	controls.pasteStack = new("ButtonControl"):ButtonControl(ui.anchor,{16,206,column,28},"Paste stack",function()
+		local ok, item = pcall(function()
+			return require("Modules.LootFilterClipboard").parse(Paste())
+		end)
+		if not ok or item.Rarity~="Normal" or not market.stackClass(item.Class) or not item.StackSize
+			or item.StackSize<1 or item.StackSize>10000 then
+			main:OpenMessagePopup("Paste stack","Copy a supported stack with its stack size from Path of Exile.")
+			return
+		end
+		local selected = 1
+		for index, choice in ipairs(choices) do
+			if choice.class==item.Class then selected=index; break end
+		end
+		controls.name:SetText(item.BaseType)
+		controls.size:SetText(tostring(item.StackSize))
+		controls.level:SetText(item.ItemLevel and tostring(item.ItemLevel) or "")
+		controls.class:SetSel(selected)
+	end)
+	controls.recordStack = new("ButtonControl"):ButtonControl(ui.anchor,{24+column,206,column,28},"Record stack",function()
+		local ok, item = pcall(sync.stackObservation,entry())
+		if not ok then main:OpenMessagePopup("Record stack",ui.errorText(item)); return end
+		observations[#observations+1] = item
+	end)
+	controls.recordStack.enabled = function() return #observations<250 end
+	controls.saveStacks = new("ButtonControl"):ButtonControl(ui.anchor,{32+2*column,206,column,28},"Save stacks",function()
+		local name = os.date("Loot stack observations %Y-%m-%d %H%M%S.json")
+		local ok, why = pcall(function()
+			local contents = assert(require("dkjson").encode(observations,{indent=true}))
+			require("Modules.LootFilterExports").writeNew(main.userPath..name,contents.."\n")
+		end)
+		if not ok then main:OpenMessagePopup("Save stacks",ui.errorText(why)); return end
+		observations = {}
+		main:OpenMessagePopup("Stack observations saved","Use Compare file to open "..name..".")
+	end)
+	controls.saveStacks.enabled = function() return #observations>0 end
+	ui.label(controls,"captureStatus",16,242,"",13).label = function()
+		return string.format("^7%d of 250 recorded. Enter the area level from the game.",#observations)
+	end
+	controls.test = new("ButtonControl"):ButtonControl(ui.anchor,{16,270,column,28},"Compare filters",run)
+	controls.importStacks = new("ButtonControl"):ButtonControl(ui.anchor,{24+column,270,column,28},"Compare file",function()
 		compareStackFile(compareBatch,beforeLabel,afterLabel)
 	end)
-	controls.close = new("ButtonControl"):ButtonControl(ui.anchor,{32+2*column,206,column,28},"Close",function() main:ClosePopup() end)
+	controls.close = new("ButtonControl"):ButtonControl(ui.anchor,{32+2*column,270,column,28},"Close",function()
+		if #observations==0 then main:ClosePopup(); return end
+		main:OpenConfirmPopup("Discard unsaved stacks","Save the recorded stacks before closing, or discard them.",
+			"Discard",function() main:ClosePopup() end)
+	end)
 	ui.style(controls,{test=true})
-	main:OpenPopup(width,252,"Test observed stack",controls,nil,"name","close")
+	main:OpenPopup(width,316,"Test observed stack",controls,nil,"name","close")
 end
 
 local function comparePreviewStack(before, after)

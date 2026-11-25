@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1313][2026/11/25]
+
+* Record copied stack observations and save batches for loot filter comparison.
+
 VERSION[2.69.0-ai.preview1312][2026/11/25]
 
 * Explain map reroll restrictions on the map card.
