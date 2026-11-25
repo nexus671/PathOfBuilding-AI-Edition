@@ -1861,9 +1861,9 @@ Item Level: 86
 		local differentNotable=clusterRow(65,granted,{rolls[1],{description="1 Added Passive Skill is Prodigious Defence"}})
 		local incomplete=clusterRow(66,{granted[1],granted[2]})
 		local wrongLevel=clusterRow(67,granted);wrongLevel.ilvl=83
-		local unfractured=clusterRow(68,granted);unfractured.fractured=nil
+		local missingFracture=clusterRow(68,granted);missingFracture.fractured=nil
 		local snapshot=json.encode({next_change_id="cursor",stashes={stash(62,"Clusters#0062",
-			{exact,differentCount,differentSocket,differentEffect,differentNotable,incomplete,wrongLevel,unfractured})}})
+			{exact,differentCount,differentSocket,differentEffect,differentNotable,incomplete,wrongLevel,missingFracture})}})
 		assert(listings.compare(snapshot,clusterTarget,"Covens").matched==1)
 		file=assert(io.open(path,"wb"));assert(file:write(snapshot));assert(file:close())
 		local clusterBuild={itemsTab={orderedSlots={{slotName="Jewel 321",nodeId=321}},items={cluster}},
