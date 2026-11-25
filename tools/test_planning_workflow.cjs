@@ -105,6 +105,16 @@ async function main(){
   const extraCopies=largerQualityCopies.concat(Array.from({length:4},()=>`Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +1%`));
   const extraQuality=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:extraCopies},'qualityVendorReview');assert.equal(extraQuality.qualityVendorReview.categories[0].optimal,true);assert.equal(extraQuality.qualityVendorReview.categories[0].groups.length,4);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
+  for(const method of ['planningOptions','options']) {
+    await host('inject-planning-error',{module:'Modules.MapCurrency',method});
+    const inspected=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:2},'mapData');
+    assert.equal(inspected.mapData[method==='options'?'currencyOptionsWarning':'planningOptionsWarning'],'First problem\nSecond problem');
+    await host('inject-planning-error',{module:'Modules.MapCurrency',method,restore:true});
+  }
+  await host('inject-planning-error',{module:'Modules.CraftingProjects',method:'blankBase'});
+  const blankFailure=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,includeBlankBase:true,limit:2},'inspected');
+  assert.equal(blankFailure.crafting.blankBase.reason,'First problem\nSecond problem');
+  await host('inject-planning-error',{module:'Modules.CraftingProjects',method:'blankBase',restore:true});
   for(const [method,field] of [['catalog','nativeEngineUnavailable'],['beastCatalog','beastPoolUnavailable'],['allflameProfile','allflameUnavailable']]) {
     await host('inject-crafting-error',{method});
     const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,action:{method:'beast_prefix_suffix'},limit:5},'inspected');
