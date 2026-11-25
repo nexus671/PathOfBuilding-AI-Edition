@@ -1720,6 +1720,39 @@ Item Level: 86
 		assert(summary:find("1 matching rolls",1,true) and summary:find("Ask 50 | 1 seller",1,true),summary)
 		if output then gearUI:frame():write(output.."/jewel-listing-snapshot.json") end
 		print("Ordinary and Abyss jewel listing comparisons preserve roll, item state and allocated socket identity")
+		local compact=headless.install({width=640,height=480})
+		compact:bind(build)
+		local previousPaste, clipboard = Paste, rawJewel
+		Paste=function() return clipboard end
+		main.popups={}
+		require("Classes.LootFilterMarketBrowseControl").Open({itemsTab={}})
+		local controls=main.popups[1].controls
+		assert(not controls.buildTarget and not controls.listingSample:IsEnabled())
+		compact:click("pasteItem")
+		assert(controls.query.buf=="=Cobalt Jewel" and controls.listingSample:IsEnabled())
+		if output then compact:frame():write(output.."/market-paste-target.json") end
+		compact:click("listingSample")
+		assert(controls.status.label:find("trade league ID",1,true))
+		compact:text("league","Covens")
+		compact:click("listingSample")
+		assert(main.popups[1].title=="Comparable asking prices")
+		local copiedDetails={}
+		for _,line in ipairs(main.popups[1].controls.details.list) do copiedDetails[#copiedDetails+1]=StripEscapes(line[1] or "") end
+		local copiedSummary=table.concat(copiedDetails," ")
+		assert(copiedSummary:find("Copied item | Cobalt Jewel | Item level 86",1,true)
+			and copiedSummary:find("Ask 50 | 1 seller",1,true),copiedSummary)
+		if output then compact:frame():write(output.."/market-paste-result.json") end
+		compact:click("close")
+		for _, invalid in ipairs({rawJewel:gsub("RARE","MAGIC"),rawJewel:gsub("Item Level: 86\n",""),string.rep("x",24001),""}) do
+			clipboard=rawJewel;compact:click("pasteItem");assert(controls.listingSample:IsEnabled())
+			clipboard=invalid;compact:click("pasteItem");assert(not controls.listingSample:IsEnabled())
+		end
+		clipboard=rawJewel;compact:click("pasteItem")
+		compact:text("query","Another item")
+		assert(not controls.listingSample:IsEnabled())
+		Paste=previousPaste
+		compact:restore()
+		print("Copied rares use the native file comparison without equipping the item or requesting market data")
 	end
 	require("Classes.LootFilterFileBrowser").Open=originalPicker
 	os.remove(path)

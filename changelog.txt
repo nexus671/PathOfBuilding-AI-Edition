@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1303][2026/11/24]
+VERSION[2.69.0-ai.preview1304][2026/11/24]
 
 * Preserve regeneration rolls hidden by rounded range endpoints.
+
+VERSION[2.69.0-ai.preview1303][2026/11/24]
+
+* Compare copied rare items against local stash listings directly in the market browser.
 
 VERSION[2.69.0-ai.preview1302][2026/11/24]
 
