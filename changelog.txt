@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1315][2026/11/25]
+
+* Recognize unique variants with different base items when planning Divine rolls.
+
 VERSION[2.69.0-ai.preview1314][2026/11/25]
 
 * Plan supported Divine Orb rolls on unique jewels and quivers.

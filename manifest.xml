@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.69.0-ai.preview1314" />
+	<Version number="2.69.0-ai.preview1315" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="ef00e6de01ed56889e85fb11085857bfb3e0efed" />
+	<File name="changelog.txt" part="default" sha1="b58deae115c5942339c2b1e78c2231931ade5f80" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
@@ -2093,7 +2093,7 @@
 	<File name="Modules/CraftingTasks.lua" part="program" sha1="5884e439905689280d65534ef8e78591341970d6" />
 	<File name="Modules/CraftingUniqueBlessed.lua" part="program" sha1="728f9a2509eebad5b509f5a598914b2fe31605b3" />
 	<File name="Modules/CraftingUniqueCatalyst.lua" part="program" sha1="8605c7046874178179b08a22a59a673cdda61a31" />
-	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="b393adf93bba56d1d66bb3dc412e15bcf532b7c9" />
+	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="c46c2d8f2fe3d8322ef41ad2fa6ebf988971f5ba" />
 	<File name="Modules/CraftingUniqueSimulation.lua" part="program" sha1="dcc9be202bed401bca072979e7984b5cc03c2f06" />
 	<File name="Modules/CraftingUnlockTasks.lua" part="program" sha1="b1ab9cc44e5f7411715f74fff720379d44c65d21" />
 	<File name="Modules/CraftingUnveiledJewel330.lua" part="program" sha1="5b05b7293ddad3c073f1cb82ab53932899f739c0" />
