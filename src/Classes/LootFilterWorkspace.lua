@@ -213,59 +213,6 @@ function M.Open(build,source,layout,controller)
 		end
 		return evaluated
 	end
-	local rareAudit
-	local function startRareAudit()
-		local audit = require("Modules.LootFilterProtectedDrops")
-		local width = math.min(420,main.screenW-40)
-		local controls = {}
-		ui.label(controls,"status",16,28,"Checking rare base rules...",16)
-		button(controls,"close",width-132,74,116,"Cancel",function() main:ClosePopup() end)
-		ui.style(controls)
-		main:OpenPopup(width,122,"Tier 5 rare exceptions",controls,nil,nil,"close")
-		local job = {popup=main.popups[1]}
-		job.thread = coroutine.create(function()
-			return audit.rareTierExceptions(raw,parsed,function()
-				if os.clock()>=job.deadline then coroutine.yield() end
-			end)
-		end)
-		rareAudit = job
-	end
-	local function advanceRareAudit()
-		local job = rareAudit
-		if main.popups[1]~=job.popup then rareAudit=nil;return end
-		job.deadline = os.clock()+0.005
-		local ok, result = coroutine.resume(job.thread)
-		if ok and coroutine.status(job.thread)~="dead" then return end
-		rareAudit = nil
-		main:ClosePopup()
-		if not ok then ui.errorPopup("Tier 5 rare exceptions",result);return end
-		local summary = {
-			string.format("%d shown, %d hidden, %d unresolved outside the Rank A/B list.",result.shown,result.hidden,result.unknown),
-			"Samples are unidentified, uncorrupted Tier 5 rares at item level 86 in area level 83, with no sockets or special flags.",
-			"Counts describe eligible bases in PoB's item catalogue.",
-		}
-		if result.missing>0 then summary[#summary+1]=result.missing.." bases lack the metadata needed for a sample." end
-		local entries = {{label="Audit summary",category="Summary",details=summary}}
-		for _, row in ipairs(result.rows) do
-			local item, decision, rule = row.item, row.decision, row.rule
-			entries[#entries+1] = {
-				label=item.BaseType, category=decision.action=="Show" and "Shown outside rank list" or "Unresolved",
-				search=item.Class.." "..(decision.line and "line "..decision.line or ""), sample=item,
-				details=function()
-					local details = {item.Class, decision.action..(decision.line and " at compiled filter line "..decision.line or " from the default filter behavior")}
-					if #decision.matches>1 then details[#details+1]="Matched lines in order: "..table.concat(decision.matches,", ") end
-					for _, reason in ipairs(decision.reasons) do details[#details+1]=reason end
-					if rule then details[#details+1]=StripEscapes(table.concat(rule.rawLines,"\n")) end
-					return details
-				end,
-			}
-		end
-		require("Classes.PlanningBrowserControl").Open("Tier 5 rare exceptions",entries,{
-			action="Inspect sample",canChoose=function(entry) return entry.sample~=nil end,
-			choose=function(entry) main:ClosePopup();rememberSample(entry.sample);page="Simulate";sceneKind="Mixed drops";scenePage=1;reopen() end,
-			closeOnChoose=false,
-		})
-	end
 	local function selectedRule() return selectedEntry and selectedEntry.rule end
 	local function keepRule(rule)
 		local found=false;for i,r in ipairs(profile.rules) do if r.id==rule.id then profile.rules[i]=rule;found=true end end
@@ -401,7 +348,11 @@ function M.Open(build,source,layout,controller)
 			elseif entry.id=="importFiles" and profile then require("Classes.LootFilterImportControl").Open(profile,function(files,absent) profile.importFiles=files;profile.absentOptionalImports=absent;draft();reopen() end)
 			elseif entry.id=="account" and profile then controller.Account(profile,function(text) profile.template,profile.upstreamDigest=text,nil;draft();reopen() end)
 			elseif entry.id=="audit" and profile then openAudit()
-			elseif entry.id=="rareTierAudit" then startRareAudit()
+			elseif entry.id=="rareTierAudit" then
+				require("Classes.LootFilterRareAuditControl").Open(function() return raw,parsed end,{
+					sourceLabel="Compiled profile",
+					inspect=function(sample) rememberSample(sample);page="Simulate";sceneKind="Mixed drops";scenePage=1;reopen() end,
+				})
 			elseif entry.id=="changes" then require("Classes.PlanningBrowserControl").Open("Filter changes",require("Modules.LootFilterEditing").review(saver.data,data))
 			elseif entry.id=="links" and profile then
 				refreshDependencies();if not dependencies or dependencyJob then main:OpenMessagePopup("Linked filter targets",dependencyError or "Checking build pickups. Please try again shortly.");return end
@@ -728,8 +679,7 @@ function M.Open(build,source,layout,controller)
 	layout.snapshot=snapshot
 	layout.onShow=function() if not generationJob then refreshDependencies() end end
 	layout.tick=function()
-		if rareAudit then advanceRareAudit()
-		elseif generationJob then advanceGeneration()
+		if generationJob then advanceGeneration()
 		elseif page=="Simulate" and sceneKind=="Build targets" and transient.filterSceneTargets and not transient.filterSceneTargets.rules and not transient.filterSceneTargets.error then advanceTargetPreview()
 		elseif dependencyJob then advanceDependencies()
 		elseif not dependencyTime or GetTime()-dependencyTime>2000 then

@@ -621,7 +621,7 @@ function M.compareObservedStackPreview(before, after, name, size, area, itemLeve
 	return observedStackComparison(before,after)(item)
 end
 
-local function verifiedObservationSources(id)
+function M.verifiedFilterPair(id)
 	local config = assert(get(id), "Enable and run daily sync first")
 	local raw, verified = M.verifiedOutput(id)
 	assert(config.revision==verified.revision, "The sync profile changed. Run the comparison again")
@@ -632,7 +632,7 @@ end
 
 function M.compareObservedStack(id, name, size, area, itemLevel, itemClass)
 	local item = observedStackItem(name,size,area,itemLevel,itemClass)
-	return observedStackComparison(verifiedObservationSources(id))(item)
+	return observedStackComparison(M.verifiedFilterPair(id))(item)
 end
 
 local observationFields = {BaseType=true,StackSize=true,AreaLevel=true,ItemLevel=true,Class=true}
@@ -683,7 +683,7 @@ function M.compareObservedStackBatch(before, after, path)
 end
 
 function M.compareVerifiedObservedStackBatch(id,path)
-	local before,after = verifiedObservationSources(id)
+	local before,after = M.verifiedFilterPair(id)
 	return M.compareObservedStackBatch(before,after,path)
 end
 
