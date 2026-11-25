@@ -135,5 +135,109 @@ class CollectorTest(unittest.TestCase):
             self.assertEqual(json.loads(body)["pages"][0]["response"]["next_change_id"], "next")
 
 
+class RollingCaptureTest(unittest.TestCase):
+    now = 1795545600
+
+    def setUp(self):
+        directory = self.enterContext(TemporaryDirectory())
+        self.output = Path(directory, "pinned.json")
+        self.clock = self.enterContext(patch.object(collector.time, "time", return_value=self.now))
+        initial, _ = collector.collect("Covens", "a", 2, Mock(side_effect=[
+            (page("b", stash(1)), 0), (page("b"), 0),
+        ]), Mock())
+        publish_capture(self.output, initial)
+        self.initial = initial
+
+    def refresh(self, *responses):
+        return collector.refresh_capture(self.output, "Covens", len(responses), Mock(side_effect=responses), Mock())
+
+    def test_retains_listing_changes_and_original_timestamp(self):
+        self.clock.return_value += 900
+        withdrawn = {"id": stash(1)["id"], "public": False}
+        report = self.refresh((page("c", withdrawn, stash(2)), 0), (page("c"), 0))
+        self.assertEqual(report, {"pages": 2, "nextCursor": "c", "stoppedBy": "end_of_stream",
+                                  "retryAfterSeconds": 0, "published": True, "capturePages": 3})
+        updated = collector.read_capture(self.output, "Covens")
+        self.assertEqual(updated["capturedAt"], self.now)
+        self.assertEqual([entry["requestCursor"] for entry in updated["pages"]], ["a", "b", "c"])
+        self.assertEqual([entry["collectedAt"] for entry in updated["pages"]], [self.now, self.now + 900, self.now + 900])
+        self.assertEqual(updated["pages"][1]["response"]["stashes"], [withdrawn, stash(2)])
+        self.assertEqual(collector.capture_start(self.output, "Covens"), "c")
+        raw = self.output.read_bytes()
+        self.clock.return_value += 100
+        report = self.refresh((page("c"), 30))
+        self.assertFalse(report["published"])
+        self.assertEqual(report["retryAfterSeconds"], 30)
+        self.assertEqual(self.output.read_bytes(), raw)
+
+    def test_expires_old_pages_and_moves_capture_timestamp(self):
+        self.clock.return_value += collector.WINDOW_SECONDS + 1
+        self.refresh((page("c", stash(2)), 0))
+        updated = collector.read_capture(self.output, "Covens")
+        self.assertEqual(updated["capturedAt"], self.clock.return_value)
+        self.assertEqual([entry["requestCursor"] for entry in updated["pages"]], ["b"])
+
+    def test_advancing_empty_page_resumes_at_new_cursor(self):
+        first = self.refresh((page("c"), 0))
+        self.assertTrue(first["published"])
+        self.assertEqual(collector.capture_start(self.output, "Covens"), "c")
+        fetch = Mock(return_value=(page("d", stash(2)), 0))
+        collector.refresh_capture(self.output, "Covens", 1, fetch, Mock())
+        fetch.assert_called_once_with("c")
+        updated = collector.read_capture(self.output, "Covens")
+        self.assertEqual([entry["requestCursor"] for entry in updated["pages"]], ["c"])
+
+    def test_retains_a_consecutive_suffix_at_both_size_limits(self):
+        for number in range(35):
+            self.refresh((page(f"cursor{number}", stash(2)), 0))
+        updated = collector.read_capture(self.output, "Covens")
+        self.assertEqual(len(updated["pages"]), 32)
+        self.assertEqual(updated["pages"][0]["requestCursor"], "cursor2")
+
+        limit = 70 * 1024
+        with patch.object(collector, "CAPTURE_LIMIT", limit):
+            self.refresh((page("large1", stash(3, note="x" * 36_000)), 0))
+            self.refresh((page("large2", stash(4, note="x" * 36_000)), 0))
+            updated = collector.read_capture(self.output, "Covens")
+            self.assertEqual([entry["requestCursor"] for entry in updated["pages"]], ["large1"])
+            self.assertLess(self.output.stat().st_size, limit)
+
+    def test_cycle_cooldown_and_failed_replacement_keep_last_good_file(self):
+        for failure in (
+            (ValueError, lambda: self.refresh((page("a", stash(2)), 0))),
+            (collector.CaptureRequestError, lambda: self.refresh(
+                (page("c", stash(2)), 0), collector.CaptureRequestError("GGG HTTP 429", 41)
+            )),
+        ):
+            with self.assertRaises(failure[0]):
+                failure[1]()
+            self.assertEqual(self.output.read_bytes(), self.initial)
+        with patch("build_public_stash_capture.os.replace", side_effect=PermissionError("fixture")):
+            with self.assertRaises(PermissionError):
+                self.refresh((page("c", stash(2)), 0))
+        self.assertEqual(self.output.read_bytes(), self.initial)
+        self.assertFalse(list(self.output.parent.glob(".pob-stash-*")))
+
+    def test_refuses_concurrent_refresh_before_network_and_releases_lock(self):
+        fetch = Mock(return_value=(page("c", stash(2)), 0))
+        with collector.refresh_lock(self.output):
+            with self.assertRaisesRegex(ValueError, "lock"):
+                collector.refresh_capture(self.output, "Covens", 1, fetch, Mock())
+        fetch.assert_not_called()
+        self.assertEqual(self.output.read_bytes(), self.initial)
+        self.assertTrue(collector.refresh_capture(self.output, "Covens", 1, fetch, Mock())["published"])
+
+    def test_cli_refresh_uses_same_file_and_prints_publish_status(self):
+        args = ["collect", "--league", "Covens", "--client-id", "fixture-app", "--contact",
+                "ops@example.com", "--max-pages", "1", "--refresh", str(self.output)]
+        stdout = StringIO()
+        with patch("sys.argv", args), patch.dict("os.environ", {collector.TOKEN_VARIABLE: "fixture-token"}):
+            with redirect_stdout(stdout), patch.object(collector, "fetch_page",
+                                                       return_value=(page("c", stash(2)), 0)):
+                self.assertEqual(collector.main(), 0)
+        self.assertTrue(json.loads(stdout.getvalue())["published"])
+        self.assertEqual(collector.capture_start(self.output, "Covens"), "c")
+
+
 if __name__ == "__main__":
     unittest.main()

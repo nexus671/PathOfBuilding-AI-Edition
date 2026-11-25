@@ -144,7 +144,15 @@ An authorized backend can use `tools/collect_public_stash_capture.py` to produce
 python tools/collect_public_stash_capture.py --league Covens --client-id your-app --contact ops@example.com --cursor known-cursor covens-capture.json
 ```
 
-Use `--resume-from covens-capture.json` in place of `--cursor` for the next run, and choose a new output name. A successful run prints its page count, next cursor, stop reason, and any wait requested by GGG. Exit code 75 reports a provider cooldown in JSON on stderr and publishes no capture. Schedule another run only after that wait. Collection time records when the tool pulled the pages. It does not establish the age of the original listings. The API stream is delayed, and a known cursor can refer to historical changes. [GGG Public Stashes reference](https://www.pathofexile.com/developer/docs/reference#public-stashes)
+For a recurring job on the authorized backend, refresh an existing capture at the same path. This lets a desktop or overlay keep using its pinned file when it has access to that path. Use a private directory on a local filesystem for the collector and its adjacent lock file. The destination is replaced atomically after validation. A failed fetch or write leaves the previous capture available. An idle poll at the same cursor leaves the file and timestamp untouched.
+
+```powershell
+python tools/collect_public_stash_capture.py --league Covens --client-id your-app --contact ops@example.com --refresh covens-capture.json
+```
+
+The rolling capture keeps consecutive pages within 24 hours of collection, up to 32 pages and 16 MiB. If an empty response advances the cursor, the next batch starts a new window. The file timestamp reflects its oldest retained page so refreshing cannot make older evidence appear newly collected. Keep using `--resume-from` with a new output name if you want separate snapshots for each run.
+
+A successful run prints how many pages it fetched, the next cursor, the stop reason, and any wait requested by GGG. Refresh also reports whether it published a file and how many pages are in that file. A throttled request exits with code 75 and a wait in JSON on stderr. Honor that delay before running again, including when a successful response requests a wait. Capture time records when the tool pulled the pages. The stream is delayed and a recorded cursor can refer to historical changes, so listings can be older than the capture. [GGG Public Stashes reference](https://www.pathofexile.com/developer/docs/reference#public-stashes)
 
 Use **Check quote** in the rule editor to open a read-only lookup for the selected feed and exact item or variant. Choose the intended league before requesting prices. The lookup shows the current quote and liquidity evidence without saving the rule or publishing a filter.
 

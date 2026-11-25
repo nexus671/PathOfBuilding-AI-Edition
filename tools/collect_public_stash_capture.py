@@ -2,6 +2,7 @@
 # cspell:ignore lexists newurl urlencode
 
 import argparse
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from http.client import HTTPException
@@ -24,6 +25,7 @@ from build_public_stash_capture import (
 
 ENDPOINT = "https://api.pathofexile.com/public-stash-tabs"
 TOKEN_VARIABLE = "POB_GGG_PUBLIC_STASH_TOKEN"
+WINDOW_SECONDS = 24 * 60 * 60
 
 
 class CaptureRequestError(Exception):
@@ -114,7 +116,7 @@ def fetch_page(opener, cursor, token, agent):
         raise CaptureRequestError("Could not read a complete HTTPS response from GGG") from None
 
 
-def capture_start(path, league):
+def read_capture(path, league):
     with path.open("rb") as source:
         raw = source.read(CAPTURE_LIMIT + 1)
     if len(raw) > CAPTURE_LIMIT:
@@ -129,8 +131,22 @@ def capture_start(path, league):
     ):
         raise ValueError("The previous capture is missing its pages")
     inputs = ((entry["requestCursor"], encode_response(entry["response"])) for entry in pages)
-    assemble_capture(league, previous.get("capturedAt"), inputs, len(pages))
-    return pages[-1]["response"]["next_change_id"]
+    captured_at = previous.get("capturedAt")
+    assemble_capture(league, captured_at, inputs, len(pages))
+    last_time = captured_at
+    for entry in pages:
+        observed = entry.get("collectedAt", captured_at)
+        if type(observed) is not int or not last_time <= observed <= time.time():
+            raise ValueError("The previous capture has an invalid page collection time")
+        entry["collectedAt"] = observed
+        last_time = observed
+    if pages[0]["collectedAt"] != captured_at:
+        raise ValueError("The capture timestamp must describe its oldest page")
+    return previous
+
+
+def capture_start(path, league):
+    return read_capture(path, league)["pages"][-1]["response"]["next_change_id"]
 
 
 def collect(league, cursor, page_limit, fetch, pause=time.sleep):
@@ -170,6 +186,71 @@ def collect(league, cursor, page_limit, fetch, pause=time.sleep):
                      "retryAfterSeconds": delay}
 
 
+@contextmanager
+def refresh_lock(path):
+    lock_path = path.with_name(path.name + ".lock")
+    with lock_path.open("a+b") as lock:
+        try:
+            if os.name == "nt":
+                import msvcrt
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as error:
+            raise ValueError("Could not lock the capture for refresh") from error
+        yield
+
+
+def refresh_capture(path, league, page_limit, fetch, pause=time.sleep):
+    path = path.parent.resolve() / path.name
+    with refresh_lock(path):
+        if path.is_symlink() or not path.is_file():
+            raise ValueError("Refresh requires an existing regular capture file")
+        previous = read_capture(path, league)
+        old_pages = previous["pages"]
+        cursor = old_pages[-1]["response"]["next_change_id"]
+        body, report = collect(league, cursor, page_limit, fetch, pause)
+        current = json.loads(body)
+        new_pages = current["pages"]
+        if len(new_pages) == 1 and not new_pages[0]["response"]["stashes"] and report["nextCursor"] == cursor:
+            return {**report, "published": False, "capturePages": len(old_pages)}
+
+        # An empty tail must be removed before appending. If it advanced the
+        # cursor, the older pages cannot be joined to the next window.
+        if not old_pages[-1]["response"]["stashes"]:
+            old_pages = old_pages[:-1] if old_pages[-1]["requestCursor"] == cursor else []
+        old_cursors = {entry["requestCursor"] for entry in old_pages}
+        if any(entry["requestCursor"] in old_cursors or entry["response"]["next_change_id"] in old_cursors
+               for entry in new_pages):
+            raise ValueError("GGG returned a cursor from the preceding capture")
+
+        collected_at = current["capturedAt"]
+        for entry in new_pages:
+            entry["collectedAt"] = collected_at
+        recent = [entry for entry in old_pages if collected_at - entry["collectedAt"] <= WINDOW_SECONDS]
+        if recent and recent[-1]["collectedAt"] > collected_at:
+            raise ValueError("The collection clock moved backwards")
+        pages = (recent + new_pages)[-32:]
+        current["pages"] = []
+        # JSON array separators are one byte. The oldest time is no wider
+        # than the current time used in this header.
+        size = len(encode_response(current))
+        count = 0
+        for entry in reversed(pages):
+            size += len(encode_response(entry)) + (1 if count else 0)
+            if size > CAPTURE_LIMIT:
+                break
+            count += 1
+        if not count:
+            raise ValueError("The refreshed capture exceeds 16 MiB")
+        current["pages"] = pages[-count:]
+        current["capturedAt"] = current["pages"][0]["collectedAt"]
+        publish_capture(path, encode_response(current), replace=True)
+        return {**report, "published": True, "capturePages": count}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--league", required=True)
@@ -179,22 +260,29 @@ def main():
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--cursor", help="A known cursor from the authorized PC stream")
     source.add_argument("--resume-from", type=Path, help="The preceding capture in the same league")
-    parser.add_argument("output", type=Path, help="A new capture path on the backend")
+    source.add_argument("--refresh", action="store_true", help="Resume and refresh an existing capture in place")
+    parser.add_argument("output", type=Path, help="The capture path on the backend")
     args = parser.parse_args()
     try:
         token = os.environ.get(TOKEN_VARIABLE, "")
         if not re.fullmatch(r"[A-Za-z0-9._~+/=-]{1,4096}", token):
             raise ValueError(f"Set {TOKEN_VARIABLE} from the authorized server secret store")
-        if os.path.lexists(args.output):
+        if not args.refresh and os.path.lexists(args.output):
             raise ValueError("The capture output already exists")
         if not args.output.parent.is_dir():
             raise ValueError("The capture output folder does not exist")
         agent = identification(args.client_id, args.contact)
-        cursor = args.cursor if args.cursor is not None else capture_start(args.resume_from, args.league)
         opener = build_opener(RejectRedirects())
-        capture, report = collect(args.league, cursor, args.max_pages,
-                                  lambda value: fetch_page(opener, value, token, agent))
-        publish_capture(args.output, capture)
+
+        def fetch(value):
+            return fetch_page(opener, value, token, agent)
+
+        if args.refresh:
+            report = refresh_capture(args.output, args.league, args.max_pages, fetch)
+        else:
+            cursor = args.cursor if args.cursor is not None else capture_start(args.resume_from, args.league)
+            capture, report = collect(args.league, cursor, args.max_pages, fetch)
+            publish_capture(args.output, capture)
     except CaptureRequestError as error:
         print(json.dumps({"error": str(error), "retryAfterSeconds": error.retry_after}), file=sys.stderr)
         return 75 if error.retry_after else 1
