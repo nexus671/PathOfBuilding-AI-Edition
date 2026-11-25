@@ -276,11 +276,12 @@ local function applyPage(stashes, latest, evidence, league)
 	end
 end
 
-local function readStashes(raw, league)
+local function readStashes(raw, league, requireCapture)
 	assert(type(raw)=="string" and #raw<=maxBytes,"The listing file must be at most 16 MiB")
 	local document=assert(marketJSON.decode(raw),"Expected a public stash page or PoB listing capture")
 	local latest = {}
 	if document.format==nil then
+		assert(not requireCapture,"Choose a PoB capture with a PC league and UTC capture time")
 		assert(#raw<=maxPageBytes,"A single public stash page must be at most 4 MiB")
 		assert(marketJSON.objectRows(document.stashes) and validCursor(document.next_change_id),
 			"Expected a public stash API page with a stash array and cursor")
@@ -314,11 +315,11 @@ local function readStashes(raw, league)
 	return latest,evidence
 end
 
-function M.compare(raw, target, league, matchesRolls)
+function M.compare(raw, target, league, matchesRolls, requireCapture)
 	assert(target,"Choose supported identified gear with complete rolls and equipment properties")
 	assert(not (target.blightcore and matchesRolls),"Putrid Seed requires an exact ordered comparison")
 	assert(type(league)=="string" and #league<=80 and league:match("^[%w _-]+$") and league:find("%S"),"Enter the trade league ID")
-	local stashes, capture = readStashes(raw,league)
+	local stashes, capture = readStashes(raw,league,requireCapture)
 	local listings = {}
 	for _, stash in pairs(stashes) do
 		if type(stash.accountName)=="string" and #stash.accountName<=128 and stash.accountName:find("%S")
@@ -371,11 +372,11 @@ function M.compare(raw, target, league, matchesRolls)
 	return {inspected=inspected,matched=matched,priced=priced,ambiguous=ambiguous,results=results,capture=capture}
 end
 
-function M.compareFile(path, target, league, matchesRolls)
+function M.compareFile(path, target, league, matchesRolls, requireCapture)
 	local file=assert(io.open(path,"rb"),"Could not open the selected public stash file")
 	local raw=file:read(maxBytes+1)
 	file:close()
-	return M.compare(raw,target,league,matchesRolls)
+	return M.compare(raw,target,league,matchesRolls,requireCapture)
 end
 
 return M

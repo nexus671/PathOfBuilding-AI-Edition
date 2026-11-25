@@ -1,7 +1,9 @@
 local M = {}
 local capture = require("Modules.LootTradeOverlayCapture")
+local json = require("dkjson")
 local title = "PoB AI Edition trade overlay"
 local openingTitle = "Starting PoB trade overlay"
+local maxSettingsBytes=20000
 
 local listener = [=[
 local ok, successful, problem = pcall(function(event,path,key)
@@ -10,6 +12,48 @@ local ok, successful, problem = pcall(function(event,path,key)
 end,...)
 return ok and successful, tostring(ok and problem or successful or "")
 ]=]
+
+local function snapshotPath(path)
+	return type(path)=="string" and #path<=4096 and not path:find("[%c\"]")
+		and path:match("^%a:[/\\]") and path:lower():match("%.json$") and path or nil
+end
+
+local function validLeague(league)
+	return type(league)=="string" and #league<=80 and (league=="" or league:match("^[%w _-]+$"))
+end
+
+local function readSettings(path)
+	local file=io.open(path,"rb")
+	if not file then return {} end
+	local raw=file:read(maxSettingsBytes+1)
+	file:close()
+	if raw and #raw<=maxSettingsBytes then
+		local saved, position=json.decode(raw)
+		if type(saved)=="table" and saved.version==1 and position and not raw:sub(position):find("%S")
+			and capture.gamePath(saved.path) and validLeague(saved.league)
+			and type(saved.key)=="number" and capture.hotkeys[saved.key]
+			and (saved.snapshot==nil or snapshotPath(saved.snapshot) and saved.league~="") then return saved end
+	end
+	return {},"Saved overlay settings could not be read. Review the setup and arm again."
+end
+
+local function saveSettings(state)
+	local path=state.settingsPath
+	if not path then return true end
+	local data=json.encode({version=1,path=state.path,key=state.key,league=state.league,snapshot=state.snapshot})
+	local temporary=path..".tmp"
+	local file=io.open(temporary,"wb")
+	if not file then
+		pcall(MakeDir,main.userPath)
+		file=io.open(temporary,"wb")
+	end
+	if not file then return false end
+	local written=file:write(data)
+	local closed=file:close()
+	local saved=written and closed and pcall(state.win.replaceFile,temporary,path)
+	if not saved then os.remove(temporary) end
+	return saved
+end
 
 local function setup(state)
 	local ui=require("Modules.PlanningUI")
@@ -36,20 +80,33 @@ local function setup(state)
 	ui.label(controls,"leagueLabel",220,164,"PC trade league",14)
 	controls.league=new("EditControl"):EditControl(ui.anchor,{220,185,width-236,28},state.league or "",
 		"Current trade league",nil,80)
-	ui.label(controls,"status",16,232,ui.fit(state.message or "",width-32,14),14)
+	ui.label(controls,"snapshotLabel",16,230,"Saved listing capture (optional)",14)
+	controls.snapshot=new("EditControl"):EditControl(ui.anchor,{16,251,width-144,28},state.snapshot or "",
+		"Path to a PoB Public Stashes capture",nil,4096)
+	controls.snapshotBrowse=new("ButtonControl"):ButtonControl(ui.anchor,{width-118,251,102,28},"Browse",function()
+		require("Classes.LootFilterFileBrowser").Open(controls.snapshot.buf~="" and controls.snapshot.buf or nil,
+			function(path) controls.snapshot:SetText(path) end,{title="Choose a saved listing capture",itemLabel="Capture",
+				category="Captures",accept=function(name) return name:lower():match("%.json$")~=nil end})
+	end)
+	ui.label(controls,"status",16,297,ui.fit(state.message or "",width-32,14),14)
 	local function status(message)
 		state.message=message
 		controls.status.label=ui.fit(message,width-32,14)
 	end
-	controls.start=new("ButtonControl"):ButtonControl(ui.anchor,{16,270,150,28},"Arm overlay",function()
+	controls.start=new("ButtonControl"):ButtonControl(ui.anchor,{16,332,150,28},"Arm overlay",function()
 		local path=capture.gamePath(controls.path.buf)
 		local league=controls.league.buf:match("^%s*(.-)%s*$")
 		if not path then status("Select a local Path of Exile 1 game executable."); return end
-		if league~="" and not league:match("^[%w _-]+$") then status("Enter a valid PC trade league ID."); return end
+		if not validLeague(league) then status("Enter a valid PC trade league ID."); return end
+		local snapshot=controls.snapshot.buf
+		if snapshot~="" and (not snapshotPath(snapshot) or league=="") then
+			status("Choose a local JSON capture and enter its PC trade league."); return
+		end
 		local file=io.open(controls.path.buf,"rb")
 		if not file then status("The selected executable could not be opened."); return end
 		file:close()
 		state.path,state.league,state.key=controls.path.buf,league,controls.key.selIndex or 1
+		state.snapshot=snapshot~="" and snapshot or nil
 		state.event=state.win.stopEvent()
 		if not state.event then status("Windows could not start the shortcut listener."); return end
 		state.job=LaunchSubScript(listener,"","LootTradeOverlayStatus,LootTradeOverlayItem",
@@ -66,18 +123,25 @@ local function setup(state)
 			state.event=nil
 			if not ok then status("The shortcut listener stopped: "..tostring(message)) end
 		end)
-		status("Armed. Switch to Path of Exile 1 and use "..capture.hotkeys[state.key].label..".")
+		if saveSettings(state) then
+			status("Armed. Switch to Path of Exile 1 and use "..capture.hotkeys[state.key].label..".")
+		else
+			status("Armed for this session. PoB could not save the overlay settings.")
+		end
 		state.win.minimize(state.window)
 	end)
 	controls.start.enabled=function() return state.job==nil end
-	controls.reconfigure=new("ButtonControl"):ButtonControl(ui.anchor,{174,270,158,28},"Disarm overlay",function()
+	controls.reconfigure=new("ButtonControl"):ButtonControl(ui.anchor,{174,332,158,28},"Disarm overlay",function()
 		state.win.signal(state.event)
 		status("Disarmed. Update settings and arm again when ready.")
 	end)
 	controls.reconfigure.enabled=function() return state.job~=nil end
-	controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-112,270,96,28},"Exit",function() Exit() end)
+	controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-112,332,96,28},"Exit",function() Exit() end)
+	for _,key in ipairs({"path","browse","key","league","snapshot","snapshotBrowse"}) do
+		controls[key].enabled=function() return state.job==nil end
+	end
 	ui.style(controls,{start=true})
-	main:OpenPopup(width,322,"PoB trade overlay setup",controls,nil,nil,"close")
+	main:OpenPopup(width,384,"PoB trade overlay setup",controls,nil,nil,"close")
 end
 
 local function dismiss(state)
@@ -106,7 +170,9 @@ function M.start(app)
 			break
 		end
 	end
-	local state={app=app,win=win,instance=instance}
+	local path=model.userPath.."LootTradeOverlay.json"
+	local state,message=readSettings(path)
+	state.app,state.win,state.instance,state.settingsPath,state.message=app,win,instance,path,message
 	LootTradeOverlayStatus=function(message,game)
 		state.message=message
 		if game then state.captured={game=game,message=message} end
@@ -141,7 +207,7 @@ function M.frame(state)
 			if captured.message then
 				main:OpenMessagePopup("Trade price check",captured.message)
 			else
-				require("Classes.LootFilterMarketBrowseControl").OpenForOverlay(captured.raw,state.league)
+				require("Classes.LootFilterMarketBrowseControl").OpenForOverlay(captured.raw,state.league,state.snapshot)
 			end
 			return
 		end

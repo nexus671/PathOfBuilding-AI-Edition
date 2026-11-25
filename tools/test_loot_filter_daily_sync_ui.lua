@@ -2220,6 +2220,42 @@ Item Level: 86
 		main.popups={}
 		controller.OpenForOverlay("Unrecognized clipboard content","Covens")
 		assert(#requests==2 and not main.popups[1].controls.listingSample:IsEnabled())
+		local previousLaunch,previousRegister=LaunchSubScript,launch.RegisterSubScript
+		local pending,complete,attempts
+		attempts=0
+		LaunchSubScript=function(script,_,_,selected,league,request)
+			assert(selected==path and league=="Covens")
+			attempts=attempts+1
+			pending=function() return assert(loadstring(script))(selected,league,request) end
+			return attempts
+		end
+		launch.RegisterSubScript=function(_,id,callback)
+			assert(id==attempts)
+			complete=function() callback(pending()) end
+		end
+		file=assert(io.open(path,"wb"));assert(file:write(bundled));assert(file:close())
+		main.popups={}
+		controller.OpenForOverlay(raw,"Covens",path)
+		assert(attempts==1 and main.popups[1].title=="Browse loot market prices")
+		complete()
+		assert(main.popups[1].title=="Comparable asking prices")
+		local lines={}
+		for _, line in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=StripEscapes(line[1] or "") end
+		local result=table.concat(lines," ")
+		assert(result:find("Median 45",1,true) and result:find("Over one hour old",1,true),result)
+		if output then gearUI:frame():write(output.."/overlay-saved-capture.json") end
+		gearUI:click("review")
+		gearUI:click("tertiary")
+		assert(attempts==2)
+		complete()
+		assert(main.popups[1].title=="Comparable asking prices")
+		main.popups={}
+		controller.OpenForOverlay(raw,"Covens",path)
+		gearUI:text("league","Standard")
+		complete()
+		assert(main.popups[1].title=="Browse loot market prices" and attempts==3 and #requests==2)
+		assert(not pcall(listings.compare,encoded,target,"Covens",nil,true))
+		LaunchSubScript,launch.RegisterSubScript=previousLaunch,previousRegister
 		main.popups,main.inputEvents={},{}
 		local pointerDown, minimized=false,false
 		local state={window=93,captured={game=94,raw=raw},league="Covens",win={
