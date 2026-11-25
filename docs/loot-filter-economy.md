@@ -164,6 +164,18 @@ Use **Check quote** in the rule editor to open a read-only lookup for the select
 
 Choose **Embers of the Allflame** for an exact ember. PoB uses its per-item quote and can remove the baseline hide. An exported fixed baseline carries these feed selections into daily sync. Each explicit extra category is fetched once per refresh. If a required feed is unavailable, stale, or contains malformed rows, daily sync keeps the last verified output. Missing, ambiguous, or thin item quotes keep their baseline rules. [Market API reference](https://poe.ninja/docs/api)
 
+## Rolled-jewel regression fixtures
+
+On the authorized backend, keep the original PC capture private. To prepare a regression fixture for the three Cluster Jewel sizes and Putrid Seed, run the exporter on that file.
+
+```powershell
+python tools/export_rolled_jewel_fixture.py --league Covens covens-capture.json rolled-jewel-fixture.json
+```
+
+The exporter replaces seller names, stash and item IDs, stream cursors, the league and capture dates. It keeps the rolled-jewel fields used by the matcher, within-file seller and listing relationships, and recognized chaos and divine ask amounts. Free-text price notes become an unpriced marker when necessary to preserve their precedence over a tab price. Other items and unrelated metadata are omitted. Share an output only after reviewing its retained game text, rolls and prices under your source terms.
+
+In the market browser, select league `Fixture` and use **Inspect saved capture** to compare against the historical sample. The fixed January 2020 date keeps the rows out of recent comparisons. The collector rejects the fixture as a resume point.
+
 ## Managed maps
 
 In **Managed price rules**, choose **Maps**, a tier from 1 to 16, and Ordinary, Blighted, or Blight-ravaged. PoB uses separate stash price feeds for those variants. The rule excludes unique, corrupted, implicit-modified, enchanted, Mirage, memory, Shaped, and Elder maps. It can be relaxed when that exact tier-wide quote clears the price margin. The maps pickup target applies when configured.

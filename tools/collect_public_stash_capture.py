@@ -134,6 +134,8 @@ def read_capture(path, league):
     if (not isinstance(previous, dict) or previous.get("format") != "pob-public-stash-capture-v1"
             or previous.get("realm") != "pc" or previous.get("league") != league):
         raise ValueError("Resume from a PC capture of the same league")
+    if "fixture" in previous:
+        raise ValueError("A regression fixture cannot resume the Public Stashes stream")
     pages = previous.get("pages")
     if not isinstance(pages, list) or not all(
         isinstance(entry, dict) and "requestCursor" in entry and "response" in entry for entry in pages
