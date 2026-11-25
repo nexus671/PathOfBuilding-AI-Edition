@@ -462,9 +462,9 @@ function Panel.Open(build,source,layout)
 				for _,stat in ipairs(node.stats) do details[#details+1]="  "..stat end
 			end
 			if #route.added==0 then details[#details+1]="Target is already allocated." end
-			entries[#entries+1]={id=i,label=route.label.." | +"..route.cost,details=details,plan=route.plan}
+			entries[#entries+1]={id=i,label=route.label.." | +"..route.cost,details=details,plan=route.plan,hasAdditions=#route.added>0}
 		end
-		browser.Open("Compare Atlas routes",entries,{action="Use route",choose=function(entry) change(entry.plan) end})
+		browser.Open("Compare Atlas routes",entries,{action="Use route",canChoose=function(entry) return entry.hasAdditions end,choose=function(entry) change(entry.plan) end})
 	end)
 	controls.targets=button(522,height-86,100,"Targets",function()
 		clearRouteOverlay();exitGrantRoute()
