@@ -2131,6 +2131,38 @@ async function main(){
   assert.equal(armourListings.gearListings.equipment.sockets,'B-B-B-B-R-G');
   assert.equal(armourListings.gearListings.equipment.properties['Energy Shield'],190);
   assert.equal((await call('get_build_context')).context.revision,context.revision);
+  const observedAt=Math.floor(Date.now()/1000)-30;
+  const listingStash=(key,level,price,item=shorter)=>({id:key.toString(16).padStart(64,'0'),public:true,
+    league:'Standard',accountName:'Fixture#'+key,items:[{...item,id:(key+100).toString(16).padStart(64,'0'),
+      ilvl:level,corrupted:true,note:'~price '+price+' chaos'}]});
+  const rollingArmour={format:'pob-public-stash-capture-v1',realm:'pc',league:'Standard',capturedAt:observedAt-3600,pages:[
+    {requestCursor:'old',collectedAt:observedAt-3600,response:{next_change_id:'new',stashes:[listingStash(10,87,2)]}},
+    {requestCursor:'new',collectedAt:observedAt,response:{next_change_id:'end',stashes:[
+      listingStash(11,87,15),listingStash(12,88,20),listingStash(13,89,25),
+      listingStash(14,90,1),listingStash(15,89,1,armourAsk)
+    ]}}
+  ]};
+  fs.writeFileSync(snapshotPath,JSON.stringify(rollingArmour));
+  const rollingBytes=fs.readFileSync(snapshotPath);
+  const armourCriteria={baseRevision:context.revision,slot:'Body Armour',snapshotPath,league:'Standard',
+    itemFilters:{level:{min:87,max:89},corruption:'true',links:{min:5,max:5}}};
+  const recentArmour=(await queued('compare_gear_listings',{...armourCriteria,recentOnly:true},'gearListings')).gearListings;
+  assert.equal(recentArmour.captureMode,'recent');assert.equal(recentArmour.mode,'filtered');
+  assert.equal(recentArmour.comparison.expiredListings,1);assert.equal(recentArmour.comparison.matched,3);
+  assert.equal(recentArmour.comparison.results[0].low,15);assert.equal(recentArmour.comparison.results[0].median,20);
+  assert.deepEqual(recentArmour.comparison.propertyFilters.links,{min:5,max:5});
+  const recordedArmour=(await queued('compare_gear_listings',armourCriteria,'gearListings')).gearListings;
+  assert.equal(recordedArmour.captureMode,'recorded');assert.equal(recordedArmour.comparison.results[0].low,2);
+  assert.equal(recordedArmour.comparison.matched,4);
+  const corruptionOnly=(await queued('compare_gear_listings',{...armourCriteria,itemFilters:{corruption:'true'}},'gearListings')).gearListings;
+  assert.deepEqual(corruptionOnly.comparison.propertyFilters.level,{min:86,max:86});
+  assert.equal(corruptionOnly.comparison.matched,0);
+  const ringWithLinks=await queued('compare_gear_listings',{...armourCriteria,slot:'Ring 1',itemFilters:{links:{min:1}}},'failed');
+  assert.match(ringWithLinks.error,/configurable sockets/);
+  assert.deepEqual(fs.readFileSync(snapshotPath),rollingBytes);
+  assert.equal((await call('get_build_context')).context.revision,context.revision);
+  fs.writeFileSync(snapshotPath,JSON.stringify({next_change_id:'cursor',stashes:[]}));
+  await queued('compare_gear_listings',{...armourCriteria,recentOnly:true},'failed');
   const quiverText='Rarity: RARE\nReview Quiver\nBroadhead Arrow Quiver\nItem Level: 86\nImplicits: 1\n9% increased Attack Speed\n+79 to maximum Life';
   await queued('propose_build',{mode:'edit',title:'Listing comparison quiver',baseRevision:context.revision,operations:[
     {type:'equip_item',slot:'Weapon 1',text:'Rarity: NORMAL\nCrude Bow'},
