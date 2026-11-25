@@ -2191,6 +2191,17 @@ Item Level: 86
 			done(nil,"Response code: 403")
 		end
 		main.popups={}
+		if require("ffi").os=="Windows" then
+			local previousRuntime,previousSpawn=GetRuntimePath,SpawnProcess
+			local started
+			GetRuntimePath=function() return "C:/PoB" end
+			SpawnProcess=function(executable,args) started={executable,args} end
+			controller.Open()
+			gearUI:click("overlay")
+			assert(started and started[1]=="C:/PoB/Path of Building.exe" and started[2]=="--trade-overlay")
+			GetRuntimePath,SpawnProcess=previousRuntime,previousSpawn
+			main.popups={}
+		end
 		controller.OpenForOverlay(raw,"Covens")
 		local overlay=main.popups[1].controls
 		assert(overlay.league.buf=="Covens" and overlay.query.buf=="=Amethyst Ring" and overlay.rolledTrade:IsEnabled())

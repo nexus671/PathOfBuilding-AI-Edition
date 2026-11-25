@@ -1,4 +1,7 @@
+-- cspell:ignore pathofexilesteam pathofexileegs
 local M = {}
+local executables={["pathofexile.exe"]=true,["pathofexile_x64.exe"]=true,["pathofexilesteam.exe"]=true,
+	["pathofexile_x64steam.exe"]=true,["pathofexileegs.exe"]=true,["pathofexile_x64egs.exe"]=true}
 
 M.hotkeys = {
 	{label="Ctrl+Alt+D", code=0x44},
@@ -12,8 +15,6 @@ function M.gamePath(path)
 	if normalized:find("\\%.%.?\\") or normalized:find("\\\\",1,true)
 		or normalized:find("\\path of exile 2\\",1,true) then return end
 	local name=normalized:match("([^\\]+)$")
-	local executables={["pathofexile.exe"]=true,["pathofexile_x64.exe"]=true,["pathofexilesteam.exe"]=true,
-		["pathofexile_x64steam.exe"]=true,["pathofexileegs.exe"]=true,["pathofexile_x64egs.exe"]=true}
 	return executables[name] and normalized or nil
 end
 

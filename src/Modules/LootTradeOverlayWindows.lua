@@ -1,3 +1,4 @@
+-- cspell:ignore UNICODETEXT
 local ffi = require("ffi")
 assert(ffi.os=="Windows","The trade overlay requires Windows")
 local user, kernel = ffi.load("user32"), ffi.load("kernel32")

@@ -2153,8 +2153,8 @@
 	<File name="Modules/LootFilterVisuals.lua" part="program" sha1="44f913b3183554afb21b36adb6a43a9db2520bbd" />
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="4707a76b68b0a805db8d941c3dd2f5af8978cc06" />
 	<File name="Modules/LootTradeOverlay.lua" part="program" sha1="c878884a4a70424ff9265e0ba1c4ceda843bc810" />
-	<File name="Modules/LootTradeOverlayCapture.lua" part="program" sha1="d1583f9978291b170227417aac26c4f6ec46ca94" />
-	<File name="Modules/LootTradeOverlayWindows.lua" part="program" sha1="1e35356ecea57dc95d5a1cd3e3e55b6ade9d05d5" />
+	<File name="Modules/LootTradeOverlayCapture.lua" part="program" sha1="615cdb68e6355a54e80938418470f8f2a9284a2a" />
+	<File name="Modules/LootTradeOverlayWindows.lua" part="program" sha1="1464c9d40bdcf527e64b45484f60865ecf27a173" />
 	<File name="Modules/Main.lua" part="program" sha1="8cfef4f792f3d112ae1fa210182ca4e05efdc3ed" />
 	<File name="Modules/MapAllflame.lua" part="program" sha1="563b130b2aa82c6e3fcb9421dd7298e150cb5be3" />
 	<File name="Modules/MapClipboard.lua" part="program" sha1="984b53897a5ae596d363f0cb326eb931aa55d4a9" />
