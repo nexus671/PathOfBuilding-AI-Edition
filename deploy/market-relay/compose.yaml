@@ -1,0 +1,21 @@
+services:
+  market-relay:
+    build:
+      context: ../..
+      dockerfile: deploy/market-relay/Dockerfile
+    environment:
+      POB_MARKET_UPSTREAM_AGENT: "${POB_MARKET_UPSTREAM_AGENT:?Set a descriptive application User-Agent and operator contact}"
+    ports:
+      - "127.0.0.1:${POB_MARKET_LOOPBACK_PORT:-9410}:9410"
+    volumes:
+      - market-state:/var/lib/pob-market
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  market-state:
