@@ -344,10 +344,12 @@ local function uniqueSourceLine(source)
 	end
 	return plain,variant
 end
-local function sourceInVariant(prefix,selected)
+local function sourceInVariant(prefix,item)
 	if prefix=="" then return true end
-	if not selected then return false end
-	for id in prefix:gmatch("%d+") do if tonumber(id)==selected then return true end end
+	if not item.variantList or not item.variant then return false end
+	local selected={[item.variant]=true}
+	for _,suffix in ipairs({"","2","3","4","5"}) do if item["hasAltVariant"..suffix] and item["variantAlt"..suffix] then selected[item["variantAlt"..suffix]]=true end end
+	for id in prefix:gmatch("%d+") do if selected[tonumber(id)] then return true end end
 	return false
 end
 local fractionalChecks={}
@@ -460,7 +462,7 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 			local source,sourceVariant,count=nil,nil,0
 			for rawLine in raw:gmatch("[^\r\n]+") do
 				local plain,variant=uniqueSourceLine(rawLine)
-				if plain and sourceInVariant(variant,item.variantList and item.variant or nil) then
+				if plain and sourceInVariant(variant,item) then
 					local advanced=plain:gsub("(%-?%d+%.?%d*)(%(%-?%d+%.?%d*%-%-?%d+%.?%d*%))","%2")
 					local advancedValues=plain:gsub("(%-?%d+%.?%d*)(%(%-?%d+%.?%d*%-%-?%d+%.?%d*%))","%1")
 					if plain==text or line.rangeFromValue and text==match.line and advanced==match.line or advanced==match.line and advancedValues==text then source=plain;sourceVariant=variant;count=count+1 end
@@ -480,7 +482,50 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 	if #rows==0 and not allowFixed then return nil,"No supported variable explicit modifiers were found" end
 	return {item=item,rows=rows,matchedLines=matchedLines}
 end
-local function divinePlan(raw,allowFixed)
+
+-- Infer copied multi-selection items only when one combination matches every
+-- visible modifier. Shape matching narrows the search; the normal template
+-- matcher still validates exact text, roll bounds and complete modifier sets.
+local function inferMultipleVariants(raw,item,reference,referenceBase,allowFixed)
+	if item.title~="Watcher's Eye" then return nil,"Copied modifier selections need identification for this unique" end
+	if referenceBase.variantList then return nil,"Copied multi-selection items with variant-specific bases need identification" end
+	if reference.allowDuplicateVariants then return nil,"Copied repeated modifier selections need identification" end
+	local fields={"variant"}
+	for _,suffix in ipairs({"","2","3","4","5"}) do if reference["hasAltVariant"..suffix] then fields[#fields+1]="variantAlt"..suffix end end
+	local empty
+	for id,name in ipairs(reference.variantList or {}) do if name=="None" then if empty then return nil,"The blank modifier selection is ambiguous" end;empty=id end end
+	if not empty then return nil,"Copied modifier selections need identification" end
+	local function shape(text)
+		return (text:gsub("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)","#"):gsub("[%+%-]?%d+%.?%d*","#"):gsub("[%+%-]#","#"))
+	end
+	local visible={};for _,line in ipairs(item.explicitModLines or {}) do visible[shape(line.line)]=true end
+	local ids,seen,represented={},{},{}
+	for _,line in ipairs(reference.explicitModLines or {}) do if line.variantList then
+		for id in pairs(line.variantList) do
+			represented[id]=true
+			if visible[shape(line.line)] and id~=empty and not seen[id] then ids[#ids+1]=id;seen[id]=true end
+		end
+	end end
+	for id in ipairs(reference.variantList) do if id~=empty and not represented[id] then return nil,"Some modifier selections are not represented by explicit lines" end end
+	table.sort(ids)
+	local selected,attempts,ambiguous,tooMany=nil,0,false,false
+	local chosen={}
+	local function visit(start)
+		if ambiguous or tooMany then return end
+		attempts=attempts+1;if attempts>2048 then tooMany=true;return end
+		for i,field in ipairs(fields) do reference[field]=chosen[i] or empty end
+		local plan=#chosen>=2 and divinePlanForReference(raw,item,reference,allowFixed) or nil
+		if plan then if selected then ambiguous=true;return else selected=plan end end
+		if #chosen==#fields then return end
+		for i=start,#ids do chosen[#chosen+1]=ids[i];visit(i+1);chosen[#chosen]=nil;if ambiguous or tooMany then return end end
+	end
+	visit(1)
+	if tooMany then return nil,"Too many possible modifier combinations to identify safely" end
+	if ambiguous then return nil,"Copied modifiers match multiple unique variants" end
+	if selected then return selected end
+	return nil,"Copied modifiers could not be identified uniquely"
+end
+local function uncachedDivinePlan(raw,allowFixed)
 	local ok,item=pcall(M.inspect,raw);if not ok then return nil,tostring(item) end
 	if item.corrupted then return nil,"Divine Orbs cannot modify a corrupted item" end
 	if item.type=="Tincture" and item.tinctureValues=="Final" then return nil,"Copied tincture values need a separate scaling model for Divine rolls" end
@@ -488,7 +533,7 @@ local function divinePlan(raw,allowFixed)
 	if jewellery and ("\n"..raw):find("\nCatalyst:",1,true) and not item.catalyst then return nil,"Unrecognized jewellery catalyst needs a separate Divine model" end
 	local catalystQuality=item.catalystQuality or (item.catalyst and 20) or 0
 	if (jewellery and (item.quality or 0)>0) or catalystQuality>0 and (not jewellery or not item.catalyst or item.catalyst==3 or item.catalyst==9) then return nil,"Catalyst-scaled jewellery needs a separate Divine model" end
-	if item.usesVariantGroups or item.hasAltVariant or item.hasAltVariant2 or item.hasAltVariant3 or item.hasAltVariant4 or item.hasAltVariant5 then return nil,"Multiple or grouped variant selections need a separate Divine model" end
+	if item.usesVariantGroups then return nil,"Grouped variant selections need a separate Divine model" end
 	if not item.variantList then for _,line in ipairs(item.explicitModLines or {}) do if line.variantList then return nil,"Variant modifier lines require a saved variant list" end end end
 	uniqueSocketRestriction(item.title)
 	local candidates={}
@@ -508,6 +553,28 @@ local function divinePlan(raw,allowFixed)
 	local referenceBase=reference.baseLines and reference.baseLines[item.baseName]
 	if not referenceBase then return nil,"The bundled unique base could not be verified" end
 	if reference.usesVariantGroups then return nil,"This unique's variant groups need a separate Divine model" end
+	local multiple=reference.hasAltVariant or reference.hasAltVariant2 or reference.hasAltVariant3 or reference.hasAltVariant4 or reference.hasAltVariant5
+	if multiple and item.variantList then
+		if not reference.variantList or reference.allowDuplicateVariants then return nil,"Repeated or unidentified modifier selections need a separate Divine model" end
+		local selections={{field="variant",label="Selected Variant"}}
+		for _,entry in ipairs({{"",""},{"2"," Two"},{"3"," Three"},{"4"," Four"},{"5"," Five"}}) do
+			local suffix,label=entry[1],entry[2]
+			if (not not item["hasAltVariant"..suffix])~=(not not reference["hasAltVariant"..suffix]) then return nil,"Saved variant selections do not match the bundled unique" end
+			if reference["hasAltVariant"..suffix] then selections[#selections+1]={field="variantAlt"..suffix,label="Selected Alt Variant"..label} end
+		end
+		local seen={}
+		for _,selection in ipairs(selections) do
+			local selected,count=nil,0
+			for line in raw:gmatch("[^\r\n]+") do if line:sub(1,#selection.label+1)==selection.label..":" then selected=tonumber(line:match("^"..selection.label..":%s*(%d+)%s*$"));count=count+1 end end
+			if count~=1 or not selected or selected~=item[selection.field] or selected<1 or selected>#reference.variantList then return nil,"The saved variant selection is invalid" end
+			if seen[selected] and reference.variantList[selected]~="None" then return nil,"Repeated modifier selections need a separate Divine model" end
+			seen[selected]=true;reference[selection.field]=selected
+		end
+		if item.title=="Watcher's Eye" then
+			local chosen=0;for selected in pairs(seen) do if reference.variantList[selected]~="None" then chosen=chosen+1 end end
+			if chosen<2 or chosen>3 then return nil,"Watcher's Eye needs two or three identified aura modifiers" end
+		end
+	elseif not multiple and (item.hasAltVariant or item.hasAltVariant2 or item.hasAltVariant3 or item.hasAltVariant4 or item.hasAltVariant5) then return nil,"Saved variant selections do not match the bundled unique" end
 	if catalystQuality>0 then
 		if #(reference.modMagnitudeMods or {})>0 then return nil,"Modifier magnitude changes need a separate Divine model" end
 		reference.catalyst=item.catalyst;reference.catalystQuality=catalystQuality
@@ -518,6 +585,7 @@ local function divinePlan(raw,allowFixed)
 		for line in raw:gmatch("[^\r\n]+") do if line:match("^Selected Variant:") then selected=tonumber(line:match("^Selected Variant:%s*(%d+)%s*$"));count=count+1 end end
 		if count>1 or count==1 and selected~=item.variant then return nil,"The saved variant selection is invalid" end
 	end
+	if multiple and not item.variantList then return inferMultipleVariants(raw,item,reference,referenceBase,allowFixed) end
 	local selected,reason,matchedBase
 	local first,last=1,reference.variantList and #reference.variantList or 1
 	if item.variantList then first,last=item.variant,item.variant end
@@ -533,6 +601,17 @@ local function divinePlan(raw,allowFixed)
 	end
 	if selected then return selected end
 	return nil,reason or (not matchedBase and "The selected variant does not match this item's base")
+end
+
+-- A recipe commonly checks the same item repeatedly before rolling it. Keep
+-- only its last successful plan; raw text and fixed-only mode are part of the key.
+local cachedRaw,cachedMode,cachedPlan
+local function divinePlan(raw,allowFixed)
+	local mode=not not allowFixed
+	if type(raw)=="string" and raw==cachedRaw and mode==cachedMode then return cachedPlan end
+	local plan,reason=uncachedDivinePlan(raw,allowFixed)
+	if plan and type(raw)=="string" then cachedRaw,cachedMode,cachedPlan=raw,mode,plan else cachedRaw,cachedMode,cachedPlan=nil,nil,nil end
+	return plan,reason
 end
 
 function M.divineReason(raw) local _,reason=divinePlan(raw);return reason end
@@ -567,7 +646,12 @@ function M.divine(raw,seed)
 	assert(changed==#plan.rows,"The unique modifier lines could not be updated safely")
 	output=preserveArmourBaseline(raw,output,plan.item)
 	local after=M.inspect(output);assert(after.title==plan.item.title and after.baseName==plan.item.baseName and not after.corrupted,"Unique item did not round-trip after Divine crafting")
-	if plan.item.variantList then assert(after.variant==plan.item.variant and tableDeepEquals(after.variantList,plan.item.variantList),"Unique variant selection changed during Divine crafting") end
+	if plan.item.variantList then
+		assert(after.variant==plan.item.variant and tableDeepEquals(after.variantList,plan.item.variantList),"Unique variant selection changed during Divine crafting")
+		for _,suffix in ipairs({"","2","3","4","5"}) do
+			assert(after["hasAltVariant"..suffix]==plan.item["hasAltVariant"..suffix] and after["variantAlt"..suffix]==plan.item["variantAlt"..suffix],"Unique alternate variant selection changed during Divine crafting")
+		end
+	end
 	local catalystModeled=plan.item.catalyst and (plan.item.catalystQuality or 20)>0 or nil
 	return {itemText=output,components={divine=1},catalystModeled=catalystModeled}
 end
@@ -1009,6 +1093,7 @@ function M.catalog(raw,query,limit)
 		definitions[#definitions+1]={method="socket_bench",guideMethod="socket_count_bench",guideCount=count,request=request,label="Bench: "..count.." sockets",reason=M.socketCountReason(raw,count),components=sim.components(request,{sockets=item.sockets,corrupted=item.corrupted})}
 	end
 	local result={uniqueCrafting=true,methods={},uniqueActions={},socketCrafts={},quality={value=info.quality,available=info.available,resource=info.resource},nativeStats=require("Modules.CraftingItemStats").itemValues(item),limitations={"Only the listed unique actions are modeled. Continue by passing the returned item text, not an ordinary affix state.","Socket-count previews retain existing groups, remove sockets from the end and add white unlinked sockets; position and link behavior are unverified."}}
+	if item.title=="Watcher's Eye" and not item.variantList then result.limitations[#result.limitations+1]="Copied modifier identification assumes the item text is complete; a missing third aura modifier cannot be detected." end
 	if item.type=="Ring" or item.type=="Amulet" or item.type=="Belt" then
 		result.catalystGuides={};result.catalystPreviews={}
 		for id,name in ipairs(M.catalysts) do if #result.catalystGuides<limit and (name.." catalyst"):lower():find(query,1,true) then
