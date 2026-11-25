@@ -241,6 +241,19 @@ assert(spike["Orb of Alteration"].price==0.2 and spike["Orb of Alteration"].curr
 local lower = market.remember(quote(0.1), second, "day 3", now+2*86400)
 assert(lower["Orb of Alteration"].price==0.1)
 do
+	local reused = {["Different Currency"]={id="alt",price=2,volume=1000,source="Currency"}}
+	local adjusted = market.remember(reused, second, "reused ID", now+2*86400)
+	assert(adjusted["Different Currency"].price==2 and adjusted["Different Currency"].observations==0)
+	local legacy = {{day="older format",time=now-86400,values={["Currency:alt"]=0.01}}}
+	local fresh = market.remember(quote(2), legacy, "new format", now)
+	assert(fresh["Orb of Alteration"].price==2 and fresh["Orb of Alteration"].observations==0)
+	local merged = {}
+	market.merge(merged,quote(0.1),"Currency")
+	local _, days = market.remember(merged, {}, "both lookups", now)
+	local key = next(days[1].values)
+	assert(key and not next(days[1].values,key),"A scoped alias counted the same liquid quote twice")
+end
+do
 	local raw = market.addManagedSection([[Hide
     Class == "Stackable Currency"
     BaseType == "Chaos Orb"
@@ -393,6 +406,14 @@ local coverage, coverageError = pcall(market.remember, quoteBatch(5), completeHi
 assert(not coverage and coverageError:find("fewer than a quarter",1,true))
 assert(pcall(market.remember, quoteBatch(6), completeHistory, "still sufficient", now+2*86400))
 assert(pcall(market.remember, quoteBatch(5), completeDay, "first comparison", now+2*86400))
+do
+	local olderValues = {}
+	for index=1,24 do olderValues["Currency:"..index]=0.21 end
+	local legacy = {{day="old coverage one",time=now,values=olderValues},
+		{day="old coverage two",time=now+86400,values=olderValues}}
+	local valid, failure = pcall(market.remember,quoteBatch(5),legacy,"coverage after upgrade",now+2*86400)
+	assert(not valid and failure:find("fewer than a quarter",1,true))
+end
 do
 	local _, thinDay = market.remember(quoteBatch(6),completeHistory,"thin day",now+2*86400)
 	local valid, failure = pcall(market.remember,quoteBatch(3),thinDay,"thinner day",now+3*86400)
@@ -914,7 +935,8 @@ Show
 local policy = {campaign=0.30,maps=3,caps={["Orb of Alteration"]=7}}
 local history = {}
 for days=1,3 do
-	history[days] = {day="day "..days,time=now-days*86400,values={["Currency:alt"]=0.21}}
+	local _, sample = market.remember(quote(0.21),{},"day "..days,now-days*86400)
+	history[days] = sample[1]
 end
 local applied, count, decisions = validate(scoped,missing,false,1,samples,history,"today",now,policy)
 assert(count==2 and applied:find("AreaLevel < 68\n    StackSize <= 1",1,true))
@@ -924,7 +946,19 @@ assert(decisions[1].scope=="campaign" and decisions[1].sample.area==60
 assert(decisions[2].scope=="maps" and decisions[2].sample.before=="Show" and decisions[2].sample.action=="Hide")
 local _, withoutHistory, _, skips = validate(scoped,missing,false,1,samples,{},"today",now,policy)
 assert(withoutHistory==1 and skips[1].reason:find("three earlier",1,true))
-history[3].values["Currency:alt"]=0.8
+do
+	local reused = {["Different Currency"]={id="alt",price=0.21,volume=1000,source="Currency"}}
+	local prior = {}
+	for days=1,3 do
+		local _, observation = market.remember(reused,{},"different item "..days,now-days*86400)
+		prior[days] = observation[1]
+	end
+	local result, tightened, _, reasons = validate(scoped,missing,false,1,samples,prior,"today",now,policy)
+	assert(tightened==1 and reasons[1].reason:find("three earlier",1,true))
+	assert(result:find("AreaLevel >= 68\n    StackSize <= 3",1,true))
+end
+local savedPriceKey = assert(next(history[3].values))
+history[3].values[savedPriceKey]=0.8
 local _, withSpike, _, moreSkips = validate(scoped,missing,false,1,samples,history,"today",now,policy)
 assert(withSpike==1 and moreSkips[1].reason:find("Recent high price",1,true))
 assert(not pcall(market.pickupPolicy,1,{caps={["Orb of Alteration"]=7.5}}))
@@ -940,7 +974,7 @@ write(configFile,assert(require("dkjson").encode(ownSettings)))
 write(target,scoped)
 write(baseline,scoped)
 policySync.configure(target,baseline,"Covens",{hour=0,targetValue=1,protectionFile=protections,pickupPolicy=policy})
-history[3].values["Currency:alt"] = 0.21
+history[3].values[savedPriceKey] = 0.21
 local saved = policySync.configuration()
 saved.priceHistory = history
 write(configFile,assert(require("dkjson").encode(saved)))
@@ -1995,7 +2029,9 @@ local function checkManagedExchangeSelections()
 	local second=market.review(after,quotes,1)
 	assert(second==after)
 	local remembered,snapshots=market.remember(quotes,{},"source day",now)
-	assert(snapshots[1].values["Currency:scarab"]==0.01 and snapshots[1].values["Scarab:scarab"]==0.3)
+	local historical = {}
+	for key, price in pairs(snapshots[1].values) do historical[key:match("^([^:]+):")]=price end
+	assert(historical.Currency==0.01 and historical.Scarab==0.3)
 	assert(market.review(raw,remembered,1)==after)
 	local missing,missingChanges,missingSkips=market.review(raw,{["Harbinger Scarab"]={id="wrong",price=100,volume=1000,source="Currency"}},1)
 	assert(missing==raw and #missingChanges==0 and missingSkips[1].source=="Scarab" and not missingSkips[1].priceId)
