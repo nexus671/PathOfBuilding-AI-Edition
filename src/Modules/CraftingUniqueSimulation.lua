@@ -81,7 +81,7 @@ function M.simulate(sim,raw,recipe,options)
 	options=options or {};recipe=sim.validateRecipe(recipe)
 	local conflict=sim.recipeConflict(recipe);assert(not conflict,conflict)
 	assert(not recipe.initialState and not options.initialState,"Unique recipes continue from item text, not an ordinary crafting state")
-	assert(#recipe.targets==0,"Modifier-identity targets are not yet supported for unique items")
+	assert(#recipe.targets==0,"Ordinary affix targets are not supported for unique items. Use unique modifier roll goals instead.")
 	local unique=require("Modules.CraftingUniqueQuality");local start=unique.inspect(raw)
 	for _,step in ipairs(recipe.steps) do
 		local reason=M.stepReason(step);assert(not reason,reason)
@@ -168,7 +168,7 @@ function M.simulate(sim,raw,recipe,options)
 	local retained={};if hit then for trial=1,math.min(retain,trials) do retained[#retained+1]={trial=trial,actions=actions,cost=not next(missing) and cost or nil,itemText=current} end end
 	local result={uniqueCrafting=true,exactFor=alreadyMet and "Starting item already meets the goal" or "Supported deterministic unique-item recipe",sampled=false,trials=trials,successes=successes,successChance=hit and 100 or 0,confidenceLow=hit and 100 or 0,confidenceHigh=hit and 100 or 0,seed=seed,maxActions=maxActions,
 		meanActions=actions,meanExecutedActions=executed,failedAttempts=(actions-executed)*trials,failedTransitionTrials=rejected and trials or 0,currencySpent=spent,resourceUsage=resources,unpriced=missing,transitionErrors=errors,
-		warnings={{code="unique_crafting_scope",message="Only listed unique actions and item goals are modeled. Continue using item text, not an ordinary affix state."}},limitations={"Unique modifier-identity targets and other crafting methods are not modeled."},sampleSuccess=hit,sampleItem=current,
+		warnings={{code="unique_crafting_scope",message="Only listed unique actions and item goals are modeled. Continue using item text, not an ordinary affix state."}},limitations={"Ordinary affix targets and other crafting methods are not modeled for unique items. Unique modifier roll goals are supported."},sampleSuccess=hit,sampleItem=current,
 		engineVersion=2,dataPatch=sim.dataPatch,sourceVersion=launch.versionNumber,costCurrency=currency or "supplied price units",baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,
 		actionDistribution={{actions=actions,trials=trials,successes=successes}},executedActionDistribution={{actions=executed,trials=trials,successes=successes}},successfulActionQuantiles=hit and quantiles(actions) or nil,routeCounts=routes,budgetExhausted=not hit and at<=#recipe.steps and actions>=maxActions and trials or 0,
 		destroyedTrials=0,uniqueTrials=trials,uniqueDistribution={{name=start.title,trials=trials,successes=successes}},recovery=recovery,stepPriceKeys={},priceOverridesSupplied=suppliedPrices or suppliedActions,resourcePriceOverridesSupplied=suppliedPrices,actionPriceOverridesSupplied=suppliedActions,actionPriceOverridesApplied=actionPriceUses*trials}

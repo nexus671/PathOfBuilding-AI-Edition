@@ -1642,7 +1642,7 @@ do
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
 		if rarity and rarity:upper()=="UNIQUE" then
 			options=options or {};assert(initialState==nil,"Calculate unique crafts using the item text, not an ordinary crafting state")
-			assert(type(targets)=="table" and #targets==0,"Modifier-identity targets are not yet supported for unique items")
+			assert(type(targets)=="table" and #targets==0,"Ordinary affix targets are not supported for unique items. Use unique modifier roll goals instead.")
 			M.validateRecipe({rarity="UNIQUE",steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			if action.method=="sacred" then
 				local initial=M.perform(raw,action,options.seed,nil,options.treeVersion);local unique=require("Modules.CraftingUniqueQuality")
