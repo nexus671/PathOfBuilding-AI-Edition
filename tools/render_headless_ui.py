@@ -16,6 +16,12 @@ ESCAPE = re.compile(r"\^(?:x([0-9a-fA-F]{6})|([0-9]))")
 
 
 @functools.lru_cache(maxsize=None)
+def font_heights(family):
+    text = (ROOT / "runtime/SimpleGraphic/Fonts" / (family + ".tgf")).read_text()
+    return [int(value) for value in re.findall(r"^HEIGHT (\d+)", text, re.MULTILINE)]
+
+
+@functools.lru_cache(maxsize=None)
 def glyphs(family, height):
     records, current = {}, None
     for line in (ROOT / "runtime/SimpleGraphic/Fonts" / (family + ".tgf")).read_text().splitlines():
@@ -240,10 +246,6 @@ def render(frame):
                     x = command["x"]
                     y += height
                     continue
-                gx, gy, width, left, right = entries[ord(char) if ord(char) < len(entries) else ord("?")]
-                if char == "\t":
-                    x = math.ceil(x + (width + left + right) * scale * 4)
-                    continue
                 if critical and contains(clip, x, y + height / 2) and not char.isspace() and tuple(color) not in checked_colors:
                     checked_colors.add(tuple(color))
                     # Sample the composited background: native tooltips use a
@@ -254,6 +256,27 @@ def render(frame):
                         shade = [channel / 255 for channel in canvas.getpixel((sample_x, sample_y))]
                     if contrast(color, shade) < 3:
                         audit["lowContrast"].append(command["text"])
+                if ord(char) >= len(entries):
+                    sizes = [size for size in font_heights(command["font"])
+                             if size < command["fontHeight"] and height - size >= 3]
+                    small = max(sizes, default=command["fontHeight"])
+                    small_entries, small_atlas = glyphs(command["font"], small)
+                    for symbol in f"[U+{ord(char):04X}]":
+                        gx, gy, width, left, right = small_entries[ord(symbol)]
+                        x += left
+                        if width:
+                            glyph = small_atlas.crop((gx, gy, gx + width, gy + small))
+                            ink = Image.new("RGBA", glyph.size, rgba(color))
+                            ink.putalpha(ImageChops.multiply(glyph.getchannel("A"), ink.getchannel("A")))
+                            padding = math.ceil((height - small) / 2) if sizes else 0
+                            layer.alpha_composite(ink, (round(x), round(y + padding)))
+                        x = math.ceil(x + width + right)
+                    continue
+                gx, gy, width, left, right = entries[ord(char) if ord(char) < len(entries) else ord("?")]
+                if char == "\t":
+                    _, _, width, left, right = entries[ord(" ")]
+                    x += (width + left + right) * scale * 4
+                    continue
                 x += left * scale
                 if width:
                     glyph = atlas.crop((gx, gy, gx + width, gy + command["fontHeight"]))
