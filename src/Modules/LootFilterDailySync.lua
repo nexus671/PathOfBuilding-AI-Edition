@@ -430,7 +430,7 @@ function M.publicStatus(now, id)
 				mapOnly=item.maps==true}
 		end
 	end
-	publicCache = {at=now, id=id, status=M.status, value=output, review=config.review}
+	publicCache = {at=now, id=id, status=M.status, value=output, review=config.review, revision=config.revision}
 	return output
 end
 
@@ -468,7 +468,7 @@ function M.publicDiff(now, id)
 			if type(change.corrupted)=="boolean" then corruption=change.corrupted end
 			local samples={};if type(change.samples)=="table" then for index,entry in ipairs(change.samples) do if index>20 then break end;samples[#samples+1]=publicImpactSample(entry) end end
 			changes[#changes+1] = {
-				item=item, source=safeText(change.source,40), priceId=market.evidencePriceId(change.priceId), previousCutoff=change.old,
+				item=item, decisionIndex=index, source=safeText(change.source,40), priceId=market.evidencePriceId(change.priceId), previousCutoff=change.old,
 				proposedCutoff=change.cutoff,
 				retainedReason=safeText(change.retainedReason,100),
 				quotedPrice=finiteNumber(change.currentPrice or change.price),
@@ -497,7 +497,7 @@ function M.publicDiff(now, id)
 		end
 	end
 	publicCache.diff = {
-		checkedAt=finiteNumber(review.checkedAt), verifiedProtection=true,
+		checkedAt=finiteNumber(review.checkedAt), reviewRevision=type(publicCache.revision)=="string" and publicCache.revision:match("^[a-f0-9]+$") and #publicCache.revision==40 and publicCache.revision or nil, verifiedProtection=true,
 		responseAges=ages, feeds=feeds, changeCount=#source, changes=changes, protectedChecks=finiteNumber(review.protectedChecks),
 	}
 	return publicCache.diff
@@ -641,6 +641,17 @@ function M.reviewDecisionExamples(id, revision, index, offset, limit)
 	assert(latest.revision==revision, "The sync review changed. Reopen it before comparing examples")
 	local examples=require("Modules.LootFilterDecisionSamples")
 	return examples.page(examples.prepare(decision,before,after),offset,limit)
+end
+
+-- Bridge responses never include local paths or raw filter text.
+function M.publicDecisionExamples(revision,index,offset,limit)
+	assert(type(revision)=="string" and #revision==40 and revision:match("^[a-f0-9]+$"), "Refresh the latest sync review")
+	assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=250, "Choose a listed decision")
+	local ok,page=pcall(M.reviewDecisionExamples,"default",revision,index,offset,limit)
+	assert(ok, "The review or verified filters changed, or this decision is unavailable. Refresh the sync review in PoB")
+	local results={};for _,entry in ipairs(page.results) do results[#results+1]=publicImpactSample(entry) end
+	return {decisionIndex=index,reviewRevision=revision,total=page.total,offset=page.offset,nextOffset=page.nextOffset,results=results,
+		limitations={"Illustrative cases use known base properties and leave item level unknown.","This compares the current verified default profile, not an archived review."}}
 end
 
 function M.compareObservedStack(id, name, size, area, itemLevel, itemClass)

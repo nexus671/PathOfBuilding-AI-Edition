@@ -251,6 +251,21 @@ test('pages the last verified cutoff diff without recording a request', t => {
   assert.equal(fs.existsSync(path.join(f.dir,'AI-build-request.json')),false);
 });
 
+test('queues path-free pages for a specific verified loot decision', t => {
+  const f=fixture(t), reviewRevision='b'.repeat(40);
+  f.state.lootSyncDiff={reviewRevision,changeCount:1,changes:[{item:'Orb of Alteration',decisionIndex:1}]};
+  f.write('state',f.state);
+  const diff=f.call('get_loot_sync_diff',{});
+  assert.equal(diff.reviewRevision,reviewRevision);assert.equal(diff.changes[0].decisionIndex,1);
+  const result=f.call('review_loot_sync_examples',{baseRevision:f.state.revision,reviewRevision,decisionIndex:1,offset:20,limit:20});
+  assert.match(result.instructions,/filter is not changed/);
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.kind,'review_loot_sync_examples');assert.equal(request.reviewRevision,reviewRevision);assert.equal(request.offset,20);
+  const invalid=fixture(t);
+  assert.throws(()=>invalid.call('review_loot_sync_examples',{baseRevision:invalid.state.revision,reviewRevision:'C:/private',decisionIndex:1}),/arguments/);
+  assert.throws(()=>invalid.call('review_loot_sync_examples',{baseRevision:invalid.state.revision,reviewRevision,decisionIndex:251}),/arguments/);
+});
+
 test('returns every requested feed in a full economy audit',t=>{
   const f = fixture(t);
   const categories=['Currency','Fragment','Runegraft','AllflameEmber','Tattoo','Omen','DjinnCoin','Ducat',
