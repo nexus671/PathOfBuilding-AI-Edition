@@ -84,6 +84,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_recipe_currency_help.lua")
     sources.append(ROOT / "tools/test_sacred_exact_ui.lua")
     sources.append(ROOT / "tools/test_filter_unique_review.lua")
+    sources.append(ROOT / "tools/test_crafting_picker_reasons.lua")
     sources.append(ROOT / "tools/test_filter_sound_list_ui.lua")
     sources.append(ROOT / "tools/test_filter_contradictions.lua")
     sources.append(ROOT / "tools/test_craft_project_recovery.lua")
@@ -210,6 +211,10 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-unique-review.log").write_text(filter_unique.stdout)
     assert filter_unique.returncode == 0, filter_unique.stdout
+    picker_reasons = subprocess.run(lua_command + ["../tools/test_crafting_picker_reasons.lua"], cwd=ROOT / "src",
+                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-picker-reasons.log").write_text(picker_reasons.stdout)
+    assert picker_reasons.returncode == 0, picker_reasons.stdout
     atlas_removal = subprocess.run(lua_command + ["../tools/test_atlas_remove_ui.lua"], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-removal-controls.log").write_text(atlas_removal.stdout)
