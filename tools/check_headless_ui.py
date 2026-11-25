@@ -69,6 +69,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_unique_fractional_ui.lua")
     sources.append(ROOT / "tools/test_unique_multirange_roundtrip.lua")
     sources.append(ROOT / "tools/test_unique_jewel_quiver_divine.lua")
+    sources.append(ROOT / "tools/test_unique_variant_bases.lua")
     sources.append(ROOT / "tools/test_unique_multiple_targets.lua")
     sources.append(ROOT / "tools/test_unique_blessed_ui.lua")
     sources.append(ROOT / "tools/test_jewel_roll_ui.lua")
@@ -276,6 +277,10 @@ def main():
                                         env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "unique-jewel-quiver-divine.log").write_text(unique_jewel_quiver.stdout)
     assert unique_jewel_quiver.returncode == 0, unique_jewel_quiver.stdout
+    unique_variant_bases = subprocess.run(lua_command + ["../tools/test_unique_variant_bases.lua"], cwd=ROOT / "src",
+                                         env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "unique-variant-bases.log").write_text(unique_variant_bases.stdout)
+    assert unique_variant_bases.returncode == 0, unique_variant_bases.stdout
     unique_multiple = subprocess.run(lua_command + ["../tools/test_unique_multiple_targets.lua"], cwd=ROOT / "src",
                                      env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "unique-multiple-targets-controls.log").write_text(unique_multiple.stdout)

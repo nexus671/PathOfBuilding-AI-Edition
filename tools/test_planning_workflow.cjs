@@ -509,6 +509,7 @@ async function main(){
   for (const itemText of [
     'Rarity: UNIQUE\nAnatomical Knowledge\nCobalt Jewel\nItem Level: 86\nRadius: Large\n7% increased maximum Life\nAdds 1 to Maximum Life per 3 Intelligence Allocated in Radius',
     "Rarity: UNIQUE\nAhuana's Bite\nSharktooth Arrow Quiver\nItem Level: 86\nImplicits: 1\nGain 7 Life per Enemy Hit with Attacks\nAdds 35 to 65 Cold Damage to Attacks\n+25% to Cold Resistance\nEnemies Chilled by your Hits have Damage taken increased by Chill Effect\nChill Enemies as though dealing 80% more Damage",
+    "Rarity: UNIQUE\nAsphyxia's Wrath\nFeathered Arrow Quiver\nItem Level: 86\nImplicits: 1\n25% increased Projectile Speed\nGrants Level 5 Frostbite\n10% increased Attack Speed\n+35% to Cold Resistance\n35% increased Chill Duration on Enemies\nGain 20% of Physical Damage as Extra Cold Damage\n8% chance to Freeze\nHexes Transfer to all Enemies within 3 metres when Hexed Enemy dies",
   ]) {
     const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText,query:'divine',limit:10},'inspected');
     const option=inspected.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='divine');assert.equal(option.available,true);

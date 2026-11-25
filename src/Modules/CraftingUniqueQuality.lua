@@ -493,8 +493,10 @@ local function divinePlan(raw,allowFixed)
 	uniqueSocketRestriction(item.title)
 	local candidates={}
 	for _,template in ipairs(uniquesByName[item.title] or {}) do
-		local base=template:match("^%s*[^\r\n]+[\r\n]+([^\r\n]+)")
-		if base==item.baseName then candidates[#candidates+1]=template end
+		for line in template:gmatch("[^\r\n]+") do
+			local plain=uniqueSourceLine(line)
+			if plain==item.baseName then candidates[#candidates+1]=template;break end
+		end
 	end
 	if #candidates~=1 then return nil,"This unique's variant needs identification before Divine rolls" end
 	local template=candidates[1];local levelAsModifier=false
@@ -503,6 +505,8 @@ local function divinePlan(raw,allowFixed)
 	else template=template:gsub("^(%s*[^\r\n]+[\r\n]+[^\r\n]+)","%1\nItem Level: "..item.itemLevel,1) end
 	local parsed,reference=pcall(function() return new("Item"):Item("Rarity: UNIQUE\n"..template) end)
 	if not parsed or not reference.base then return nil,"The bundled unique template could not be verified" end
+	local referenceBase=reference.baseLines and reference.baseLines[item.baseName]
+	if not referenceBase then return nil,"The bundled unique base could not be verified" end
 	if reference.usesVariantGroups then return nil,"This unique's variant groups need a separate Divine model" end
 	if catalystQuality>0 then
 		if #(reference.modMagnitudeMods or {})>0 then return nil,"Modifier magnitude changes need a separate Divine model" end
@@ -514,19 +518,21 @@ local function divinePlan(raw,allowFixed)
 		for line in raw:gmatch("[^\r\n]+") do if line:match("^Selected Variant:") then selected=tonumber(line:match("^Selected Variant:%s*(%d+)%s*$"));count=count+1 end end
 		if count>1 or count==1 and selected~=item.variant then return nil,"The saved variant selection is invalid" end
 	end
-	local selected,reason
+	local selected,reason,matchedBase
 	local first,last=1,reference.variantList and #reference.variantList or 1
 	if item.variantList then first,last=item.variant,item.variant end
 	for variant=first,last do
 		if reference.variantList then reference.variant=variant end
-		local plan,why=divinePlanForReference(raw,item,reference,allowFixed)
+		local validBase=not referenceBase.variantList or referenceBase.variantList[variant]
+		local plan,why
+		if validBase then matchedBase=true;plan,why=divinePlanForReference(raw,item,reference,allowFixed) end
 		if plan then
 			if selected then return nil,"This item matches multiple unique variants" end
 			selected=plan
 		else reason=reason or why end
 	end
 	if selected then return selected end
-	return nil,reason
+	return nil,reason or (not matchedBase and "The selected variant does not match this item's base")
 end
 
 function M.divineReason(raw) local _,reason=divinePlan(raw);return reason end
