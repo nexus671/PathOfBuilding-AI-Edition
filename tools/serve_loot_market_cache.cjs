@@ -334,6 +334,8 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
     const entry = cache.get(details.key);
     if (entry?.validUntil > now()) {
       stats.hits++;
+      cache.delete(details.key);
+      cache.set(details.key,entry);
       return Promise.resolve(entry);
     }
     if (running.has(details.key)) {

@@ -189,7 +189,7 @@ Optionally set `POB_MARKET_SNAPSHOT_DIRECTORY` to a separate, private, writable 
 
 The relay atomically stores validated responses with a positive shared cache lifetime. It preserves the original HTTP freshness time and expiry on restart. An expired cache lifetime requires upstream revalidation before the response can be used again. Snapshots older than one hour, incomplete writes, and invalid records are discarded. Private, no-store, and immediate-revalidation responses stay out of the disk cache.
 
-The cache retains up to 48 entries and 48 MiB of response bodies. The **snapshots** section of **/health** reports restored and discarded snapshots and storage errors without exposing paths or payloads. The HTTPS qualification tool fails when it observes a storage error. Fix the private directory and restart to verify recovery.
+The cache retains up to 48 entries and 48 MiB of response bodies. It evicts the least recently used entries and drops their snapshots. The **snapshots** section of **/health** reports restored and discarded snapshots and storage errors without exposing paths or payloads. The HTTPS qualification tool fails when it observes a storage error. Fix the private directory and restart to verify recovery.
 
 When the configured shared cache rejects an upstream response, **Last attempt** can distinguish a stale feed from an invalid or oversized response alongside HTTP 502. Older caches can still report a generic provider error.
 

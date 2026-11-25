@@ -121,10 +121,13 @@ test('keeps recovery storage within the in-memory entry limit and cleans interru
   assert.equal(readdirSync(snapshotDirectory).includes(orphan),false);
   assert.equal(readFileSync(join(snapshotDirectory,'unrelated.txt'),'utf8'),'keep');
   await first.close();
-  const second = await fixture(t,provider,undefined,{snapshotDirectory,offset:1000});
+  const second = await fixture(t,()=>{throw new Error('No upstream expected after restart');},
+    undefined,{snapshotDirectory,offset:1000});
   const health = await (await second.request('/health')).json();
   assert.equal(health.cached,48);
   assert.equal(health.snapshots.restored,48);
+  assert.equal(await (await second.request('/exchange/current/overview?league=League+47&type=Currency')).text(),priceBody);
+  assert.equal(second.requests.length,0);
 });
 
 test('reports snapshot directory failure while validated prices remain available from memory',async t=>{
