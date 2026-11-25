@@ -1,4 +1,5 @@
 """Extract a historical rolled-jewel fixture from a local PC Public Stashes capture."""
+# cspell:ignore rareonly
 
 import argparse
 import json

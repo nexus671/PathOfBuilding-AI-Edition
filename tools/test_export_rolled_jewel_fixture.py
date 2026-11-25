@@ -1,4 +1,5 @@
 """Check the rolled-jewel fixture against the native listing matcher."""
+# cspell:ignore lupa
 
 from copy import deepcopy
 import json
