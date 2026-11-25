@@ -486,6 +486,7 @@ function A.extend(M,api)
 			end
 		end
 		if tagged > 0 and not model.unresolvedEldritch then model.initial.implicits=imported end
+		M.registerRollModifierIds(model)
 		return model
 	end
 	local function pool(model,state,options)
@@ -1145,7 +1146,7 @@ function A.extend(M,api)
 				local entries={}; for _,entry in ipairs(source.affixes) do if influenced(from,entry.id) then entries[#entries+1]=entry end end
 				assert(#entries > 0,"Each item needs an influenced modifier")
 				local chosen=copyTable(entries[math.floor(random()*#entries)+1])
-				if M.requiresRollSource(chosen) and not chosen.legacySource then chosen.legacySource=M.toItem(from,source).raw end
+				if M.requiresRollSource(chosen,from) and not chosen.legacySource then chosen.legacySource=M.toItem(from,source).raw end
 				return chosen
 			end
 			local left,right=select(model,state),select(donor,other)

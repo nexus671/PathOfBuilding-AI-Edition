@@ -17,7 +17,7 @@ function M.validate(raw,run,models)
 			local function preserve(snapshotState)
 				local snapshot
 				for _,entry in ipairs(snapshotState.affixes or {}) do
-					if simulator.requiresRollSource(entry) and not entry.legacySource then
+					if simulator.requiresRollSource(entry,itemModel) and not entry.legacySource then
 						snapshot=snapshot or simulator.toItem(model,snapshotState).raw;entry.legacySource=snapshot
 					end
 				end
