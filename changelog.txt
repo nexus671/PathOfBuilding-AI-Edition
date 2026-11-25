@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1300][2026/11/24]
+
+* Improve text measurement and rendering in headless UI tests.
+
 VERSION[2.69.0-ai.preview1299][2026/11/24]
 
 * Correct intermediate rolls for recognized spell-suppression modifiers.
