@@ -3,6 +3,55 @@ local output=arg[1];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave
 local sim=require("Modules.CraftingSimulator");local raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';local model=sim.model(raw)
 local state=copyTable(model.initial);state.rarity="RARE";state.affixes={{id="IncreasedLife4",range=0.8}}
 local regen=assert(model.byId.LifeRegeneration2)
+local influenced=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86\nShaper Item")
+local suppression=assert(influenced.byId.ChanceToDodgeAttacksInfluence2)
+local describe=LoadModule("Modules/StatDescriber")
+for index,draw in ipairs({0,0.34,0.67}) do
+ local range=sim.rollRange(suppression,function() return draw end)
+ local expected=({9,10,12})[index]
+ local translated=describe({["base_spell_suppression_chance_150%_of_value"]=index+5},"stat_descriptions")
+ assert(translated[1]=="+"..expected.."% chance to Suppress Spell Damage")
+ assert(sim.baseRollValue(suppression,range)==expected,"Suppression raw roll did not match its translation")
+ local trial=copyTable(influenced.initial);trial.rarity="RARE";trial.affixes={{id="ChanceToDodgeAttacksInfluence2",range=range}}
+ assert(sim.itemText(influenced,trial):find("+"..expected.."% chance to Suppress Spell Damage",1,true),"Suppression roll did not survive item rendering")
+end
+local suppressionState=copyTable(influenced.initial);suppressionState.rarity="RARE";suppressionState.affixes={{id="ChanceToDodgeAttacksInfluence2",range=0}}
+local suppressionReroll=sim.action(influenced,suppressionState,{method="divine"},function() return 0.34 end)
+assert(sim.matches(suppressionReroll,{{anyOf={"ChanceToDodgeAttacksInfluence2"},minBaseValue=10,maxBaseValue=10}},nil,influenced),"Divine suppression goal did not match the raw middle roll")
+assert(sim.itemText(influenced,suppressionReroll):find("+10% chance to Suppress Spell Damage",1,true),"Divine suppression roll rendered incorrectly")
+local legacyBase=sim.model("Rarity: NORMAL\nTwo-Toned Boots\nItem Level: 86\nRedeemer Item")
+local legacyState=copyTable(legacyBase.initial);legacyState.rarity="RARE";legacyState.affixes={{id="ChanceToDodgeAttacksInfluence2",range=0}}
+local legacyRaw=sim.toItem(legacyBase,legacyState).raw;local legacyModel=sim.model(legacyRaw)
+assert(legacyModel.initial.affixes[1].id=="ChanceToDodgeAttacksInfluence2","Legacy suppression identity did not survive import")
+local suppressionRecipe={steps={{method="divine"}},targets={{anyOf={"ChanceToDodgeAttacksInfluence2"},minBaseValue=10,maxBaseValue=10}}}
+local suppressionRun=sim.simulate(legacyRaw,suppressionRecipe,{trials=120,maxActions=1,seed=13})
+assert(suppressionRun.successes>15 and suppressionRun.successes<65,"Suppression target should occur in sampled Divine rolls")
+local delveRaw="Rarity: NORMAL\nSlink Boots\nItem Level: 86";local delve=sim.model(delveRaw)
+local delveMod=assert(delve.byId.DelveArmourDodgeAndSpellDodge_)
+for index,draw in ipairs({0,0.34,0.67,0.99}) do
+ local expected=({4,4,6,6})[index]
+ assert(sim.baseRollValue(delveMod,sim.rollRange(delveMod,function() return draw end))==expected,"Delve suppression must use the visible raw stat, not a dummy stat")
+end
+local delveState=copyTable(delve.initial);delveState.rarity="RARE";delveState.affixes={{id="DelveArmourDodgeAndSpellDodge_",range=0}}
+local delveSource=sim.toItem(delve,delveState).raw;local delveImported=sim.model(delveSource)
+assert(delveImported.initial.affixes[1].id=="DelveArmourDodgeAndSpellDodge_","Delve suppression identity did not survive import")
+local delveRecipe={steps={{method="divine"}},targets={{anyOf={"DelveArmourDodgeAndSpellDodge_"},minBaseValue=5,maxBaseValue=5}}}
+assert(sim.simulate(delveSource,delveRecipe,{trials=120,maxActions=1,seed=13}).successes==0,"A 5% Delve roll must not appear in the modeled recipe")
+local checkedSuppression=0;local metadata=require("Modules.CraftingAdvanced").data().mods
+for id,mod in pairs(influenced.byId) do
+ local stats=metadata[id] and metadata[id].stats;local stat=stats and #stats==1 and stats[1]
+ if stat and stat.id=="base_spell_suppression_chance_150%_of_value" and #mod==1 and mod[1]:match("^%+%(%d+%-%d+%)%% chance to Suppress Spell Damage$") and stat.max>stat.min then
+  local steps=stat.max-stat.min
+  for offset=0,steps do
+   local range=sim.rollRange(mod,function() return (offset+0.1)/(steps+1) end)
+   local translated=describe({[stat.id]=stat.min+offset},"stat_descriptions")
+   local expected=tonumber(translated[1]:match("%+(%d+)%%"))
+   assert(sim.baseRollValue(mod,range)==expected,id.." raw suppression translation mismatch")
+  end
+  checkedSuppression=checkedSuppression+1
+ end
+end
+assert(checkedSuppression>1,"Expected several variable suppression tiers")
 local first=sim.rollRange(regen,function() return 0.001 end);assert(first==0)
 local middle=sim.rollRange(regen,function() return 0.5 end);assert(math.abs(middle-177/354)<1e-10)
 assert(sim.baseRollValue(regen,middle)==5.1)

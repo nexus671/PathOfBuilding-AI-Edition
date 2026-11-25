@@ -279,10 +279,35 @@ function A.extend(M,api)
 	local originalCatalog=M.catalog
 	local originalRoll=M.rollRange
 	local identities=setmetatable({},{__mode="k"})
+	local suppressionRanges=setmetatable({},{__mode="k"})
 	local veiledCache={}
 	function M.rollRange(mod,random)
 		local regeneration=M.rawRegenRange(mod,random);if regeneration~=nil then return regeneration end
 		local metadata=A.data().mods[identities[mod]] or mod.clientStats and {stats=mod.clientStats}
+		-- The 150% suppression stat truncates each raw integer after scaling.
+		-- Interpolating rounded endpoints gives 11 for raw 7 instead of 10.
+		local suppression=suppressionRanges[mod]
+		if suppression==nil then
+			suppression=false
+			local stat;local supported=metadata and metadata.stats and #metadata.stats>0
+			for _,entry in ipairs(metadata and metadata.stats or {}) do
+				if entry.id=="base_spell_suppression_chance_150%_of_value" and not stat then stat=entry
+				elseif entry.id~="dummy_stat_display_nothing" then supported=false end
+			end
+			local line=#mod==1 and mod[1];local low,high
+			if line then low,high=line:match("^%+%((%d+)%-(%d+)%)%% chance to Suppress Spell Damage$") end
+			low,high=tonumber(low),tonumber(high)
+			if supported and stat and stat.min>=0 and stat.max>stat.min and stat.max-stat.min<=1000 and low and high and high>low and math.floor(stat.min*1.5)==low and math.floor(stat.max*1.5)==high then
+				local valid=true
+				for raw=stat.min,stat.max do local value=math.floor(raw*1.5);if M.baseRollValue(mod,(value-low)/(high-low),1)~=value then valid=false;break end end
+				if valid then suppression={min=stat.min,steps=stat.max-stat.min,low=low,high=high} end
+			end
+			if metadata then suppressionRanges[mod]=suppression end
+		end
+		if suppression then
+			local raw=suppression.min+math.floor(random()*(suppression.steps+1))
+			return (math.floor(raw*1.5)-suppression.low)/(suppression.high-suppression.low)
+		end
 		local varying={};for _,stat in ipairs(metadata and metadata.stats or {}) do if stat.max ~= stat.min then varying[#varying+1]=stat end end
 		local display=0;for _,line in ipairs(mod) do for range in line:gmatch("%b()") do if range:match("%-?%d+%.?%d*%-%-?%d+%.?%d*") then display=display+1 end end end
 		if #varying == 1 and display == 1 then
