@@ -50,7 +50,13 @@ main.popups={};ui:restore();newBuild()
 local copiedProject={id="copied-watcher",title="Copied Watcher's Eye",slot="Jewel 2311",startingItem=pastedOriginal,goals={},steps={}}
 build.savers.CraftingProjects:Upsert(copiedProject);local copiedUI=require("Modules.HeadlessUI").install({width=960,height=640});copiedUI:bind(build)
 local copiedControls=require("Classes.CraftingUniqueQualityControl").Open(build,copiedProject);assert(copiedControls.divine:IsEnabled());copiedUI:click("divine")
-local copiedPicker=main.popups[1].controls;copiedPicker.stat:SelByValue("modifier:1","val");copiedUI:text("target",tostring(copied[1].max));assert(copiedPicker.plan:IsEnabled());copiedUI:click("plan")
+local copiedPicker=main.popups[1].controls
+copiedPicker.stat.searchTerm="Grace";copiedPicker.stat:UpdateSearch()
+assert(copiedPicker.stat:GetMatchCount()==1,"Searching the end of a long modifier must find it")
+local found;for index,entry in ipairs(copiedPicker.stat.list) do if copiedPicker.stat.searchInfos[index].matches then found=entry end end
+assert(found and found.label:find("affected by Grace",1,true),"The complete modifier must be available in the dropdown")
+assert(copiedPicker.stat.droppedWidth>copiedPicker.stat.width and copiedPicker.stat.droppedWidth<=468,"The modifier list should expand within the dialog")
+copiedPicker.stat:ResetSearch();copiedPicker.stat:SelByValue("modifier:1","val");copiedUI:text("target",tostring(copied[1].max));assert(copiedPicker.plan:IsEnabled());copiedUI:click("plan")
 local copiedXML=build:SaveDB("Copied Watcher");loadBuildFromXML(copiedXML,"Copied Watcher");copiedUI:bind(build)
 local copiedSaved=assert(build.savers.CraftingProjects.projects[1]);assert(copiedSaved.nativeRecipe.requirements.uniqueModifier.line==copied[1].line)
 local copiedResult=require("Modules.CraftingSimulator").simulate(copiedSaved.startingItem,copiedSaved.nativeRecipe,{trials=4,maxActions=4,seed=12345});assert(copiedResult.sampled and copiedResult.trials==4)
