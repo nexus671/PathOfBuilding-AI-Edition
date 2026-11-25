@@ -1,4 +1,4 @@
-// cspell:ignore Rootfs
+// cspell:ignore addext keyout Rootfs
 'use strict';
 
 const assert = require('node:assert/strict');
