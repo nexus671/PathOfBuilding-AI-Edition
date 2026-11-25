@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1314][2026/11/25]
+VERSION[2.69.0-ai.preview1315][2026/11/25]
 
 * Compare copied and equipped rare quivers against exact public stash listings.
+
+VERSION[2.69.0-ai.preview1314][2026/11/25]
+
+* Plan supported Divine Orb rolls on unique jewels and quivers.
 
 VERSION[2.69.0-ai.preview1313][2026/11/25]
 
