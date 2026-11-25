@@ -1,5 +1,5 @@
 """Collect a bounded PC listing capture from GGG on an authorized backend."""
-# cspell:ignore lexists newurl urlencode
+# cspell:ignore lexists NBLCK newurl urlencode
 
 import argparse
 from contextlib import contextmanager
