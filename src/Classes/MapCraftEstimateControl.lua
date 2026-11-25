@@ -163,8 +163,14 @@ function M.Open(build,options)
 		return false
 	end
 	controls.run.enabled=function() return not active and #groups+#avoid>0 and not unavailableWanted() end
-	controls.run.tooltipText=function() return unavailableWanted() and "Remove or replace unavailable wanted modifiers before estimating." or "Select at least one wanted or avoided modifier before estimating." end
+	controls.run.tooltipText=function()
+		if active then return "Wait for the current estimate or cancel it first." end
+		if unavailableWanted() then return "Remove or replace unavailable wanted modifiers before estimating." end
+		if #groups+#avoid==0 then return "Select at least one wanted or avoided modifier before estimating." end
+		return "Estimate the cost and chance of rolling these targets."
+	end
 	button("cancel",204,333,120,"Cancel",function() if active and tasks.job==active then tasks.cancel() end end);controls.cancel.enabled=function() return active~=nil end
+	controls.cancel.tooltipText=function() return active and "Stop the current estimate." or "No estimate is running." end
 	button("price",332,333,150,"Orb price...",function()
 		local popup={};local action=state.rarity=="rare" and "Chaos Orb" or "Orb of Alteration"
 		ui.description(popup,"help",16,28,608,40,{"Enter your price per "..action..". This is a manual quote, not a live market price."},14)
@@ -182,13 +188,17 @@ function M.Open(build,options)
 		ui.style(popup,{keep=true});main:OpenPopup(640,206,"Price per orb",popup,nil,"amount","close")
 	end)
 	controls.price.label=function() return price and "Edit orb price" or "Set orb price" end
-	controls.price.enabled=function() return not active end;controls.price.tooltipText="Set an optional manual price per orb. No market prices are fetched."
+	controls.price.enabled=function() return not active end;controls.price.tooltipText=function() return active and "Wait for the current estimate or cancel it before changing the price." or "Set an optional manual price per orb. No market prices are fetched." end
 	button("fromMap",16,height-48,150,"Use map modifiers",function()
 		for _,id in ipairs(wanted) do for _,blocked in ipairs(avoid) do if id==blocked then main:OpenMessagePopup("Wanted targets","Remove the matching avoided modifier first.");return end end end
 		groups={};for _,id in ipairs(wanted) do groups[#groups+1]={id} end;selectGroup(1);invalidate();refresh()
 	end)
 	controls.fromMap.enabled=function() return not active and #wanted>0 end
-	controls.fromMap.tooltipText="Replace wanted targets with the modifiers currently on the map."
+	controls.fromMap.tooltipText=function()
+		if active then return "Wait for the current estimate or cancel it first." end
+		if #wanted==0 then return "The map has no selected modifiers to use as targets." end
+		return "Replace wanted targets with the modifiers currently on the map."
+	end
 	button("keepSettings",174,height-48,170,"Keep targets",function()
 		local settings={wantedGroups=copyTable(groups),avoid=copyTable(avoid),price=price and copyTable(price) or nil,trials=tonumber(controls.trials.buf),maxAttempts=tonumber(controls.attempts.buf)}
 		local ok,value=pcall(require("Modules.AtlasPlanner").validateMapEstimate,settings)
@@ -196,8 +206,15 @@ function M.Open(build,options)
 		options.saveSettings(value);settingsKept=true;report({"Targets ready. Keep the map draft, keep the Atlas plan, then save the build."})
 	end)
 	controls.keepSettings.shown=options.saveSettings~=nil;controls.keepSettings.enabled=function() return not active and options.saveSettings~=nil end
+	controls.keepSettings.tooltipText=function() return active and "Wait for the current estimate or cancel it before keeping targets." or "Keep these targets in the map draft." end
 	button("use",width-324,height-48,180,"Use example result",function() if result and result.sampleSuccess then options.apply(result.sampleSuccess);alive=false;main:ClosePopup() end end)
 	controls.use.enabled=function() return not active and result and result.sampleSuccess~=nil end
+	controls.use.tooltipText=function()
+		if active then return "Wait for the current estimate to finish." end
+		if not result then return "Run an estimate to generate an example result." end
+		if not result.sampleSuccess then return "The estimate did not produce a successful example." end
+		return "Apply the successful example to the map draft."
+	end
 	button("close",width-132,height-48,116,"Close",function() alive=false;if active and tasks.job==active then tasks.cancel() end;main:ClosePopup() end)
 	ui.style(controls,{run=true});refresh();report({"Choose targets, then run an estimate. Up to 20,000 attempts across all trials.","Unavailable wanted modifiers must be removed or replaced before estimating. Unavailable avoided modifiers are retained and reported."})
 	main:OpenPopup(width,height,"Estimate map rerolls",controls,nil,nil,"close");return controls
