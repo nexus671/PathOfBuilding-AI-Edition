@@ -365,6 +365,7 @@ local function showBaselineReview(title, plan, versions, save)
 		details[#details+1] = string.format("%d protected visibility checks and %d saved examples",plan.checked,plan.examplesChecked)
 	end
 	if plan.comparison then details[#details+1] = plan.comparison end
+	if plan.warnings and #plan.warnings>0 then details[#details+1] = string.format("%d review warning%s in Examples",#plan.warnings,#plan.warnings==1 and "" or "s") end
 	details[#details+1] = #plan.blocks == 0 and "Apply to the draft after reviewing the changes."
 		or "Resolve the changes in the Blocked category before applying."
 	local entries = {{id="summary",label="Baseline update summary",category="Summary",details=details}}
@@ -372,7 +373,7 @@ local function showBaselineReview(title, plan, versions, save)
 		entries[#entries+1] = {id="protected-"..index,label="Baseline update blocked",category="Blocked",details={problem}}
 	end
 	for index, problem in ipairs(plan.warnings or {}) do
-		entries[#entries+1] = {id="example-"..index,label="Saved example changed",category="Examples",details={problem}}
+		entries[#entries+1] = {id="example-"..index,label="Review warning",category="Examples",details={problem}}
 	end
 	for index, removed in ipairs(plan.removedConditions or {}) do
 		entries[#entries+1] = {id="removed-"..index,label=removed.text:sub(1,100),category="Removed conditions",

@@ -62,16 +62,24 @@ function M.evaluate(previous, candidate, sampleSets)
 		end
 	end
 	if unresolved>0 then result.warnings[#result.warnings+1]=unresolved.." protected examples have an unknown previous result; review them in the game or supply exact item properties." end
+	local skippedExamples, uncertainExamples = 0, 0
 	for _, set in ipairs(sampleSets or {}) do
 		for _, item in ipairs(set.samples) do
-			if result.examplesChecked >= 100 then break end
-			result.examplesChecked = result.examplesChecked+1
-			local old, new = parser.simulate(previous,item), parser.simulate(candidate,item)
-			if old.action ~= new.action then
-				result.warnings[#result.warnings+1] = string.format("%s: %s, %s to %s",set.title,item.BaseType or "Example",old.action,new.action)
+			if result.examplesChecked >= 100 then
+				skippedExamples = skippedExamples + 1
+			else
+				result.examplesChecked = result.examplesChecked+1
+				local old, new = parser.simulate(previous,item), parser.simulate(candidate,item)
+				if old.action == "Unknown" or new.action == "Unknown" then
+					uncertainExamples = uncertainExamples + 1
+				elseif old.action ~= new.action then
+					result.warnings[#result.warnings+1] = string.format("%s: %s, %s to %s",set.title,item.BaseType or "Example",old.action,new.action)
+				end
 			end
 		end
 	end
+	if uncertainExamples>0 then result.warnings[#result.warnings+1]=string.format("%d saved example%s %s an unknown result; review in the game or supply exact item properties.",uncertainExamples,uncertainExamples==1 and "" or "s",uncertainExamples==1 and "has" or "have") end
+	if skippedExamples>0 then result.warnings[#result.warnings+1]=string.format("%d saved example%s %s not checked (the review checks at most 100).",skippedExamples,skippedExamples==1 and "" or "s",skippedExamples==1 and "was" or "were") end
 	return result
 end
 
