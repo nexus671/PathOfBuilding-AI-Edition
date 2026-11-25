@@ -32,6 +32,9 @@ assert(math.abs(abyssReroll.affixes[1].range-abyssState.affixes[1].range)<1e-9,"
 assert(sim.matches(abyssReroll,{{anyOf={abyssId},minBaseValue=3.3,maxBaseValue=3.3}},nil,abyssImported),"Abyss displayed-value target did not match")
 assert(sim.matches(abyssReroll,{{anyOf={abyssId},minRoll=0}},nil,abyssImported),"The rounded minimum must satisfy a zero roll threshold")
 assert(not sim.matches(abyssReroll,{{anyOf={abyssId},minRoll=0.01}},nil,abyssImported),"The rounded minimum must not satisfy a higher roll threshold")
+local secondTick=sim.action(abyssImported,abyssImported.initial,{method="divine"},function()return 1.1/45 end)
+assert(sim.matches(secondTick,{{anyOf={abyssId},minRoll=0.02}},nil,abyssImported),"The second raw tick should exceed 2% of the native range")
+assert(not sim.matches(secondTick,{{anyOf={abyssId},minRoll=0.03}},nil,abyssImported),"The second raw tick should stay below 3% of the native range")
 abyssReroll.affixes[1].range={abyssReroll.affixes[1].range}
 assert(sim.matches(abyssReroll,{{anyOf={abyssId}}},nil,abyssImported),"A singleton range must preserve the valid raw tick")
 abyssImported.initial.affixes[1].range=-0.5

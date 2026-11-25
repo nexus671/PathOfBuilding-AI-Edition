@@ -521,12 +521,17 @@ local function rawRegenSteps(mod,line,low,high)
  if (outside and mod.type~="Prefix" and mod.type~="Suffix") or math.abs(first)>100 or math.abs(last)>100 or firstDisplay==nil or lastDisplay==nil or firstDisplay~=M.baseRollValue(mod,0,1) or lastDisplay~=M.baseRollValue(mod,1,1) then rawRegenCache[mod]=false;return end
  local bounds={steps=steps,first=first,last=last};rawRegenCache[mod]=bounds;return bounds
 end
-function M.isRawRegenRange(mod,value)
- local line=#mod==1 and mod[1];if not line then return false end
+function M.rawRegenPosition(mod,value)
+ local line=#mod==1 and mod[1];if not line then return end
  local low,high=line:match("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)")
- local raw=low and rawRegenSteps(mod,line,tonumber(low),tonumber(high));if not raw then return false end
+ local raw=low and rawRegenSteps(mod,line,tonumber(low),tonumber(high));if not raw then return end
  local step=(value-raw.first)/(raw.last-raw.first)*raw.steps
- return step>=-1e-7 and step<=raw.steps+1e-7 and math.abs(step-math.floor(step+0.5))<1e-7
+ if step>=-1e-7 and step<=raw.steps+1e-7 and math.abs(step-math.floor(step+0.5))<1e-7 then
+  return math.max(0,math.min(1,step/raw.steps))
+ end
+end
+function M.isRawRegenRange(mod,value)
+ return M.rawRegenPosition(mod,value)~=nil
 end
 function M.rawRegenRange(mod,random)
  local line=#mod==1 and mod[1];if not line then return end
@@ -790,9 +795,10 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   end
   for _,entry in ipairs(entries) do
    local roll=type(entry.range) == "table" and math.min(unpack(entry.range)) or entry.range or 0.5
-   if (roll<0 or roll>1) and model and (type(entry.range)=="number" or type(entry.range)=="table" and #entry.range==1) then
+   if model and (type(entry.range)=="number" or type(entry.range)=="table" and #entry.range==1) then
     local mod=model.byId and model.byId[entry.id]
-    if mod and M.isRawRegenRange(mod,roll) then roll=math.max(0,math.min(1,roll)) end
+    local position=mod and M.rawRegenPosition(mod,roll)
+    if position then roll=position end
    end
    for _,id in ipairs(group.anyOf) do if entry.id == id and roll >= (group.minRoll or 0) and (group.fractured == nil or (entry.fractured or false) == group.fractured) and (group.crafted == nil or (entry.crafted or false) == group.crafted) then
     local matches=true
