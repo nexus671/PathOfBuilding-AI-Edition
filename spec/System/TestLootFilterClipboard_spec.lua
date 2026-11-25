@@ -218,6 +218,43 @@ describe("Copied loot-filter items",function()
 			assert.equal("matched",parser.simulate(parser.parse('Show\n Class == "'..class..'"\n Quality >= 1'),item).status)
 		end
 	end)
+	it("recognizes exceptional gems without guessing unknown or mismatched names",function()
+		local function gem(class,name) return clipboard.parse("Item Class: "..class.."\nRarity: Gem\n"..name.."\n--------") end
+		local exceptional=gem("Support Skill Gems","Empower Support")
+		local ordinary=gem("Active Skill Gems","Fireball")
+		local unknown=gem("Support Skill Gems","Unknown Future Support")
+		local mismatch=gem("Active Skill Gems","Empower Support")
+		assert.is_true(exceptional.Exceptional);assert.is_false(ordinary.Exceptional)
+		assert.is_nil(unknown.Exceptional);assert.is_nil(mismatch.Exceptional)
+		local filter=parser.parse("Hide\n Exceptional True\nShow")
+		assert.equal("Hide",parser.simulate(filter,exceptional).action)
+		assert.equal("Show",parser.simulate(filter,ordinary).action)
+		assert.equal("unknown",parser.simulate(filter,unknown).status)
+		assert.equal("unknown",parser.simulate(filter,mismatch).status)
+	end)
+	it("does not infer exceptional gems from conflicting or incomplete records",function()
+		local fresh=assert(loadfile("Modules/LootFilterClipboard.lua"))()
+		data.gems.__filterTestA={itemBaseName="Test Support",grantedEffect={support=true},tags={exceptional=true}}
+		data.gems.__filterTestB={itemBaseName="Test Support",grantedEffect={support=true}}
+		data.gems.__filterTestC={itemBaseName="Other Test Support",tags={exceptional=true}}
+		data.gems.__filterTestD={itemBaseName="Conflicting Test Support",grantedEffect={support=true},tags={exceptional=true}}
+		data.gems.__filterTestE={itemBaseName="Conflicting Test Support",grantedEffect={support=true},tags={}}
+		data.gems.__filterTestF={id="__filterTestF",itemBaseName="Ambiguous Test Skill",name="Ambiguous Test Skill",gameId="__testGame",variantId="TestEffect",grantedEffectId="TestEffect",grantedEffect={support=false},tags={}}
+		data.gems.__filterTestG={id="__filterTestG",itemBaseName="Ambiguous Test Skill",vaalGem=true,grantedEffect={support=false},tags={}}
+		local oldLookup=data.gemForBaseName["ambiguous test skill"];data.gemForBaseName["ambiguous test skill"]="__filterTestF"
+		local ok,problem=pcall(function()
+			for _,name in ipairs({"Test Support","Other Test Support","Conflicting Test Support"}) do
+				local item=fresh.parse("Item Class: Support Skill Gems\nRarity: Gem\n"..name.."\n--------")
+				assert.is_nil(item.Exceptional)
+			end
+			local mixed=fresh.parse("Item Class: Active Skill Gems\nRarity: Gem\nAmbiguous Test Skill\n--------")
+			assert.is_nil(mixed.TransfiguredGem)
+		end)
+		data.gems.__filterTestA=nil;data.gems.__filterTestB=nil;data.gems.__filterTestC=nil
+		data.gems.__filterTestD=nil;data.gems.__filterTestE=nil
+		data.gems.__filterTestF=nil;data.gems.__filterTestG=nil;data.gemForBaseName["ambiguous test skill"]=oldLookup
+		assert.is_true(ok,problem)
+	end)
 	it("recognizes known copied transfigured gems while leaving unknown variants uncertain",function()
 		local function gem(name) return clipboard.parse("Item Class: Active Skill Gems\nRarity: Gem\n"..name.."\n--------\nLevel: 20") end
 		local transfigured=gem("Fireball of Radiation");assert.equal("Fireball",transfigured.TransfiguredGem)
@@ -225,8 +262,13 @@ describe("Copied loot-filter items",function()
 		assert.equal("Hide",parser.simulate(parser.parse("Hide\n TransfiguredGem True\nShow"),transfigured).action)
 		local ordinary=gem("Fireball");assert.is_false(ordinary.TransfiguredGem)
 		assert.equal("Show",parser.simulate(parser.parse("Hide\n TransfiguredGem True\nShow"),ordinary).action)
+		local renamed=gem("Animate Guardian");assert.is_false(renamed.TransfiguredGem)
+		assert.equal("Show",parser.simulate(parser.parse("Hide\n TransfiguredGem True\nShow"),renamed).action)
 		local unknown=gem("Fireball of an Unknown Future Variant");assert.is_nil(unknown.TransfiguredGem)
 		assert.equal("unknown",parser.simulate(parser.parse("Hide\n TransfiguredGem True\nShow"),unknown).status)
+		local wrongClass=clipboard.parse("Item Class: Support Skill Gems\nRarity: Gem\nFireball of Radiation\n--------")
+		assert.is_nil(wrongClass.TransfiguredGem)
+		assert.equal("unknown",parser.simulate(parser.parse('Hide\n TransfiguredGem "Fireball"\nShow'),wrongClass).status)
 		local vaal=gem("Vaal Fireball");assert.is_nil(vaal.TransfiguredGem)
 	end)
 

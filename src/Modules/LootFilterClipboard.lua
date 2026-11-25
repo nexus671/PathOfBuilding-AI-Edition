@@ -2,6 +2,29 @@
 -- Hidden affix identities remain unknown.
 -- cspell:ignore RGBWAD
 local M={}
+-- A displayed gem name can have multiple data records. Infer Exceptional only
+-- when all records for that name and class agree, and leave unknown names unset.
+local exceptionalNames,ordinaryNames
+local function exceptionalGem(name,class)
+	if not exceptionalNames then
+		exceptionalNames={};ordinaryNames={}
+		for _,gem in pairs(data.gems) do
+			local classes=gem.grantedEffect and {gem.grantedEffect.support and "Support Gems" or "Skill Gems"} or {"Skill Gems","Support Gems"}
+			local value=gem.grantedEffect and type(gem.tags)=="table" and (gem.tags.exceptional and "yes" or "no") or "ambiguous"
+			for _,gemClass in ipairs(classes) do for _,base in pairs({gem.itemBaseName,gem.baseTypeName}) do
+				if base then
+					local key=gemClass.."\0"..base:lower();local existing=exceptionalNames[key]
+					exceptionalNames[key]=existing and existing~=value and "ambiguous" or value
+					local ordinary=gem.grantedEffect and not gem.grantedEffect.support and not gem.vaalGem and type(gem.id)=="string" and not gem.id:match("Alt[XYZ]$") and type(gem.variantId)=="string" and type(gem.grantedEffectId)=="string" and gem.variantId:lower()==gem.grantedEffectId:lower() and gem.itemBaseName==base
+					local kind=ordinary and "ordinary" or "other";local prior=ordinaryNames[key]
+					ordinaryNames[key]=prior and prior~=kind and "ambiguous" or kind
+				end
+			end end
+		end
+	end
+	local result=name and exceptionalNames[class.."\0"..name:lower()]
+	if result=="yes" then return true elseif result=="no" then return false end
+end
 function M.parse(raw,area)
 	assert(type(raw)=="string" and #raw>0 and #raw<=24000 and not raw:find("\0"),"Paste a copied game item (up to 24 KiB)")
 	raw=raw:gsub("\r\n","\n");local rarity=assert(raw:match("Rarity: (%a+)"),"The clipboard has no item rarity")
@@ -132,6 +155,9 @@ function M.parse(raw,area)
 		item.MapTier=tierInName
 	end
 	if class and class:find("Gems",1,true) then
+		if rarity:lower()=="gem" and (class=="Skill Gems" or class=="Support Gems") then
+			item.Exceptional=exceptionalGem(item.BaseType,class)
+		end
 		for line in raw:gmatch("[^\n]+") do
 			local level=line:match("^Level:%s*(%d+)")
 			if level then
@@ -143,7 +169,7 @@ function M.parse(raw,area)
 		-- Only infer a transfigured base when the bundled gem data identifies
 		-- one unambiguous ordinary gem with a matching displayed-name prefix.
 		local id=item.BaseType and data.gemForBaseName[item.BaseType:lower()];local gem=id and data.gems[id]
-		if gem and not gem.vaalGem then
+		if gem and not gem.vaalGem and class=="Skill Gems" and rarity:lower()=="gem" then
 			if id:match("Alt[XYZ]$") then
 				local found,ambiguous
 				for _,candidate in pairs(data.gemsByGameId[gem.gameId] or {}) do
@@ -152,7 +178,7 @@ function M.parse(raw,area)
 					end
 				end
 				if found and not ambiguous then item.TransfiguredGem=found end
-			elseif id==gem.gameId then item.TransfiguredGem=false end
+			elseif class=="Skill Gems" and ordinaryNames and ordinaryNames[class.."\0"..item.BaseType:lower()]=="ordinary" then item.TransfiguredGem=false end
 		end
 	end
 	local sockets
