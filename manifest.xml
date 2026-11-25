@@ -1663,7 +1663,7 @@
 	<File name="Classes/LootFilterImpactControl.lua" part="program" sha1="5e4bfcc865fc859ffa4627a64e31305430685f4e" />
 	<File name="Classes/LootFilterImportControl.lua" part="program" sha1="44045791e679f8228ac858e0fd1c9b3947ed2c15" />
 	<File name="Classes/LootFilterManagedEconomyControl.lua" part="program" sha1="3e64c1939f98910775acfe186ec1f8e5a7481d52" />
-	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="687e3949a0872694f260a7605ee2acdfe4d70b2c" />
+	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="725219aa8d20fab5f62d89c859c5427d784cf9a9" />
 	<File name="Classes/LootFilterModuleControl.lua" part="program" sha1="8b1822a802967708f03ae5091752c06876637186" />
 	<File name="Classes/LootFilterRareAuditControl.lua" part="program" sha1="efa6399a29109601bf86a398ba8c66ce43b669f0" />
 	<File name="Classes/LootFilterSceneControl.lua" part="program" sha1="1bc33be06c10aa0659eb9448fe517848cd6cbf75" />

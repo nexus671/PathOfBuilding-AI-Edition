@@ -100,7 +100,7 @@ local function openTradeHistory(savedLeague)
 			local period = os.date("!%Y-%m-%d %H:%M UTC",hour)
 			for _, quote in ipairs(exchange.review(markets,name~="" and name or nil)) do
 				entries[#entries+1] = {
-					id=tostring(#entries+1),category=quote.league,search=quote.league,
+					id=tostring(#entries+1),category="League "..quote.league,search=quote.league,
 					label=name=="" and (quote.name.." | "..quote.league) or quote.name,
 					details={quote.name,realm.name.." | "..quote.league,"Completed hour beginning "..period,
 						string.format("Average %.4g chaos per item",quote.price),

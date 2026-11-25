@@ -497,7 +497,7 @@ do
 	if output then compact:frame():write(output.."/ggg-trade-history-source.json") end
 	compact:click("load")
 	assert(main.popups[1].title=="Xbox completed trades")
-	compact:choose("category","Covens")
+	compact:choose("category","League Covens")
 	local function resultText()
 		local lines={}
 		for _,row in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
