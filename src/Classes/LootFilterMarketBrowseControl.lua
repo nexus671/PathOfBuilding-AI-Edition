@@ -48,18 +48,20 @@ local function reviewTradeRolls(target, league, compare, pinned)
 		local criteria=listings.propertyFilters(target,propertySelection)
 		local width=math.min(490,main.screenW-40)
 		local c={}
+		local suffixes={min="Min",max="Max"}
 		local function range(prefix,y,values)
 			for index, bound in ipairs({"min","max"}) do
 				local x=index==1 and 16 or width/2
-				ui.label(c,prefix..bound.."Label",x,y,index==1 and "Minimum" or "Maximum",14)
-				c[prefix..bound]=new("EditControl"):EditControl(ui.anchor,{x,y+20,width/2-24,28},
+				local name=prefix..suffixes[bound]
+				ui.label(c,name.."Label",x,y,index==1 and "Minimum" or "Maximum",14)
+				c[name]=new("EditControl"):EditControl(ui.anchor,{x,y+20,width/2-24,28},
 					tostring(values[bound] or ""),nil,nil,4)
 			end
 		end
 		local function readRange(prefix)
 			local values={}
 			for _, bound in ipairs({"min","max"}) do
-				local value=c[prefix..bound].buf
+				local value=c[prefix..suffixes[bound]].buf
 				if value~="" then values[bound]=value:match("^%d+$") and tonumber(value) or value end
 			end
 			return values
@@ -75,8 +77,8 @@ local function reviewTradeRolls(target, league, compare, pinned)
 			c.socketMatch=new("DropDownControl"):DropDownControl(ui.anchor,{16,y+20,width-32,28},{"Exact socket layout","Largest link group bounds"})
 			if criteria.links then c.socketMatch:SetSel(2) end
 			range("links",y+54,criteria.links or {min=criteria.largest,max=criteria.largest})
-			c.linksmin.enabled=function() return c.socketMatch.selIndex==2 end
-			c.linksmax.enabled=c.linksmin.enabled
+			c.linksMin.enabled=function() return c.socketMatch.selIndex==2 end
+			c.linksMax.enabled=c.linksMin.enabled
 			y=y+110
 		end
 		if pinned then
@@ -98,7 +100,7 @@ local function reviewTradeRolls(target, league, compare, pinned)
 		end)
 		c.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-126,y,110,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(c,{apply=true})
-		main:OpenPopup(width,y+46,"Trade item filters",c,nil,"levelmin","close")
+		main:OpenPopup(width,y+46,"Trade item filters",c,nil,"levelMin","close")
 	end
 	local function edit(row)
 		local width = math.min(490,main.screenW-40)

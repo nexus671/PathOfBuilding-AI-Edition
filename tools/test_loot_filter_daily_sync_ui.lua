@@ -2001,17 +2001,17 @@ Item Level: 86
 			return value
 		end
 		editedPage={next_change_id="armour",stashes={
-			stash(381,"First#0381",{alternateArmour(381,87,true,"BBBBRG",true,15)}),
-			stash(382,"Second#0382",{alternateArmour(382,89,true,"BBBBWG",true,25)}),
-			stash(383,"Third#0383",{alternateArmour(383,88,true,"BBBBGG",true,35)}),
+			stash(381,"First#0381",{alternateArmour(381,87,true,"B-B-B-B-R-G",true,15)}),
+			stash(382,"Second#0382",{alternateArmour(382,89,true,"B-B-B-B-W-G",true,25)}),
+			stash(383,"Third#0383",{alternateArmour(383,88,true,"B-B-B-B-G-G",true,35)}),
 			stash(384,"Near#0384",{
-				alternateArmour(384,86,true,"BBBBRG",true,1),
-				alternateArmour(385,90,true,"BBBBRG",true,1),
-				alternateArmour(386,88,false,"BBBBRG",true,1),
-				alternateArmour(387,88,"true","BBBBRG",true,1),
-				alternateArmour(388,88,true,"BBBBRG",false,1),
-				alternateArmour(389,88,true,"BBBBR",false,1),
-				alternateArmour(390,88,true,"BBBBRG",true,1,differentDefence.properties),
+				alternateArmour(384,86,true,"B-B-B-B-R-G",true,1),
+				alternateArmour(385,90,true,"B-B-B-B-R-G",true,1),
+				alternateArmour(386,88,false,"B-B-B-B-R-G",true,1),
+				alternateArmour(387,88,"true","B-B-B-B-R-G",true,1),
+				alternateArmour(388,88,true,"B-B-B-B-R-G",false,1),
+				alternateArmour(389,88,true,"B-B-B-B-R",false,1),
+				alternateArmour(390,88,true,"B-B-B-B-R-G",true,1,differentDefence.properties),
 			}),
 		}}
 		local filteredArmour=listings.compare(json.encode(editedPage),armourTarget,"Covens",nil,nil,nil,selectedArmour)
@@ -2387,12 +2387,12 @@ Item Level: 86
 		gearUI:text("search","Edit item filters")
 		gearUI:click("choose")
 		assert(main.popups[1].title=="Trade item filters")
-		gearUI:text("levelmin","89"):text("levelmax","87"):click("apply")
+		gearUI:text("levelMin","89"):text("levelMax","87"):click("apply")
 		assert(main.popups[1].title=="Invalid item filters")
 		main:ClosePopup()
-		gearUI:text("levelmin","87"):text("levelmax","89")
+		gearUI:text("levelMin","87"):text("levelMax","89")
 		gearUI:choose("corruption","true","value"):choose("socketMatch","Largest link group bounds")
-		gearUI:text("linksmin","5"):text("linksmax","5")
+		gearUI:text("linksMin","5"):text("linksMax","5")
 		if output then gearUI:frame():write(output.."/overlay-item-filters.json") end
 		gearUI:click("apply")
 		assert(main.popups[1].title=="Review Trade search")
@@ -2418,7 +2418,7 @@ Item Level: 86
 		editedCapture.capturedAt=os.time()-3600
 		file=assert(io.open(path,"wb"));assert(file:write(assert(json.encode(editedCapture))));assert(file:close())
 		gearUI:click("close"):text("search","Edit item filters"):click("choose")
-		assert(main.popups[1].controls.levelmin.buf=="87" and main.popups[1].controls.linksmax.buf=="5")
+		assert(main.popups[1].controls.levelMin.buf=="87" and main.popups[1].controls.linksMax.buf=="5")
 		gearUI:choose("source","Full recorded sample"):click("apply"):click("tertiary")
 		assert(attempts==8)
 		complete()

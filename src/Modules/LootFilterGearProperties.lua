@@ -26,7 +26,8 @@ end
 function M.socketCounts(key)
 	local total, largest = 0, 0
 	for group in key:gmatch("%S+") do
-		local _, links = group:gsub("[RGBW]","")
+		local _, separators = group:gsub("-","")
+		local links = separators+1
 		total,largest=total+links,math.max(largest,links)
 	end
 	return total,largest
