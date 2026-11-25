@@ -231,7 +231,7 @@ function M.tradeRolls(target)
 	return rows
 end
 
-function M.rolledTradeQuery(target, rolls)
+function M.rolledTradeQuery(target, rolls, propertySelection)
 	local filters = setmetatable({},{__jsontype="array"})
 	for _, row in ipairs(rolls) do
 		if row.id and row.enabled then
@@ -244,17 +244,17 @@ function M.rolledTradeQuery(target, rolls)
 			filters[#filters+1]={id=row.id,value=(minimum or maximum) and {min=minimum,max=maximum} or nil}
 		end
 	end
+	local properties=require("Modules.LootFilterGearListings").propertyFilters(target,propertySelection)
+	local level=properties.level
 	local query = {type=target.base,status={option="available"},stats={{type="and",filters=filters}},
 		filters={type_filters={filters={rarity={option="rare"}}},misc_filters={filters={
-			ilvl={min=target.level,max=target.level},identified={option="true"},corrupted={option=tostring(target.corrupted)}}}}}
-	local equipment = target.equipment
-	if equipment and equipment.sockets~="" then
-		local count, largest = 0, 0
-		for group in equipment.sockets:gmatch("%S+") do
-			local _, links = group:gsub("[RGBW]","")
-			count,largest=count+links,math.max(largest,links)
-		end
-		query.filters.socket_filters={filters={sockets={min=count,max=count},links={min=largest,max=largest}}}
+			ilvl=(level.min or level.max) and level or nil,identified={option="true"},
+			corrupted=properties.corruption~="any" and {option=properties.corruption} or nil}}}}
+	if properties.sockets and properties.sockets>0 then
+		local count=properties.sockets
+		local links=properties.links or {min=properties.largest,max=properties.largest}
+		query.filters.socket_filters={filters={sockets={min=count,max=count},
+			links=(links.min or links.max) and links or nil}}
 	end
 	return query
 end
