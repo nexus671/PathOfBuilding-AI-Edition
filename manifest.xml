@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.69.0-ai.preview1293" />
+	<Version number="2.69.0-ai.preview1294" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="8e2755cfab2abe8d586d3904b098877d469b97b6" />
+	<File name="changelog.txt" part="default" sha1="f2eed935c00e5cf7a72de8045ca7be8bde588650" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
@@ -2120,7 +2120,7 @@
 	<File name="Modules/LootFilterCategoryStyles.lua" part="program" sha1="4c8f8e6a1aef62f216496dcd7cb55fd7ba9f0716" />
 	<File name="Modules/LootFilterClipboard.lua" part="program" sha1="6033f462a4d66e64c2c242cf928789f22d938c8c" />
 	<File name="Modules/LootFilterCollections.lua" part="program" sha1="4d3a57e7333f4d0bbcde25521e0ff22e5151a365" />
-	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="331f1ee2668c99aa295188a025ab2420f8c2e4cc" />
+	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="2600b448fdcbf11eb4a97cf6506782b3b43a2ba5" />
 	<File name="Modules/LootFilterDecorators.lua" part="program" sha1="0a5fe0000ac903118f28573b4ceeee15d623aeae" />
 	<File name="Modules/LootFilterDependencies.lua" part="program" sha1="0d82ce982e3c96fdcb44d9d3ecbc5248da761fb9" />
 	<File name="Modules/LootFilterDiagnostics.lua" part="program" sha1="f09371e7fb49c4003aa371003846093946330147" />
@@ -2142,7 +2142,7 @@
 	<File name="Modules/LootFilterOfflinePrices.lua" part="program" sha1="73ea6e7affe77039ae8009e4f8fdcde597f6db44" />
 	<File name="Modules/LootFilterParser.lua" part="program" sha1="200696aa146b23876bc2e8663be20c872517e164" />
 	<File name="Modules/LootFilterPriceAppearance.lua" part="program" sha1="ac023aaeca31d302340b29b15235055b8fe0fc47" />
-	<File name="Modules/LootFilterProtectedDrops.lua" part="program" sha1="45e4e3719ee24ed7a38eaa662f107b825429e6a9" />
+	<File name="Modules/LootFilterProtectedDrops.lua" part="program" sha1="9e86b622e3710328327843d4995a2875c64915d8" />
 	<File name="Modules/LootFilterRuleOrder.lua" part="program" sha1="c9bd2dd5f27d9f701a4d82071e756c97db2ad101" />
 	<File name="Modules/LootFilters.lua" part="program" sha1="68591bb98ed22bb6751542b010731742d64d25fb" />
 	<File name="Modules/LootFilterSharedStyles.lua" part="program" sha1="9f1c299ea78c64c0c39f4d8b22ac066135471944" />

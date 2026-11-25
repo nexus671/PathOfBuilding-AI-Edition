@@ -3,6 +3,10 @@ local M = {}
 local scrollMarker = "# CUSTOM: Hide Wisdom and Portal Scrolls"
 local fracturedMarker = "# CUSTOM: Show fractured magic equipment"
 local fatedMarker = "# CUSTOM: Show Fated equipment on rank A and B bases"
+local tierMarker = "# CUSTOM: Highlight item tier 5 rare equipment on rank A and B bases"
+local rareFallbackMarker = "# CUSTOM: Suppress other unidentified rare bases before broad tiered gear rules"
+local identifiedMarker = "# CUSTOM: Identified corrupted rare modifier rules copied from the filter"
+local hideCorruptedMarker = "# CUSTOM: Hide other identified corrupted rare equipment"
 local personalMarkers = {
 	"# CUSTOM: Always show Cord Belts",
 	"# CUSTOM: Show six-linked items before equipment hides",
@@ -22,9 +26,9 @@ function M.hasPersonalMarkerSet(raw)
 	return true
 end
 
-local function personalRulePrefix(raw, stop)
+local function personalRuleText(raw)
 	local rules = {}
-	for line in raw:sub(1,stop-1):gmatch("[^\r\n]+") do
+	for line in raw:gmatch("[^\r\n]+") do
 		local text = line:match("^%s*(.-)%s*$")
 		if text ~= "" and (text:sub(1,1) ~= "#" or text:find("# CUSTOM:",1,true)==1) then
 			rules[#rules+1] = line
@@ -33,25 +37,26 @@ local function personalRulePrefix(raw, stop)
 	return table.concat(rules,"\n")
 end
 
-local function afterScrollRule(raw)
+local function afterMarkedRule(raw, marker, action)
 	local marked, inRule = false, false
 	for offset, line in raw:gmatch("()([^\n]*)\n?") do
 		local text = line:match("^%s*(.-)%s*$")
 		local keyword = text:match("^[^%s#]+")
-		if text==scrollMarker then
+		if text==marker then
 			marked = true
 		elseif marked and ruleStarts[keyword] then
 			if inRule then return offset end
-			if keyword~="Hide" then return nil end
+			if keyword~=action then return nil end
 			inRule = true
 		end
 	end
 	return inRule and #raw+1 or nil
 end
 
-function M.personalRulesPreserved(previous, candidate)
+local function originalPrefixPreserved(previous, candidate)
 	if not previous:find(scrollMarker,1,true) then return true end
-	local oldStop, newStop = afterScrollRule(previous), afterScrollRule(candidate)
+	local oldStop = afterMarkedRule(previous,scrollMarker,"Hide")
+	local newStop = afterMarkedRule(candidate,scrollMarker,"Hide")
 	if not oldStop or not newStop then return false end
 	local market = require("Modules.LootFilterEconomy")
 	local oldStart, oldEnd = market.sectionBounds(previous)
@@ -60,7 +65,7 @@ function M.personalRulesPreserved(previous, candidate)
 		if not newStart or not newEnd then return false end
 		oldStop, newStop = math.max(oldStart,oldStop), math.max(newStart,newStop)
 	end
-	return personalRulePrefix(previous,oldStop)==personalRulePrefix(candidate,newStop)
+	return personalRuleText(previous:sub(1,oldStop-1))==personalRuleText(candidate:sub(1,newStop-1))
 end
 
 local function sample(item)
@@ -120,6 +125,62 @@ local function declaredValues(raw, marker, keyword)
 		if condition.keyword==keyword and condition.operator=="==" then return condition.values end
 	end
 	error("Use an exact "..keyword.." list after "..marker)
+end
+
+local function markedRules(raw, firstMarker, lastMarker, lastAction)
+	local first = raw:find(firstMarker,1,true)
+	local stop = afterMarkedRule(raw,lastMarker,lastAction)
+	if first and stop and first<stop then return personalRuleText(raw:sub(first,stop-1)) end
+end
+
+function M.personalRulesPreserved(previous, candidate)
+	if not originalPrefixPreserved(previous,candidate) then return false end
+	local tiered = previous:find(tierMarker,1,true)
+	local identified = previous:find(identifiedMarker,1,true)
+	if not tiered and not identified then return true end
+	if tiered then
+		local rules = markedRules(previous,tierMarker,tierMarker,"Show")
+		if not rules or rules~=markedRules(candidate,tierMarker,tierMarker,"Show") then return false end
+		if previous:find(rareFallbackMarker,1,true) then
+			local fallback = markedRules(previous,rareFallbackMarker,rareFallbackMarker,"Hide")
+			if not fallback or fallback~=markedRules(candidate,rareFallbackMarker,rareFallbackMarker,"Hide") then return false end
+		end
+	end
+	if identified then
+		local rules = markedRules(previous,identifiedMarker,hideCorruptedMarker,"Hide")
+		if not rules or rules~=markedRules(candidate,identifiedMarker,hideCorruptedMarker,"Hide") then return false end
+	end
+	local before, after = parser.parse(previous), parser.parse(candidate)
+	local encode = require("Modules.PlanningData").encodeExact
+	local function sameDecision(item)
+		local old, new = parser.simulate(before,item), parser.simulate(after,item)
+		return old.action~="Unknown" and old.action==new.action
+			and (old.action~="Show" or encode(old.styles)==encode(new.styles))
+	end
+	if tiered then
+		local library = require("Modules.LootFilterLibrary")
+		local seen = {}
+		for _, name in ipairs(declaredValues(previous,tierMarker,"BaseType")) do
+			if not seen[name] then
+				seen[name] = true
+				local class = assert(library.baseClass(name), "Protected rare base has no known class: "..name)
+				local item = sample({BaseType=name,Class=class,Rarity="Rare",UnidentifiedItemTier=5})
+				if not sameDecision(item) then return false end
+				item.UnidentifiedItemTier = 4
+				if not sameDecision(item) then return false end
+			end
+		end
+		if not sameDecision(sample({BaseType="Plate Vest",Class="Body Armours",Rarity="Rare",UnidentifiedItemTier=5})) then return false end
+	end
+	if identified then
+		local item = sample({BaseType="Vaal Axe",Class="Two Hand Axes",Rarity="Rare",Identified=true,Corrupted=true,CorruptedMods=1})
+		if not sameDecision(item) then return false end
+		item.HasExplicitMod = {"Merciless","Flaring","of Celebration"}
+		if not sameDecision(item) then return false end
+		item.HasExplicitMod, item.CorruptedMods = {}, 2
+		if not sameDecision(item) then return false end
+	end
+	return true
 end
 
 function M.checkPersonalSamples(raw, check)
