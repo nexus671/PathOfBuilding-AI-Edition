@@ -11,4 +11,20 @@ state.destroyed=nil;state.veil={};assert(not c.present:IsEnabled() and c.present
 state.veil=nil;ui:text('search','zzzzzz-no-such-modifier');assert(not c.choose:IsEnabled() and c.choose.tooltipText()=='Select a modifier first.')
 assert(not c.alternative:IsEnabled() and c.alternative.tooltipText()=='Select a modifier first.')
 assert(not c.present:IsEnabled() and c.present.tooltipText()=='Select a modifier first.')
-ui:restore();print('CRAFTING_PICKER_REASONS_OK')
+ui:restore()
+for _,size in ipairs({{640,480},{960,640},{1280,720}}) do
+ local host=require('Modules.HeadlessUI').install({width=size[1],height=size[2]});host:bind(build)
+ for _,variant in ipairs({'choose','alternative','all'}) do
+  local staged=false;local options={choose=function() end}
+  if variant~='choose' then options.alternative=function() end end
+  if variant=='all' then options.present=function() staged=true end end
+  local controls=require('Classes.CraftingModifierControl').Open(model,copyTable(model.initial),options)
+  local previousRight
+  for _,key in ipairs({'choose','alternative','present','close'}) do local control=controls[key];if control then
+   local x=control:GetPos();local width=control:GetSize();assert(not previousRight or x>=previousRight,key..' overlaps another action at '..size[1]);assert(x>=0 and x+width<=size[1],key..' is off screen');previousRight=x+width
+  end end
+  if variant=='all' then assert(controls.present:IsEnabled());host:click('present');assert(staged,'Present action did not run') else host:click('close') end
+ end
+ host:restore()
+end
+print('CRAFTING_PICKER_REASONS_OK')

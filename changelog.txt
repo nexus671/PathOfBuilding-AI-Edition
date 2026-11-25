@@ -1,6 +1,6 @@
 VERSION[2.69.0-ai.preview1337][2026/11/25]
 
-* Explain unavailable actions in the crafting modifier picker.
+* Explain unavailable crafting modifier actions and fit the picker at compact widths.
 
 VERSION[2.69.0-ai.preview1336][2026/11/25]
 

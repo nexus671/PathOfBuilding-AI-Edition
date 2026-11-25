@@ -5,7 +5,7 @@
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="fca41962998bc5ed52997507534fec82f8ee01a3" />
+	<File name="changelog.txt" part="default" sha1="331d1cbf044859befcfb297409e3aa6d12e46335" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
@@ -1611,7 +1611,7 @@
 	<File name="Classes/CraftingItemComparisonControl.lua" part="program" sha1="e2a04459cde8751208135bfea6239dd98280bc81" />
 	<File name="Classes/CraftingItemEditorControl.lua" part="program" sha1="5007f6eee23d20d59cbf04e891cb0cd153c88958" />
 	<File name="Classes/CraftingItemStatsControl.lua" part="program" sha1="1d86a65414a33ff8a7b663fce0d2f0a44b8cb72d" />
-	<File name="Classes/CraftingModifierControl.lua" part="program" sha1="13bf9e29fb5991e0bc492db0970d60c7d6c5a290" />
+	<File name="Classes/CraftingModifierControl.lua" part="program" sha1="1d9e7b8cbae262550cd130131935860eef10b32a" />
 	<File name="Classes/CraftingPricesControl.lua" part="program" sha1="9d4eea23479e6aac285e1525f8bbefab40c1ed85" />
 	<File name="Classes/CraftingProjectControl.lua" part="program" sha1="a5061c929a81dd238e9f9a3c16284ca9462f2804" />
 	<File name="Classes/CraftingProjectWizard.lua" part="program" sha1="bd301ea537fa442fc68454b6f97a41dcee458f39" />

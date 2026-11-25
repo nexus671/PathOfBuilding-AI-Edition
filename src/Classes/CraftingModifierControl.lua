@@ -42,7 +42,12 @@ function M.Open(model,state,options)
 	local function turn(delta) page=page+delta;selected=nil;c.modifiers.controls.scrollBar.offset=0;refresh() end
 	button("previousPage",detailX,h-72,100,"Previous",function() turn(-1) end);c.previousPage.enabled=function() return page>1 end
 	button("nextPage",detailX+108,h-72,100,"Next",function() turn(1) end);c.nextPage.enabled=function() return page*pageSize<#rows end
-	button("choose",16,h-42,200,options.action or "Require modifier",function() if selected then options.choose(selected.id);main:ClosePopup() end end)
+	local actionCount=1+(options.alternative and 1 or 0)+(options.present and 1 or 0)
+	local closeWidth=math.min(140,math.max(96,math.floor(w*0.16)))
+	local actionWidth=math.min(200,math.floor((w-32-closeWidth-8*actionCount)/actionCount))
+	local actionX=16
+	button("choose",actionX,h-42,actionWidth,options.action or "Require modifier",function() if selected then options.choose(selected.id);main:ClosePopup() end end)
+	actionX=actionX+actionWidth+8
 	local function chooseReason()
 		if not selected then return "Select a modifier first." end
 		return options.chooseReason and options.chooseReason(selected.id)
@@ -50,7 +55,8 @@ function M.Open(model,state,options)
 	c.choose.enabled=function() return not chooseReason() end
 	c.choose.tooltipText=function() return chooseReason() or "Use this modifier as a target." end
 	if options.alternative then
-		button("alternative",228,h-42,200,"Add alternative",function() if selected then options.alternative(selected.id);main:ClosePopup() end end)
+		button("alternative",actionX,h-42,actionWidth,"Add alternative",function() if selected then options.alternative(selected.id);main:ClosePopup() end end)
+		actionX=actionX+actionWidth+8
 		local function alternativeReason()
 			if not selected then return "Select a modifier first." end
 			if options.canAlternative and not options.canAlternative() then return "Add a target group first." end
@@ -60,7 +66,7 @@ function M.Open(model,state,options)
 		c.alternative.tooltipText=function() return alternativeReason() or "Add this modifier as an alternative to the target group." end
 	end
 	if options.present then
-		button("present",440,h-42,200,"Set as present",function() if selected then options.present(selected.id);main:ClosePopup() end end)
+		button("present",actionX,h-42,actionWidth,"Set as present",function() if selected then options.present(selected.id);main:ClosePopup() end end)
 		local function presentReason()
 			if not selected then return "Select a modifier first." end
 			if state.destroyed then return "Reset the destroyed item before staging a modifier." end
@@ -74,7 +80,7 @@ function M.Open(model,state,options)
 		c.present.enabled=function() return not presentReason() end
 		c.present.tooltipText=function() return presentReason() or "Stage this modifier on a hypothetical rare item. This sets a new recipe start and clears the working action sequence. Drop-only availability is not verified." end
 	end
-	button("close",w-156,h-42,140,"Close",function() main:ClosePopup() end)
+	button("close",w-16-closeWidth,h-42,closeWidth,"Close",function() main:ClosePopup() end)
 	ui.style(c,{choose=true});refresh();main:OpenPopup(w,h,"Modifier tiers and weights",c,nil,"search","close");return c
 end
 return M
