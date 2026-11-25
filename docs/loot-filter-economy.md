@@ -297,3 +297,6 @@ python tools/smoke_portable_windows.py <fresh-extraction-folder> --loot-filter <
 ```
 
 Run this from the client network after installing the pilot's Python dependency with `python -m pip install lupa==2.8`. Use a baseline outside the extraction folder. For a custom filter, pass `--protected-samples <samples.json>` and set `--protected-checks` to the minimum check count expected for that pilot. The tool writes its settings, filter and reports to the extraction. Then run **Preview changes** on the intended profile, verify rollback and check the saved Windows task's source if it uses background sync.
+
+
+Large sync reviews retain each unsupported managed Hide rule and its reason. The desktop review can search and page through them; AI clients can request `kindFilter: "skipped"` through `list_loot_sync_decisions` for the latest verified default profile. Large lists are saved separately with a content checksum. If that data is unavailable, the desktop review says so and a new sync can rebuild it. Expired archived reports are removed only after checking all registered profiles and recovery receipts; unverifiable files are kept. A failed or interrupted write can leave an unreferenced report file.

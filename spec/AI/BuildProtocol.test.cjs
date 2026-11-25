@@ -279,6 +279,9 @@ test('queues later verified loot decision pages', t => {
   assert.match(result.instructions,/filter is not changed/);
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
   assert.equal(request.kind,'list_loot_sync_decisions');assert.equal(request.offset,250);assert.equal(request.reviewRevision,reviewRevision);
+  const g=fixture(t);g.call('list_loot_sync_decisions',{baseRevision:g.state.revision,reviewRevision,kindFilter:'skipped',offset:250});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(g.dir,'AI-build-request.json'))).kindFilter,'skipped');
+  const invalid=fixture(t);assert.throws(()=>invalid.call('list_loot_sync_decisions',{baseRevision:invalid.state.revision,reviewRevision,kindFilter:'invalid'}),/arguments/);
 });
 
 test('returns every requested feed in a full economy audit',t=>{

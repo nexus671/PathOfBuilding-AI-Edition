@@ -571,7 +571,7 @@ function M.poll(build, force)
 		assert(not require("Modules.JourneyUpgrades").job,"Finish or cancel upgrade measurements first")
 		if request.kind=="list_loot_sync_decisions" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
-			local result=require("Modules.LootFilterDailySync").publicDecisionPage(request.reviewRevision,request.offset,request.limit)
+			local result=require("Modules.LootFilterDailySync").publicDecisionPage(request.reviewRevision,request.offset,request.limit,request.kindFilter)
 			M.status={id=request.id,status="lootDecisions",lootDecisions=result};M.publishState();return
 		end
 		if request.kind=="review_loot_sync_examples" then
