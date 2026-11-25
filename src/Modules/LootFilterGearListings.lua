@@ -7,6 +7,11 @@ local maxPageBytes = 4 * 1024 * 1024
 local maxBytes = 16 * 1024 * 1024
 local captureFormat = "pob-public-stash-capture-v1"
 local jewellery = {Amulet=true, Ring=true, Belt=true}
+-- The pinned quiver catalogue contains both discontinued and current bases
+-- with these display names. Two pairs share the same natural implicit.
+local sharedQuiverNames = {["Serrated Arrow Quiver"]=true,["Sharktooth Arrow Quiver"]=true,
+	["Blunt Arrow Quiver"]=true,["Fire Arrow Quiver"]=true,["Broadhead Arrow Quiver"]=true,["Spike-Point Arrow Quiver"]=true}
+local indistinguishableQuivers = {["Two-Point Arrow Quiver"]=true,["Penetrating Arrow Quiver"]=true}
 local channels = {
 	{build="enchantModLines", listing="enchantMods"},
 	{build="implicitModLines", listing="implicitMods"},
@@ -69,6 +74,18 @@ local function modList(item, channel, build)
 	return table.concat(values,"\0")
 end
 
+local function quiverBase(item)
+	if indistinguishableQuivers[item.baseName] then return false end
+	if not sharedQuiverNames[item.baseName] then return true end
+	-- Require the current natural implicit when the public base name is shared.
+	if item.base.hidden or item.corrupted or item.synthesised or #item.implicitModLines~=1 then return false end
+	local line = item.implicitModLines[1].line
+	local expected = item.base.implicit
+	if type(line)~="string" or type(expected)~="string" then return false end
+	local template = require("Classes.TradeHelpers").modLineTemplate
+	return template(line)==template(expected:gsub("%(%d+%-%d+%)","#"))
+end
+
 local function clusterLayout(item)
 	local cluster, jewelData = item.clusterJewel, item.jewelData
 	local skill = cluster and jewelData and cluster.skills[jewelData.clusterJewelSkill]
@@ -104,7 +121,11 @@ function M.target(item, publicBase)
 	local equipment
 	local cluster = item.type=="Jewel" and item.base.subType=="Cluster" and clusterLayout(item)
 	local jewel = item.type=="Jewel" and (not item.base.subType or item.base.subType=="Abyss" or cluster)
-	if item.base.armour or item.base.weapon then
+	local quiver = item.type=="Quiver"
+	if quiver and not quiverBase(item) then
+		return nil,"The visible implicit cannot distinguish this quiver from its legacy base."
+	end
+	if item.base.armour or item.base.weapon or quiver then
 		equipment=gearProperties.target(item)
 		if not equipment then return end
 	elseif not (jewellery[item.type] or jewel) or (item.quality or 0)>0 or (item.base.socketLimit or 0)>0 or hasEntries(item.sockets) then
@@ -134,7 +155,8 @@ local function sameItem(item, target)
 		or hasEntries(item.veiledMods) or hasEntries(item.grantedSkills) then return false end
 	if target.equipment then
 		if not gearProperties.matches(item,target.equipment) then return false end
-	elseif hasEntries(item.sockets) or item.properties~=nil and (type(item.properties)~="table" or next(item.properties)) then
+	elseif item.sockets~=nil and (type(item.sockets)~="table" or next(item.sockets))
+		or item.properties~=nil and (type(item.properties)~="table" or next(item.properties)) then
 		return false
 	end
 	for _,field in ipairs({"notableProperties","additionalProperties","utilityMods","ultimatumMods"}) do

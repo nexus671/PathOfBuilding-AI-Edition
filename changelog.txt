@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1316][2026/11/25]
+
+* Compare copied and equipped rare quivers against exact public stash listings.
+
 VERSION[2.69.0-ai.preview1315][2026/11/25]
 
 * Recognize unique variants with different base items when planning Divine rolls.
