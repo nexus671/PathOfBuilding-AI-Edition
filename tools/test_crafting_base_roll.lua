@@ -16,6 +16,11 @@ for rawValue=62,80 do
 end
 local abyss=sim.model("Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86")
 local abyssId="AbyssFlatManaShieldRegenerationJewel3";local abyssMod=assert(abyss.byId[abyssId])
+local aliasMod=copyTable(abyssMod)
+sim.registerRollModifierIds({byId={[abyssId]=aliasMod}})
+assert(sim.rawRegenRange(aliasMod,function()return 0 end)~=nil,"Expected a cached raw range")
+sim.registerRollModifierIds({byId={AmbiguousIdentityForProbe=aliasMod}})
+assert(sim.rawRegenRange(aliasMod,function()return 0 end)==nil,"An ambiguous identity must invalidate its cached range")
 local counts={}
 for rawValue=196,240 do
  local draw=(rawValue-196+0.1)/45;local range=sim.rollRange(abyssMod,function() return draw end)

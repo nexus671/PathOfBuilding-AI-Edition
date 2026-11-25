@@ -2087,7 +2087,7 @@
 	<File name="Modules/CraftingRog.lua" part="program" sha1="7f541535c966e9c57145f2f795fbaad5e1e9f50f" />
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
 	<File name="Modules/CraftingSacred.lua" part="program" sha1="1e0b2db28524c90c5c72aa0eff77a0e59606a8ca" />
-	<File name="Modules/CraftingSimulator.lua" part="program" sha1="500312cc93aedb2f1714fe9c74234981a8c34aee" />
+	<File name="Modules/CraftingSimulator.lua" part="program" sha1="3b57e3fcd07061e380feaca0e59d80c58631b020" />
 	<File name="Modules/CraftingSockets.lua" part="program" sha1="a04878acc08197d3ef25120dcb0a8ee540e6c78a" />
 	<File name="Modules/CraftingSynthesisGroups.lua" part="program" sha1="058e5d8e2e20c77edf4db6f0acf9326486a4e3f0" />
 	<File name="Modules/CraftingTasks.lua" part="program" sha1="5884e439905689280d65534ef8e78591341970d6" />

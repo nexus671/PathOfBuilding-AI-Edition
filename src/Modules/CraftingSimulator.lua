@@ -358,10 +358,12 @@ local function unknownSocketWarning(warnings)
 end
 
 local rollModifierIds=setmetatable({},{__mode="k"})
+local rawRegenCache=setmetatable({},{__mode="k"})
 function M.registerRollModifierIds(model)
 	for id,mod in pairs(model.byId) do
 		local previous=rollModifierIds[mod]
-		if previous==nil then rollModifierIds[mod]=id elseif previous~=id then rollModifierIds[mod]=false end
+		if previous==nil then rollModifierIds[mod]=id
+		elseif previous~=id then rollModifierIds[mod]=false;rawRegenCache[mod]=nil end
 	end
 end
 
@@ -505,7 +507,6 @@ local function rollPrecision(line,low,high)
 end
 -- A displayed regeneration-per-second endpoint can conceal a per-minute integer.
 -- Use pinned raw bounds only when the identity, stat and endpoints agree.
-local rawRegenCache=setmetatable({},{__mode="k"})
 local function rawRegenSteps(mod,line,low,high)
  if #mod~=1 or not line:match("^Regenerate %(") then return end
  local expectedStat=line:match("%% of Life per second$") and "life_regeneration_rate_per_minute_%" or line:match("%% of Energy Shield per second$") and "base_energy_shield_regeneration_rate_per_minute_%" or line:match(" Life per second$") and "base_life_regeneration_rate_per_minute" or line:match(" Mana per second$") and "base_mana_regeneration_rate_per_minute"
