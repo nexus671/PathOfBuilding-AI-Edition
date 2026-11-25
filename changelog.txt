@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1297][2026/11/24]
+VERSION[2.69.0-ai.preview1298][2026/11/24]
 
 * Review rare-base exceptions in the fixed baseline and verified filter from Daily price sync.
+
+VERSION[2.69.0-ai.preview1297][2026/11/24]
+
+* Preserve helpful details in map and crafting warnings sent to AI tools.
 
 VERSION[2.69.0-ai.preview1296][2026/11/24]
 

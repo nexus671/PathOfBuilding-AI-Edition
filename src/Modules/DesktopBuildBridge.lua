@@ -713,9 +713,9 @@ function M.poll(build, force)
 				if request.plannedDeified then result.plannedDeified=true;result.deified=result.deified or require("Modules.MapObservedEffects").deified(nil,true);result.note=result.note.." Deified is a conditional plan; eligibility and enchantment interactions are unverified." end
 				local state={baseId=request.baseId,tier=request.tier,itemLevel=request.itemLevel,rarity=request.rarity or "rare",selected=request.selected or {},rolls=request.rolls,corrupted=request.corrupted,twiceCorrupted=request.twiceCorrupted,mirrored=request.mirrored,unidentified=request.unidentified,vaalPreview=request.vaalPreview,vaalTierUpPreview=request.vaalTierUpPreview,templePreview=request.templePreview,implicit=request.implicit,quality=request.quality,observedEffects=request.observedEffects,plannedDeified=request.plannedDeified,plannedAllflame=plannedAllflame,plannedDelirium=request.plannedDelirium}
 				local planOk,plans=pcall(require("Modules.MapCurrency").planningOptions,state)
-				if planOk then result.planningOptions=plans else result.planningOptionsWarning=require("Modules.PlanningUI").errorText(plans) end
+				if planOk then result.planningOptions=plans else result.planningOptionsWarning=readableError(plans) end
 				local ok,options=pcall(require("Modules.MapCurrency").options,state,checkpoint)
-				if ok then result.currencyOptions=options else result.currencyOptionsWarning=require("Modules.PlanningUI").errorText(options) end
+				if ok then result.currencyOptions=options else result.currencyOptionsWarning=readableError(options) end
 				return result
 			end,function(result)
 				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh map context."}) else publish("mapData",{mapData=result}) end
@@ -797,7 +797,7 @@ function M.poll(build, force)
 					candidate.requirements=reference.requirements and copyTable(reference.requirements) or nil;candidate.requiredGroups=reference.requiredGroups;candidate.rarity=reference.rarity
 					local routeOptions=copyTable(options);routeOptions.checkpoint=function(progress) checkpoint({route=index,routes=#chosen,trial=progress.trial,trials=progress.trials}) end
 					local ok,result=pcall(simulator.simulate,project.startingItem,candidate,routeOptions)
-					routes[#routes+1]={name=entry.name,kind=entry.kind,savedStartDiffers=startDiffers,savedGoalDiffers=goalDiffers,result=ok and result or nil,error=not ok and require("Modules.PlanningUI").errorText(result) or nil}
+					routes[#routes+1]={name=entry.name,kind=entry.kind,savedStartDiffers=startDiffers,savedGoalDiffers=goalDiffers,result=ok and result or nil,error=not ok and readableError(result) or nil}
 				end
 				return {projectId=request.projectId,referenceName=chosen[1].name,referenceKind=chosen[1].kind,settings={trials=trials,maxActions=budget,seed=options.seed or 104729},routes=routes,notes={"All routes use the reference starting state and final targets; their own step conditions remain unchanged.","Sampling intervals do not include model uncertainty; no route is ranked automatically."}}
 			end,function(result) publish("crafted",{craftingComparison=result}) end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end)
@@ -903,7 +903,7 @@ function M.poll(build, force)
 				local ok,result
 				if request.benchRarityOutcome=="UNIQUE" and not request.benchRarityUniqueTitle then ok,result=pcall(preview.uniqueCandidates,raw,request.initialState)
 				else ok,result=pcall(preview.preview,raw,request.benchRarityOutcome,request.benchRaritySeed,request.initialState,request.benchRarityUniqueTitle) end
-				M.status.crafting.benchRarityPreview=ok and {available=true,result=result} or {available=false,reason=require("Modules.PlanningUI").errorText(result)}
+				M.status.crafting.benchRarityPreview=ok and {available=true,result=result} or {available=false,reason=readableError(result)}
 				if request.benchRarityProject then
 					local valid,project=pcall(function()
 						assert(ok and result.conditional,"Choose a valid example before making a project template")
@@ -913,14 +913,14 @@ function M.poll(build, force)
 						assert(build.itemsTab.slots[candidate.slot] and build.itemsTab:IsItemValidForSlot(require("Modules.CraftingProjects").item(candidate.startingItem),candidate.slot),"Example does not fit the selected slot")
 						return candidate
 					end)
-					M.status.crafting.benchRarityProject=valid and {available=true,project=project,note="Template only; propose for desktop review and save the build."} or {available=false,reason=require("Modules.PlanningUI").errorText(project)}
+					M.status.crafting.benchRarityProject=valid and {available=true,project=project,note="Template only; propose for desktop review and save the build."} or {available=false,reason=readableError(project)}
 				end
 			end
 			assert(request.includeBlankBase==nil or type(request.includeBlankBase)=="boolean","Invalid blank base option")
 			if request.includeBlankBase then
 				local ok,base=pcall(require("Modules.CraftingProjects").blankBase,raw)
 				M.status.crafting.blankBase=ok and {available=true,itemText=base,note="Hypothetical normal base; only base type and item level are retained. Review its implicit, sockets and quality. No item was equipped or changed."}
-					or {available=false,reason=require("Modules.PlanningUI").errorText(base)}
+					or {available=false,reason=readableError(base)}
 			end
 			assert(request.includeBaseImplicitChoices==nil or type(request.includeBaseImplicitChoices)=="boolean","Invalid base implicit option")
 			if request.includeBaseImplicitChoices then
@@ -930,7 +930,7 @@ function M.poll(build, force)
 					return require("Modules.CraftingBaseImplicit").options(sim,model,state)
 				end)
 				M.status.crafting.baseImplicitChoices=ok and choices and {available=true,choices=choices,note="Hypothetical values use PoB scaling. Merge the chosen statePatch into the inspected initialState; no currency or equipped item is changed."}
-					or {available=false,reason=ok and reason or require("Modules.PlanningUI").errorText(choices)}
+					or {available=false,reason=ok and reason or readableError(choices)}
 			end
 			local ok,catalog=pcall(require("Modules.CraftingSimulator").catalog,raw,request.query,request.limit,request.initialState,build.spec.treeVersion)
 			if ok then

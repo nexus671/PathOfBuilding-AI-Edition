@@ -35,12 +35,13 @@ for line in io.lines() do
 		elseif command.kind=="convert-tree" then
 			build.treeTab:ConvertToVersion(assert(command.version),true,false,true);frame();bridge.refresh(build)
 			return {treeVersion=build.spec.treeVersion,revision=bridge.revision(build)}
-		elseif command.kind=="inject-crafting-error" then
-			local simulator=require("Modules.CraftingSimulator")
+		elseif command.kind=="inject-crafting-error" or command.kind=="inject-planning-error" then
+			local simulator=command.kind=="inject-crafting-error" and require("Modules.CraftingSimulator") or require(assert(command.module))
 			local key=assert(command.method)
-			assert(key=="catalog" or key=="beastCatalog" or key=="allflameProfile")
-			if command.restore then simulator[key]=assert(injected[key]);injected[key]=nil
-			else assert(not injected[key]);injected[key]=simulator[key];simulator[key]=function() error("Modules/Example.lua:12: First problem\nC:/PoB/Other.lua:34: Second problem\nstack traceback:\n internal frame",0) end end
+			assert(command.kind=="inject-crafting-error" and (key=="catalog" or key=="beastCatalog" or key=="allflameProfile") or command.kind=="inject-planning-error" and (command.module=="Modules.MapCurrency" and (key=="planningOptions" or key=="options") or command.module=="Modules.CraftingProjects" and key=="blankBase"))
+			local identity=(command.module or "Modules.CraftingSimulator")..":"..key
+			if command.restore then simulator[key]=assert(injected[identity]);injected[identity]=nil
+			else assert(not injected[identity]);injected[identity]=simulator[key];simulator[key]=function() error("Modules/Example.lua:12: First problem\nC:/PoB/Other.lua:34: Second problem\nstack traceback:\n internal frame",0) end end
 		elseif command.kind=="request-test" then bridge.connectionTest={nonce="workflow-connection-test",requestedAt=os.time()};bridge.publishState()
 		elseif command.kind=="connection-proof" then return {client=bridge.client and bridge.client.name,tested=bridge.connectionTest and bridge.connectionTest.passed,synced=bridge.client and bridge.client.contextRevision==bridge.contextRevision}
 		elseif command.kind=="apply" then
