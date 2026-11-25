@@ -54,6 +54,9 @@ void * __stdcall CreateEventW(void *attributes, int manualReset, int initialStat
 int __stdcall SetEvent(void *event);
 void * __stdcall CreateMutexA(void *attributes, int owner, const char *name);
 uint32_t __stdcall WaitForSingleObject(void *handle, uint32_t milliseconds);
+int __stdcall MoveFileExW(const uint16_t *from, const uint16_t *to, unsigned long flags);
+int __stdcall MultiByteToWideChar(unsigned int page, unsigned long flags, const char *input, int size,
+	uint16_t *output, int capacity);
 int __stdcall WideCharToMultiByte(uint32_t page, uint32_t flags, const uint16_t *input, int size,
 	char *output, int capacity, const char *fallback, int *usedFallback);
 ]]
@@ -168,6 +171,17 @@ end
 
 function M.close(handle)
 	if handle then kernel.CloseHandle(windowHandle(handle)) end
+end
+
+function M.replaceFile(from,to)
+	local function wide(path)
+		local size=kernel.MultiByteToWideChar(65001,8,path,-1,nil,0)
+		assert(size>0,"Invalid settings path")
+		local result=ffi.new("uint16_t[?]",size)
+		assert(kernel.MultiByteToWideChar(65001,8,path,-1,result,size)==size,"Invalid settings path")
+		return result
+	end
+	assert(kernel.MoveFileExW(wide(from),wide(to),9)~=0,"Could not replace overlay settings")
 end
 
 function M.findWindow(title)

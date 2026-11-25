@@ -17,7 +17,7 @@ local function openExactBase(target,league)
 	openTradeSearch(league,query)
 end
 
-local function reviewTradeRolls(target, league, compare)
+local function reviewTradeRolls(target, league, compare, pinned)
 	local rolls = browse.tradeRolls(target)
 	local openReview
 	local function edit(row)
@@ -85,14 +85,14 @@ local function reviewTradeRolls(target, league, compare)
 				openReview()
 			end,
 			secondary={label="Open official Trade",run=function() openTradeSearch(league,query) end},
-			tertiary={label="Compare listing file",canRun=function() return matchesRolls~=nil end,
-				run=function() compare(matchesRolls,#filters) end},
+			tertiary={label=pinned and "Compare saved capture" or "Compare listing file",canRun=function() return matchesRolls~=nil end,
+				run=function() compare(filters) end},
 		})
 	end
 	openReview()
 end
 
-local function showMarketDetails(entry, title)
+local function showMarketDetails(entry, title, review)
 	local width = math.min(500,main.screenW-40)
 	local lines = {entry.label}
 	for _, detail in ipairs(entry.details) do lines[#lines+1] = detail end
@@ -106,11 +106,17 @@ local function showMarketDetails(entry, title)
 			main:ClosePopup()
 		end),
 	}
+	if review then
+		controls.review=new("ButtonControl"):ButtonControl(ui.anchor,{16,height-42,158,28},"Review roll filters",function()
+			main:ClosePopup()
+			review()
+		end)
+	end
 	ui.style(controls,{close=true})
 	main:OpenPopup(width,height,title,controls,nil,nil,"close")
 end
 
-local function showListingSample(target, league, sample, filterCount)
+local function showListingSample(target, league, sample, filterCount, review)
 	local details = {
 		league .. " | Local public stash listing sample",
 		string.format("%d same-base listings checked | %d matching %s",sample.inspected,sample.matched,
@@ -141,6 +147,8 @@ local function showListingSample(target, league, sample, filterCount)
 	local capture = sample.capture
 	if capture then
 		details[#details+1] = "Declared PC capture | "..os.date("!%Y-%m-%d %H:%M UTC",capture.capturedAt)
+		local minutes=math.max(0,math.floor((os.time()-capture.capturedAt)/60))
+		details[#details+1] = string.format("Capture age: %d min%s",minutes,minutes>=60 and " | Over one hour old" or "")
 		details[#details+1] = string.format("Pages: %d | Stash updates: %d | Withdrawals: %d",capture.pages,capture.updated,capture.withdrawn)
 		if capture.conflicts>0 then details[#details+1]=string.format("%d conflicting stash changes excluded",capture.conflicts) end
 	end
@@ -157,16 +165,48 @@ local function showListingSample(target, league, sample, filterCount)
 	end
 	details[#details+1] = capture and "Asking prices from a partial stream. Live availability and sales are unverified."
 		or "Asking prices from this file. Realm, age and completed sales are unverified."
-	showMarketDetails({label=target.label,details=details},"Comparable asking prices")
+	showMarketDetails({label=target.label,details=details},"Comparable asking prices",review)
 end
 
-local function compareListingFile(target, league, matchesRolls, filterCount)
+local function compareListingFile(target, league, filters)
 	require("Classes.LootFilterFileBrowser").Open(nil,function(path)
+		local matchesRolls=filters and browse.listingRollMatcher(filters)
 		local ok,sample=pcall(require("Modules.LootFilterGearListings").compareFile,path,target.listingItem,league,matchesRolls)
-		if ok then showListingSample(target,league,sample,filterCount)
+		if ok then showListingSample(target,league,sample,filters and #filters)
 		else ui.errorPopup("Comparable asking prices",sample) end
 	end,{title="Choose a public stash JSON file",itemLabel="Snapshot",category="Snapshots",
 		accept=function(name) return name:lower():match("%.json$")~=nil end})
+end
+
+local savedCaptureWorker = [=[
+local ok, result=pcall(function(path,league,encoded)
+	local json=require("dkjson")
+	local request=assert(json.decode(encoded))
+	local matchesRolls=request.filters and require("Modules.LootFilterMarketBrowse").listingRollMatcher(request.filters)
+	local sample=require("Modules.LootFilterGearListings").compareFile(path,request.target,league,matchesRolls,true)
+	return assert(json.encode(sample))
+end,...)
+return ok,tostring(result)
+]=]
+
+local function compareSavedCapture(path,target,league,filters,stillCurrent,review)
+	local json=require("dkjson")
+	local host=main.popups[1]
+	if host.savedCaptureJob then return end
+	local request=assert(json.encode({target=target.listingItem,filters=filters}))
+	host.savedCaptureJob=LaunchSubScript(savedCaptureWorker,"","",path,league,request)
+	if not host.savedCaptureJob then
+		ui.errorPopup("Comparable asking prices","Could not start the saved capture comparison.")
+		return
+	end
+	launch:RegisterSubScript(host.savedCaptureJob,function(ok,result)
+		host.savedCaptureJob=nil
+		if main.popups[1]~=host or stillCurrent and not stillCurrent() then return end
+		if not ok then ui.errorPopup("Comparable asking prices",result);return end
+		local sample=json.decode(result)
+		if sample then showListingSample(target,league,sample,filters and #filters,review)
+		else ui.errorPopup("Comparable asking prices","The saved capture returned no result.") end
+	end)
 end
 
 local function openTradeHistory(savedLeague)
@@ -337,9 +377,11 @@ local function open(build, managedTarget, overlay)
 			local league=controls.league.buf:match("^%s*(.-)%s*$")
 			if not league:match("^[%w _-]+$") then status("Enter a valid league ID to search official trade."); return end
 			local selected=target
-			reviewTradeRolls(selected.listingItem,league,function(matchesRolls,filterCount)
-				compareListingFile(selected,league,matchesRolls,filterCount)
-			end)
+			local pinned=overlay and overlay.snapshot
+			reviewTradeRolls(selected.listingItem,league,function(filters)
+				if pinned then compareSavedCapture(pinned,selected,league,filters)
+				else compareListingFile(selected,league,filters) end
+			end,pinned)
 		end)
 		controls.rolledTrade.enabled=function() return not busy and target and target.listingItem~=nil and not target.listingItem.blightcore end
 	end
@@ -496,15 +538,26 @@ local function open(build, managedTarget, overlay)
 	ui.style(controls)
 	local height = managedTarget and 330 or 404
 	popup=main:OpenPopup(width,height,"Browse loot market prices",controls,nil,nil,"close")
-	if quoteOnOpen then controls.get:Click() end
+	if quoteOnOpen then controls.get:Click()
+	elseif overlay and overlay.snapshot and target and target.listingItem and overlay.league~="" then
+		local selected,league=target,overlay.league
+		local review=not selected.listingItem.blightcore and function() controls.rolledTrade:Click() end or nil
+		status("Comparing the saved listing capture...")
+		compareSavedCapture(overlay.snapshot,selected,league,nil,function()
+			if target==selected and controls.league.buf==league then
+				status("Saved listing capture selected.")
+				return true
+			end
+		end,review)
+	end
 end
 
 function M.Open(build)
 	return open(build)
 end
 
-function M.OpenForOverlay(raw, league)
-	return open(nil,nil,{raw=raw,league=league})
+function M.OpenForOverlay(raw, league, snapshot)
+	return open(nil,nil,{raw=raw,league=league,snapshot=snapshot})
 end
 
 function M.OpenForManagedRule(rule)
