@@ -569,6 +569,11 @@ function M.poll(build, force)
 		end
 		assert(not require("Modules.CraftingTasks").job,"Finish or cancel the active crafting job first")
 		assert(not require("Modules.JourneyUpgrades").job,"Finish or cancel upgrade measurements first")
+		if request.kind=="review_loot_sync_examples" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local result=require("Modules.LootFilterDailySync").publicDecisionExamples(request.reviewRevision,request.decisionIndex,request.offset,request.limit)
+			M.status={id=request.id,status="lootReview",lootReview=result};M.publishState();return
+		end
 		if request.kind=="compare_gear_listings" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
 			local hasSlot, hasItem, hasSocket = request.slot~=nil, request.itemText~=nil, request.jewelSocketId~=nil
