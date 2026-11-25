@@ -630,6 +630,19 @@ function M.verifiedFilterPair(id)
 	return baseline,raw
 end
 
+-- Recompute a bounded page from the exact current review and verified files.
+function M.reviewDecisionExamples(id, revision, index, offset, limit)
+	local config=assert(get(id), "Enable and run daily sync first")
+	assert(config.revision==revision and type(config.review)=="table", "The sync review changed. Reopen it before comparing examples")
+	assert(type(index)=="number" and index==math.floor(index) and index>=1, "Invalid review decision")
+	local decision=assert(type(config.review.changes)=="table" and config.review.changes[index], "Review decision is unavailable")
+	local before,after=M.verifiedFilterPair(id)
+	local latest=assert(get(id), "The sync profile is unavailable")
+	assert(latest.revision==revision, "The sync review changed. Reopen it before comparing examples")
+	local examples=require("Modules.LootFilterDecisionSamples")
+	return examples.page(examples.prepare(decision,before,after),offset,limit)
+end
+
 function M.compareObservedStack(id, name, size, area, itemLevel, itemClass)
 	local item = observedStackItem(name,size,area,itemLevel,itemClass)
 	return observedStackComparison(M.verifiedFilterPair(id))(item)
