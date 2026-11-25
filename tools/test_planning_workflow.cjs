@@ -1,5 +1,6 @@
 // cspell:ignore Ukatoa Katakohi Duskwalk unmodeled lupa
 // A real MCP stdio client drives an isolated native host and explicit UI review.
+// Run with --lupa --portable <extracted package> to exercise shipped code.
 // cspell:ignore GGGRRW RGBRRR craic
 'use strict';
 const assert=require('node:assert/strict');
@@ -10,9 +11,12 @@ const {createHash}=require('node:crypto');
 const {spawn}=require('node:child_process');
 const {createInterface}=require('node:readline');
 const root=path.resolve(__dirname,'..');
-const directory=fs.mkdtempSync(path.join(os.tmpdir(),'pob-planning-workflow-'));
 const lua=process.argv[2] || 'luajit';
 const useLupa=lua==='--lupa';
+const portable=process.argv[3]==='--portable' && process.argv[4] ? path.resolve(process.argv[4]) : null;
+if(process.argv.length>3 && (!useLupa || !portable || process.argv.length!==5)) throw new Error('Use --lupa --portable <extracted package>');
+if(portable && !fs.existsSync(path.join(portable,'AI','McpServer.cjs'))) throw new Error('Portable package is missing its MCP server');
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'pob-planning-workflow-'));
 const children=[];const diagnostics=[];
 function connection(child,prefix='') {
   children.push(child);const pending=new Map();let next=0;let ready,rejectReady,didStart=false;
@@ -32,11 +36,12 @@ async function main(){
   const environment={...process.env,LUA_PATH:'../runtime/lua/?.lua;../runtime/lua/?/init.lua;;'};
   if(process.platform==='win32'){environment.LUA_CPATH=path.join(root,'runtime','?.dll')+';;';environment.PATH=path.join(root,'runtime')+path.delimiter+process.env.PATH;}
   const command=useLupa?(process.env.POB_PYTHON || (process.platform==='win32'?'python':'python3')):lua;
-  const args=useLupa?[path.join(root,'tools','run_headless_lupa.py'),'--filesystem','../tools/planning_workflow_host.lua',directory]:['../tools/planning_workflow_host.lua',directory];
+  const hostScript=path.join(root,'tools','planning_workflow_host.lua');
+  const args=useLupa?[path.join(root,'tools','run_headless_lupa.py'),'--filesystem',...(portable?['--portable',portable]:[]),hostScript,directory]:[hostScript,directory];
   const native=connection(spawn(command,args,{cwd:path.join(root,'src'),env:environment}),'WORKFLOW\t');
   let startupTimer;
   await Promise.race([native.started,new Promise((_,reject)=>{startupTimer=setTimeout(()=>reject(new Error('Native startup timed out')),60000);})]).finally(()=>clearTimeout(startupTimer));
-  const mcp=connection(spawn(process.execPath,[path.join(root,'src/AI/McpServer.cjs'),path.join(directory,'AI-encounter.json')]));
+  const mcp=connection(spawn(process.execPath,[path.join(portable || path.join(root,'src'),'AI','McpServer.cjs'),path.join(directory,'AI-encounter.json')]));
   const rpc=(method,params)=>mcp.send({jsonrpc:'2.0',method,params});
   const initialized=await rpc('initialize',{protocolVersion:'2025-11-25',capabilities:{},clientInfo:{name:'planning-workflow-test',version:'1'}});assert.ok(initialized.result);
   children[1].stdin.write(JSON.stringify({jsonrpc:'2.0',method:'notifications/initialized'})+'\n');

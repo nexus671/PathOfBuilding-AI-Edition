@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1306][2026/11/24]
+VERSION[2.69.0-ai.preview1307][2026/11/24]
 
 * Compare rolled rare Cluster Jewels by passive layout and exact modifiers.
+
+VERSION[2.69.0-ai.preview1306][2026/11/24]
+
+* Clarify the filter items supported by managed price rules.
 
 VERSION[2.69.0-ai.preview1305][2026/11/24]
 
