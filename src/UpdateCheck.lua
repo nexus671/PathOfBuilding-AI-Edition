@@ -175,6 +175,48 @@ if not remoteVer or not next(remoteSources) or not next(remoteFiles) then
 	return nil, "Invalid remote manifest"
 end
 
+-- Branch manifests can temporarily point at an older release. Never turn a
+-- hash mismatch into a downgrade, even if a cache serves an old manifest.
+local function versionParts(version)
+	local major, minor, patch = version:match("^(%d+)%.(%d+)%.(%d+)")
+	if not major then return nil end
+	return { tonumber(major), tonumber(minor), tonumber(patch) }
+end
+local localParts, remoteParts = versionParts(localVer), versionParts(remoteVer)
+if not localParts or not remoteParts then
+	return nil, "Cannot compare update versions; update not applied."
+end
+local comparison = 0
+for index = 1, 3 do
+	if remoteParts[index] ~= localParts[index] then
+		comparison = remoteParts[index] > localParts[index] and 1 or -1
+		break
+	end
+end
+-- Stable AI releases have their own ordered version. On the same upstream
+-- version, an older stable release or an unnumbered preview is not an update.
+if comparison == 0 then
+	local function aiRelease(version)
+		local major, minor, patch = version:match("^%d+%.%d+%.%d+%-ai%.(%d+)%.(%d+)%.(%d+)$")
+		if major then return { tonumber(major), tonumber(minor), tonumber(patch) } end
+	end
+	local current, incoming = aiRelease(localVer), aiRelease(remoteVer)
+	if current and not incoming then
+		comparison = -1
+	elseif current and incoming then
+		for index = 1, 3 do
+			if incoming[index] ~= current[index] then
+				comparison = incoming[index] > current[index] and 1 or -1
+				break
+			end
+		end
+	end
+end
+if comparison < 0 then
+	ConPrintf("Ignoring older update version %s (current %s).", remoteVer, localVer)
+	return "none"
+end
+
 -- Build lists of files to be updated or deleted
 local updateFiles = { }
 for name, data in pairs(remoteFiles) do

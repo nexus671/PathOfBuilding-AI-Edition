@@ -2188,7 +2188,7 @@
 	<File name="Modules/VendorQualitySets.lua" part="program" sha1="2866d9a15684339d9a3a1ca2b5fae7939eb50b6f" />
 	<File name="Modules/VendorRarePairs.lua" part="program" sha1="96ad32284f46978636ece2d823e71acbf09b8529" />
 	<File name="UpdateApply.lua" part="program" sha1="d7e47a29feff219c1ec3c6e4a19eb85b47691c26" />
-	<File name="UpdateCheck.lua" part="program" sha1="daef8bc9b85526fe980fb5b0722c19e4eb5d751c" />
+	<File name="UpdateCheck.lua" part="program" sha1="29689a9beae71ac5b9ad492c9f1c8c3b6a1f2f5e" />
 	<File name="abseil_dll.dll" part="runtime" platform="win32" sha1="e9c19e2bce146c5b41f71bb1e367ca055a10a94e" />
 	<File name="concrt140.dll" part="runtime" platform="win32" sha1="e9999d2d3c0ec93c6dfcbe59f05269fb947f9973" />
 	<File name="d3dcompiler_47.dll" part="runtime" platform="win32" sha1="27a4eff95e7f4a359718fda7138a528147969b27" />
