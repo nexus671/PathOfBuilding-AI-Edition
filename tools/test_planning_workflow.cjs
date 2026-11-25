@@ -2089,6 +2089,15 @@ async function main(){
   const missingJewel=await queued('compare_gear_listings',{baseRevision:context.revision,jewelSocketId:2147483647,snapshotPath,league:'Standard'},'failed');
   assert.match(missingJewel.error,/supported comparable rare gear/);
   assert.equal((await call('get_build_context')).context.revision,context.revision);
+  const clusterEnchants=['Adds 8 Passive Skills','2 Added Passive Skills are Jewel Sockets','Added Small Passive Skills grant: 12% increased Attack Damage while holding a Shield'];
+  const clusterMod='1 Added Passive Skill is Heavy Hitter';
+  const clusterText=['Rarity: Rare','Recorded Cluster','Large Cluster Jewel','Item Level: 86',...clusterEnchants.map(line=>line+' (enchant)'),clusterMod].join('\n');
+  const clusterAsk={...jewelAsk,baseType:'Large Cluster Jewel',enchantMods:clusterEnchants,explicitMods:[{description:clusterMod}]};
+  const otherCluster={...clusterAsk,id:'7'.repeat(64),enchantMods:['Adds 9 Passive Skills',...clusterEnchants.slice(1)]};
+  fs.writeFileSync(snapshotPath,JSON.stringify({next_change_id:'cursor',stashes:[{id:'2'.repeat(64),public:true,league:'Standard',accountName:'Seller#0001',items:[clusterAsk,otherCluster]}]}));
+  const clusterListings=await queued('compare_gear_listings',{baseRevision:context.revision,itemText:clusterText,snapshotPath,league:'Standard'},'gearListings');
+  assert.equal(clusterListings.gearListings.comparison.matched,1);
+  assert.deepEqual(clusterListings.gearListings.cluster,{passives:8,sockets:2});
   const invalidListing=await queued('compare_gear_listings',{baseRevision:context.revision,slot:'Ring 1',snapshotPath:'relative.json',league:'Standard'},'failed');
   assert.match(invalidListing.error,/absolute local JSON/);
   await host('quit');

@@ -1818,6 +1818,68 @@ Item Level: 86
 		compact:restore()
 		print("Copied rares use the native file comparison without equipping the item or requesting market data")
 	end
+	do
+		-- The Large layout and mod-channel shape follow the documented item fields
+		-- and the Cluster Jewel in spec/System/SampleCharacter.json.
+		local effect="Added Small Passive Skills grant: 12% increased Attack Damage while holding a Shield"
+		local rolls={{description="Added Small Passive Skills also grant: +2% to Fire Resistance"},
+			{description="1 Added Passive Skill is Heavy Hitter"}}
+		local granted={"Adds 8 Passive Skills","2 Added Passive Skills are Jewel Sockets",effect}
+		local rawCluster="Item Class: Jewels\nRarity: Rare\nFixture Cluster\nLarge Cluster Jewel\n--------\nItem Level: 84\n--------\n"
+			..table.concat(granted," (enchant)\n").." (enchant)\n--------\n"..rolls[1].description.."\n"..rolls[2].description
+			.."\n1 Added Passive Skill is Storm Drinker (fractured)\n--------\nFractured Item"
+		local cluster=new("Item"):Item(rawCluster)
+		local clusterTarget=assert(listings.target(cluster))
+		assert(clusterTarget.cluster.passives==8 and clusterTarget.cluster.sockets==2)
+		for _, invalid in ipairs({
+			rawCluster:gsub("Adds 8 Passive Skills %(enchant%)\n",""),
+			rawCluster:gsub("Adds 8 Passive Skills","Adds 13 Passive Skills"),
+			rawCluster:gsub("2 Added Passive Skills are Jewel Sockets","1 Added Passive Skill is a Jewel Socket"),
+			(rawCluster:gsub("Item Level: 84","Cluster Jewel Node Count: 9\nItem Level: 84")),
+		}) do
+			assert(not listings.target(new("Item"):Item(invalid)),"Incomplete or contradictory Cluster layout")
+		end
+		local smallBonus="Added Small Passive Skills grant: 4% increased maximum Life"
+		local mediumBonus="Added Small Passive Skills grant: 10% increased Damage while affected by a Herald"
+		local small="Rarity: RARE\nFixture Small Cluster\nSmall Cluster Jewel\nItem Level: 84\n"
+			.."Adds 2 Passive Skills (enchant)\n"..smallBonus.." (enchant)\n"..rolls[1].description
+		local medium="Rarity: RARE\nFixture Medium Cluster\nMedium Cluster Jewel\nItem Level: 84\n"
+			.."Adds 4 Passive Skills (enchant)\n1 Added Passive Skill is a Jewel Socket (enchant)\n"..mediumBonus.." (enchant)\n"..rolls[1].description
+		assert(assert(listings.target(new("Item"):Item(small))).cluster.sockets==0)
+		assert(assert(listings.target(new("Item"):Item(medium))).cluster.sockets==1)
+		local function clusterRow(id, enchants, explicit)
+			local listing=equipmentRow(id,"Large Cluster Jewel",nil,nil,explicit or rolls)
+			listing.ilvl=84;listing.fractured=true
+			listing.enchantMods=enchants
+			listing.fracturedMods={"1 Added Passive Skill is Storm Drinker"}
+			return listing
+		end
+		local exact=clusterRow(61,granted)
+		local differentCount=clusterRow(62,{"Adds 9 Passive Skills",granted[2],effect})
+		local differentSocket=clusterRow(63,{granted[1],"1 Added Passive Skill is a Jewel Socket",effect})
+		local differentEffect=clusterRow(64,{granted[1],granted[2],mediumBonus})
+		local differentNotable=clusterRow(65,granted,{rolls[1],{description="1 Added Passive Skill is Prodigious Defence"}})
+		local incomplete=clusterRow(66,{granted[1],granted[2]})
+		local wrongLevel=clusterRow(67,granted);wrongLevel.ilvl=83
+		local missingFracture=clusterRow(68,granted);missingFracture.fractured=nil
+		local snapshot=json.encode({next_change_id="cursor",stashes={stash(62,"Clusters#0062",
+			{exact,differentCount,differentSocket,differentEffect,differentNotable,incomplete,wrongLevel,missingFracture})}})
+		assert(listings.compare(snapshot,clusterTarget,"Covens").matched==1)
+		file=assert(io.open(path,"wb"));assert(file:write(snapshot));assert(file:close())
+		local clusterBuild={itemsTab={orderedSlots={{slotName="Jewel 321",nodeId=321}},items={cluster}},
+			spec={allocNodes={[321]=true},jewels={[321]=1}}}
+		main.popups={}
+		require("Classes.LootFilterMarketBrowseControl").Open(clusterBuild)
+		gearUI:text("league","Covens");gearUI:click("buildTarget");gearUI:text("search","Jewel 321");gearUI:click("choose")
+		gearUI:click("listingSample")
+		assert(main.popups[1].title=="Comparable asking prices")
+		local details={}
+		for _,line in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(line[1] or "") end
+		local summary=table.concat(details," ")
+		assert(summary:find("Passive layout: 8 passives | 2 jewel sockets",1,true) and summary:find("1 matching rolls",1,true),summary)
+		if output then gearUI:frame():write(output.."/cluster-listing-snapshot.json") end
+		print("Rolled Cluster Jewel listings distinguish passive layouts, notable rolls, and state")
+	end
 	require("Classes.LootFilterFileBrowser").Open=originalPicker
 	os.remove(path)
 	launch.DownloadPage=oldDownload
