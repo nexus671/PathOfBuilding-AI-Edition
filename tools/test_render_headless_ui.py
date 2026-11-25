@@ -20,6 +20,19 @@ def text_command(order=1, sublayer=0):
 
 
 class HiddenTextTests(unittest.TestCase):
+    def test_unicode_placeholder_matches_smaller_font_and_checks_contrast(self):
+        command = {"kind": "text", "x": 5, "y": 5, "width": 43, "height": 16,
+                   "font": "Liberation Sans", "fontHeight": 16, "text": "é",
+                   "color": [1, 1, 1, 1], "clip": [0, 0, 100, 40],
+                   "layer": 0, "sublayer": 100, "order": 1}
+        image, audit = render({"width": 100, "height": 40, "commands": [command]})
+        reference = dict(command, y=7, height=12, fontHeight=12, text="[U+00E9]")
+        expected, _ = render({"width": 100, "height": 40, "commands": [reference]})
+        self.assertEqual(expected.tobytes(), image.tobytes())
+        self.assertEqual([], audit["lowContrast"])
+        _, dark = render({"width": 100, "height": 40, "commands": [dict(command, color=[.08, .08, .08, 1])]})
+        self.assertEqual(["é"], dark["lowContrast"])
+
     def test_detects_a_card_background_drawn_over_a_label(self):
         background = rectangle(5, 5, 55, 25, [0, 0, 80, 80], [.1, .1, .1, 1], 2)
         self.assertEqual(["^7Visible label"], hidden_text([text_command(), background], 80, 80))
