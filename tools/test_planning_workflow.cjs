@@ -2157,8 +2157,8 @@ async function main(){
   const corruptionOnly=(await queued('compare_gear_listings',{...armourCriteria,itemFilters:{corruption:'true'}},'gearListings')).gearListings;
   assert.deepEqual(corruptionOnly.comparison.propertyFilters.level,{min:86,max:86});
   assert.equal(corruptionOnly.comparison.matched,0);
-  const unsocketed=await queued('compare_gear_listings',{...armourCriteria,slot:'Ring 1',itemFilters:{links:{min:1}}},'failed');
-  assert.match(unsocketed.error,/configurable sockets/);
+  const ringWithLinks=await queued('compare_gear_listings',{...armourCriteria,slot:'Ring 1',itemFilters:{links:{min:1}}},'failed');
+  assert.match(ringWithLinks.error,/configurable sockets/);
   assert.deepEqual(fs.readFileSync(snapshotPath),rollingBytes);
   assert.equal((await call('get_build_context')).context.revision,context.revision);
   fs.writeFileSync(snapshotPath,JSON.stringify({next_change_id:'cursor',stashes:[]}));
