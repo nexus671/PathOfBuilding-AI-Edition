@@ -2121,6 +2121,64 @@ Item Level: 86
 		if output then gearUI:frame():write(output.."/cluster-listing-snapshot.json") end
 		print("Rolled Cluster Jewel listings distinguish passive layouts, notable rolls, and state")
 	end
+	do
+		local growth={"1 Added Passive Skill is Constitution","1 Added Passive Skill is Heart of Oak"}
+		local mods={"Grows four random Passive Skills when Anointed",
+			"Passive Skills grown are influenced by Oils used when Anointing"}
+		local raw="Rarity: UNIQUE\nPutrid Seed\nMycelium Core\nLimited to: 1\nItem Level: 86\n--------\n"
+			..table.concat(growth," (enchant)\n").." (enchant)\n--------\n"..table.concat(mods,"\n")
+		local item=new("Item"):Item(raw)
+		local seed=assert(listings.target(item),"Expected a comparable anointed Seed")
+		assert(seed.blightcore[1]=="Constitution" and seed.blightcore[2]=="Heart of Oak")
+		assert(not listings.target(new("Item"):Item(raw:gsub("1 Added Passive Skill is [^\n]+\n",""))))
+		local function seedAsk(id, note)
+			local ask=row(id,note)
+			ask.baseType,ask.name,ask.rarity,ask.frameType="Mycelium Core","Putrid Seed","Unique",3
+			ask.implicitMods,ask.explicitMods=nil,mods
+			ask.properties={{name="Limited to",displayMode=0,values={{"1",0}}}}
+			ask.enchantMods=copyTable(growth)
+			return ask
+		end
+		local swapped=seedAsk(301,"~price 1 chaos")
+		swapped.enchantMods={growth[2],growth[1]}
+		local missing=seedAsk(302,"~price 1 chaos");table.remove(missing.enchantMods)
+		local wrongState=seedAsk(303,"~price 1 chaos");wrongState.corrupted=true
+		local foil=seedAsk(304,"~price 1 chaos");foil.foilVariation=1
+		local wrongName=seedAsk(305,"~price 1 chaos");wrongName.name="Another Seed"
+		local wrongLimit=seedAsk(306,"~price 1 chaos");wrongLimit.properties[1].values[1][1]="2"
+		local wrongChannel=seedAsk(307,"~price 1 chaos");wrongChannel.enchantMods=nil;wrongChannel.implicitMods=growth
+		local wrongLevel=seedAsk(308,"~price 1 chaos");wrongLevel.ilvl=85
+		local fixture=json.encode({next_change_id="cursor",stashes={
+			stash(300,"First#0300",{seedAsk(310,"~price 10 chaos"),swapped,missing,wrongState,foil,wrongName,wrongLimit,wrongChannel,wrongLevel}),
+			stash(301,"Second#0301",{seedAsk(311,"~price 20 chaos")}),
+			stash(302,"Third#0302",{seedAsk(312,"~price 30 chaos")}),
+		}})
+		local sample=listings.compare(fixture,seed,"Covens")
+		assert(sample.matched==3 and sample.results[1].sellers==3 and sample.results[1].median==20)
+		file=assert(io.open(path,"wb"));assert(file:write(fixture));assert(file:close())
+		local seedBuild={itemsTab={orderedSlots={{slotName="Jewel 321",nodeId=321}},items={item}},
+			spec={allocNodes={[321]=true},jewels={[321]=1}}}
+		main.popups={}
+		require("Classes.LootFilterMarketBrowseControl").Open(seedBuild)
+		gearUI:text("league","Covens");gearUI:click("buildTarget");gearUI:text("search","Jewel 321");gearUI:click("choose")
+		assert(not main.popups[1].controls.rolledTrade:IsEnabled())
+		gearUI:click("listingSample")
+		assert(main.popups[1].title=="Comparable asking prices")
+		local details={}
+		for _,line in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(line[1] or "") end
+		local summary=table.concat(details," ")
+		assert(summary:find("1. Constitution 2. Heart of Oak",1,true) and summary:find("Median 20",1,true),summary)
+		if output then gearUI:frame():write(output.."/blightcore-listing-snapshot.json") end
+		gearUI:click("close")
+		local previousPaste=Paste
+		Paste=function() return raw end
+		gearUI:click("pasteItem")
+		Paste=previousPaste
+		assert(main.popups[1].controls.query.buf=="=Putrid Seed")
+		gearUI:click("listingSample")
+		assert(main.popups[1].title=="Comparable asking prices")
+		print("Putrid Seed listing comparisons preserve the order of granted passives")
+	end
 	require("Classes.LootFilterFileBrowser").Open=originalPicker
 	os.remove(path)
 	launch.DownloadPage=oldDownload

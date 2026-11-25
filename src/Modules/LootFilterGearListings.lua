@@ -22,6 +22,7 @@ local influences = {shaper="shaper",elder="elder",adjudicator="warlord",basilisk
 	crusader="crusader",eyrie="redeemer",cleansing="searing",tangle="tangled"}
 local currencies = {chaos=true,divine=true}
 local listingFlags = {fractured=true,crafted=true,mutated=true,desecrated=true,vestigial=true,rareonly=true}
+local seedExplicit = "--Grows four random Passive Skills when Anointed\0--Passive Skills grown are influenced by Oils used when Anointing"
 local knownInfluences = {}
 for _, key in pairs(influences) do knownInfluences[key]=true end
 
@@ -111,8 +112,24 @@ local function clusterLayout(item)
 	return {passives=passives,sockets=expectedSockets}
 end
 
+local function seedLayout(item)
+	local notables = item.jewelData and item.jewelData.blightcoreNotables
+	local enchants = item.enchantModLines
+	if item.limit~=1 or item.foilType or not notables or not enchants or #enchants<1 or #enchants>4
+		or #notables~=#enchants then return end
+	local names = {}
+	for index, mod in ipairs(enchants) do
+		local name = mod.line:match("^1 Added Passive Skill is (.+)$")
+		if not name or name:lower()~=notables[index] then return end
+		names[index] = name
+	end
+	return names
+end
+
 function M.target(item, publicBase)
-	if item.rarity~="RARE" or not item.base or item.unidentifiedMarker
+	local seed = item.rarity=="UNIQUE" and item.title=="Putrid Seed" and item.baseName=="Mycelium Core"
+		and item.base and item.base.subType=="Blightcore"
+	if (item.rarity~="RARE" and not seed) or not item.base or item.unidentifiedMarker
 		or type(item.itemLevel)~="number" or item.itemLevel<1 or item.itemLevel>100 or item.itemLevel~=math.floor(item.itemLevel)
 		or item.variant or item.mirrored or item.twiceCorrupted or item.talismanTier or item.memoryStrands or item.intangibility
 		or item.crucible or item.vestigial
@@ -120,7 +137,8 @@ function M.target(item, publicBase)
 		or hasEntries(item.scourgeModLines) or hasEntries(item.crucibleModLines) then return end
 	local equipment
 	local cluster = item.type=="Jewel" and item.base.subType=="Cluster" and clusterLayout(item)
-	local jewel = item.type=="Jewel" and (not item.base.subType or item.base.subType=="Abyss" or cluster)
+	local blightcore = seed and seedLayout(item)
+	local jewel = item.type=="Jewel" and (not item.base.subType or item.base.subType=="Abyss" or cluster or blightcore)
 	local quiver = item.type=="Quiver"
 	if quiver and not quiverBase(item) then
 		return nil,"The visible implicit cannot distinguish this quiver from its legacy base."
@@ -132,6 +150,7 @@ function M.target(item, publicBase)
 		return
 	end
 	local target = {base=publicBase or item.baseName,level=item.itemLevel,equipment=equipment,cluster=cluster or nil,
+		blightcore=blightcore or nil,
 		abyssJewel=item.type=="Jewel" and item.base.subType=="Abyss",
 		keepImplicit=quiver and sharedQuiverNames[item.baseName] or type(publicBase)=="string" and publicBase~=item.baseName}
 	for _, key in ipairs(conditions) do target[key]=item[key]==true end
@@ -142,11 +161,29 @@ function M.target(item, publicBase)
 		target[channel.listing]=mods
 	end
 	if target.explicitMods=="" then return end
+	if blightcore and target.explicitMods~=seedExplicit then return end
 	return target
 end
 
+local function seedProperties(item, names)
+	local properties = item.properties
+	if not marketJSON.objectRows(properties) or #properties~=1 then return false end
+	local property = properties[1]
+	local values = property.values
+	if property.name~="Limited to" or property.displayMode~=0 or type(values)~="table" or #values~=1
+		or type(values[1])~="table" or #values[1]~=2 or values[1][1]~="1" or values[1][2]~=0 then return false end
+	local enchants = item.enchantMods
+	if type(enchants)~="table" or #enchants~=#names then return false end
+	for index, name in ipairs(names) do
+		if enchants[index]~="1 Added Passive Skill is "..name then return false end
+	end
+	return true
+end
+
 local function sameItem(item, target, matchesRolls)
-	if item.identified~=true or item.rarity~="Rare" or item.frameType~=nil and item.frameType~=2 or item.ilvl~=target.level or item.realm~=nil
+	local seed = target.blightcore
+	local rarity, frame = seed and "Unique" or "Rare", seed and 3 or 2
+	if item.identified~=true or item.rarity~=rarity or item.frameType~=nil and item.frameType~=frame or item.ilvl~=target.level or item.realm~=nil
 		or item.duplicated or item.doubleCorrupted or item.memoryItem or item.mutated or item.veiled
 		or item.lockedToCharacter or item.lockedToAccount or item.enshrouded or item.unmodifiable
 		or item.vestigial or item.delve or item.foreseeing or item.scourged~=nil or item.crucible~=nil
@@ -156,9 +193,12 @@ local function sameItem(item, target, matchesRolls)
 		or hasEntries(item.veiledMods) or hasEntries(item.grantedSkills) then return false end
 	if target.equipment then
 		if not gearProperties.matches(item,target.equipment) then return false end
-	elseif item.sockets~=nil and (type(item.sockets)~="table" or next(item.sockets))
-		or item.properties~=nil and (type(item.properties)~="table" or next(item.properties)) then
-		return false
+	else
+		if item.sockets~=nil and (type(item.sockets)~="table" or next(item.sockets)) then return false end
+		if seed then
+			if item.name~="Putrid Seed" or item.typeLine~=nil and item.typeLine~="Mycelium Core"
+				or item.replica or item.isRelic or item.foilVariation~=nil or not seedProperties(item,seed) then return false end
+		elseif item.properties~=nil and (type(item.properties)~="table" or next(item.properties)) then return false end
 	end
 	for _,field in ipairs({"notableProperties","additionalProperties","utilityMods","ultimatumMods"}) do
 		local value=item[field]
@@ -275,7 +315,8 @@ local function readStashes(raw, league)
 end
 
 function M.compare(raw, target, league, matchesRolls)
-	assert(target,"Choose identified rare gear with supported rolls and equipment properties")
+	assert(target,"Choose supported identified gear with complete rolls and equipment properties")
+	assert(not (target.blightcore and matchesRolls),"Putrid Seed requires an exact ordered comparison")
 	assert(type(league)=="string" and #league<=80 and league:match("^[%w _-]+$") and league:find("%S"),"Enter the trade league ID")
 	local stashes, capture = readStashes(raw,league)
 	local listings = {}

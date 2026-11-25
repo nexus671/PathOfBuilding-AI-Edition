@@ -39,7 +39,8 @@ for line in io.lines() do
 			local gear,spec=build.itemsTab,build.spec
 			for _,slot in ipairs(gear.orderedSlots) do
 				local node=slot.nodeId and spec.nodes[slot.nodeId]
-				if node and node.path and not node.expansionJewel then
+				local expansion=node and node.expansionJewel
+				if node and node.path and (command.large and expansion and expansion.size==2 or not command.large and not expansion) then
 					spec:AllocNode(node)
 					assert(spec.allocNodes[node.id])
 					local item=new("Item"):Item(assert(command.itemText))
@@ -49,7 +50,7 @@ for line in io.lines() do
 					return {jewelSocketId=node.id}
 				end
 			end
-			error("No connected ordinary jewel socket in fixture")
+			error("No connected socket of the requested jewel size in fixture")
 		elseif command.kind=="inject-crafting-error" or command.kind=="inject-planning-error" then
 			local simulator=command.kind=="inject-crafting-error" and require("Modules.CraftingSimulator") or require(assert(command.module))
 			local key=assert(command.method)

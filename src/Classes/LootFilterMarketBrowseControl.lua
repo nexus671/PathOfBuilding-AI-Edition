@@ -122,6 +122,11 @@ local function showListingSample(target, league, sample, filterCount)
 	end
 	local equipment = target.listingItem.equipment
 	local cluster = target.listingItem.cluster
+	local seed = target.listingItem.blightcore
+	if seed then
+		details[#details+1] = "Granted passives in order"
+		for index, name in ipairs(seed) do details[#details+1]=index..". "..name end
+	end
 	if cluster then
 		details[#details+1] = string.format("Passive layout: %d passives | %d jewel socket%s",
 			cluster.passives,cluster.sockets,cluster.sockets==1 and "" or "s")
@@ -278,11 +283,11 @@ local function open(build, managedTarget)
 			openTradeHistory(controls.league.buf:match("^%s*(.-)%s*$"))
 		end)
 		controls.tradeHistory.enabled = function() return not busy end
-		controls.pasteItem=new("ButtonControl"):ButtonControl(ui.anchor,{16,320,actionWidth,28},"Paste rare item",function()
+		controls.pasteItem=new("ButtonControl"):ButtonControl(ui.anchor,{16,320,actionWidth,28},"Paste item",function()
 			clearTarget()
 			local raw = Paste()
 			if type(raw)~="string" or #raw>24000 or not raw:find("%S") then
-				status("Copy one identified rare item from Path of Exile first.")
+				status("Copy one identified rare item or an anointed Putrid Seed first.")
 				return
 			end
 			local ok, comparison, base, reason = pcall(function()
@@ -294,9 +299,12 @@ local function open(build, managedTarget)
 				status(reason or "The copied item lacks comparable rolls or supported equipment properties.")
 				return
 			end
-			selectTarget({name=comparison.base,category=comparison.cluster and "ClusterJewel" or "BaseType",listingItem=comparison,
-				label="Copied item | "..base.." | Item level "..comparison.level,
-				details={"Market estimates are for the base. Compare a listing file for matching item rolls."}},
+			local seed = comparison.blightcore
+			local name = seed and "Putrid Seed" or comparison.base
+			selectTarget({name=name,category=seed and "UniqueJewel" or comparison.cluster and "ClusterJewel" or "BaseType",
+				listingItem=comparison,label="Copied item | "..(seed and name or base).." | Item level "..comparison.level,
+				details={seed and "A listing file compares this jewel's granted passives in order."
+					or "Market estimates are for the base. Compare a listing file for matching item rolls."}},
 				"Item copied. Choose a league and compare a public stash JSON file.")
 		end)
 		controls.pasteItem.enabled = function() return not busy end
@@ -314,7 +322,7 @@ local function open(build, managedTarget)
 				compareListingFile(selected,league,matchesRolls,filterCount)
 			end)
 		end)
-		controls.rolledTrade.enabled=function() return not busy and target and target.listingItem~=nil end
+		controls.rolledTrade.enabled=function() return not busy and target and target.listingItem~=nil and not target.listingItem.blightcore end
 	end
 	controls.get=new("ButtonControl"):ButtonControl(ui.anchor,{16,282,138,28},"Show prices",function()
 		if busy then return end
