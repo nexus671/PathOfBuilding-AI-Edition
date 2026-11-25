@@ -1683,6 +1683,7 @@ Item Level: 86
 			:gsub("7%% increased maximum Life","+36 to maximum Life"))
 		local abyssMods={{description="+36 to maximum Life"}}
 		local exact=equipmentRow(51,"Ghastly Eye Jewel",nil,nil,abyssMods)
+		exact.abyssJewel=true
 		local lowerRoll=equipmentRow(52,"Ghastly Eye Jewel",nil,nil,{{description="+35 to maximum Life"}})
 		local wrongChannel=equipmentRow(53,"Ghastly Eye Jewel",nil,nil,nil)
 		wrongChannel.implicitMods=abyssMods
@@ -1690,8 +1691,11 @@ Item Level: 86
 		local unknown=equipmentRow(55,"Ghastly Eye Jewel",nil,{property("Unverified","1")},abyssMods)
 		local wrongLevel=equipmentRow(56,"Ghastly Eye Jewel",nil,nil,abyssMods);wrongLevel.ilvl=85
 		local ordinary=equipmentRow(57,"Cobalt Jewel",nil,nil,{{description="7% increased maximum Life"}})
+		local wrongSubtype=equipmentRow(58,"Cobalt Jewel",nil,nil,ordinary.explicitMods);wrongSubtype.abyssJewel=true
+		local badFlag=equipmentRow(59,"Ghastly Eye Jewel",nil,nil,abyssMods);badFlag.fractured="unknown"
+		local badInfluence=equipmentRow(60,"Ghastly Eye Jewel",nil,nil,abyssMods);badInfluence.shaper="unknown"
 		local jewelPage=json.encode({next_change_id="cursor",stashes={
-			stash(51,"Jewels#0051",{exact,lowerRoll,wrongChannel,corrupt,unknown,wrongLevel,ordinary}),
+			stash(51,"Jewels#0051",{exact,lowerRoll,wrongChannel,corrupt,unknown,wrongLevel,ordinary,wrongSubtype,badFlag,badInfluence}),
 		}})
 		assert(listings.compare(jewelPage,assert(listings.target(abyss)),"Covens").matched==1)
 		assert(listings.compare(jewelPage,assert(listings.target(jewel)),"Covens").matched==1)
