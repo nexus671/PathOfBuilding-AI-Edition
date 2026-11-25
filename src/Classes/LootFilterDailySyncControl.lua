@@ -812,7 +812,11 @@ function M.Open(profileId, profileName, restored)
 		if not passed then main:OpenMessagePopup("Windows background task",ui.errorText(err)) end
 	end)
 	c.backgroundStatus.enabled = function() return not background.busy end
-	ui.description(c,"backgroundHelp",206,503,width-402,27,{"Runs while you are signed in to Windows."},13)
+	c.backgroundStatus.tooltipText = "The Windows task runs while you are signed in."
+	c.rareExceptions = new("ButtonControl"):ButtonControl(ui.anchor,{206,504,width-402,26},"Rare exceptions",function()
+		require("Classes.LootFilterRareAuditControl").ChooseVerifiedSource(profileId)
+	end)
+	c.rareExceptions.enabled = function() return not sync.busy and latestActionConfig().lastSuccess~=nil end
 	c.account = new("ButtonControl"):ButtonControl(ui.anchor,{width-184,504,168,26},"Publish to account",function()
 		require("Classes.LootFilterSyncAccountControl").Open(profileId)
 	end)
@@ -916,8 +920,9 @@ function M.Open(profileId, profileName, restored)
 		for index,key in ipairs({"backupRetention","offlinePrices","lastAttempt","observedStack"}) do
 			place(key,16+(index-1)*(quarter+8),242,quarter)
 		end
-		place("backgroundHelp",16,280,width-32)
-		c.backgroundHelp.list=ui.rows({"Runs while you are signed in to Windows."},width-32,13)
+		place("rareExceptions",16,276,half)
+		ui.description(c,"backgroundHelp",16,308,width-32,27,{"Runs while you are signed in to Windows."},13)
+		c.backgroundHelp.shown=function() return page=="Actions" end
 		place("close",width-132,popupHeight-48,116)
 		c.setupPage=new("ButtonControl"):ButtonControl(ui.anchor,{16,popupHeight-48,140,28},"Setup",function() page="Setup" end)
 		c.actionsPage=new("ButtonControl"):ButtonControl(ui.anchor,{164,popupHeight-48,140,28},"Actions",function() page="Actions" end)

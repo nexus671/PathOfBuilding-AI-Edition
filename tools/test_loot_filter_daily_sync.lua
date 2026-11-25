@@ -1137,10 +1137,20 @@ print("Named profiles isolate destinations, history, schedule, rollback, and bac
 
 local verifiedRaw, verifiedState = profiles.verifiedOutput("default")
 assert(verifiedRaw==read(target) and verifiedState.realm=="pc" and verifiedState.digest==profiles.configuration().current)
-write(target,verifiedRaw.."# local edit")
-assert(not pcall(profiles.verifiedOutput,"default"))
-write(target,verifiedRaw)
-assert(not pcall(profiles.verifiedOutput,id))
+do
+	local fixedPath = profiles.configuration().baseline
+	local fixedBefore, activeBefore = profiles.verifiedFilterPair("default")
+	assert(fixedBefore==read(fixedPath) and activeBefore==verifiedRaw)
+	write(target,verifiedRaw.."# local edit")
+	assert(not pcall(profiles.verifiedOutput,"default"))
+	assert(not pcall(profiles.verifiedFilterPair,"default"))
+	write(target,verifiedRaw)
+	write(fixedPath,fixedBefore.."# local edit")
+	local pairOK, pairError = pcall(profiles.verifiedFilterPair,"default")
+	assert(not pairOK and pairError:find("Baseline checksum changed",1,true))
+	write(fixedPath,fixedBefore)
+	assert(not pcall(profiles.verifiedOutput,id))
+end
 print("Account publication can only read the latest verified, unchanged local output")
 
 
