@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1332][2026/11/25]
+VERSION[2.69.0-ai.preview1333][2026/11/25]
 
 * Let AI tools page through all verified filter price decisions.
+
+VERSION[2.69.0-ai.preview1332][2026/11/25]
+
+* Edit item level, corruption and link filters in the rolled-item trade review.
 
 VERSION[2.69.0-ai.preview1331][2026/11/25]
 

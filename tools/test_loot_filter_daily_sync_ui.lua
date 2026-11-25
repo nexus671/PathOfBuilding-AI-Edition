@@ -1690,31 +1690,34 @@ Item Level: 86
 	local combined=listings.compare(bundled,target,"Covens")
 	assert(combined.matched==3 and combined.results[1].low==25 and combined.results[1].median==45 and combined.results[1].high==55)
 	assert(combined.capture.pages==4 and combined.capture.updated==2 and combined.capture.withdrawn==1)
-	local aged=listings.compare(bundled,target,"Covens",nil,true,true)
-	assert(aged.expiredListings==4 and aged.priced==0 and aged.results[1].sellers==0)
-	local rolling=copyTable(capture)
-	local now=os.time()
-	rolling.capturedAt=now-3600
-	rolling.pages[1].collectedAt=rolling.capturedAt
-	for index=2,#rolling.pages do rolling.pages[index].collectedAt=now-30 end
-	table.insert(rolling.pages[1].response.stashes,stash(27,"Expired#0027",{row(27,"~price 2 chaos")}))
-	local recentBytes=assert(json.encode(rolling))
-	local recent=listings.compare(recentBytes,target,"Covens",nil,true,true)
-	assert(recent.expiredListings==1 and recent.priced==3 and recent.results[1].median==45
-		and recent.results[1].low==25 and recent.capture.withdrawn==1)
-	local archive=listings.compare(recentBytes,target,"Covens")
-	assert(archive.expiredListings==nil and archive.priced==4 and archive.results[1].low==2)
-	local priorOwner=stash(28,"Conflict#0028",{row(25,"~price 2 chaos")})
-	table.insert(rolling.pages[1].response.stashes,priorOwner)
-	local duplicate=listings.compare(json.encode(rolling),target,"Covens",nil,true,true)
-	assert(duplicate.ambiguous==1 and duplicate.priced==2 and not duplicate.results[1].median)
-	table.remove(rolling.pages[1].response.stashes)
-	rolling.pages[3].collectedAt=now+86400
-	assert(not pcall(listings.compare,json.encode(rolling),target,"Covens",nil,true,true))
-	rolling.pages[3].collectedAt=now-31
-	assert(not pcall(listings.compare,json.encode(rolling),target,"Covens",nil,true,true))
-	rolling.pages[1].collectedAt=now-3599
-	assert(not pcall(listings.compare,json.encode(rolling),target,"Covens",nil,true,true))
+	local recentBytes
+	do
+		local aged=listings.compare(bundled,target,"Covens",nil,true,true)
+		assert(aged.expiredListings==4 and aged.priced==0 and aged.results[1].sellers==0)
+		local rolling=copyTable(capture)
+		local now=os.time()
+		rolling.capturedAt=now-3600
+		rolling.pages[1].collectedAt=rolling.capturedAt
+		for index=2,#rolling.pages do rolling.pages[index].collectedAt=now-30 end
+		table.insert(rolling.pages[1].response.stashes,stash(27,"Expired#0027",{row(27,"~price 2 chaos")}))
+		recentBytes=assert(json.encode(rolling))
+		local recent=listings.compare(recentBytes,target,"Covens",nil,true,true)
+		assert(recent.expiredListings==1 and recent.priced==3 and recent.results[1].median==45
+			and recent.results[1].low==25 and recent.capture.withdrawn==1)
+		local archive=listings.compare(recentBytes,target,"Covens")
+		assert(archive.expiredListings==nil and archive.priced==4 and archive.results[1].low==2)
+		local priorOwner=stash(28,"Conflict#0028",{row(25,"~price 2 chaos")})
+		table.insert(rolling.pages[1].response.stashes,priorOwner)
+		local duplicate=listings.compare(json.encode(rolling),target,"Covens",nil,true,true)
+		assert(duplicate.ambiguous==1 and duplicate.priced==2 and not duplicate.results[1].median)
+		table.remove(rolling.pages[1].response.stashes)
+		rolling.pages[3].collectedAt=now+86400
+		assert(not pcall(listings.compare,json.encode(rolling),target,"Covens",nil,true,true))
+		rolling.pages[3].collectedAt=now-31
+		assert(not pcall(listings.compare,json.encode(rolling),target,"Covens",nil,true,true))
+		rolling.pages[1].collectedAt=now-3599
+		assert(not pcall(listings.compare,json.encode(rolling),target,"Covens",nil,true,true))
+	end
 	assert(not pcall(listings.compare,bundled,target,"Standard"))
 	capture.realm="xbox"
 	assert(not pcall(listings.compare,json.encode(capture),target,"Covens"))
@@ -1989,6 +1992,43 @@ Item Level: 86
 	local layout={next_change_id="cursor",stashes={stash(31,"Armour#0031",
 		{candidate,fewerLinks,differentColours,differentDefence,differentQuality})}}
 	assert(listings.compare(json.encode(layout),armourTarget,"Covens").matched==1)
+	local editedPage
+	do
+		local selectedArmour={level={min=87,max=89},corruption="true",links={min=5,max=5}}
+		local function alternateArmour(id, level, state, colors, broken, price, props)
+			local value=equipmentRow(id,"Vaal Regalia",sockets(colors,broken),props or defence,armourMods)
+			value.ilvl,value.corrupted,value.note=level,state,"~price "..price.." chaos"
+			return value
+		end
+		editedPage={next_change_id="armour",stashes={
+			stash(381,"First#0381",{alternateArmour(381,87,true,"B-B-B-B-R-G",true,15)}),
+			stash(382,"Second#0382",{alternateArmour(382,89,true,"B-B-B-B-W-G",true,25)}),
+			stash(383,"Third#0383",{alternateArmour(383,88,true,"B-B-B-B-G-G",true,35)}),
+			stash(384,"Near#0384",{
+				alternateArmour(384,86,true,"B-B-B-B-R-G",true,1),
+				alternateArmour(385,90,true,"B-B-B-B-R-G",true,1),
+				alternateArmour(386,88,false,"B-B-B-B-R-G",true,1),
+				alternateArmour(387,88,"true","B-B-B-B-R-G",true,1),
+				alternateArmour(388,88,true,"B-B-B-B-R-G",false,1),
+				alternateArmour(389,88,true,"B-B-B-B-R",false,1),
+				alternateArmour(390,88,true,"B-B-B-B-R-G",true,1,differentDefence.properties),
+			}),
+		}}
+		local filteredArmour=listings.compare(json.encode(editedPage),armourTarget,"Covens",nil,nil,nil,selectedArmour)
+		assert(filteredArmour.matched==3 and filteredArmour.results[1].low==15 and filteredArmour.results[1].median==25)
+		assert(listings.compare(json.encode(editedPage),armourTarget,"Covens").matched==0)
+		local browse=require("Modules.LootFilterMarketBrowse")
+		local openBounds=browse.rolledTradeQuery(armourTarget,browse.tradeRolls(armourTarget),
+			{level={},corruption="any",links={}})
+		assert(not openBounds.filters.misc_filters.filters.ilvl and not openBounds.filters.misc_filters.filters.corrupted)
+		assert(not openBounds.filters.socket_filters.filters.links and openBounds.filters.socket_filters.filters.sockets.min==6)
+		for _, bad in ipairs({
+			{level={min=0},corruption="any"},
+			{level={min=89,max=87},corruption="any"},
+			{level={},corruption=true},
+			{level={},corruption="false",links={min=7}},
+		}) do assert(not pcall(listings.propertyFilters,armourTarget,bad)) end
+	end
 
 	local weapon = new("Item"):Item([[Rarity: RARE
 Fixture Axe
@@ -2336,6 +2376,54 @@ Item Level: 86
 		gearUI:text("league","Standard")
 		complete()
 		assert(main.popups[1].title=="Browse loot market prices" and attempts==5 and #requests==2)
+		local editedCapture={format="pob-public-stash-capture-v1",realm="pc",league="Covens",
+			capturedAt=os.time()-30,pages={{requestCursor="start",response=editedPage}}}
+		file=assert(io.open(path,"wb"));assert(file:write(assert(json.encode(editedCapture))));assert(file:close())
+		main.popups={}
+		controller.OpenForOverlay(armour.raw,"Covens",path)
+		complete()
+		assert(attempts==6 and resultText():find("No recently observed matching asking prices",1,true))
+		gearUI:click("review")
+		gearUI:text("search","Edit item filters")
+		gearUI:click("choose")
+		assert(main.popups[1].title=="Trade item filters")
+		gearUI:text("levelMin","89"):text("levelMax","87"):click("apply")
+		assert(main.popups[1].title=="Invalid item filters")
+		main:ClosePopup()
+		gearUI:text("levelMin","87"):text("levelMax","89")
+		gearUI:choose("corruption","true","value"):choose("socketMatch","Largest link group bounds")
+		gearUI:text("linksMin","5"):text("linksMax","5")
+		if output then gearUI:frame():write(output.."/overlay-item-filters.json") end
+		gearUI:click("apply")
+		assert(main.popups[1].title=="Review Trade search")
+		local oldOpen,tradeLink=OpenURL
+		OpenURL=function(value) tradeLink=value end
+		gearUI:click("secondary")
+		OpenURL=oldOpen
+		local prefix="https://www.pathofexile.com/trade/search/Covens/"
+		assert(tradeLink:sub(1,#prefix)==prefix)
+		local query=assert(json.decode(require("Classes.TradeHelpers").B64GzipDecode(tradeLink:sub(#prefix+1))))
+		local misc=query.filters.misc_filters.filters
+		local sockets=query.filters.socket_filters.filters
+		assert(misc.ilvl.min==87 and misc.ilvl.max==89 and misc.corrupted.option=="true")
+		assert(sockets.sockets.min==6 and sockets.sockets.max==6 and sockets.links.min==5 and sockets.links.max==5)
+		gearUI:click("tertiary")
+		assert(attempts==7)
+		complete()
+		result=resultText()
+		assert(result:find("Item level: 87 to 89 | Corrupted",1,true)
+			and result:find("Largest link group: 5",1,true) and result:find("Median 25",1,true)
+			and not result:find("Matched sockets:",1,true),result)
+		if output then gearUI:frame():write(output.."/overlay-filtered-asks.json") end
+		editedCapture.capturedAt=os.time()-3600
+		file=assert(io.open(path,"wb"));assert(file:write(assert(json.encode(editedCapture))));assert(file:close())
+		gearUI:click("close"):text("search","Edit item filters"):click("choose")
+		assert(main.popups[1].controls.levelMin.buf=="87" and main.popups[1].controls.linksMax.buf=="5")
+		gearUI:choose("source","Full recorded sample"):click("apply"):click("tertiary")
+		assert(attempts==8)
+		complete()
+		result=resultText()
+		assert(result:find("Recorded sample includes pages at least one hour old",1,true) and result:find("Median 25",1,true),result)
 		assert(not pcall(listings.compare,encoded,target,"Covens",nil,true))
 		LaunchSubScript,launch.RegisterSubScript=previousLaunch,previousRegister
 		main.popups,main.inputEvents={},{}
