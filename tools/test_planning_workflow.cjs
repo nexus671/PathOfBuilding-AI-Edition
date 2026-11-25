@@ -1791,6 +1791,17 @@ async function main(){
   const gemProfile={...lootProfile,template:'Show',rules:[{id:'gem',title:'Transfigured gem',text:'Hide\n TransfiguredGem "Fireball"',enabled:true}]};
   const copiedGem=await queued('test_loot_filter',{baseRevision:context.revision,profile:gemProfile,itemText:'Item Class: Active Skill Gems\nRarity: Gem\nFireball of Radiation\n--------\nLevel: 20'},'tested');
   assert.equal(copiedGem.sample.TransfiguredGem,'Fireball');assert.equal(copiedGem.result.action,'Hide');
+  const mismatchedGem=await queued('test_loot_filter',{baseRevision:context.revision,profile:gemProfile,itemText:'Item Class: Support Skill Gems\nRarity: Gem\nFireball of Radiation\n--------'},'tested');
+  assert.equal(mismatchedGem.sample.TransfiguredGem,undefined);assert.equal(mismatchedGem.result.status,'unknown');
+  const ordinaryRenamedGem=await queued('test_loot_filter',{baseRevision:context.revision,profile:{...lootProfile,template:'Hide\n TransfiguredGem True\nShow'},itemText:'Item Class: Active Skill Gems\nRarity: Gem\nAnimate Guardian\n--------'},'tested');
+  assert.equal(ordinaryRenamedGem.sample.TransfiguredGem,false);assert.equal(ordinaryRenamedGem.result.action,'Show');
+  const exceptionalProfile={...lootProfile,template:'Show',rules:[{id:'exceptional',title:'Exceptional gem',text:'Hide\n Exceptional True',enabled:true}]};
+  const exceptionalCopy=await queued('test_loot_filter',{baseRevision:context.revision,profile:exceptionalProfile,itemText:'Item Class: Support Skill Gems\nRarity: Gem\nEmpower Support\n--------'},'tested');
+  assert.equal(exceptionalCopy.sample.Exceptional,true);assert.equal(exceptionalCopy.result.action,'Hide');
+  const ordinaryCopy=await queued('test_loot_filter',{baseRevision:context.revision,profile:exceptionalProfile,itemText:'Item Class: Active Skill Gems\nRarity: Gem\nFireball\n--------'},'tested');
+  assert.equal(ordinaryCopy.sample.Exceptional,false);assert.equal(ordinaryCopy.result.action,'Show');
+  const unknownCopy=await queued('test_loot_filter',{baseRevision:context.revision,profile:exceptionalProfile,itemText:'Item Class: Support Skill Gems\nRarity: Gem\nUnknown Future Support\n--------'},'tested');
+  assert.equal(unknownCopy.sample.Exceptional,undefined);assert.equal(unknownCopy.result.status,'unknown');
   const namedProfile={...lootProfile,template:'Show',rules:[{id:'mod',title:'Named modifier',text:'Hide\n HasExplicitMod "Hale"',enabled:true}]};
   const namedItem='Item Class: Belts\nRarity: Rare\nTest Belt\nCord Belt\n--------\n{ Prefix Modifier "Hale" }\n+100 to maximum Life';
   const knownMod=await queued('test_loot_filter',{baseRevision:context.revision,profile:namedProfile,itemText:namedItem},'tested');
