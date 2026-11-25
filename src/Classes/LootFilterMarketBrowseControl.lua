@@ -71,6 +71,7 @@ end
 
 local function open(build, managedTarget)
 	local width = math.min(680,main.screenW-40)
+	local actionWidth = math.floor((width-48)/3)
 	local controls = {}
 	local busy, popup, target
 	ui.label(controls,"leagueLabel",16,24,"PC trade league ID",14)
@@ -89,22 +90,24 @@ local function open(build, managedTarget)
 	controls.category.selFunc = clearTarget
 	controls.query.changeFunc = clearTarget
 	local buildTargets = build and browse.buildTargets(build) or {}
-	local canSearchBase, canInspectGear
+	local canSearchBase
 	for _, entry in ipairs(buildTargets) do
 		canSearchBase = canSearchBase or entry.itemLevel~=nil
-		canInspectGear = canInspectGear or entry.listingItem~=nil
+	end
+	local function selectTarget(entry, message)
+		for index, category in ipairs(browse.categories) do
+			if category.id==entry.category then controls.category:SetSel(index); break end
+		end
+		controls.query:SetText("="..entry.name)
+		target = entry
+		status(message)
 	end
 	if #buildTargets>0 then
 		controls.buildTarget = new("ButtonControl"):ButtonControl(ui.anchor,{162,282,152,28},"From build",function()
 			require("Classes.PlanningBrowserControl").Open("Compare a build item",buildTargets,{
 				action="Use item",
 				choose=function(entry)
-					for index, category in ipairs(browse.categories) do
-						if category.id==entry.category then controls.category:SetSel(index); break end
-					end
-					controls.query:SetText("="..entry.name)
-					target = entry
-					status(entry.imbuedSupport and "Comparing gem and support; listed level or quality must agree."
+					selectTarget(entry,entry.imbuedSupport and "Comparing gem and support; listed level or quality must agree."
 						or entry.level and string.format("Matching level %g and %g%% quality.",entry.level,entry.quality)
 						or entry.listingItem and "Choose a league and a public stash JSON file to compare rolls."
 						or entry.itemLevel and ("Build item level "..entry.itemLevel..". Enter a league to search exact listings.")
@@ -115,15 +118,36 @@ local function open(build, managedTarget)
 		controls.buildTarget.enabled = function() return not busy end
 	end
 	if canSearchBase then
-		controls.exactBase=new("ButtonControl"):ButtonControl(ui.anchor,{16,320,192,28},"Search exact base on trade",function()
+		controls.exactBase=new("ButtonControl"):ButtonControl(ui.anchor,{32+2*actionWidth,320,actionWidth,28},"Search exact base",function()
 			local league=controls.league.buf:match("^%s*(.-)%s*$")
 			if not league:match("^[%w _-]+$") then status("Enter a valid league ID to search official trade."); return end
 			openExactBase(target,league)
 		end)
 		controls.exactBase.enabled=function() return not busy and target and target.itemLevel~=nil end
 	end
-	if canInspectGear then
-		controls.listingSample=new("ButtonControl"):ButtonControl(ui.anchor,{220,320,192,28},"Compare listing file",function()
+	if not managedTarget then
+		controls.pasteItem=new("ButtonControl"):ButtonControl(ui.anchor,{16,320,actionWidth,28},"Paste rare item",function()
+			clearTarget()
+			local raw = Paste()
+			if type(raw)~="string" or #raw>24000 or not raw:find("%S") then
+				status("Copy one identified rare item from Path of Exile first.")
+				return
+			end
+			local ok, comparison, base = pcall(function()
+				local item = new("Item"):Item(raw)
+				return browse.listingTargetForItem(item),item.baseName
+			end)
+			if not ok or not comparison then
+				status("The copied item lacks comparable rolls or supported equipment properties.")
+				return
+			end
+			selectTarget({name=comparison.base,category="BaseType",listingItem=comparison,
+				label="Copied item | "..base.." | Item level "..comparison.level,
+				details={"Market estimates are for the base. Compare a listing file for matching item rolls."}},
+				"Item copied. Choose a league and compare a public stash JSON file.")
+		end)
+		controls.pasteItem.enabled = function() return not busy end
+		controls.listingSample=new("ButtonControl"):ButtonControl(ui.anchor,{24+actionWidth,320,actionWidth,28},"Compare listing file",function()
 			local league=controls.league.buf:match("^%s*(.-)%s*$")
 			if not league:match("^[%w _-]+$") then status("Enter the trade league ID for the listing file."); return end
 			local selected=target
@@ -284,15 +308,10 @@ local function open(build, managedTarget)
 	controls.get.enabled=function() return not busy end
 	controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-154,282,138,28},"Close",function() main:ClosePopup() end)
 	if managedTarget then
-		for index,category in ipairs(browse.categories) do
-			if category.id==managedTarget.category then controls.category:SetSel(index);break end
-		end
-		controls.query:SetText("="..managedTarget.name)
-		target=managedTarget
-		status("Exact managed target. Show prices to check its current quote.")
+		selectTarget(managedTarget,"Exact managed target. Show prices to check its current quote.")
 	end
 	ui.style(controls)
-	popup=main:OpenPopup(width,canSearchBase and 366 or 330,"Browse loot market prices",controls,nil,nil,"close")
+	popup=main:OpenPopup(width,managedTarget and 330 or 366,"Browse loot market prices",controls,nil,nil,"close")
 end
 
 function M.Open(build)

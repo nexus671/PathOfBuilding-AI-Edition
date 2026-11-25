@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1302][2026/11/24]
+
+* Compare copied rare items against local stash listings directly in the market browser.
+
 VERSION[2.69.0-ai.preview1301][2026/11/24]
 
 * Compare exact rolled prices for ordinary and Abyss jewels from local stash captures.
