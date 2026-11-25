@@ -92,7 +92,7 @@ local function reviewTradeRolls(target, league, compare, pinned)
 	openReview()
 end
 
-local function showMarketDetails(entry, title, review)
+local function showMarketDetails(entry, title, review, compareBuild)
 	local width = math.min(500,main.screenW-40)
 	local lines = {entry.label}
 	for _, detail in ipairs(entry.details) do lines[#lines+1] = detail end
@@ -106,17 +106,22 @@ local function showMarketDetails(entry, title, review)
 			main:ClosePopup()
 		end),
 	}
+	local actionWidth=review and compareBuild and math.floor((width-176)/2) or 158
 	if review then
-		controls.review=new("ButtonControl"):ButtonControl(ui.anchor,{16,height-42,158,28},"Review roll filters",function()
+		controls.review=new("ButtonControl"):ButtonControl(ui.anchor,{16,height-42,actionWidth,28},"Review roll filters",function()
 			main:ClosePopup()
 			review()
 		end)
+	end
+	if compareBuild then
+		controls.compareBuild=new("ButtonControl"):ButtonControl(ui.anchor,
+			{review and 24+actionWidth or 16,height-42,actionWidth,28},"Compare in PoB",compareBuild)
 	end
 	ui.style(controls,{close=true})
 	main:OpenPopup(width,height,title,controls,nil,nil,"close")
 end
 
-local function showListingSample(target, league, sample, filterCount, review)
+local function showListingSample(target, league, sample, filterCount, review, compareBuild)
 	local details = {
 		league .. " | Local public stash listing sample",
 		string.format("%d same-base listings checked | %d matching %s",sample.inspected,sample.matched,
@@ -165,7 +170,7 @@ local function showListingSample(target, league, sample, filterCount, review)
 	end
 	details[#details+1] = capture and "Asking prices from a partial stream. Live availability and sales are unverified."
 		or "Asking prices from this file. Realm, age and completed sales are unverified."
-	showMarketDetails({label=target.label,details=details},"Comparable asking prices",review)
+	showMarketDetails({label=target.label,details=details},"Comparable asking prices",review,compareBuild)
 end
 
 local function compareListingFile(target, league, filters)
@@ -189,7 +194,7 @@ end,...)
 return ok,tostring(result)
 ]=]
 
-local function compareSavedCapture(path,target,league,filters,stillCurrent,review)
+local function compareSavedCapture(path,target,league,filters,stillCurrent,review,compareBuild)
 	local json=require("dkjson")
 	local host=main.popups[1]
 	if host.savedCaptureJob then return end
@@ -204,7 +209,7 @@ local function compareSavedCapture(path,target,league,filters,stillCurrent,revie
 		if main.popups[1]~=host or stillCurrent and not stillCurrent() then return end
 		if not ok then ui.errorPopup("Comparable asking prices",result);return end
 		local sample=json.decode(result)
-		if sample then showListingSample(target,league,sample,filters and #filters,review)
+		if sample then showListingSample(target,league,sample,filters and #filters,review,compareBuild)
 		else ui.errorPopup("Comparable asking prices","The saved capture returned no result.") end
 	end)
 end
@@ -276,6 +281,11 @@ local function open(build, managedTarget, overlay)
 	ui.description(controls,"help",16,196,width-32,44,{"Start with = to match an exact name, base or price ID."},14)
 	ui.label(controls,"status",16,250,"",14)
 	local function status(label) controls.status.label=ui.fit(label,width-32,14) end
+	local function compareBuild()
+		local ok, name=pcall(require("Modules.LootTradeBuildCompare").send,main.userPath,overlay.raw,os.time())
+		if ok then main:OpenMessagePopup("Compare in PoB","Sent to "..name..". Choose a slot in the PoB desktop.")
+		else ui.errorPopup("Compare in PoB",name) end
+	end
 	local function clearTarget()
 		if target then target=nil; status("") end
 	end
@@ -338,6 +348,8 @@ local function open(build, managedTarget, overlay)
 			if not ok or not comparison then
 				local entry=overlay and browse.overlayTarget(raw)
 				if entry then
+					entry.buildItem=entry.category=="UniqueWeapon" or entry.category=="UniqueArmour"
+						or entry.category=="UniqueAccessory" or entry.category=="UniqueJewel" or entry.category=="ForbiddenJewel"
 					selectTarget(entry,"Item copied. Checking the chosen market category.")
 					quoteOnOpen=true
 					return
@@ -366,6 +378,9 @@ local function open(build, managedTarget, overlay)
 			end
 		else
 			selectCopiedItem(overlay.raw)
+			controls.compareBuild=new("ButtonControl"):ButtonControl(ui.anchor,{32+actionWidth*2,358,actionWidth,28},
+				"Compare in PoB",compareBuild)
+			controls.compareBuild.enabled=function() return not busy and target and (target.listingItem~=nil or target.buildItem) end
 		end
 		controls.listingSample=new("ButtonControl"):ButtonControl(ui.anchor,{24+actionWidth,320,actionWidth,28},"Compare listing file",function()
 			local league=controls.league.buf:match("^%s*(.-)%s*$")
@@ -379,7 +394,7 @@ local function open(build, managedTarget, overlay)
 			local selected=target
 			local pinned=overlay and overlay.snapshot
 			reviewTradeRolls(selected.listingItem,league,function(filters)
-				if pinned then compareSavedCapture(pinned,selected,league,filters)
+				if pinned then compareSavedCapture(pinned,selected,league,filters,nil,nil,compareBuild)
 				else compareListingFile(selected,league,filters) end
 			end,pinned)
 		end)
@@ -548,7 +563,7 @@ local function open(build, managedTarget, overlay)
 				status("Saved listing capture selected.")
 				return true
 			end
-		end,review)
+		end,review,compareBuild)
 	end
 end
 

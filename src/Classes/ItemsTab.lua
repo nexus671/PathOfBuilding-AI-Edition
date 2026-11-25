@@ -4419,6 +4419,15 @@ function ItemsTabClass:GetSocketDescriptionLine(item)
 	end
 	return line
 end
+function ItemsTabClass:PreviewItemReplacement(calcFunc,item,slot)
+	local equipped=self.items[slot.selItemId]
+	local override={repSlotName=slot.slotName,repItem=item~=equipped and item or nil}
+	if slot.nodeId and (itemChangesPassiveTree(equipped) or itemChangesPassiveTree(item)) then
+		override.spec=buildSpecForJewelComparison(self,slot,override.repItem)
+	end
+	return equipped,calcFunc(override)
+end
+
 function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode, maxWidth)
 	local fontSizeSmall = main.showFlavourText and 16 or 14
 	local fontSizeBig = main.showFlavourText and 18 or 16
@@ -5144,13 +5153,7 @@ function ItemsTabClass:AddItemStatDifferences(tooltip, item, base, slot)
 		end
 
 		local function getReplacedItemAndOutput(compareSlot)
-			local selItem = self.items[compareSlot.selItemId]
-			local override = { repSlotName = compareSlot.slotName, repItem = item ~= selItem and item or nil }
-			if compareSlot.nodeId and (itemChangesPassiveTree(selItem) or itemChangesPassiveTree(item)) then
-				override.spec = buildSpecForJewelComparison(self, compareSlot, override.repItem)
-			end
-			local output = calcFunc(override)
-			return selItem, output
+			return self:PreviewItemReplacement(calcFunc,item,compareSlot)
 		end
 		local function addCompareForSlot(compareSlot, selItem, output)
 			if not selItem or not output then

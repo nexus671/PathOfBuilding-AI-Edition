@@ -184,6 +184,8 @@ function M.start(app)
 end
 
 function M.frame(state)
+	local compare=package.loaded["Modules.LootTradeBuildCompare"]
+	if compare then compare.expire(os.time()) end
 	main.screenW,main.screenH=GetVirtualScreenSize()
 	local view={x=0,y=0,width=main.screenW,height=main.screenH}
 	main.viewPort=view

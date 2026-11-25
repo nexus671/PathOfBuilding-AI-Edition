@@ -68,6 +68,8 @@ The overlay requests an overview for supported gems, currencies, and uniques. Se
 
 Press Escape or leave the review window to dismiss it. Restore the overlay from the Windows taskbar to disarm it or exit. Arming remembers the executable, shortcut, league, and optional capture path. Each new session opens setup for you to arm. Use windowed or borderless-windowed PoE. Real client and multi-monitor qualification are tracked separately. [GGG developer guidelines](https://www.pathofexile.com/developer/docs) · [Overlay qualification](https://github.com/nexus671/PathOfBuilding-AI-Edition/issues/22)
 
+Choose **Compare in PoB** on a compatible item to send the inspected item to the active desktop build. With several PoB windows, select the intended build window before returning to the game. The main app accepts the local request for 30 seconds and opens a compatible-slot picker. **Preview stats** calculates the hypothetical replacement with PoB's regular item calculator. Previewing leaves your equipment and saved build as they were.
+
 If a sync target was edited outside PoB, **External edits** compares the live file with the last verified file. Automatic sync stops before contacting the market until the live file matches the known state again or you explicitly re-enable with reviewed edits.
 
 **Copy diagnostics** exports a JSON report with recent run times, verified response ages, and available quote and simulated drop details. The report excludes local file paths and protected sample definitions.
