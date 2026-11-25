@@ -3,6 +3,13 @@ local M = { }
 local fontNames = { VAR="Liberation Sans", ["VAR BOLD"]="Liberation Sans Bold", FIXED="Bitstream Vera Sans Mono",
 	FONTIN="Fontin", ["FONTIN ITALIC"]="Fontin Italic", ["FONTIN SC"]="Fontin SmallCaps", ["FONTIN SC ITALIC"]="Fontin SmallCaps Italic" }
 local palette = { [0]={0,0,0,1}, {1,0,0,1}, {0,1,0,1}, {1,1,0,1}, {0,0,1,1}, {0,1,1,1}, {1,0,1,1}, {1,1,1,1}, {0.5,0.5,0.5,1}, {1,0.5,0,1} }
+local function round(value)
+	return value<0 and math.ceil(value-0.5) or math.floor(value+0.5)
+end
+local function renderHeight(height)
+	height=round(height)
+	return height<=1 and 1 or height+height%2
+end
 local function escape(text)
 	local hex = text:match("^%^x(%x%x%x%x%x%x)")
 	if hex then return {tonumber(hex:sub(1,2),16)/255,tonumber(hex:sub(3,4),16)/255,tonumber(hex:sub(5,6),16)/255,1},8 end
@@ -40,19 +47,49 @@ function M.install(options)
 		end
 		local best=fonts[family][1]
 		for _,size in ipairs(fonts[family]) do if math.abs(size.height-height)<math.abs(best.height-height) then best=size end end
-		return best,family
+		return best,family,fonts[family]
+	end
+	local function codepoint(text,index)
+		local first=text:byte(index)
+		local count=first>=240 and 4 or first>=224 and 3 or first>=194 and 2 or 1
+		local value=count==4 and first-240 or count==3 and first-224 or count==2 and first-192 or first
+		for i=2,count do
+			local byte=text:byte(index+i-1)
+			if not byte or byte<128 or byte>191 then return first,1 end
+			value=value*64+byte-128
+		end
+		return value,count
+	end
+	local function glyphWidth(data, code)
+		local glyph=data.glyphs[code]
+		return glyph and glyph[3]+glyph[4]+glyph[5] or 0
+	end
+	local function characterWidth(height, data, sizes, code)
+		if not data.glyphs[code] then
+			local small=data
+			for i=#sizes,1,-1 do
+				if sizes[i].height<data.height and height-sizes[i].height>=3 then small=sizes[i];break end
+			end
+			local placeholder=string.format("[U+%04X]",code)
+			local width=0
+			for i=1,#placeholder do width=width+glyphWidth(small,placeholder:byte(i)) end
+			return width
+		end
+		return glyphWidth(data,code==9 and 32 or code)*(code==9 and 4 or 1)*height/data.height
 	end
 	local function measure(height, name, text)
-		text=tostring(text):gsub("[\194-\244][\128-\191]*","?")
-		local data=font(height,name);local width,maximum,index=0,0,1
+		height=renderHeight(height)
+		text=tostring(text)
+		local data,_,sizes=font(height,name);local width,maximum,index=0,0,1
 		while index<=#text do
-			local _,length=escape(text:sub(index))
+			local length
+			if text:byte(index)==94 then local _,found=escape(text:sub(index,index+7));length=found end
 			if length then index=index+length
 			else
-				local code=text:byte(index);local glyph=data.glyphs[code==9 and 32 or code] or data.glyphs[63]
+				local code,bytes=codepoint(text,index)
 				if code==10 then maximum=math.max(maximum,width);width=0
-				else width=math.ceil(width+(glyph[3]+glyph[4]+glyph[5])*(code==9 and 4 or 1)*height/data.height) end
-				index=index+1
+				else width=math.ceil(width+characterWidth(height,data,sizes,code)) end
+				index=index+bytes
 			end
 		end
 		return math.max(maximum,width)
@@ -78,6 +115,7 @@ function M.install(options)
 	replace("Paste",function() return ui.clipboard end)
 	replace("DrawStringWidth",measure)
 	replace("DrawStringCursorIndex",function(height,name,text,x,y)
+		height=renderHeight(height);x=round(x);y=round(y or 0)
 		-- SimpleGraphic chooses a line, skips colour codes, and maps its cursor
 		-- offset back to a one-based UTF-8 byte index for Lua.
 		local start,lineY=1,height
@@ -120,7 +158,8 @@ function M.install(options)
 		record({kind="polygon",points=points,textured=handle~=nil,asset=images[handle] or type(handle)=="table" and handle.headlessImagePath,uv=uv})
 	end)
 	replace("DrawString",function(x,y,align,height,name,text)
-		text=tostring(text):gsub("[\194-\244][\128-\191]*","?")
+		height=renderHeight(height)
+		text=tostring(text)
 		local width=measure(height,name,text)
 		if align=="CENTER" then x=math.floor((viewport[3]-width)/2+x)
 		elseif align=="RIGHT" then x=math.floor(viewport[3]-width-x)
@@ -130,7 +169,11 @@ function M.install(options)
 		record({kind="text",x=math.floor(x+0.5)+viewport[1],y=math.floor(y)+viewport[2],width=width,height=height,
 			font=family,fontHeight=size.height,text=text})
 		local index=1
-		while index<=#text do local nextColor,length=escape(text:sub(index));if length then color=nextColor;index=index+length else index=index+1 end end
+		while index<=#text do
+			local nextColor,length
+			if text:byte(index)==94 then nextColor,length=escape(text:sub(index,index+7)) end
+			if length then color=nextColor;index=index+length else index=index+1 end
+		end
 	end)
 	main.screenW,main.screenH=ui.width,ui.height
 	main.viewPort={x=0,y=0,width=ui.width,height=ui.height}
