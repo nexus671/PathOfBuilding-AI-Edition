@@ -1,3 +1,9 @@
+VERSION[2.69.0-ai.1.0.0][2026/11/25]
+
+* Plan builds, crafting projects, Atlas strategies and loot filters, with local AI tools.
+* Crafting odds and encounter simulations may be experimental; check the coverage guides before use.
+* Atlas and Genesis details have not been fully verified against the live game.
+
 VERSION[2.69.0-ai.preview1339][2026/11/25]
 
 * Review all preserved managed filter rules, including through AI tools.
