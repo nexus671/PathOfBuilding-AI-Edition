@@ -187,6 +187,11 @@ function M:Show(page,source)
 			local result={};for _,entry in pairs(self.atlasDrafts) do if entry.plan and entry.plan.id then result[#result+1]=entry end end
 			table.sort(result,function(a,b) return a.plan.id<b.plan.id end);return result
 		end
+		layout.rekeyAtlasDraft=function(oldId,newId)
+			local entry=self.atlasDrafts[oldId]
+			if entry then self.atlasDrafts[oldId]=nil;entry.plan.id=newId;self.atlasDrafts[newId]=entry end
+			if self.drafts.atlas and self.drafts.atlas.plan and self.drafts.atlas.plan.id==oldId then self.drafts.atlas.plan.id=newId end
+		end
 		layout.discardAtlasDraft=function(id)
 			for _,plan in ipairs(self.build.savers.AtlasPlans.plans) do assert(plan.id~=id,"This plan is saved; delete it from the saved plans instead") end
 			assert(self.atlasDrafts[id],"That session draft is no longer available")
