@@ -169,7 +169,7 @@ function M.parse(raw,area)
 		-- Only infer a transfigured base when the bundled gem data identifies
 		-- one unambiguous ordinary gem with a matching displayed-name prefix.
 		local id=item.BaseType and data.gemForBaseName[item.BaseType:lower()];local gem=id and data.gems[id]
-		if gem and not gem.vaalGem then
+		if gem and not gem.vaalGem and class=="Skill Gems" and rarity:lower()=="gem" then
 			if id:match("Alt[XYZ]$") then
 				local found,ambiguous
 				for _,candidate in pairs(data.gemsByGameId[gem.gameId] or {}) do

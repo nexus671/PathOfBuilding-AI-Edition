@@ -1791,6 +1791,8 @@ async function main(){
   const gemProfile={...lootProfile,template:'Show',rules:[{id:'gem',title:'Transfigured gem',text:'Hide\n TransfiguredGem "Fireball"',enabled:true}]};
   const copiedGem=await queued('test_loot_filter',{baseRevision:context.revision,profile:gemProfile,itemText:'Item Class: Active Skill Gems\nRarity: Gem\nFireball of Radiation\n--------\nLevel: 20'},'tested');
   assert.equal(copiedGem.sample.TransfiguredGem,'Fireball');assert.equal(copiedGem.result.action,'Hide');
+  const mismatchedGem=await queued('test_loot_filter',{baseRevision:context.revision,profile:gemProfile,itemText:'Item Class: Support Skill Gems\nRarity: Gem\nFireball of Radiation\n--------'},'tested');
+  assert.equal(mismatchedGem.sample.TransfiguredGem,undefined);assert.equal(mismatchedGem.result.status,'unknown');
   const ordinaryRenamedGem=await queued('test_loot_filter',{baseRevision:context.revision,profile:{...lootProfile,template:'Hide\n TransfiguredGem True\nShow'},itemText:'Item Class: Active Skill Gems\nRarity: Gem\nAnimate Guardian\n--------'},'tested');
   assert.equal(ordinaryRenamedGem.sample.TransfiguredGem,false);assert.equal(ordinaryRenamedGem.result.action,'Show');
   const exceptionalProfile={...lootProfile,template:'Show',rules:[{id:'exceptional',title:'Exceptional gem',text:'Hide\n Exceptional True',enabled:true}]};
