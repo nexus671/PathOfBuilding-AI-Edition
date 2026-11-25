@@ -729,8 +729,9 @@ local function externalAdoption(id)
 	assert(edited ~= expected, "There are no edits outside generated price highlights to adopt")
 	local baseStart, baseEnd = market.sectionBounds(baseline)
 	local candidate = edited:sub(1,editStart-1) .. baseline:sub(baseStart,baseEnd-1) .. edited:sub(editEnd)
-	if not config.protections then
-		assert(require("Modules.LootFilterProtectedDrops").personalRulesPreserved(baseline,candidate),
+	local protected = require("Modules.LootFilterProtectedDrops")
+	if not config.protections or protected.hasPersonalMarkerSet(baseline) then
+		assert(protected.personalRulesPreserved(baseline,candidate),
 			"An edit changed the custom protection rules or their precedence. Review the complete protection policy in filter setup.")
 	end
 	verifyUnmanagedRules(after,candidate)
