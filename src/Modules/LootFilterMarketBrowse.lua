@@ -1,3 +1,4 @@
+-- cspell:ignore jsontype RGBW
 local json = require("dkjson")
 local marketJSON = require("Modules.LootFilterMarketJSON")
 local maps = require("Modules.LootFilterMapMarket")

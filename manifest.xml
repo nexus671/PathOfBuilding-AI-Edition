@@ -2138,7 +2138,7 @@
 	<File name="Modules/LootFilterImports.lua" part="program" sha1="14c2904c7ecbaed9a44146b21fffe1c341d8bb14" />
 	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="a76556313986aea1d2e1789e56e9492501f41333" />
 	<File name="Modules/LootFilterMapMarket.lua" part="program" sha1="76b442c3a957f5b077a3c4cd4554ae1bc5437840" />
-	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="d89ea6566d2b24683af0afd594c992530df2bd41" />
+	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="b555258cb04412251ddb8e39396943143cd31644" />
 	<File name="Modules/LootFilterMarketJSON.lua" part="program" sha1="2ab24cdd8a2dcf4f7bd3cf2cf587465f9931331c" />
 	<File name="Modules/LootFilterOfflinePrices.lua" part="program" sha1="73ea6e7affe77039ae8009e4f8fdcde597f6db44" />
 	<File name="Modules/LootFilterParser.lua" part="program" sha1="200696aa146b23876bc2e8663be20c872517e164" />
