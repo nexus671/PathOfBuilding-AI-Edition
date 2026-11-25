@@ -337,6 +337,21 @@ class CollectorCooldownTest(unittest.TestCase):
             collector.fetch_with_cooldown(state, "fixture", request, "cursor")
         request.assert_called_once()
 
+    def test_records_header_before_interrupted_body_read(self):
+        state = self.directory / "rates.json"
+        opener = MagicMock()
+        response = opener.open.return_value.__enter__.return_value
+        response.status = 200
+        response.headers = {"Retry-After": "300"}
+        response.read.side_effect = KeyboardInterrupt
+
+        def request(cursor, remember):
+            return collector.fetch_page(opener, cursor, "fixture-token", "fixture", on_cooldown=remember)
+
+        with self.assertRaises(KeyboardInterrupt):
+            collector.fetch_with_cooldown(state, "fixture", request, "cursor")
+        self.assertEqual(collector.read_cooldown(state, "fixture") - self.clock.return_value, 300)
+
 
 if __name__ == "__main__":
     unittest.main()

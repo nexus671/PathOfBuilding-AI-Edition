@@ -87,7 +87,7 @@ def triples(value):
             yield tuple(map(int, fields))
 
 
-def fetch_page(opener, cursor, token, agent):
+def fetch_page(opener, cursor, token, agent, on_cooldown=None):
     query = urlencode({"id": cursor})
     request = Request(f"{ENDPOINT}?{query}", headers={
         "Authorization": f"Bearer {token}", "User-Agent": agent,
@@ -97,6 +97,8 @@ def fetch_page(opener, cursor, token, agent):
     try:
         with opener.open(request, timeout=15) as response:
             delay = rate_limit_wait(response.headers)
+            if delay and on_cooldown is not None:
+                on_cooldown(delay)
             if response.status != 200:
                 raise CaptureRequestError(f"Unexpected GGG HTTP status {response.status}", delay or None)
             header = response.headers.get("Content-Length", "")
@@ -114,6 +116,8 @@ def fetch_page(opener, cursor, token, agent):
             delay = rate_limit_wait(error.headers or {})
             if error.code in (429, 503):
                 delay = delay or DEFAULT_RETRY_SECONDS
+            if delay and on_cooldown is not None:
+                on_cooldown(delay)
             raise CaptureRequestError(f"GGG returned HTTP {error.code}", delay or None) from None
         finally:
             error.close()
@@ -240,14 +244,26 @@ def fetch_with_cooldown(path, client, fetch, cursor):
         record = {"format": COOLDOWN_FORMAT, "client": client, "notBefore": until}
         publish_capture(path, encode_response(record), replace=True)
 
-    # Leave a short hold if the process exits before it can record the reply.
+    recorded = False
+
+    def remember(wait):
+        nonlocal recorded
+        try:
+            save(wait)
+        except OSError as error:
+            raise ValueError("Could not save the GGG retry deadline") from error
+        recorded = True
+
+    # Leave a short hold if the process exits before it receives the headers.
     save(DEFAULT_RETRY_SECONDS)
     try:
-        body, delay = fetch(cursor)
+        body, delay = fetch(cursor, remember)
     except CaptureRequestError as error:
-        save(error.retry_after)
+        if not recorded:
+            save(error.retry_after)
         raise
-    save(delay)
+    if not recorded:
+        save(delay)
     return body, delay
 
 
@@ -330,8 +346,11 @@ def main():
             raise ValueError("Choose a cooldown file separate from the capture files")
         opener = build_opener(RejectRedirects())
 
+        def request(cursor, remember):
+            return fetch_page(opener, cursor, token, agent, on_cooldown=remember)
+
         def fetch(value):
-            return fetch_with_cooldown(state, client, lambda cursor: fetch_page(opener, cursor, token, agent), value)
+            return fetch_with_cooldown(state, client, request, value)
 
         with refresh_lock(state):
             if args.refresh:
