@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1299][2026/11/24]
+VERSION[2.69.0-ai.preview1300][2026/11/24]
 
 * Compare exact rolled prices for ordinary and Abyss jewels from local stash captures.
+
+VERSION[2.69.0-ai.preview1299][2026/11/24]
+
+* Correct intermediate rolls for recognized spell-suppression modifiers.
 
 VERSION[2.69.0-ai.preview1298][2026/11/24]
 
