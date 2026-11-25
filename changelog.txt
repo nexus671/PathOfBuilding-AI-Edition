@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1301][2026/11/24]
+
+* Compare exact rolled prices for ordinary and Abyss jewels from local stash captures.
+
 VERSION[2.69.0-ai.preview1300][2026/11/24]
 
 * Improve text measurement and rendering in headless UI tests.

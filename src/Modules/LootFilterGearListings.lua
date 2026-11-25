@@ -73,17 +73,19 @@ function M.target(item, publicBase)
 	if item.rarity~="RARE" or not item.base or item.unidentifiedMarker
 		or type(item.itemLevel)~="number" or item.itemLevel<1 or item.itemLevel>100 or item.itemLevel~=math.floor(item.itemLevel)
 		or item.variant or item.mirrored or item.twiceCorrupted or item.talismanTier or item.memoryStrands or item.intangibility
-	or item.crucible or item.vestigial
+		or item.crucible or item.vestigial
 		or (item.catalyst or 0)>0 or (item.catalystQuality or 0)>0
 		or hasEntries(item.scourgeModLines) or hasEntries(item.crucibleModLines) then return end
 	local equipment
+	local jewel = item.type=="Jewel" and (not item.base.subType or item.base.subType=="Abyss")
 	if item.base.armour or item.base.weapon then
 		equipment=gearProperties.target(item)
 		if not equipment then return end
-	elseif not jewellery[item.type] or (item.quality or 0)>0 or (item.base.socketLimit or 0)>0 or hasEntries(item.sockets) then
+	elseif not (jewellery[item.type] or jewel) or (item.quality or 0)>0 or (item.base.socketLimit or 0)>0 or hasEntries(item.sockets) then
 		return
 	end
-	local target = {base=publicBase or item.baseName,level=item.itemLevel,equipment=equipment}
+	local target = {base=publicBase or item.baseName,level=item.itemLevel,equipment=equipment,
+		abyssJewel=item.type=="Jewel" and item.base.subType=="Abyss"}
 	for _, key in ipairs(conditions) do target[key]=item[key]==true end
 	for key in pairs(influences) do target[key]=item[key]==true end
 	for _, channel in ipairs(channels) do
@@ -114,15 +116,18 @@ local function sameItem(item, target)
 		if value~=nil and (type(value)~="table" or next(value)) then return false end
 	end
 	for _, key in ipairs(conditions) do
-		if (item[key]==true)~=target[key] then return false end
+		local value = item[key]
+		if value~=nil and type(value)~="boolean" or (value==true)~=target[key] then return false end
 	end
+	if item.abyssJewel~=nil and item.abyssJewel~=target.abyssJewel then return false end
 	local active = item.influences or {}
 	if type(active)~="table" then return false end
 	for key, flag in pairs(active) do
 		if flag~=true or not knownInfluences[key] then return false end
 	end
 	for build, listing in pairs(influences) do
-		if (item[listing]==true or active[listing]==true)~=target[build] then return false end
+		local value = item[listing]
+		if value~=nil and type(value)~="boolean" or (value==true or active[listing]==true)~=target[build] then return false end
 	end
 	for _, channel in ipairs(channels) do
 		if modList(item,channel,false)~=target[channel.listing] then return false end
