@@ -1,6 +1,8 @@
 VERSION[2.69.0-ai.preview1293][2026/11/24]
 
 * Preserve Atlas drafts if another plan claims their ID before saving.
+* Leave more room for the Atlas tree in compact windows.
+* Make crafting inspection errors easier to understand in AI tools.
 
 VERSION[2.69.0-ai.preview1292][2026/11/24]
 
