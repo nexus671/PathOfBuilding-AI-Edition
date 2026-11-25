@@ -289,11 +289,15 @@ function A.extend(M,api)
 		local suppression=suppressionRanges[mod]
 		if suppression==nil then
 			suppression=false
-			local stat=metadata and metadata.stats and #metadata.stats==1 and metadata.stats[1]
+			local stat;local supported=metadata and metadata.stats and #metadata.stats>0
+			for _,entry in ipairs(metadata and metadata.stats or {}) do
+				if entry.id=="base_spell_suppression_chance_150%_of_value" and not stat then stat=entry
+				elseif entry.id~="dummy_stat_display_nothing" then supported=false end
+			end
 			local line=#mod==1 and mod[1];local low,high
 			if line then low,high=line:match("^%+%((%d+)%-(%d+)%)%% chance to Suppress Spell Damage$") end
 			low,high=tonumber(low),tonumber(high)
-			if stat and stat.id=="base_spell_suppression_chance_150%_of_value" and stat.min>=0 and stat.max>stat.min and stat.max-stat.min<=1000 and low and high and high>low and math.floor(stat.min*1.5)==low and math.floor(stat.max*1.5)==high then
+			if supported and stat and stat.min>=0 and stat.max>stat.min and stat.max-stat.min<=1000 and low and high and high>low and math.floor(stat.min*1.5)==low and math.floor(stat.max*1.5)==high then
 				local valid=true
 				for raw=stat.min,stat.max do local value=math.floor(raw*1.5);if M.baseRollValue(mod,(value-low)/(high-low),1)~=value then valid=false;break end end
 				if valid then suppression={min=stat.min,steps=stat.max-stat.min,low=low,high=high} end

@@ -1,12 +1,13 @@
 <!-- cspell:ignore Siveran Katakohi Ukatoa repoe lupa -->
 # Crafting coverage and rules
 
-Recognized legacy single-stat spell-suppression modifiers using the pinned 150%
-raw-stat translation sample raw integer values and render each translated value,
-rather than interpolating rounded display endpoints. This fixes, for example, the
-middle raw roll in the zero-spawn-weight 9–12% tier rendering as 11% instead of
-10%. The test uses a reconstructed legacy item; its existence and raw distribution
-remain unverified in the live game.
+Recognized spell-suppression modifiers using the pinned 150% raw-stat translation
+sample the visible raw integer and render each translated value, rather than
+interpolating rounded display endpoints. This fixes the middle raw roll in a
+zero-spawn-weight 9–12% legacy tier rendering as 11% instead of 10%, and prevents
+an intermediate 5% result for a 4–6% Delve modifier whose second stat is a hidden
+dummy. Tests use reconstructed items; their existence, current eligibility and raw
+distributions remain unverified in the live game.
 
 The experimental Bestiary **maximum sockets** action for ordinary equipment and supported unique items uses one Black Morrigan and one Craicic Shield Crab. It assumes the natural item-level and base limit applies, existing colours and links are retained, and added sockets are white and unlinked. Eligibility and socket behavior need in-game verification. The workbench, recipes and MCP share these assumptions; unique items with fixed or restricted sockets remain unavailable. The [Bestiary recipe list](https://www.poewiki.net/wiki/Beastcrafting) documents the two beasts and maximum-socket outcome.
 

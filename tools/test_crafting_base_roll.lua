@@ -26,6 +26,17 @@ assert(legacyModel.initial.affixes[1].id=="ChanceToDodgeAttacksInfluence2","Lega
 local suppressionRecipe={steps={{method="divine"}},targets={{anyOf={"ChanceToDodgeAttacksInfluence2"},minBaseValue=10,maxBaseValue=10}}}
 local suppressionRun=sim.simulate(legacyRaw,suppressionRecipe,{trials=120,maxActions=1,seed=13})
 assert(suppressionRun.successes>15 and suppressionRun.successes<65,"Suppression target should occur in sampled Divine rolls")
+local delveRaw="Rarity: NORMAL\nSlink Boots\nItem Level: 86";local delve=sim.model(delveRaw)
+local delveMod=assert(delve.byId.DelveArmourDodgeAndSpellDodge_)
+for index,draw in ipairs({0,0.34,0.67,0.99}) do
+ local expected=({4,4,6,6})[index]
+ assert(sim.baseRollValue(delveMod,sim.rollRange(delveMod,function() return draw end))==expected,"Delve suppression must use the visible raw stat, not a dummy stat")
+end
+local delveState=copyTable(delve.initial);delveState.rarity="RARE";delveState.affixes={{id="DelveArmourDodgeAndSpellDodge_",range=0}}
+local delveSource=sim.toItem(delve,delveState).raw;local delveImported=sim.model(delveSource)
+assert(delveImported.initial.affixes[1].id=="DelveArmourDodgeAndSpellDodge_","Delve suppression identity did not survive import")
+local delveRecipe={steps={{method="divine"}},targets={{anyOf={"DelveArmourDodgeAndSpellDodge_"},minBaseValue=5,maxBaseValue=5}}}
+assert(sim.simulate(delveSource,delveRecipe,{trials=120,maxActions=1,seed=13}).successes==0,"A 5% Delve roll must not appear in the modeled recipe")
 local checkedSuppression=0;local metadata=require("Modules.CraftingAdvanced").data().mods
 for id,mod in pairs(influenced.byId) do
  local stats=metadata[id] and metadata[id].stats;local stat=stats and #stats==1 and stats[1]
