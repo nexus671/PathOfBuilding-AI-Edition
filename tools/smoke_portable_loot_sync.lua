@@ -3,7 +3,14 @@ local root = directory:gsub("\\", "/") .. "/"
 main = {userPath=root}
 local sync = require("Modules.LootFilterDailySync")
 if action == "prepare" then
-	sync.configure(root .. "smoke-output.filter", root .. "smoke-baseline.filter", league, {hour=0, targetValue=1})
+	if arg[4] == "cache" then
+		local market = require("Modules.LootFilterEconomy")
+		assert(market.endpoint and market.endpoint ~= market.resolveEndpoint(),
+			"Choose a shared HTTPS market cache without credentials or query parameters")
+	end
+	local protectionFile = arg[5] == "custom" and root .. "smoke-protections.json" or nil
+	sync.configure(root .. "smoke-output.filter", root .. "smoke-baseline.filter", league,
+		{hour=0, targetValue=1, protectionFile=protectionFile})
 	sync.setBackground(true, assert(sync.configuration()).revision)
 	assert(#sync.dueProfiles(os.time(), true) == 1, "Expected one due portable profile")
 elseif action == "report" then

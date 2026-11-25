@@ -90,39 +90,62 @@ def main():
     parser.add_argument("directory", type=Path, help="Freshly extracted and source-verified portable package")
     parser.add_argument("--loot-filter", type=Path, help="Copy this fixed baseline and run one live Windows sync")
     parser.add_argument("--league", help="PC trade league ID for the live sync")
+    parser.add_argument("--market-cache", help="Qualify this shared HTTPS market cache with the actual Windows worker")
+    parser.add_argument("--protected-samples", type=Path, help="Copy custom protected sample JSON into the pilot")
+    parser.add_argument("--require-feed", action="append", default=[], metavar="CATEGORY",
+                        help="Require a market category in the verified worker review. Repeat for more categories")
     parser.add_argument("--protected-checks", type=int, default=600, help="Minimum protected samples expected from this baseline")
     args = parser.parse_args()
     if bool(args.loot_filter) != bool(args.league):
         parser.error("--loot-filter and --league must be supplied together")
+    if (args.market_cache is not None or args.protected_samples or args.require_feed) and not args.loot_filter:
+        parser.error("Market cache, protected sample and required feed options require --loot-filter")
+    if args.market_cache is not None and not args.market_cache.strip():
+        parser.error("--market-cache requires a nonempty HTTPS URL")
     if args.protected_checks < 1:
         parser.error("--protected-checks must be positive")
     directory = args.directory.resolve(strict=True)
     baseline = args.loot_filter.resolve(strict=True) if args.loot_filter else None
     if baseline and (not baseline.is_file() or baseline.suffix.lower() != ".filter" or directory in baseline.parents):
         parser.error("Use a .filter baseline located outside the fresh extraction")
+    protections = args.protected_samples.resolve(strict=True) if args.protected_samples else None
+    if protections and (not protections.is_file() or protections.suffix.lower() != ".json" or directory in protections.parents):
+        parser.error("Use a protected sample .json file located outside the fresh extraction")
     result = smoke(directory)
     if baseline:
-        result["lootSync"] = smoke_loot_sync(directory, baseline, args.league, args.protected_checks)
+        result["lootSync"] = smoke_loot_sync(directory, baseline, args.league, args.protected_checks,
+                                            market_cache=args.market_cache, protections=protections,
+                                            required_feeds=args.require_feed)
     print(json.dumps(result, indent=2))
 
 
-def smoke_loot_sync(directory, source, league, minimum_checks):
+def smoke_loot_sync(directory, source, league, minimum_checks, *, market_cache=None, protections=None,
+                    required_feeds=()):
     tools = Path(__file__).resolve().parent
     baseline, target = (directory / name for name in ("smoke-baseline.filter", "smoke-output.filter"))
     config = directory / "LootFilterDailySync.json"
     reviews = directory / "LootFilterDailySync-Reviews.json"
-    if any(path.exists() or path.is_symlink() for path in (baseline, target, config, reviews)):
+    protection_copy = directory / "smoke-protections.json"
+    if any(path.exists() or path.is_symlink() for path in (baseline, target, config, reviews, protection_copy)):
         raise ValueError("Use a fresh extraction without existing loot sync state")
     source_bytes = source.read_bytes()
     for path in (baseline, target):
         with path.open("xb") as destination:
             destination.write(source_bytes)
+    protected_bytes = protections.read_bytes() if protections else None
+    if protected_bytes is not None:
+        with protection_copy.open("xb") as destination:
+            destination.write(protected_bytes)
+    env = os.environ.copy()
+    if market_cache is not None:
+        env["POB_MARKET_CACHE_URL"] = market_cache
 
     def native_config(action):
         output = subprocess.check_output(
             [sys.executable, str(tools / "run_headless_lupa.py"), "--filesystem", "--portable", str(directory),
-             str(tools / "smoke_portable_loot_sync.lua"), action, str(directory), league],
-            encoding="utf-8", timeout=30,
+             str(tools / "smoke_portable_loot_sync.lua"), action, str(directory), league,
+             "cache" if market_cache is not None else "default", "custom" if protections else "default"],
+            env=env, encoding="utf-8", timeout=30,
         )
         return json.loads(output) if output.strip() else None
 
@@ -132,7 +155,7 @@ def smoke_loot_sync(directory, source, league, minimum_checks):
 
     def invoke_worker():
         return subprocess.run([str(directory / "Path of Building.exe"), "--loot-filter-sync-scheduled"],
-                              cwd=directory, startupinfo=startup, timeout=160, check=False).returncode
+                              cwd=directory, env=env, startupinfo=startup, timeout=160, check=False).returncode
 
     native_config("prepare")
     scheduled_date = date.today()
@@ -141,21 +164,32 @@ def smoke_loot_sync(directory, source, league, minimum_checks):
     status = evidence["status"]
     if first_exit or status["state"] != "enabled" or status["league"] != league or not status.get("lastSuccess"):
         raise RuntimeError(f"Scheduled Windows worker failed ({first_exit}): {status}")
+    if market_cache is not None and status.get("priceSource") != "shared_cache":
+        raise RuntimeError("The scheduled worker did not verify the shared market cache source")
     review = evidence.get("lastReview") or {}
     if not review.get("verifiedProtection") or (review.get("protectedChecks") or 0) < minimum_checks:
         raise RuntimeError("The scheduled refresh did not verify the required protected samples")
-    if baseline.read_bytes() != source_bytes or source.read_bytes() != source_bytes:
-        raise RuntimeError("The fixed filter baseline changed")
+    missing = set(required_feeds) - {feed["category"] for feed in review["feeds"]}
+    if missing:
+        raise RuntimeError("The scheduled worker did not verify required feeds: " + ", ".join(sorted(missing)))
 
     def checksums():
-        return [hashlib.sha256(path.read_bytes()).hexdigest() for path in (target, baseline, config, reviews)]
+        paths = (target, baseline, config, reviews)
+        if protections:
+            paths += (protection_copy,)
+        return [hashlib.sha256(path.read_bytes()).hexdigest() for path in paths]
 
     if date.today() != scheduled_date:
         raise RuntimeError("The live refresh crossed midnight before the same-day rerun")
     original = checksums()
     if invoke_worker() or checksums() != original or date.today() != scheduled_date:
         raise RuntimeError("Could not verify a byte-identical same-day worker rerun")
-    return {"league": league, "lastSuccess": status["lastSuccess"], "feeds": review["feeds"],
+    if baseline.read_bytes() != source_bytes or source.read_bytes() != source_bytes:
+        raise RuntimeError("The fixed filter baseline changed")
+    if protections and (protection_copy.read_bytes() != protected_bytes or protections.read_bytes() != protected_bytes):
+        raise RuntimeError("The protected sample input changed")
+    return {"league": league, "priceSource": status["priceSource"],
+            "lastSuccess": status["lastSuccess"], "feeds": review["feeds"],
             "protectedChecks": review["protectedChecks"], "priceDecisions": review["changeCount"],
             "fixedBaselinePreserved": True, "sameDayRerunIdentical": True, "outputSha256": original[0]}
 
