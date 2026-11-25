@@ -162,6 +162,7 @@ stale=false
 sync.tick(now,true)
 assert(sync.status:find("Protected drops verified",1,true) and read(target):find("StackSize <= 4",1,true),sync.status)
 assert(calls==9 and not sync.configuration().lastFailure)
+largeReviewRef=nil
 local sample = sync.configuration().review.changes[1].sample
 assert(sample.action=="Show" and sample.count==5)
 assert(sync.configuration().review.changes[1].priceId=="alt")
@@ -178,15 +179,61 @@ do
 	assert(not require("dkjson").encode(public):find(dir,1,true),"Public example exposed a local path")
 	local originalConfig=read(configFile);local expanded=require("dkjson").decode(originalConfig)
 	for i=2,300 do expanded.review.changes[i]={name="Orb of Alteration",old=6,cutoff=4,classes={"Stackable Currency"},corrupted=false} end
+	expanded.review.skipped={}
+	for i=1,280 do expanded.review.skipped[i]={name="Managed Hide "..i,reason="Preserved unsupported rule"} end
+	expanded.review.skipped[252]={name="Private",reason=dir.."/private"}
 	write(configFile,assert(require("dkjson").encode(expanded)))
 	local later=sync.publicDecisionPage(config.revision,250,50)
 	assert(later.total==300 and #later.decisions==50 and later.decisions[1].decisionIndex==251 and later.decisions[1].corrupted==false and not later.nextOffset)
 	assert(sync.publicDecisionExamples(config.revision,251,0,1).decisionIndex==251)
 	assert(not require("dkjson").encode(later):find(dir,1,true),"Decision page exposed a local path")
+	local skippedPage=sync.publicDecisionPage(config.revision,250,50,"skipped")
+	assert(skippedPage.total==280 and #skippedPage.decisions==29 and skippedPage.decisions[1].skipIndex==251 and skippedPage.decisions[29].skipIndex==280 and not skippedPage.nextOffset)
+	assert(not require("dkjson").encode(skippedPage):find(dir,1,true),"Skip page exposed a local path")
+	assert(not pcall(sync.publicDecisionPage,config.revision,0,1,"invalid"))
 	write(configFile,"invalid configuration "..dir)
 	local loaded,loadError=pcall(sync.publicDecisionPage,config.revision,0,1)
 	assert(not loaded and not tostring(loadError):find(dir,1,true),"Decision page exposed a settings path on failure")
 	write(configFile,assert(require("dkjson").encode(expanded)))
+	for i=1,5000 do expanded.review.skipped[i]={name="Managed Hide "..i,reason="Preserved unsupported rule"} end
+	write(configFile,assert(require("dkjson").encode(expanded)))
+	sync.pause(true)
+	local stored=require("dkjson").decode(read(configFile))
+	assert(stored.review.skipped==nil and stored.review.skippedRef,"Large review must use a separate verified record")
+	local reference=stored.review.skippedRef
+	largeReviewRef=reference
+	assert(sync.reviewSidecarReferences()[reference],"Active review reference was not retained")
+	local orphanData="[1,2,3]";local orphan=require("sha1")(orphanData)
+	local orphanPath=main.userPath.."LootFilterSkipped-"..orphan..".json"
+	write(orphanPath,orphanData)
+	local cleaned=sync.pruneReviewSidecars({reference,orphan})
+	assert(cleaned.retained==1 and cleaned.removed==1 and read(main.userPath.."LootFilterSkipped-"..reference..".json"))
+	assert(not io.open(orphanPath,"rb"),"Unreferenced verified sidecar should be removed")
+	write(orphanPath,"altered")
+	assert(sync.pruneReviewSidecars({orphan}).retained==1 and read(orphanPath)=="altered","Altered data must not be removed")
+	assert(not pcall(sync.pruneReviewSidecars,{"../private"}),"Invalid sidecar digest must be rejected")
+	local sidecar=main.userPath.."LootFilterSkipped-"..reference..".json"
+	local intact=read(sidecar)
+	local originalOpen, sidecarReads=io.open,0
+	io.open=function(path,mode)
+		if path==sidecar and mode=="rb" then sidecarReads=sidecarReads+1 end
+		return originalOpen(path,mode)
+	end
+	local lightweight=sync.configuration(nil,false)
+	assert(lightweight.review.skippedRef==reference and not lightweight.review.skipped and sidecarReads==0)
+	local started=os.clock();local hydrated=sync.configuration();local elapsed=os.clock()-started
+	io.open=originalOpen
+	assert(#hydrated.review.skipped==5000 and sidecarReads==1)
+	print(string.format("5,000 skipped entries: hydrated in %.3f seconds of headless CPU time",elapsed))
+	local last=sync.publicDecisionPage(config.revision,4999,1,"skipped")
+	assert(last.total==5000 and last.decisions[1].skipIndex==5000)
+	write(sidecar,intact.." ")
+	local damaged=sync.configuration()
+	assert(damaged.review.skippedUnavailable and not damaged.review.skipped,"Altered data must be reported without preventing settings access")
+	sync.pause(false)
+	assert(require("dkjson").decode(read(configFile)).review.skippedRef==reference,"Settings changes must preserve the unavailable reference")
+	write(sidecar,intact)
+	assert(#sync.configuration().review.skipped==5000)
 	write(configFile,originalConfig)
 	assert(not pcall(sync.reviewDecisionExamples,"default","stale-revision",1,0,1),"A stale review must not be compared")
 	assert(not pcall(sync.publicDecisionExamples,string.rep("a",40),1,0,1),"A stale public review must not be compared")
@@ -839,6 +886,10 @@ do
 	assert(#read(settingsFile)+#receiptBytes>2*1024*1024)
 	assert(interrupted.current~=interrupted.pending and interrupted.pendingRefresh==require("sha1")(receiptBytes))
 	assert(receipt.review.checkedAt==now+1)
+	-- A persisted large report must survive the same interrupted replacement.
+	receipt.review.skipped=nil;receipt.review.skippedRef=assert(largeReviewRef)
+	receiptBytes=assert(json.encode(receipt));write(receiptFile,receiptBytes)
+	interrupted.pendingRefresh=require("sha1")(receiptBytes)
 	assert(not pcall(secondWindow.verifiedOutput,"default"))
 	-- Make the retry eligible and simulate restarting with an active provider hold.
 	interrupted.lastFailure = nil
@@ -877,9 +928,11 @@ do
 	local recovered = replacementWindow.configuration()
 	assert(recoveryRequests==0 and read(target)==refreshed and not recovered.pending and not recovered.pendingRefresh)
 	assert(recovered.lastSuccess==now+1 and recovered.review.checkedAt==now+1 and not recovered.lastFailure)
+	assert(#recovered.review.skipped==5000 and recovered.review.skipped[5000].name=="Managed Hide 5000")
 	assert(recovered.marketSourceHash==receipt.sourceHash and not io.open(receiptFile,"rb"))
 	assert(#recovered.history==#interrupted.history+1 and replacementWindow.verifiedOutput("default")==refreshed)
 	assert(replacementWindow.archivedReviews("default")[recovered.history[1].reviewKey].checkedAt==now+1)
+	assert(#replacementWindow.archivedReviews("default")[recovered.history[1].reviewKey].skipped==5000)
 	market.endpoint = priorEndpoint
 end
 print("Windows refresh recovery passed across a partial write, sharing violation, final commit failure, and provider cooldown")
@@ -1040,9 +1093,9 @@ end
 do
 	local fixed = "# PoB economy: begin\n"..string.rep("Hide\n    ItemLevel >= 70\n\n",280).."# PoB economy: end\n"
 	local updated, changes, reasons = market.review(fixed,{},1)
-	assert(updated==fixed and #changes==0 and #reasons==251)
+	assert(updated==fixed and #changes==0 and #reasons==280)
 	assert(reasons[250].name=="Managed Hide at baseline line 749")
-	assert(reasons[251].reason:find("preserved 30 more Hide rules",1,true))
+	assert(reasons[280].name=="Managed Hide at baseline line 839" and reasons[280].reason)
 end
 local _, withoutHistory, _, skips = validate(scoped,missing,false,1,samples,{},"today",now,policy)
 assert(withoutHistory==1 and skips[1].reason:find("three earlier",1,true))
@@ -2948,3 +3001,57 @@ end
 
 checkReviewedLeagueRollover()
 print("Retired league diagnosis, guarded rollover save, and a fresh new-league sync passed")
+
+-- Exercise large-report persistence through an actual publish and restart.
+function testLargeFilterSync()
+	local previousPath,previousDownload=main.userPath,launch.DownloadPage
+	main.userPath=dir.."/large-fixture/"
+	local lfs=require("lfs");local made=lfs.mkdir(main.userPath)
+	if not made then assert(pcall(function() for _ in lfs.dir(main.userPath) do break end end),"Could not create large fixture directory") end
+	local live,fixed=main.userPath.."live.filter",main.userPath.."fixed.filter"
+	local large=original:gsub("# PoB economy: begin\n",function(marker)
+		return marker..string.rep("Hide\n    ItemLevel >= 70\n\n",5000)
+	end,1)
+	write(live,large);write(fixed,large)
+	local service=assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	launch.DownloadPage=function(_,_,callback) callback({header=header,body=commodityBody}) end
+	service.configure(live,fixed,"Covens",{hour=0,targetValue=1,protectionFile=protections})
+	service.tick(now,true)
+	local state=assert(service.configuration())
+	assert(state.lastSuccess==now and #state.review.skipped>=5000,service.status)
+	local stored=assert(require("dkjson").decode(read(main.userPath.."LootFilterDailySync.json")))
+	assert(stored.review.skippedRef and not stored.review.skipped,"Large actual sync was not stored separately")
+	local reloaded=assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local after=assert(reloaded.configuration())
+	assert(#after.review.skipped==#state.review.skipped and reloaded.verifiedOutput("default")==read(live))
+	assert(reloaded.archivedReviews("default")[after.history[1].reviewKey])
+	assert(reloaded.reviewSidecarReferences()[stored.review.skippedRef],"Archived reference was not retained")
+	local archivePath=main.userPath.."LootFilterDailySync-Reviews.json"
+	local archive=read(archivePath);write(archivePath,"invalid archive")
+	assert(not pcall(reloaded.reviewSidecarReferences),"Corrupt archive must stop reference cleanup")
+	write(archivePath,archive)
+	local json,sha=require("dkjson"),require("sha1")
+	local sharedBytes='[{"name":"shared","reason":"keep"}]'
+	local orphanBytes='[{"name":"expired","reason":"remove"}]'
+	local shared,orphan=sha(sharedBytes),sha(orphanBytes)
+	local sharedPath=main.userPath.."LootFilterSkipped-"..shared..".json"
+	local orphanPath=main.userPath.."LootFilterSkipped-"..orphan..".json"
+	write(sharedPath,sharedBytes);write(orphanPath,orphanBytes)
+	local other=reloaded.createProfile("Shared review")
+	write(main.userPath.."LootFilterDailySync-"..other..".json",assert(json.encode({enabled=true,review={skippedRef=shared}})))
+	local old={}
+	for i=1,7 do
+		local payload=assert(json.encode({checkedAt=i,skippedRef=i==7 and shared or i==6 and orphan or nil}))
+		old[i]={digest=sha(payload),payload=payload}
+	end
+	write(archivePath,assert(json.encode(old)))
+	reloaded.tick(now+1,true)
+	assert(read(sharedPath)==sharedBytes,"A sidecar shared by another profile was deleted")
+	reloaded.tick(now+2,true)
+	assert(not io.open(orphanPath,"rb"),"An expired unreferenced sidecar was not removed")
+	assert(read(sharedPath)==sharedBytes,"A shared sidecar was deleted during subsequent cleanup")
+	main.userPath,launch.DownloadPage=previousPath,previousDownload
+	print("Large managed filter review survives a real sync and restart")
+end
+
+testLargeFilterSync()

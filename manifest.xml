@@ -1,15 +1,15 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.69.0-ai.preview1338" />
+	<Version number="2.69.0-ai.preview1339" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="992bbda09a29adefd18f7e8217405cda59e4d07d" />
+	<File name="changelog.txt" part="default" sha1="39423bd3c2edb0d90bcd3dfa93d610d1b2e9544e" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="4a592796f42f1daa96f0005d8f676210b2625535" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="376bcf4925941df13f60ed7c4c5373a581ee15a8" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/ascendancypassiveheaderleft.png" part="program" sha1="6a65683dcc3b14382dc083198fe9361454e91b15" />
 	<File name="Assets/ascendancypassiveheadermiddle.png" part="program" sha1="79ccf100c4154d8f65544e2b32d44a612b7007c0" />
@@ -1654,7 +1654,7 @@
 	<File name="Classes/LootFilterCategoryControl.lua" part="program" sha1="c2305569737cb47ef545e0b5770b71dabfc4ed35" />
 	<File name="Classes/LootFilterCollectionControl.lua" part="program" sha1="f0ef5045827e7b50aa989cfbfa2fa44c652a1076" />
 	<File name="Classes/LootFilterControl.lua" part="program" sha1="afc7e7cf968362c9df7f7accb4ecbd5c068e9e57" />
-	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="f6f1c7be8e0273be5fe216c8592a96d3728ff28f" />
+	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="a015b7dcf33aeb5bf900dffed1063878eb0cf600" />
 	<File name="Classes/LootFilterDiffControl.lua" part="program" sha1="5573b6a3264fca6f75e25410adf5c01d792772bf" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="bb41929c330d5ef8d8bc4c5e2447464bb3dad58d" />
 	<File name="Classes/LootFilterEffectsControl.lua" part="program" sha1="59fcc5963d18c2df06c00de9e13827988ae3e58a" />
@@ -2102,7 +2102,7 @@
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
 	<File name="Modules/DataLegionLookUpTableHelper.lua" part="program" sha1="ece92c4b6062f627f98ba2454531366b4628abfc" />
-	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="2be1d9b7f42d7229c9f84093d0262342dac8df82" />
+	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="f45a178f67a41588971d200ed62674ee1a4f70e7" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/GemQualityPlan.lua" part="program" sha1="fa12e64e1168c57976a6e2b718a6b30545a27e84" />
 	<File name="Modules/GenesisPlanner.lua" part="program" sha1="14ef6d29220456d78d1034816d57b7042042ec38" />
@@ -2115,19 +2115,19 @@
 	<File name="Modules/LootFilterAppearanceSettings.lua" part="program" sha1="feecc806a9fd76a8977a3365cb565f32f33ee9fe" />
 	<File name="Modules/LootFilterAudio.lua" part="program" sha1="be558b4b26daea559d591f63c8c1839746d92750" />
 	<File name="Modules/LootFilterBackground.lua" part="program" sha1="2dcf95cb77c17cd9fe6ef9a4c8ca2f890ec05995" />
-	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="c4beda6d9d5b5197aaaa53215fb86b43e4b9a61c" />
+	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="85ee016c2afc9f4bc28a5fc5b0b1993f26a5594e" />
 	<File name="Modules/LootFilterBaseRefresh.lua" part="program" sha1="c716bda8a878b6db8af8fda903d882d692d1d9c2" />
 	<File name="Modules/LootFilterCampaign.lua" part="program" sha1="90254b52f511ae8b9f22cf5d8c3854fbb97e782b" />
 	<File name="Modules/LootFilterCategoryStyles.lua" part="program" sha1="4c8f8e6a1aef62f216496dcd7cb55fd7ba9f0716" />
 	<File name="Modules/LootFilterClipboard.lua" part="program" sha1="b922bd84814fc95ca90dc8bbc26280b76888d260" />
 	<File name="Modules/LootFilterCollections.lua" part="program" sha1="4d3a57e7333f4d0bbcde25521e0ff22e5151a365" />
-	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="d4950661a5b488aec6f42076468692085e347e13" />
+	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="f5d01c3398bf095b3ec1f32b74ab077bc2ffedc9" />
 	<File name="Modules/LootFilterDecisionSamples.lua" part="program" sha1="b255d8d2b2b6b020fe7351e5086649b9e0993790" />
 	<File name="Modules/LootFilterDecorators.lua" part="program" sha1="0a5fe0000ac903118f28573b4ceeee15d623aeae" />
 	<File name="Modules/LootFilterDependencies.lua" part="program" sha1="0d82ce982e3c96fdcb44d9d3ecbc5248da761fb9" />
 	<File name="Modules/LootFilterDiagnostics.lua" part="program" sha1="f09371e7fb49c4003aa371003846093946330147" />
 	<File name="Modules/LootFilterDiff.lua" part="program" sha1="88486ea49dcf8826000b84018acb4e604532cc53" />
-	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="a9d2b94bc96e4594e67fd62a90d5076abaab0ed0" />
+	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="fe0000e7a8f721633b8765b2b12d0813d317aef2" />
 	<File name="Modules/LootFilterEditing.lua" part="program" sha1="28b6bb32ae9b688ef9f9dd63d8ed34338dcc49de" />
 	<File name="Modules/LootFilterExchangeCrossCheck.lua" part="program" sha1="3eaa8058931b1cb82474c06e7a2f7876b4b764b7" />
 	<File name="Modules/LootFilterExports.lua" part="program" sha1="778f95494f6f7f499327b8e094457f0ff227b9e1" />

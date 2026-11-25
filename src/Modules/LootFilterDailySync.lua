@@ -71,7 +71,7 @@ local function platform()
 			assert(handle ~= ffi.cast("void *", -1), "Another PoB window is updating this filter, or the directory is unavailable")
 			return function() kernel.CloseHandle(handle) end
 		end,
-		prune = function(path, digest)
+		prune = function(path, digest, limit)
 			-- Hold one handle through both verification and deletion. Sharing
 			-- permits readers while blocking writers and path replacement.
 			local readAndDelete, shareRead, openExisting, openReparsePoint = 0x80010000, 1, 3, 0x00200000
@@ -81,7 +81,7 @@ local function platform()
 				local length = ffi.new("int64_t[1]")
 				if kernel.GetFileSizeEx(handle,length)==0 then return false end
 				local size = tonumber(length[0])
-				if size<1 or size>volumeLimit then return false end
+				if size<1 or size>(limit or volumeLimit) then return false end
 				local bytes = ffi.new("char[?]",size)
 				local count = ffi.new("unsigned long[1]")
 				if kernel.ReadFile(handle,bytes,size,count,nil)==0 or count[0]~=size
@@ -152,17 +152,62 @@ local function readSettings(path)
 	return raw
 end
 
-local function get(id)
+-- Large skip lists are stored separately by content hash so sync settings and
+-- crash-recovery receipts remain bounded. Existing inline reviews stay valid.
+local function skipReviewPath(digest)
+	assert(type(digest)=="string" and #digest==40 and digest:match("^[a-f0-9]+$"), "Invalid review reference")
+	return main.userPath .. "LootFilterSkipped-" .. digest .. ".json"
+end
+
+local function unpackReview(review)
+	if type(review)~="table" or review.skippedRef==nil then return review end
+	assert(review.skipped==nil, "Conflicting skipped review data")
+	local path=skipReviewPath(review.skippedRef)
+	local raw=assert(readWithLimit(path,256*1024*1024), "Skipped review data is unavailable")
+	assert(sha(raw)==review.skippedRef, "Skipped review checksum changed")
+	local skipped,pos=json.decode(raw)
+	assert(type(skipped)=="table" and raw:match("^%s*%[") and pos and not raw:sub(pos):find("%S"), "Invalid skipped review data")
+	review.skipped,review.skippedRef,review.skippedUnavailable,review.skippedStoredCount=skipped,nil,nil,nil
+	return review
+end
+
+local function packReview(review)
+	if type(review)~="table" or type(review.skipped)~="table" then return review end
+	local encoded=assert(json.encode(review.skipped))
+	if #encoded<=256*1024 then return review end
+	assert(#encoded<=256*1024*1024, "Skipped review exceeds the size limit")
+	local digest=sha(encoded);local path=skipReviewPath(digest)
+	local existing=readWithLimit(path,256*1024*1024)
+	if existing~=encoded then put(path,encoded) end
+	assert(readWithLimit(path,256*1024*1024)==encoded, "Skipped review could not be verified")
+	local packed={};for key,value in pairs(review) do if key~="skipped" then packed[key]=value end end
+	packed.skippedRef,packed.skippedStoredCount=digest,#review.skipped
+	return packed
+end
+
+local function packedRecord(record)
+	if type(record.review)~="table" then return record end
+	local packed={};for key,value in pairs(record) do packed[key]=value end
+	packed.review=packReview(record.review)
+	return packed
+end
+
+local function get(id, includeSkipped)
 	local raw = readSettings(settingsPath(id))
 	if not raw then return nil end
 	local config, position = json.decode(raw)
 	assert(type(config)=="table" and raw:match("^%s*{") and position and not raw:sub(position):find("%S")
 		and type(config.enabled)=="boolean", "Invalid daily filter sync configuration")
+	if includeSkipped then
+		local hydrated,review=pcall(unpackReview,config.review)
+		if hydrated then config.review=review
+		elseif type(config.review)=="table" then config.review.skippedUnavailable=true end
+	end
 	return config
 end
 
 local function encodeSyncRecord(record)
-	local raw = assert(json.encode(record))
+	local raw = assert(json.encode(packedRecord(record)))
 	assert(#raw <= volumeLimit, "Sync record exceeds the size limit")
 	return raw
 end
@@ -200,6 +245,17 @@ local function archiveReview(id, digest, payload)
 		raw = assert(json.encode(archive))
 	end
 	put(reviewPath(id),raw)
+	local retained,candidates={},{}
+	for _,entry in ipairs(archive) do retained[entry.digest]=true end
+	for _,entry in ipairs(ok and prior or {}) do
+		if type(entry)=="table" and type(entry.payload)=="string" and type(entry.digest)=="string"
+			and not retained[entry.digest] and sha(entry.payload)==entry.digest then
+			local review=json.decode(entry.payload)
+			local ref=type(review)=="table" and review.skippedRef
+			if type(ref)=="string" and #ref==40 and ref:match("^[a-f0-9]+$") then candidates[#candidates+1]=ref end
+		end
+	end
+	return candidates
 end
 
 function M.archivedReviews(id)
@@ -212,7 +268,10 @@ function M.archivedReviews(id)
 	for _, value in ipairs(archive) do
 		if type(value)=="table" and type(value.payload)=="string" and keys[value.digest] and sha(value.payload)==value.digest then
 			local detail = json.decode(value.payload)
-			if type(detail)=="table" then found[value.digest] = detail end
+			if type(detail)=="table" then
+				local valid, hydrated=pcall(unpackReview,detail)
+				if valid then found[value.digest]=hydrated end
+			end
 		end
 	end
 	return found
@@ -241,6 +300,68 @@ function M.profiles()
 		result[#result+1] = row
 	end
 	return result
+end
+
+-- Caller must hold the shared settings lock before using this snapshot for
+-- retention. Fail closed if any profile, archive or pending receipt is unclear.
+local function reviewReferences()
+	local references={}
+	local function include(review)
+		if type(review)~="table" or review.skippedRef==nil then return end
+		skipReviewPath(review.skippedRef)
+		references[review.skippedRef]=true
+	end
+	for _,profile in ipairs(M.profiles()) do
+		local config=get(profile.id)
+		if config then
+			include(config.review)
+			if config.pendingRefresh then
+				local raw=assert(read(pendingRefreshPath(profile.id)),"Pending review receipt is unavailable")
+				assert(sha(raw)==config.pendingRefresh,"Pending review receipt changed")
+				local receipt,pos=json.decode(raw)
+				assert(type(receipt)=="table" and pos and not raw:sub(pos):find("%S"),"Invalid pending review receipt")
+				include(receipt.review)
+			end
+		end
+		local raw,why,code=read(reviewPath(profile.id))
+		assert(raw or code==2 or not why and not code,"Review archive is unavailable")
+		if raw then
+			local archive,pos=json.decode(raw)
+			assert(type(archive)=="table" and raw:match("^%s*%[") and pos and not raw:sub(pos):find("%S"),"Invalid review archive")
+			for _,entry in ipairs(archive) do
+				assert(type(entry)=="table" and type(entry.payload)=="string" and type(entry.digest)=="string" and sha(entry.payload)==entry.digest,"Invalid archived review")
+				local review,last=json.decode(entry.payload)
+				assert(type(review)=="table" and last and not entry.payload:sub(last):find("%S"),"Invalid archived review payload")
+				include(review)
+			end
+		end
+	end
+	return references
+end
+
+function M.reviewSidecarReferences()
+	return lockSettings(reviewReferences)
+end
+
+-- Only explicitly supplied digests are candidates. Every retained reference is
+-- checked while holding the same lock used by sync writes; each candidate is
+-- verified and deleted through a single no-write-sharing Windows handle.
+local function pruneReviewCandidates(candidates)
+	assert(type(candidates)=="table", "Choose review files to check")
+	local referenced=reviewReferences();local removed,retained=0,0;local seen={}
+	for _,digest in ipairs(candidates) do
+		local path=skipReviewPath(digest)
+		if not seen[digest] then
+			seen[digest]=true
+			if not referenced[digest] and platform().prune(path,digest,256*1024*1024) then removed=removed+1
+			else retained=retained+1 end
+		end
+	end
+	return {removed=removed,retained=retained}
+end
+
+function M.pruneReviewSidecars(candidates)
+	return lockSettings(function() return pruneReviewCandidates(candidates) end)
 end
 
 local revisionCounter=0
@@ -297,8 +418,8 @@ local function failureStatus(record)
 	return string.format("%s: %s", nowText(record.checkedAt), record.message)
 end
 
-function M.configuration(id)
-	return get(id)
+function M.configuration(id, includeSkipped)
+	return get(id, includeSkipped~=false)
 end
 
 local function localSchedule(config, date)
@@ -421,7 +542,8 @@ function M.publicStatus(now, id)
 	if timeValid then output.nextEligible = eligible end
 	local changes = type(review.changes)=="table" and review.changes or {}
 	output.adjustmentCount = #changes
-	output.skippedCount = type(review.skipped)=="table" and #review.skipped or 0
+	output.skippedCount = type(review.skipped)=="table" and #review.skipped or not review.skippedUnavailable and (finiteNumber(review.skippedStoredCount) or 0) or nil
+	output.skippedUnavailable = review.skippedUnavailable==true or nil
 	for index, item in ipairs(changes) do
 		if index > 40 then break end
 		if type(item)=="table" and type(item.name)=="string" and #item.name<=200 and not item.name:find("[%c/\\]")
@@ -650,22 +772,34 @@ function M.publicDecisionExamples(revision,index,offset,limit)
 		limitations={"Illustrative cases use known base properties and leave item level unknown.","This compares the current verified default profile, not an archived review."}}
 end
 
-function M.publicDecisionPage(revision,offset,limit)
+function M.publicDecisionPage(revision,offset,limit,kind)
 	assert(type(revision)=="string" and #revision==40 and revision:match("^[a-f0-9]+$"), "Refresh the latest sync review")
 	offset,limit=offset or 0,limit or 25
+	kind=kind or "decisions"
+	assert(kind=="decisions" or kind=="skipped", "Choose decisions or skipped rules")
 	assert(type(offset)=="number" and offset==math.floor(offset) and offset>=0 and offset<=1000000000, "Invalid decision offset")
 	assert(type(limit)=="number" and limit==math.floor(limit) and limit>=1 and limit<=50, "Use 1 to 50 decisions per page")
-	local loaded,config=pcall(get,"default")
+	local loaded,config=pcall(get,"default",kind=="skipped")
 	assert(loaded and config, "Refresh the latest sync review")
-	assert(config.revision==revision and type(config.review)=="table" and type(config.review.changes)=="table", "The sync review changed. Refresh it in PoB")
+	assert(config.revision==revision and type(config.review)=="table" and type(config.review[kind=="skipped" and "skipped" or "changes"])=="table", "The sync review changed. Refresh it in PoB")
 	local ok=pcall(M.verifiedFilterPair,"default");assert(ok, "The verified filters changed or are unavailable. Refresh the sync review in PoB")
 	local reloaded,latest=pcall(get,"default")
 	assert(reloaded and latest, "Refresh the latest sync review")
 	assert(latest.revision==revision, "The sync review changed. Refresh it in PoB")
-	local source=config.review.changes;local last=math.min(#source,offset+limit);local results={}
-	for index=offset+1,last do local entry=publicDecision(source[index],index);if entry then results[#results+1]=entry end end
-	return {reviewRevision=revision,total=#source,offset=offset,nextOffset=last<#source and last or nil,decisions=results,
-		limitations={"The current verified default profile is shown; archived reviews are unavailable.","Invalid stored decisions are omitted from the page."}}
+	local source=config.review[kind=="skipped" and "skipped" or "changes"];local last=math.min(#source,offset+limit);local results={}
+	for index=offset+1,last do
+		local entry
+		if kind=="skipped" then
+			local item=source[index]
+			if type(item)=="table" then
+				local name=safeText(item.name,200);local reason=safeText(item.reason,500)
+				if name and reason then entry={item=name,reason=reason,skipIndex=index} end
+			end
+		else entry=publicDecision(source[index],index) end
+		if entry then results[#results+1]=entry end
+	end
+	return {reviewRevision=revision,total=#source,offset=offset,nextOffset=last<#source and last or nil,kind=kind,decisions=results,
+		limitations={"The current verified default profile is shown; archived reviews are unavailable.","Invalid or unsafe stored entries are omitted from the page."}}
 end
 
 function M.compareObservedStack(id, name, size, area, itemLevel, itemClass)
@@ -1359,7 +1493,7 @@ local function prepareRefreshState(current, digest, refresh, replaced)
 	result.summary = string.format("%s: %d price decisions from the baseline. Protected drops verified.", nowText(checkedAt), count)
 	result.lastSuccess, result.lastFailure, result.providerRetryAfter = checkedAt, nil, nil
 	result.review, result.cutoffContinuity = review, refresh.cutoffContinuity
-	local evidence = assert(json.encode(review))
+	local evidence = assert(json.encode(packReview(review)))
 	result.history = {{checkedAt=checkedAt, adjustments=count, backup=review.backup,
 		oldest=math.max(unpack(review.ages)), reviewKey=sha(evidence)}}
 	for index, run in ipairs(current.history or {}) do
@@ -1372,7 +1506,8 @@ end
 local function finishRefresh(current, id, raw, evidence, replaced)
 	put(settingsPath(id), raw)
 	if replaced then os.remove(pendingRefreshPath(id)) end
-	pcall(archiveReview,id,current.history[1].reviewKey,evidence)
+	local archived,candidates=pcall(archiveReview,id,current.history[1].reviewKey,evidence)
+	if archived and #candidates>0 then pcall(pruneReviewCandidates,candidates) end
 	local limit = current.backupLimit
 	if type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) then
 		pruneBackups(current,backupChoices(current))
@@ -1398,6 +1533,7 @@ local function reconcileRefresh(current, id)
 	local receipt = assert(read(pendingRefreshPath(id)), "Interrupted refresh review is missing")
 	assert(sha(receipt)==current.pendingRefresh, "Interrupted refresh review checksum changed")
 	local refresh = assert(json.decode(receipt))
+	refresh.review=unpackReview(refresh.review)
 	assert(backupDigest(current.current) and refresh.review.backup == current.current, "Interrupted refresh backup could not be verified")
 	readBackup(current.target,current.current)
 	local baseline = assert(read(current.baseline), "Baseline filter is missing")

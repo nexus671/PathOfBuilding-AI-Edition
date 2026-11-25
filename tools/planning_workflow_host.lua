@@ -72,6 +72,7 @@ for line in io.lines() do
 				lastSuccess=now,targetValue=1,league="Standard",protections={{BaseType="Cord Belt",Rarity="Normal"}},
 				review={checkedAt=now,changes={{name="Orb of Alteration",old=6,cutoff=4,classes={"Stackable Currency"}}},skipped={}}}
 			for i=2,300 do config.review.changes[i]={name="Orb of Alteration",old=6,cutoff=4,classes={"Stackable Currency"}} end
+			for i=1,280 do config.review.skipped[i]={name="Managed Hide "..i,reason="Preserved unsupported rule"} end
 			write(directory.."LootFilterDailySync.json",assert(json.encode(config)))
 			-- Daily sync accepts Windows paths only. Exercise the real page and
 			-- bridge on Linux using this fixture's files and the same hash checks.

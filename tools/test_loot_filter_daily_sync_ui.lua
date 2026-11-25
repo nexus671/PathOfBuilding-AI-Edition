@@ -298,7 +298,17 @@ reviewFixture.review.skipped={
 	{name="Chaos Orb",policyCap=5,reason="No eligible managed stack rule matches this exact item name in the fixed baseline."},
 	{name="Vaal Orb",policyCap=4,old=6,reason="No managed stack cutoff is below the cap. Price-based tightening needs room above the baseline."},
 }
+for i=1,300 do reviewFixture.review.skipped[#reviewFixture.review.skipped+1]={name="Managed Hide fixture "..i,reason="Preserved unsupported rule"} end
+reviewFixture.review.skippedUnavailable=true
 require('Classes.LootFilterDailySyncControl').Open();reviewUI:click('review')
+reviewUI:text('search','Skipped rule details unavailable')
+local missingText={};for _,row in ipairs(main.popups[1].controls.details.list) do missingText[#missingText+1]=StripEscapes(row[1] or '') end
+assert(table.concat(missingText,' '):find('missing or damaged',1,true),'Missing review data was not explained')
+reviewUI:text('search','Managed Hide fixture 300')
+local largeDetails={};for _,row in ipairs(main.popups[1].controls.details.list) do largeDetails[#largeDetails+1]=StripEscapes(row[1] or '') end
+assert(table.concat(largeDetails,' '):find('Preserved unsupported rule',1,true),'The final skipped rule is not reachable')
+if output then reviewUI:frame():write(output..'/'..reviewWidth..'-filter-skipped-last.json') end
+reviewUI:text('search','')
 local statusRows = {}
 for _, row in ipairs(main.popups[1].controls.details.list) do statusRows[#statusRows+1] = StripEscapes(row[1] or "") end
 local proof = table.concat(statusRows," "):gsub("%s+"," ")

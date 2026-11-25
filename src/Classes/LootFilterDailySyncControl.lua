@@ -682,6 +682,9 @@ function M.Open(profileId, profileName, restored)
 				entries[#entries+1] = {id="change-"..i,label=change.name,
 					category=change.retainedReason and "Retained" or "Changed",details=details,decision=change,decisionIndex=i}
 			end
+			if review.skippedUnavailable then
+				entries[#entries+1]={id="skip-unavailable",label="Skipped rule details unavailable",category="Unchanged",details={"The saved review data is missing or damaged. Run a fresh sync to rebuild it."}}
+			end
 			for i, item in ipairs(review.skipped or {}) do
 				local details = {item.reason}
 				if item.source then details[#details+1] = "Price feed · "..item.source end
