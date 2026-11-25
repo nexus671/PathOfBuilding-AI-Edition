@@ -147,9 +147,15 @@ out:close()
 
 local currencies = {}
 for row in dat("CurrencyExchange"):Rows() do
-	if row.BaseItemType.ItemClass.Id == "StackableCurrency" and row.BaseItemType.Name ~= "" and not row.BaseItemType.Name:match("DNT") then
-		currencies[row.BaseItemType.Id] = row.BaseItemType.Name
+	local item = row.BaseItemType
+	local class = item.ItemClass.Id
+	-- The exchange also trades Atlas Threads and empty Chaotic Resonators.
+	local thread = class == "MapFragment" and item.Id:match("^Metadata/Items/Threads/")
+	local resonator = class == "DelveStackableSocketableCurrency"
+		and item.Id:match("^Metadata/Items/Delve/DelveStackableSocketableCurrencyReroll%d+$")
+	if (class == "StackableCurrency" or thread or resonator) and item.Name ~= "" and not item.Name:match("DNT") then
+		currencies[item.Id] = item.Name
 	end
 end
-utils.saveTableToFile("../Data/CurrencyNames.lua", currencies, "This file contains mapping item names for every currency base item type ID.\nUsed for working with the currency exchange which uses item type IDs.")
+utils.saveTableToFile("../Data/CurrencyNames.lua", currencies, "These are exact item names for exported currency exchange base item type IDs.")
 print("Misc data exported.")

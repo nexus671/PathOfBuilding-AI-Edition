@@ -466,6 +466,7 @@ function M.review(raw, quotes, target, preferences, confirmation, priorContinuit
 	local start, stop, tagged = M.sectionBounds(raw)
 	if not start or not stop then return raw, {}, nil, continuity end
 	local section = raw:sub(start, stop - 1)
+	local _, precedingLines = raw:sub(1, start - 1):gsub("\n", "")
 	local changes, skipped, highlights = {}, {}, {}
 	local capCutoffs = {}
 	local useHighlights = (policy.highlightChaos or policy.strongHighlightChaos) and appearanceSafe(raw)
@@ -476,7 +477,9 @@ function M.review(raw, quotes, target, preferences, confirmation, priorContinuit
 	local function rewrite(block, exchangeCategory, ordinal)
 		local parsed = parser.parse(block)
 		local rule = parsed.rules[1]
-		if #parsed.rules ~= 1 or #parsed.diagnostics ~= 0 or not rule or #parsed.imports > 0 then return block end
+		if #parsed.rules ~= 1 or #parsed.diagnostics ~= 0 or not rule or #parsed.imports > 0 then
+			return block, "PoB could not verify the rule syntax for price adjustments."
+		end
 		local gem = tagged and gems.rule(rule)
 		if gem then
 			local quote = quotes[quoteKey(gem.key,gems.feed)]
@@ -502,7 +505,9 @@ function M.review(raw, quotes, target, preferences, confirmation, priorContinuit
 			return ""
 		end
 		local conditions = ruleConditions(rule)
-		if not conditions then return block end
+		if not conditions then
+			return block, "The rule uses Continue, appearance settings, or conditions outside the supported price rules."
+		end
 		local category, tier, variant
 		if tagged then category, tier, variant = maps.rule(conditions) end
 		if category then
@@ -522,23 +527,33 @@ function M.review(raw, quotes, target, preferences, confirmation, priorContinuit
 				maps=true,scope="maps",tier=tier,blighted=variant.blighted,ravaged=variant.ravaged,retainedReason=retainedReason}
 			return ""
 		end
-		if conditions.MapTier or conditions.Rarity or conditions.BlightedMap or conditions.UberBlightedMap then return block end
-		for _, key in ipairs(maps.excludedFlags) do if conditions[key] then return block end end
+		if conditions.MapTier or conditions.Rarity or conditions.BlightedMap or conditions.UberBlightedMap then
+			return block, "The rule does not match a supported exact map variant."
+		end
+		for _, key in ipairs(maps.excludedFlags) do
+			if conditions[key] then return block, "The rule does not match a supported exact map variant." end
+		end
 		local class, base, stack, area = conditions.Class, conditions.BaseType, conditions.StackSize, conditions.AreaLevel
 		local scope = scopeOf(area, tagged)
 		if not class or not base or not scope or class.operator ~= "==" or base.operator ~= "=="
-			or stack and (stack.operator ~= "<=" or #stack.values ~= 1) then return block end
+			or stack and (stack.operator ~= "<=" or #stack.values ~= 1) then
+			return block, "Price rules require exact Class and BaseType, a supported area, and an upper stack cutoff where applicable."
+		end
 		local card = tagged and #class.values == 1 and class.values[1] == "Divination Cards"
 		local singleItem = exchangeCategory and #class.values==1 and M.exchangeItemClasses[class.values[1]]==exchangeCategory
 		if not card and not singleItem then
-			if not stack then return block end
-			for _, name in ipairs(class.values) do if not classes[name] then return block end end
+			if not stack then return block, "This item class requires an upper stack cutoff for price adjustments." end
+			for _, name in ipairs(class.values) do
+				if not classes[name] then return block, "This item class is not supported for stack price adjustments." end
+			end
 		end
 		local old = stack and tonumber(stack.values[1]) or 1
-		if not old or old < 1 or old > 10000 or old ~= math.floor(old) then return block end
+		if not old or old < 1 or old > 10000 or old ~= math.floor(old) then
+			return block, "A stack cutoff must be a whole number from 1 to 10,000."
+		end
 		local group, changed = {}, false
 		for _, name in ipairs(base.values) do
-			if name:find('[%c"\\]') then return block end
+			if name:find('[%c"\\]') then return block, "PoB could not safely rewrite an exact base name." end
 		end
 		local pickupTarget = policy[scope] or policy.target
 		for position, name in ipairs(base.values) do
@@ -601,6 +616,7 @@ function M.review(raw, quotes, target, preferences, confirmation, priorContinuit
 	local blocks = {}
 	local parsed = parser.parse(section)
 	local selections = tagged and exchangeSelections(section,parsed) or {}
+	local unsupportedCount, unsupportedLimit = 0, 250
 	for ordinal, rule in ipairs(parsed.rules) do
 		local last = rule.line + #rule.rawLines - 1
 		local original = table.concat(lines, "", rule.line, last)
@@ -610,13 +626,29 @@ function M.review(raw, quotes, target, preferences, confirmation, priorContinuit
 			local source = lines[rule.line + offset - 1]
 			if not source or source:gsub("\n$", "") ~= line then contiguous = false; break end
 		end
+		local reason
 		if contiguous and not original:find("#", 1, true) then
 			local category = selections[rule.line]
-			local rewritten = rewrite(original,category,ordinal)
+			local rewritten
+			rewritten, reason = rewrite(original,category,ordinal)
 			local first = category and rule.line-1 or rule.line
 			if category and rewritten==original then rewritten=lines[first]..rewritten end
 			blocks[first] = { last = last, text = rewritten }
+		else
+			reason = "PoB preserved this rule because it contains a comment or a gap between conditions."
 		end
+		if tagged and rule.action=="Hide" and reason then
+			unsupportedCount = unsupportedCount + 1
+			if unsupportedCount <= unsupportedLimit then
+				local line = precedingLines + rule.line
+				skipped[#skipped+1] = {name="Managed Hide at baseline line "..line,reason=reason}
+			end
+		end
+	end
+	if unsupportedCount > unsupportedLimit then
+		skipped[#skipped+1] = {name="Additional unsupported managed rules",
+			reason=string.format("PoB preserved %d more Hide rules. The review shows the first %d.",
+				unsupportedCount-unsupportedLimit,unsupportedLimit)}
 	end
 	local index = 1
 	while index <= #lines do

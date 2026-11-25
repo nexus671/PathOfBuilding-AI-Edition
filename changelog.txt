@@ -1,6 +1,11 @@
-VERSION[2.69.0-ai.preview1311][2026/11/25]
+VERSION[2.69.0-ai.preview1312][2026/11/25]
 
 * Explain map reroll restrictions on the map card.
+
+VERSION[2.69.0-ai.preview1311][2026/11/25]
+
+* Explain untouched managed price rules and show the area level of sampled stack decisions.
+* Match exact GGG trade history for Atlas Threads and Chaotic Resonators.
 
 VERSION[2.69.0-ai.preview1310][2026/11/25]
 
