@@ -38,7 +38,8 @@ function launch:OnInit()
 	self.subScripts = { }
 	self.startTime = startTime
 	local syncOnly = arg and (arg[1] == "--loot-filter-sync" or arg[1] == "--loot-filter-sync-scheduled")
-	local firstRunFile = not syncOnly and io.open("first.run", "r")
+	local overlayOnly = arg and arg[1] == "--trade-overlay"
+	local firstRunFile = not (syncOnly or overlayOnly) and io.open("first.run", "r")
 	if firstRunFile then
 		firstRunFile:close()
 		os.remove("first.run")
@@ -82,6 +83,11 @@ function launch:OnInit()
 		self.lootSyncWorker.start(self, arg[1] == "--loot-filter-sync-scheduled")
 		return
 	end
+	if overlayOnly then
+		self.tradeOverlayDriver = require("Modules.LootTradeOverlay")
+		self.tradeOverlay = self.tradeOverlayDriver.start(self)
+		return
+	end
 	RenderInit("DPI_AWARE")
 	ConPrintf("Loading main script...")
 	local errMsg
@@ -117,12 +123,17 @@ function launch:CanExit()
 end
 
 function launch:OnExit()
+	if self.tradeOverlay then self.tradeOverlayDriver.close(self.tradeOverlay) end
 	if self.main and self.main.Shutdown then
 		PCall(self.main.Shutdown, self.main)
 	end
 end
 
 function launch:OnFrame()
+	if self.tradeOverlay then
+		self.tradeOverlayDriver.frame(self.tradeOverlay)
+		return
+	end
 	if self.lootSyncWorker then
 		self.lootSyncWorker.frame(self)
 		return
@@ -161,6 +172,10 @@ function launch:OnFrame()
 end
 
 function launch:OnKeyDown(key, doubleClick)
+	if self.tradeOverlay then
+		self.tradeOverlayDriver.key(self.tradeOverlay,"KeyDown",key,doubleClick)
+		return
+	end
 	if key == "F5" and self.devMode then
 		self.doRestart = "Restarting..."
 	elseif key == "F6" and self.devMode then
@@ -195,6 +210,10 @@ function launch:OnKeyDown(key, doubleClick)
 end
 
 function launch:OnKeyUp(key)
+	if self.tradeOverlay then
+		self.tradeOverlayDriver.key(self.tradeOverlay,"KeyUp",key)
+		return
+	end
 	if not self.promptMsg then
 		if self.main and self.main.OnKeyUp then
 			local errMsg = PCall(self.main.OnKeyUp, self.main, key)
@@ -206,6 +225,10 @@ function launch:OnKeyUp(key)
 end
 
 function launch:OnChar(key)
+	if self.tradeOverlay then
+		self.tradeOverlayDriver.key(self.tradeOverlay,"Char",key)
+		return
+	end
 	if self.promptMsg then
 		self:RunPromptFunc(key)
 	else
