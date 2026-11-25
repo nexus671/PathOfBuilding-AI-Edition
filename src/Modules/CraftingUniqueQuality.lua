@@ -237,7 +237,7 @@ local function addQuality(raw,value)
 	return raw..(raw:sub(-1)=="\n" and "" or newline).."Quality: "..value
 end
 function M.apply(raw)
-	local item,info=M.inspect(raw);assert(info.qualitySupported,"Jewellery quality requires a catalyst");assert(not item.corrupted,"Ordinary quality currency cannot modify a corrupted item");assert(info.available,"Ordinary quality currency cannot exceed 20%")
+	local item,info=M.inspect(raw);assert(info.qualitySupported,(item.type=="Jewel" or item.type=="Quiver") and "This item cannot use ordinary quality currency" or "Jewellery quality requires a catalyst");assert(not item.corrupted,"Ordinary quality currency cannot modify a corrupted item");assert(info.available,"Ordinary quality currency cannot exceed 20%")
 	local padded="\n"..raw
 	local output,count=padded:gsub("\nQuality:[^\r\n]*","\nQuality: "..(info.quality+1))
 	assert(count<=1,"Item text contains multiple quality lines")

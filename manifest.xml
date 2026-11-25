@@ -2093,7 +2093,7 @@
 	<File name="Modules/CraftingTasks.lua" part="program" sha1="5884e439905689280d65534ef8e78591341970d6" />
 	<File name="Modules/CraftingUniqueBlessed.lua" part="program" sha1="728f9a2509eebad5b509f5a598914b2fe31605b3" />
 	<File name="Modules/CraftingUniqueCatalyst.lua" part="program" sha1="8605c7046874178179b08a22a59a673cdda61a31" />
-	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="840e8ff65e67943d71dc0ae6f4e4610a93538de6" />
+	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="b393adf93bba56d1d66bb3dc412e15bcf532b7c9" />
 	<File name="Modules/CraftingUniqueSimulation.lua" part="program" sha1="dcc9be202bed401bca072979e7984b5cc03c2f06" />
 	<File name="Modules/CraftingUnlockTasks.lua" part="program" sha1="b1ab9cc44e5f7411715f74fff720379d44c65d21" />
 	<File name="Modules/CraftingUnveiledJewel330.lua" part="program" sha1="5b05b7293ddad3c073f1cb82ab53932899f739c0" />

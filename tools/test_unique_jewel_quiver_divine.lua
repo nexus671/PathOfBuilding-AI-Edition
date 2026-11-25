@@ -11,7 +11,8 @@ for _,case in ipairs({{name="Anatomical Knowledge",slot="Jewel 2311"},{name="Ahu
 	assert(template,"Missing fixture "..case.name)
 	local raw="Rarity: UNIQUE\n"..template.."\nItem Level: 86"
 	local item,info=unique.inspect(raw);assert(not info.qualitySupported and not info.available and not info.resource)
-	assert(not pcall(unique.apply,raw),"Ordinary quality was allowed")
+	local qualityOK,qualityError=pcall(unique.apply,raw)
+	assert(not qualityOK and tostring(qualityError):find("cannot use ordinary quality currency",1,true),"Ordinary quality lacked the correct restriction")
 	assert(unique.socketCountReason(raw,2) and unique.colourReason(raw,"chromatic") and unique.randomLinkReason(raw,"fusing"),"Socket craft was allowed")
 	local forged=raw.."\nSockets: R G B"
 	assert(unique.socketCountReason(forged,2) and unique.colourReason(forged,"chromatic") and unique.linkReason(forged,"socket_bench") and unique.whiteReason(forged),"A forged socket layout enabled a socket craft")
