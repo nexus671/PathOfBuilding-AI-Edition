@@ -130,8 +130,8 @@ function R.extend(M,A,api)
 				local draw=random()*total;local selected=eligible[#eligible]
 				for i,candidate in ipairs(eligible) do draw=draw-weights[i];if draw<0 then selected=candidate;break end end
 				local entry=copyTable(selected.entry)
-				if M.requiresRollSource(entry) and not entry.legacySource then
-					local sourceModel=selected.source==1 and current or donor
+				local sourceModel=selected.source==1 and current or donor
+				if M.requiresRollSource(entry,sourceModel) and not entry.legacySource then
 					local sourceState=selected.source==1 and input or other
 					entry.legacySource=toItem(sourceModel,sourceState).raw
 				end
