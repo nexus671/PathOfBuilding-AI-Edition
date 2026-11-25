@@ -232,6 +232,23 @@ describe("Copied loot-filter items",function()
 		assert.equal("unknown",parser.simulate(filter,unknown).status)
 		assert.equal("unknown",parser.simulate(filter,mismatch).status)
 	end)
+	it("does not infer exceptional gems from conflicting or incomplete records",function()
+		local fresh=assert(loadfile("Modules/LootFilterClipboard.lua"))()
+		data.gems.__filterTestA={itemBaseName="Test Support",grantedEffect={support=true},tags={exceptional=true}}
+		data.gems.__filterTestB={itemBaseName="Test Support",grantedEffect={support=true}}
+		data.gems.__filterTestC={itemBaseName="Other Test Support",tags={exceptional=true}}
+		data.gems.__filterTestD={itemBaseName="Conflicting Test Support",grantedEffect={support=true},tags={exceptional=true}}
+		data.gems.__filterTestE={itemBaseName="Conflicting Test Support",grantedEffect={support=true},tags={}}
+		local ok,problem=pcall(function()
+			for _,name in ipairs({"Test Support","Other Test Support","Conflicting Test Support"}) do
+				local item=fresh.parse("Item Class: Support Skill Gems\nRarity: Gem\n"..name.."\n--------")
+				assert.is_nil(item.Exceptional)
+			end
+		end)
+		data.gems.__filterTestA=nil;data.gems.__filterTestB=nil;data.gems.__filterTestC=nil
+		data.gems.__filterTestD=nil;data.gems.__filterTestE=nil
+		assert.is_true(ok,problem)
+	end)
 	it("recognizes known copied transfigured gems while leaving unknown variants uncertain",function()
 		local function gem(name) return clipboard.parse("Item Class: Active Skill Gems\nRarity: Gem\n"..name.."\n--------\nLevel: 20") end
 		local transfigured=gem("Fireball of Radiation");assert.equal("Fireball",transfigured.TransfiguredGem)

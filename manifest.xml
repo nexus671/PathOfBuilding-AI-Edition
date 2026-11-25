@@ -2119,7 +2119,7 @@
 	<File name="Modules/LootFilterBaseRefresh.lua" part="program" sha1="5d56325487cf70b68b8fb6a679b6173c02fcbde5" />
 	<File name="Modules/LootFilterCampaign.lua" part="program" sha1="90254b52f511ae8b9f22cf5d8c3854fbb97e782b" />
 	<File name="Modules/LootFilterCategoryStyles.lua" part="program" sha1="4c8f8e6a1aef62f216496dcd7cb55fd7ba9f0716" />
-	<File name="Modules/LootFilterClipboard.lua" part="program" sha1="71aaf053297394c5340e5eca5f6a586ec5a909b4" />
+	<File name="Modules/LootFilterClipboard.lua" part="program" sha1="258a41f4838df9ac2cd58626373cb16c205de1ca" />
 	<File name="Modules/LootFilterCollections.lua" part="program" sha1="4d3a57e7333f4d0bbcde25521e0ff22e5151a365" />
 	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="003d8aff02840222820d8683f6cf00329626a760" />
 	<File name="Modules/LootFilterDecorators.lua" part="program" sha1="0a5fe0000ac903118f28573b4ceeee15d623aeae" />

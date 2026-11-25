@@ -9,16 +9,14 @@ local function exceptionalGem(name,class)
 	if not exceptionalNames then
 		exceptionalNames={}
 		for _,gem in pairs(data.gems) do
-			if gem.grantedEffect and gem.tags then
-				local gemClass=gem.grantedEffect.support and "Support Gems" or "Skill Gems"
-				for _,base in pairs({gem.itemBaseName,gem.baseTypeName}) do
-					if base then
-						local key=gemClass.."\0"..base:lower();local value=gem.tags.exceptional and "yes" or "no"
-						local existing=exceptionalNames[key]
-						exceptionalNames[key]=existing and existing~=value and "ambiguous" or value
-					end
+			local classes=gem.grantedEffect and {gem.grantedEffect.support and "Support Gems" or "Skill Gems"} or {"Skill Gems","Support Gems"}
+			local value=gem.grantedEffect and type(gem.tags)=="table" and (gem.tags.exceptional and "yes" or "no") or "ambiguous"
+			for _,gemClass in ipairs(classes) do for _,base in pairs({gem.itemBaseName,gem.baseTypeName}) do
+				if base then
+					local key=gemClass.."\0"..base:lower();local existing=exceptionalNames[key]
+					exceptionalNames[key]=existing and existing~=value and "ambiguous" or value
 				end
-			end
+			end end
 		end
 	end
 	local result=name and exceptionalNames[class.."\0"..name:lower()]
