@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1322][2026/11/25]
+
+* Prevent applying Atlas routes that add no nodes.
+
 VERSION[2.69.0-ai.preview1321][2026/11/25]
 
 * Compare anointed Putrid Seed jewels against exact ordered rolls in saved listings.

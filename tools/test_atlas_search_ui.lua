@@ -17,7 +17,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		local cost=row.cost or math.huge;assert(cost>=prior,"Search results are not sorted by updated cost");prior=cost
 		if row.val==id then selected=row.selected and row.subtitle:find("Allocated",1,true)~=nil end
 	end
-	assert(selected,"Allocated search result lost its selection or state");ui:click("undo")
+	assert(selected,"Allocated search result lost its selection or state")
+	ui:click("routes");assert(main.popups[1].title=="Compare Atlas routes" and not main.popups[1].controls.choose:IsEnabled(),"An allocated target must not offer a no-op route");main:ClosePopup()
+	ui:click("undo");ui:click("routes");assert(main.popups[1].controls.choose:IsEnabled(),"A new route must remain available");ui:click("choose");local routed=false;for _,row in ipairs(c.results.list) do if row.val==id then routed=row.selected end end;assert(routed,"Using a route must allocate its target");ui:click("undo")
 	ui:choose("mechanic","All mechanics");ui:text("search","Unwavering Vision");ui:click("find")
 	local function result() for _,row in ipairs(c.results.list) do if row.val==65225 then return row end end end
 	assert(result() and result().subtitle:find("+",1,true),"Search did not show the connection cost")
