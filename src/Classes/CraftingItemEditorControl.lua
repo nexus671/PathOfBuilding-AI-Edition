@@ -63,6 +63,7 @@ function Panel.Open(model,input,onKeep)
 		end
 	end
 	edit("roll",16,154,180,50,"Roll % (0-100)")
+	controls.roll.tooltipText="Position in the modifier's range. Recognized regeneration rolls use the nearest raw tick."
 	controls.fractured=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{212,154,220,24},{"Not fractured","Fractured"})
 	controls.searchHint=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{448,159,0,14},"Open the list and type to search")
 	local function refresh()
@@ -76,7 +77,8 @@ function Panel.Open(model,input,onKeep)
 		local id=assert(controls.modifier:GetSelValueByKey("val"),"Select a modifier")
 		local roll=assert(tonumber(controls.roll.buf),"Enter a roll percentage")
 		assert(roll >= 0 and roll <= 100,"Use a roll from zero to 100 percent")
-		return {id=id,range=roll/100,crafted=id:match("^bench:") ~= nil,fractured=controls.fractured:GetSelValue() == "Fractured"}
+		local position=roll/100;local mod=model.byId[id]
+		return {id=id,range=mod and sim.rawRegenAtPosition(mod,position) or position,crafted=id:match("^bench:") ~= nil,fractured=controls.fractured:GetSelValue() == "Fractured"}
 	end
 	local function commit(candidate) local adjusted=sim.syncAbyssSocket(state,candidate);state=sim.validateState(model,candidate);socketAdjusted=socketAdjusted or adjusted;refresh() end
 	button("add",16,202,180,"Add modifier",function() local candidate=copyTable(state);candidate.affixes[#candidate.affixes+1]=selected();commit(candidate) end)
@@ -92,6 +94,8 @@ function Panel.Open(model,input,onKeep)
 		local entry=state.affixes[controls.current:GetSelValueByKey("val")];if not entry then return end
 		controls.modifier:SelByValue(entry.id,"val")
 		local range=type(entry.range) == "table" and math.min(unpack(entry.range)) or entry.range or 0.5
+		local mod=model.byId[entry.id];local position=mod and sim.rawRegenPosition(mod,range)
+		if position then range=position end
 		controls.roll:SetText(tostring(range*100));controls.fractured:SelByValue(entry.fractured and "Fractured" or "Not fractured")
 	end
 	for _,entry in ipairs({{"rarityLabel",16,"Rarity"},{"qualityLabel",212,"Quality %"},{"intangibilityLabel",408,"Intangibility %"},{"memoryLabel",584,"Memory strands"}}) do
@@ -193,7 +197,7 @@ function Panel.Open(model,input,onKeep)
 			if type(control.x)=="number" then control.x=16+math.floor((control.x-16)*factor) end
 			if type(control.width)=="number" and control.width>0 then control.width=math.floor(control.width*factor) end
 		end
-		controls.searchHint.label="Type to search";controls.roll.prompt="Roll %";controls.roll.tooltipText="Enter a roll from 0 to 100 percent.";controls.keep.label="Use starting item"
+		controls.searchHint.label="Type to search";controls.roll.prompt="Roll %";controls.keep.label="Use starting item"
 		local originalRefresh=refresh
 		refresh=function() originalRefresh();controls.info.label=require("Modules.PlanningUI").fit(controls.info.label,popupWidth-32,14) end
 	end

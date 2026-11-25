@@ -44,7 +44,7 @@ function P.extend(M,A,api)
 				assert(found and not found.fractured,"Select a non-fractured modifier present on that input")
 				for _,group in ipairs(A.data().mods[id] and A.data().mods[id].groups or {models[side].byId[id].group}) do assert(not groups[group],"Selected modifiers conflict");groups[group]=true end
 				local entry=copyTable(found)
-				if M.requiresRollSource(entry) and not entry.legacySource then entry.legacySource=M.toItem(models[side],states[side]).raw end
+				if M.requiresRollSource(entry,models[side]) and not entry.legacySource then entry.legacySource=M.toItem(models[side],states[side]).raw end
 				entries[side][#entries[side]+1]=entry;total=total+1
 			end
 		end

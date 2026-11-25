@@ -6,6 +6,59 @@ local regen=assert(model.byId.LifeRegeneration2)
 local influenced=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86\nShaper Item")
 local suppression=assert(influenced.byId.ChanceToDodgeAttacksInfluence2)
 local describe=LoadModule("Modules/StatDescriber")
+local veiledRegen=assert(model.byId.JunMasterVeiledLifeRegeneration)
+for rawValue=62,80 do
+ local range=sim.rollRange(veiledRegen,function() return (rawValue-62+0.1)/19 end)
+ local expected=tonumber(describe({["life_regeneration_rate_per_minute_%"]=rawValue},"stat_descriptions")[1]:match("Regenerate ([%d%.]+)"))
+ assert(sim.baseRollValue(veiledRegen,range)==expected,"Veiled regeneration translation mismatch")
+ assert(math.abs(1.03+range*0.3-rawValue/60)<1e-9,"Veiled regeneration raw tick was lost")
+ if rawValue==80 then assert(range>1 and sim.isRawRegenRange(veiledRegen,range),"Rounded upper endpoint did not preserve its raw tick") end
+end
+local abyss=sim.model("Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86")
+local abyssId="AbyssFlatManaShieldRegenerationJewel3";local abyssMod=assert(abyss.byId[abyssId])
+local aliasMod=copyTable(abyssMod)
+sim.registerRollModifierIds({byId={[abyssId]=aliasMod}})
+assert(sim.rawRegenRange(aliasMod,function()return 0 end)~=nil,"Expected a cached raw range")
+sim.registerRollModifierIds({byId={AmbiguousIdentityForProbe=aliasMod}})
+assert(sim.rawRegenRange(aliasMod,function()return 0 end)==nil,"An ambiguous identity must invalidate its cached range")
+local counts={}
+for rawValue=196,240 do
+ local draw=(rawValue-196+0.1)/45;local range=sim.rollRange(abyssMod,function() return draw end)
+ local actual=3.3+range*(4-3.3)
+ assert(math.abs(actual-rawValue/60)<1e-9,"Abyss regeneration raw tick was lost")
+ local expected=tonumber(describe({base_mana_regeneration_rate_per_minute=rawValue},"stat_descriptions")[1]:match("Regenerate ([%d%.]+) Mana per second"))
+ local displayed=sim.baseRollValue(abyssMod,range)
+ assert(displayed==expected,"Abyss regeneration display does not match its raw tick")
+ counts[displayed]=(counts[displayed] or 0)+1
+end
+assert(counts[3.3]==5 and counts[3.4]==6 and counts[4]==4,"Abyss regeneration display distribution changed")
+local abyssState=copyTable(abyss.initial);abyssState.rarity="RARE";abyssState.affixes={{id=abyssId,range=sim.rollRange(abyssMod,function()return 0 end)}}
+assert(not sim.requiresRollSource(abyssState.affixes[1],abyss),"A valid raw tick must not require a legacy source")
+assert(pcall(sim.validateState,abyss,abyssState),"A generated raw tick must validate against its original base")
+local checkpoint=require("Modules.CraftingCheckpoint").validate(abyss.raw,require("Modules.CraftingInventory").run(abyssState))
+assert(math.abs(checkpoint.state.affixes[1].range-abyssState.affixes[1].range)<1e-9 and not checkpoint.state.affixes[1].legacySource,"Checkpoint must preserve the tick without manufacturing legacy provenance")
+local badAbyss=copyTable(abyssState);badAbyss.affixes[1].range=-0.5
+assert(sim.requiresRollSource(badAbyss.affixes[1],abyss) and not pcall(sim.validateState,abyss,badAbyss),"Unrelated out-of-range rolls must still require provenance")
+local abyssImported=sim.model(sim.toItem(abyss,abyssState).raw)
+assert(math.abs(abyssImported.initial.affixes[1].range-abyssState.affixes[1].range)<1e-9,"Abyss raw tick did not survive item import")
+local function hasOutsideWarning(m)
+ for _,warning in ipairs(sim.actionWarnings({method="divine"},m)) do if warning.code=="affix_roll_outside_current_tier" then return true end end
+ return false
+end
+assert(not hasOutsideWarning(abyssImported),"A valid raw tick must not be labelled out of tier")
+local abyssReroll=sim.action(abyssImported,abyssImported.initial,{method="divine"},function()return 0 end)
+assert(math.abs(abyssReroll.affixes[1].range-abyssState.affixes[1].range)<1e-9,"Divine did not retain the first raw tick")
+assert(sim.matches(abyssReroll,{{anyOf={abyssId},minBaseValue=3.3,maxBaseValue=3.3}},nil,abyssImported),"Abyss displayed-value target did not match")
+assert(sim.matches(abyssReroll,{{anyOf={abyssId},minRoll=0}},nil,abyssImported),"The rounded minimum must satisfy a zero roll threshold")
+assert(not sim.matches(abyssReroll,{{anyOf={abyssId},minRoll=0.01}},nil,abyssImported),"The rounded minimum must not satisfy a higher roll threshold")
+local secondTick=sim.action(abyssImported,abyssImported.initial,{method="divine"},function()return 1.1/45 end)
+assert(sim.matches(secondTick,{{anyOf={abyssId},minRoll=0.02}},nil,abyssImported),"The second raw tick should exceed 2% of the native range")
+assert(not sim.matches(secondTick,{{anyOf={abyssId},minRoll=0.03}},nil,abyssImported),"The second raw tick should stay below 3% of the native range")
+abyssReroll.affixes[1].range={abyssReroll.affixes[1].range}
+assert(sim.matches(abyssReroll,{{anyOf={abyssId}}},nil,abyssImported),"A singleton range must preserve the valid raw tick")
+abyssImported.initial.affixes[1].range=-0.5
+assert(hasOutsideWarning(abyssImported),"An unrelated out-of-tier value must still warn")
+assert(not sim.matches(abyssImported.initial,{{anyOf={abyssId}}},nil,abyssImported),"An unrelated out-of-tier value must not be treated as a valid tick")
 -- Reconstructed legacy modifiers have no normal spawn weight in this data.
 -- Compare each modeled raw tick with PoB's translator, not game drop odds.
 local blockBase=sim.model("Rarity: NORMAL\nPinnacle Tower Shield\nItem Level: 86")
@@ -146,6 +199,17 @@ assert(restored.projects[1].nativeRecipe.targets[1].minBaseValue==65 and restore
 store:Upsert({id="multi-roll",title="Multi roll",slot="Weapon 1",startingItem=weaponRaw,goals={},steps={},nativeRecipe={steps={{method="alchemy"}},targets={minTarget,maxTarget}}})
 xml={};store:Save(xml);restored=require("Modules.CraftingProjects").new(build);restored:Load(xml)
 assert(restored.projects[2].nativeRecipe.targets[2].baseValueComponent==2,"Saved recipe lost the component")
+local jewelSlot
+for id,node in pairs(build.spec.tree.nodes) do
+ local slot="Jewel "..id
+ if node.isJewelSocket and build.itemsTab:IsItemValidForSlot(abyss.item,slot) then jewelSlot=slot;break end
+end
+assert(jewelSlot,"Expected a compatible jewel socket")
+store:Upsert({id="regen-raw",title="Regeneration",slot=jewelSlot,startingItem=abyss.raw,goals={},steps={},nativeRecipe={initialState=abyssState,steps={{method="divine"}},targets={{anyOf={abyssId},minRoll=0.02}}}})
+xml={};store:Save(xml);restored=require("Modules.CraftingProjects").new(build);restored:Load(xml)
+local savedState=restored.projects[3].nativeRecipe.initialState
+assert(math.abs(savedState.affixes[1].range-abyssState.affixes[1].range)<1e-9,"Saved recipe lost the raw regeneration tick")
+assert(pcall(sim.validateState,sim.model(abyss.raw),savedState),"Reopened recipe rejected its generated raw tick")
 local complex;for _,entry in ipairs(model.mods) do local n=0;for _,line in ipairs(entry.mod) do for _ in line:gmatch("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)") do n=n+1 end end;if n>1 then complex=entry.id;break end end
 assert(complex and not pcall(sim.calculate,raw,{method="alchemy"},{{anyOf={complex},minBaseValue=1}},nil,{trials=2,seed=5}),"Ambiguous multi-value modifier must be rejected")
 local tincture='Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n30% reduced Mana Burn rate\n30% increased Melee Weapon Attack Speed'
@@ -154,6 +218,20 @@ local ok,why=pcall(sim.matches,tinctureModel.initial,imported,nil,tinctureModel)
 local rerolled=sim.perform(tincture,{method="alteration"},3).state;local affix=rerolled.affixes[1]
 assert(sim.matches(rerolled,{{anyOf={affix.id},minBaseValue=0}},nil,tinctureModel),"A newly generated tincture roll should be usable")
 local UI=require("Modules.HeadlessUI")
+newBuild();main.popups={};local editorUI=UI.install({width=1280,height=720});editorUI:bind(build)
+local editorModel=sim.model(sim.toItem(abyss,abyssState).raw);local editorKept
+require("Classes.CraftingItemEditorControl").Open(editorModel,editorModel.initial,function(value)editorKept=value end)
+editorUI:frame();local editor=main.popups[1].controls;editor.current.selFunc()
+assert(tonumber(editor.roll.buf)==0,"Rounded minimum should show as a zero-percent raw roll: "..tostring(editor.roll.buf))
+editorUI:click("replace");editorUI:click("keep")
+assert(editorKept and math.abs(editorKept.affixes[1].range-abyssState.affixes[1].range)<1e-9,"Editing the minimum raw roll changed its tick")
+local secondModel=sim.model(sim.toItem(abyssImported,secondTick).raw);local secondKept
+require("Classes.CraftingItemEditorControl").Open(secondModel,secondModel.initial,function(value)secondKept=value end)
+editorUI:frame();editor=main.popups[1].controls;editor.current.selFunc()
+assert(math.abs(tonumber(editor.roll.buf)-100/44)<1e-6,"Second raw tick showed an incorrect roll percentage")
+editorUI:click("replace");editorUI:click("keep")
+assert(secondKept and math.abs(secondKept.affixes[1].range-secondTick.affixes[1].range)<1e-9,"Editing the second raw roll changed its tick")
+main.popups={};editorUI:restore()
 for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build);local saved
 	local parent=require("Classes.CraftingTargetControl").Open({{anyOf={"LocalAddedColdDamage2"}}},nil,nil,function(groups) saved=groups end,1,nil,weapon)
