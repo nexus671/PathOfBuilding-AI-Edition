@@ -165,6 +165,22 @@ assert(calls==9 and not sync.configuration().lastFailure)
 local sample = sync.configuration().review.changes[1].sample
 assert(sample.action=="Show" and sample.count==5)
 assert(sync.configuration().review.changes[1].priceId=="alt")
+do
+	local config=sync.configuration()
+	local page=sync.reviewDecisionExamples("default",config.revision,1,0,1)
+	assert(page.total>=1 and #page.results==1 and page.results[1].action==sample.action and page.results[1].count==sample.count)
+	local all=sync.reviewDecisionExamples("default",config.revision,1,0,50)
+	local encode=require("Modules.PlanningData").encodeExact
+	assert(all.total==#config.review.changes[1].samples)
+	for i,entry in ipairs(all.results) do assert(encode(entry)==encode(config.review.changes[1].samples[i]),"Paged currency example differs from sync review") end
+	assert(not pcall(sync.reviewDecisionExamples,"default","stale-revision",1,0,1),"A stale review must not be compared")
+	write(target,read(target).."\n# external edit\n")
+	assert(not pcall(sync.reviewDecisionExamples,"default",config.revision,1,0,1),"Changed output must not be used")
+	write(target,read(target):gsub("\n# external edit\n$",""))
+	local originalBaseline=read(config.baseline);write(config.baseline,originalBaseline.."\n# external edit\n")
+	assert(not pcall(sync.reviewDecisionExamples,"default",config.revision,1,0,1),"Changed baseline must not be used")
+	write(config.baseline,originalBaseline)
+end
 local exposed = sync.publicStatus(now)
 assert(exposed.state=="enabled" and exposed.adjustmentCount==1 and exposed.latestChanges[1].proposedCutoff==4)
 local payload=require("dkjson").encode(exposed)
@@ -1067,6 +1083,20 @@ for index, category in ipairs(feedKinds) do mapBodies[index] = stash[category] o
 local promoted, mapCount, mapChanges, mapSkips = validate(mapBase,mapBodies,false,1,mapSamples,nil,nil,nil,{maps=5})
 assert(mapCount==1 and mapChanges[1].name=="Map (Tier 16)" and mapChanges[1].liquidityUnit=="listing samples")
 assert(mapChanges[1].sample.before=="Hide" and mapChanges[1].sample.action=="Show" and mapChanges[1].priceId=="ordinary-16")
+do
+	local pages=require("Modules.LootFilterDecisionSamples")
+	local prepared=pages.prepare(mapChanges[1],mapBase,promoted)
+	local first=pages.page(prepared,0,2);local last=pages.page(prepared,first.nextOffset,2)
+	assert(first.total==3 and #first.results==2 and last.offset==2 and #last.results==1 and last.nextOffset==nil)
+	local encode=require("Modules.PlanningData").encodeExact
+	for i,sample in ipairs(first.results) do assert(encode(sample)==encode(mapChanges[1].samples[i]),"Paged examples differ from sync review") end
+	assert(encode(last.results[1])==encode(mapChanges[1].samples[3]),"Last paged example differs from sync review")
+	local many={name=mapChanges[1].name,old=mapChanges[1].old,cutoff=mapChanges[1].cutoff,tier=16,scope="maps",highlights={},classes={"Maps","Map Fragments"}}
+	for i=1,10 do many.highlights[i]={firstStack=i} end
+	local large=pages.prepare(many,mapBase,promoted);local seen,offset=0,0
+	repeat local page=pages.page(large,offset,20);seen=seen+#page.results;offset=page.nextOffset until not offset
+	assert(large.total==60 and seen==60,"Paged review must reach every generated case")
+end
 -- Every map rarity gets an independent impact result, including custom shadowing.
 for _, late in ipairs({false,true}) do
 	local rareHide = 'Hide\n    Class == "Maps"\n    Rarity == Rare\n'
@@ -1104,6 +1134,9 @@ do
 		else assert(not change.samplesLimited) end
 	end
 	assert(total==500 and partial and empty)
+	local pages=require("Modules.LootFilterDecisionSamples")
+	local later=pages.page(pages.prepare(changes[#changes],baseline,baseline),0,20)
+	assert(later.total==3 and #later.results==3 and later.nextOffset==nil,"A deferred decision must still be reviewable")
 end
 assert(#mapSkips==3 and mapSkips[1].reason:find("Ambiguous",1,true) and mapSkips[3].reason:find("floor",1,true))
 assert(not pcall(validate,mapBase,missing,false,1,mapSamples))
