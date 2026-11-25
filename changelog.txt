@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1328][2026/11/25]
+
+* Flag import assumptions in loot filter baseline example reviews.
+
 VERSION[2.69.0-ai.preview1327][2026/11/25]
 
 * Preview an inspected overlay item against the active build without equipping it.

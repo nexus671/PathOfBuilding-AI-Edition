@@ -737,6 +737,7 @@ local after = parser.parse([[Hide
 ]])
 assert(#baseRefresh.evaluate(before,after).blocks == 16)
 assert(baseRefresh.evaluate(before,before).checked == 16)
+do
 local uncertainFilter = parser.parse('Show\n    ItemLevel >= 80\nHide\n')
 local examples = {}
 for i=1,101 do examples[i]={BaseType="Example"} end
@@ -745,6 +746,17 @@ local exampleWarnings = table.concat(exampleReview.warnings,"\n")
 assert(exampleReview.examplesChecked==100)
 assert(exampleWarnings:find("100 saved examples have an unknown result",1,true))
 assert(exampleWarnings:find("1 saved example was not checked",1,true))
+local assumedFilter=parser.parse('Import "missing.filter" Optional\nShow')
+assumedFilter.absentOptionalImports={["missing.filter"]=true}
+local assumptionReview=baseRefresh.evaluate(assumedFilter,assumedFilter,{{title="Saved",samples={{BaseType="Iron Hat"}}}})
+local assumptionWarnings=table.concat(assumptionReview.warnings,"\n")
+assert(assumptionWarnings:find("1 saved example has preview assumptions",1,true))
+assert(assumptionWarnings:find("protected examples have preview assumptions",1,true))
+local assumedHide=parser.parse('Import "missing.filter" Optional\nHide')
+assumedHide.absentOptionalImports={["missing.filter"]=true}
+local changedReview=baseRefresh.evaluate(assumedFilter,assumedHide,{{title="Saved",samples={{BaseType="Iron Hat"}}}})
+assert(table.concat(changedReview.warnings,"\n"):find("Saved: Iron Hat, Show to Hide",1,true),"Assumptions hid the visibility change")
+end
 local revision = "9f94f4bd120574b4aa5a3366ceac461f8b733264"
 local legacy = filters.profile("base-review","Base review")
 legacy.baseCommit = revision
