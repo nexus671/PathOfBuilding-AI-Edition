@@ -173,7 +173,11 @@ do
 	local encode=require("Modules.PlanningData").encodeExact
 	assert(all.total==#config.review.changes[1].samples)
 	for i,entry in ipairs(all.results) do assert(encode(entry)==encode(config.review.changes[1].samples[i]),"Paged currency example differs from sync review") end
+	local public=sync.publicDecisionExamples(config.revision,1,0,1)
+	assert(public.decisionIndex==1 and public.reviewRevision==config.revision and public.results[1].action==sample.action)
+	assert(not require("dkjson").encode(public):find(dir,1,true),"Public example exposed a local path")
 	assert(not pcall(sync.reviewDecisionExamples,"default","stale-revision",1,0,1),"A stale review must not be compared")
+	assert(not pcall(sync.publicDecisionExamples,string.rep("a",40),1,0,1),"A stale public review must not be compared")
 	write(target,read(target).."\n# external edit\n")
 	assert(not pcall(sync.reviewDecisionExamples,"default",config.revision,1,0,1),"Changed output must not be used")
 	write(target,read(target):gsub("\n# external edit\n$",""))
@@ -186,6 +190,7 @@ assert(exposed.state=="enabled" and exposed.adjustmentCount==1 and exposed.lates
 local payload=require("dkjson").encode(exposed)
 assert(not payload:find("target.filter",1,true) and not payload:find("protect.json",1,true))
 local diff = sync.publicDiff(now)
+assert(diff.reviewRevision==sync.configuration().revision and diff.changes[1].decisionIndex==1)
 assert(diff.verifiedProtection and diff.protectedChecks==1 and diff.changeCount==1 and #diff.changes==1)
 assert(#diff.feeds==8 and diff.feeds[1].category=="Currency" and not diff.feeds[1].revalidated
 	and diff.feeds[1].responseAge==diff.responseAges[1])

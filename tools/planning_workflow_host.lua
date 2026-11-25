@@ -58,6 +58,17 @@ for line in io.lines() do
 			local identity=(command.module or "Modules.CraftingSimulator")..":"..key
 			if command.restore then simulator[key]=assert(injected[identity]);injected[identity]=nil
 			else assert(not injected[identity]);injected[identity]=simulator[key];simulator[key]=function() error("Modules/Example.lua:12: First problem\nC:/PoB/Other.lua:34: Second problem\nstack traceback:\n internal frame",0) end end
+		elseif command.kind=="fixture-loot-examples" then
+			local baseline='Show\n    BaseType == "Cord Belt"\n# PoB economy: begin\nHide\n    Class == "Stackable Currency"\n    BaseType == "Orb of Alteration"\n    StackSize <= 6\n# PoB economy: end\nShow\n'
+			local output=baseline:gsub('StackSize <= 6','StackSize <= 4')
+			local baselinePath,targetPath=directory.."fixture-baseline.filter",directory.."fixture-target.filter"
+			local function write(path,value) local file=assert(io.open(path,"wb"));assert(file:write(value));assert(file:close()) end
+			write(baselinePath,baseline);write(targetPath,output)
+			local sha=require("sha1");local now=os.time()
+			local config={enabled=true,revision=string.rep("b",40),target=targetPath,baseline=baselinePath,baselineHash=sha(baseline),current=sha(output),
+				lastSuccess=now,targetValue=1,league="Standard",protections={{BaseType="Cord Belt",Rarity="Normal"}},
+				review={checkedAt=now,changes={{name="Orb of Alteration",old=6,cutoff=4,classes={"Stackable Currency"}}},skipped={}}}
+			write(directory.."LootFilterDailySync.json",assert(json.encode(config)));bridge.publishState()
 		elseif command.kind=="request-test" then bridge.connectionTest={nonce="workflow-connection-test",requestedAt=os.time()};bridge.publishState()
 		elseif command.kind=="connection-proof" then return {client=bridge.client and bridge.client.name,tested=bridge.connectionTest and bridge.connectionTest.passed,synced=bridge.client and bridge.client.contextRevision==bridge.contextRevision}
 		elseif command.kind=="apply" then

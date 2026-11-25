@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1330][2026/11/25]
+
+* Let AI tools review verified filter decision examples in pages.
+
 VERSION[2.69.0-ai.preview1329][2026/11/25]
 
 * Page through every illustrative case for a current filter price decision.
