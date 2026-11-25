@@ -191,6 +191,28 @@ The relay atomically stores validated responses with a positive shared cache lif
 
 The cache retains up to 48 entries and 48 MiB of response bodies. It evicts the least recently used entries and drops their snapshots. The **snapshots** section of **/health** reports restored and discarded snapshots and storage errors without exposing paths or payloads. The HTTPS qualification tool fails when it observes a storage error. Fix the private directory and restart to verify recovery.
 
+### Deploy the relay container
+
+The Compose package runs the Node relay as an unprivileged user with a read-only root filesystem. The named state volume keeps cached snapshots and provider cooldowns across container replacement. Use Docker Engine 28 or newer for the published loopback port to stay restricted to the host. [Docker port publishing](https://docs.docker.com/engine/network/port-publishing/)
+
+Set `POB_MARKET_UPSTREAM_AGENT` to the application name and an operator contact, then start the service from the repository root.
+
+```sh
+docker compose -f deploy/market-relay/compose.yaml up -d --build --wait
+```
+
+The default loopback port is 9410. Set `POB_MARKET_LOOPBACK_PORT` before starting Compose to change that port. Configure the HTTPS reverse proxy to strip the `/pob-market` prefix and forward it to the loopback port. For a reverse proxy running on the host, the equivalent Caddy configuration is below. Use the deployed DNS name in place of the example.
+
+```caddyfile
+prices.example.test {
+    handle_path /pob-market/* {
+        reverse_proxy 127.0.0.1:9410
+    }
+}
+```
+
+Run the HTTPS qualification command below before enabling the endpoint in PoB. Review a candidate filter against the fixed baseline and confirm its protected drops. During upgrades or rollback, use the same Compose project name to retain state. Container health checks relay storage and HTTP readiness, while the qualification command checks availability of specific market feeds.
+
 When the configured shared cache rejects an upstream response, **Last attempt** can distinguish a stale feed from an invalid or oversized response alongside HTTP 502. Older caches can still report a generic provider error.
 
 ### Monitor the relay

@@ -399,11 +399,13 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
 
 if (require.main === module) {
   const port = Number(process.env.POB_MARKET_CACHE_PORT || 9410);
+  const bind = process.env.POB_MARKET_CACHE_BIND || '127.0.0.1';
   if (!Number.isInteger(port) || port<1 || port>65535) throw new Error('Choose a valid cache port');
+  if (bind!=='127.0.0.1' && bind!=='0.0.0.0') throw new Error('Choose a valid cache bind address');
   createMarketCache({ agent:process.env.POB_MARKET_UPSTREAM_AGENT,
     cooldownFile:process.env.POB_MARKET_COOLDOWN_FILE,
-    snapshotDirectory:process.env.POB_MARKET_SNAPSHOT_DIRECTORY }).listen(port,'127.0.0.1',() => {
-    process.stdout.write(`PoB market cache listening on 127.0.0.1:${port}\n`);
+    snapshotDirectory:process.env.POB_MARKET_SNAPSHOT_DIRECTORY }).listen(port,bind,() => {
+    process.stdout.write(`PoB market cache listening on ${bind}:${port}\n`);
   });
 }
 
