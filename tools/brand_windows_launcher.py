@@ -1,5 +1,5 @@
 """Embed AI Edition icon and version metadata in a Windows launcher copy."""
-# cspell:ignore argtypes restype wintypes
+# cspell:ignore argtypes restype wintypes BBBBHHII BBBBHHIH
 import argparse
 import ctypes
 from ctypes import wintypes
