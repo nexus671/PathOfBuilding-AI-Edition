@@ -49,7 +49,7 @@ function M.install(options)
 			local _,length=escape(text:sub(index))
 			if length then index=index+length
 			else
-				local code=text:byte(index);local glyph=data.glyphs[code] or data.glyphs[63]
+				local code=text:byte(index);local glyph=data.glyphs[code==9 and 32 or code] or data.glyphs[63]
 				if code==10 then maximum=math.max(maximum,width);width=0
 				else width=math.ceil(width+(glyph[3]+glyph[4]+glyph[5])*(code==9 and 4 or 1)*height/data.height) end
 				index=index+1

@@ -242,7 +242,8 @@ def render(frame):
                     continue
                 gx, gy, width, left, right = entries[ord(char) if ord(char) < len(entries) else ord("?")]
                 if char == "\t":
-                    x = math.ceil(x + (width + left + right) * scale * 4)
+                    _, _, width, left, right = entries[ord(" ")]
+                    x += (width + left + right) * scale * 4
                     continue
                 if critical and contains(clip, x, y + height / 2) and not char.isspace() and tuple(color) not in checked_colors:
                     checked_colors.add(tuple(color))

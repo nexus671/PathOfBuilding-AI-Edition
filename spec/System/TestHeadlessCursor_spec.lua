@@ -30,6 +30,17 @@ describe("Headless text cursor", function()
 		main.popups = { }; ui:restore()
 	end)
 
+	it("measures tab stops using the space glyph", function()
+		newBuild(); main.popups = { }
+		local ui = require("Modules.HeadlessUI").install({ width = 640, height = 480 })
+		local space = DrawStringWidth(16, "FIXED", " ")
+		local tab = DrawStringWidth(16, "FIXED", "\t")
+		assert.equal(space * 4, tab)
+		assert.equal(1, DrawStringCursorIndex(16, "FIXED", "\ta", tab, 0))
+		assert.equal(2, DrawStringCursorIndex(16, "FIXED", "\ta", tab + 1, 0))
+		main.popups = { }; ui:restore()
+	end)
+
 	it("edits a later line before and after a Unicode character", function()
 		newBuild(); main.popups = { }
 		local ui = require("Modules.HeadlessUI").install({ width = 960, height = 640 })
