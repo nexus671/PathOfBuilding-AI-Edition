@@ -737,6 +737,14 @@ local after = parser.parse([[Hide
 ]])
 assert(#baseRefresh.evaluate(before,after).blocks == 16)
 assert(baseRefresh.evaluate(before,before).checked == 16)
+local uncertainFilter = parser.parse('Show\n    ItemLevel >= 80\nHide\n')
+local examples = {}
+for i=1,101 do examples[i]={BaseType="Example"} end
+local exampleReview = baseRefresh.evaluate(uncertainFilter,uncertainFilter,{{title="Saved",samples=examples}})
+local exampleWarnings = table.concat(exampleReview.warnings,"\n")
+assert(exampleReview.examplesChecked==100)
+assert(exampleWarnings:find("100 saved examples have an unknown result",1,true))
+assert(exampleWarnings:find("1 saved example was not checked",1,true))
 local revision = "9f94f4bd120574b4aa5a3366ceac461f8b733264"
 local legacy = filters.profile("base-review","Base review")
 legacy.baseCommit = revision
