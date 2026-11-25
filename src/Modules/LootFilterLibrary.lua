@@ -487,6 +487,11 @@ local function highlights()
 	end
 	presetHighlights=rows;return rows
 end
+local function unknownSceneModifiers(item)
+	-- A synthetic magical item does not specify its explicit modifier names.
+	-- Keep them unknown instead of treating the default empty list as evidence.
+	if item.Rarity=="Magic" or item.Rarity=="Rare" or item.Rarity=="Unique" then item.HasExplicitMod=nil end
+end
 function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 	local list={}
 	if kind=="Map tiers" then
@@ -494,6 +499,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		for tier=1,17 do
 			local item=M.sample();item.BaseType=tier==17 and "Nightmare Map" or "Map (Tier "..tier..")"
 			item.Class="Maps";item.Rarity=tier==17 and "Rare" or "Normal";item.MapTier=tier;item.UnidentifiedItemTier=nil
+			unknownSceneModifiers(item)
 			item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86;applyBaseProperties(item);list[#list+1]=item
 		end
 		return list
@@ -504,6 +510,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		for _,base in ipairs({{"Iron Hat","Helmets"},{"Titan Greaves","Boots"},{"Titanium Spirit Shield","Shields"},{"Imperial Bow","Bows"},{"Ruby Ring","Rings"}}) do
 			for _,enabled in ipairs({true,false}) do
 				local item=M.sample();item.BaseType=base[1];item.Class=base[2];item.Rarity="Rare";item.Identified=false;item[property]=enabled
+				unknownSceneModifiers(item)
 				item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or 4
 				item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86;applyBaseProperties(item)
 				item.MemoryStrands=0
@@ -519,6 +526,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		local tiers=profile and profile.mode=="Ruthless" and {0} or {0,2,3,4,5}
 		for _,tier in ipairs(tiers) do
 			local item=M.sample();item.BaseType="Iron Hat";item.Class="Helmets";item.Rarity="Rare";item.Identified=false;item.UnidentifiedItemTier=tier
+			unknownSceneModifiers(item)
 			item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86;applyBaseProperties(item);list[#list+1]=item
 		end
 		return list
@@ -531,6 +539,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 	end
 	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Breach"]=breachExamples,["Beyond"]=beyondExamples,["Betrayal"]=betrayalExamples,["Incursion"]=incursionExamples,["Legion"]=legionExamples,["Delirium"]=deliriumExamples,["Harvest"]=harvestExamples,["Abyss"]=abyssExamples,["Ultimatum"]=ultimatumExamples,["Ritual"]=ritualExamples,["Sanctum"]=sanctumExamples,["Pinnacle bosses"]=bossExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
+		unknownSceneModifiers(item)
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)
 		for key,value in pairs(example[4] or {}) do item[key]=value end
