@@ -50,7 +50,7 @@ local function showListingSample(target, league, sample)
 			equipment.sockets=="" and "None" or equipment.sockets,equipment.quality)
 		local properties = {}
 		for name, value in pairsSortByKey(equipment.properties) do properties[#properties+1]=name.." "..value end
-		details[#details+1] = "Matched properties: "..table.concat(properties,", ")
+		if #properties>0 then details[#details+1] = "Matched properties: "..table.concat(properties,", ") end
 	end
 	local capture = sample.capture
 	if capture then
