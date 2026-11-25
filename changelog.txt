@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1306][2026/11/24]
+
+* Clarify the filter items supported by managed price rules.
+
 VERSION[2.69.0-ai.preview1305][2026/11/24]
 
 * Browse completed GGG currency trades by PC, Xbox or PlayStation realm.
