@@ -59,10 +59,18 @@ end
 function M.target(item)
 	local sockets = socketKey(item.sockets,"color")
 	local raw = rawFields(item.raw)
-	if not raw or sockets==nil or raw.Sockets~=sockets then return end
+	local quiver = item.type=="Quiver"
+	if not raw or sockets==nil then return end
+	local printedSockets = quiver and (raw.Sockets or "") or raw.Sockets
+	if printedSockets~=sockets then return end
 	local quality = 0
 	if raw.Quality then quality=numberValue(raw.Quality,"Quality") end
 	if not quality or quality~=math.floor(quality) or quality~=(item.quality or 0) then return end
+	if quiver then
+		if quality~=0 then return end
+		for _, name in pairs(defences) do if raw[name] then return end end
+		return {sockets=sockets,quality=0,properties={},class="Quiver"}
+	end
 	local properties = {}
 	if item.base.armour then
 		for key, name in pairs(defences) do
@@ -123,9 +131,14 @@ local function propertyValue(values, expected, name)
 end
 
 function M.matches(item, target)
-	if socketKey(item.sockets,"sColour")~=target.sockets or type(item.properties)~="table" then return false end
+	local sockets, properties = item.sockets, item.properties
+	if target.class=="Quiver" then
+		if sockets==nil then sockets={} end
+		if properties==nil then properties={} end
+	end
+	if socketKey(sockets,"sColour")~=target.sockets or type(properties)~="table" then return false end
 	local seen = {}
-	for _, property in ipairs(item.properties) do
+	for _, property in ipairs(properties) do
 		if type(property)~="table" or type(property.name)~="string" then return false end
 		local name=property.name=="Evasion" and "Evasion Rating" or property.name
 		if seen[name] then return false end
@@ -137,8 +150,8 @@ function M.matches(item, target)
 			if propertyValue(property.values,expected,name)~=expected then return false end
 		elseif name~=target.class or type(property.values)~="table" or next(property.values) then return false end
 	end
-	for index in pairs(item.properties) do
-		if type(index)~="number" or index<1 or index>#item.properties or index~=math.floor(index) then return false end
+	for index in pairs(properties) do
+		if type(index)~="number" or index<1 or index>#properties or index~=math.floor(index) then return false end
 	end
 	if target.quality>0 and not seen.Quality then return false end
 	for name in pairs(target.properties) do if not seen[name] then return false end end
