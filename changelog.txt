@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1298][2026/11/24]
+VERSION[2.69.0-ai.preview1299][2026/11/24]
 
 * Correct intermediate rolls for recognized spell-suppression modifiers.
+
+VERSION[2.69.0-ai.preview1298][2026/11/24]
+
+* Review rare-base exceptions in the fixed baseline and verified filter from Daily price sync.
 
 VERSION[2.69.0-ai.preview1297][2026/11/24]
 

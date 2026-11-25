@@ -1852,16 +1852,19 @@ Hide
 		auditUI:click("choose")
 		assert(main.popups[1].controls.status)
 	end
+	local function finishAudit()
+		for _=1,600 do
+			auditUI:frame()
+			if main.popups[1] and main.popups[1].controls.results then break end
+		end
+		assert(main.popups[1].controls.results,"Audit did not finish")
+	end
 	openAudit()
 	auditUI:click("close")
 	auditUI:frame(build)
 	assert(not main.popups[1],"Cancellation still opened audit results")
 	openAudit()
-	for _=1,600 do
-		auditUI:frame(build)
-		if main.popups[1] and main.popups[1].controls.results then break end
-	end
-	assert(main.popups[1].controls.results,"Audit did not finish")
+	finishAudit()
 	auditUI:text("search","Plate Vest")
 	local dialog = main.popups[1].controls
 	local details = {}
@@ -1873,6 +1876,35 @@ Hide
 	local snapshot = build.planningWorkspace.cache.filters.layout.snapshot()
 	assert(snapshot.page=="Simulate" and snapshot.sample.BaseType=="Plate Vest" and snapshot.sample.UnidentifiedItemTier==5)
 	assert(require("Modules.PlanningData").hash(saved.data)==fingerprint)
+
+	local getSources = sync.verifiedFilterPair
+	sync.verifiedFilterPair = function(id)
+		assert(id==namedId)
+		return profile.template,profile.template:gsub("Named exception","Verified exception")
+	end
+	reviewFixture={hour=9,target=selected,league="Covens",enabled=true,lastSuccess=os.time()}
+	auditUI:resize(640,480)
+	require("Classes.LootFilterDailySyncControl").Open(namedId,"Covens test")
+	auditUI:click("actionsPage")
+	if output then auditUI:frame():write(output.."/640-daily-rare-action.json") end
+	for _, source in ipairs({{"Verified filter","verified filter","Verified exception"},{"Fixed baseline","fixed baseline","Named exception"}}) do
+		auditUI:click("rareExceptions")
+		auditUI:text("search",source[1])
+		auditUI:click("choose")
+		finishAudit()
+		auditUI:text("search","Plate Vest")
+		local controls=main.popups[1].controls
+		local rows={}
+		for _,row in ipairs(controls.details.list) do rows[#rows+1]=StripEscapes(row[1] or "") end
+		local report=table.concat(rows," ")
+		assert(report:find(source[1],1,true) and report:find("Show at "..source[2].." line",1,true) and report:find(source[3],1,true),report)
+		assert(not controls.choose:IsShown(),"A local-file audit must stay in the sync dialog")
+		if output and source[1]=="Verified filter" then auditUI:frame():write(output.."/640-daily-rare-audit.json") end
+		auditUI:click("close")
+	end
+	sync.verifiedFilterPair=getSources
+	reviewFixture=nil
+	auditUI:click("close")
 	auditUI:restore()
-	print("Tier 5 rare exceptions explain the matched rule and inspect a sample without changing the build.")
+	print("Tier 5 rare exceptions inspect the compiled profile, fixed baseline and verified filter with source-specific rule lines.")
 end
