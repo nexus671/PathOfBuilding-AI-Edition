@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1302][2026/11/24]
+VERSION[2.69.0-ai.preview1303][2026/11/24]
 
 * Compare copied rare items against local stash listings directly in the market browser.
+
+VERSION[2.69.0-ai.preview1302][2026/11/24]
+
+* Correct recognized legacy spell-block crafting rolls.
 
 VERSION[2.69.0-ai.preview1301][2026/11/24]
 

@@ -9,6 +9,12 @@ an intermediate 5% result for a 4–6% Delve modifier whose second stat is a hid
 dummy. Tests use reconstructed items; their existence, current eligibility and raw
 distributions remain unverified in the live game.
 
+Recognized legacy spell-block modifiers using the 30% raw-stat translation also
+sample raw integers before truncating their displayed values. In the pinned data,
+the sampled modifiers have no normal spawn weight. Tests use a reconstructed
+imported item; its existence, eligibility and actual roll distribution are not
+established by this model.
+
 The experimental Bestiary **maximum sockets** action for ordinary equipment and supported unique items uses one Black Morrigan and one Craicic Shield Crab. It assumes the natural item-level and base limit applies, existing colours and links are retained, and added sockets are white and unlinked. Eligibility and socket behavior need in-game verification. The workbench, recipes and MCP share these assumptions; unique items with fixed or restricted sockets remain unavailable. The [Bestiary recipe list](https://www.poewiki.net/wiki/Beastcrafting) documents the two beasts and maximum-socket outcome.
 
 Rog's observed prefix and suffix reroll or add-modifier offers, fill-empty-slots offer, and removal of one or two lowest-level modifiers can be entered in **Craft settings** and used in the item emulator or a recipe. Choose the observed offer and any known Order Artifact quantities; side offers also require the side and displayed attempt count. Blank prices stay unknown. The experimental model fills slots sequentially using ordinary weights, assumes independent ordinary-weight side rolls, preserves the number of modifiers on rerolled sides and ranks candidates by average modifier level; lowest-level removal assumes equal chances among ties. Server weights, fill order, ranking, tie handling and special interactions are unverified. Offer generation and other Rog crafts are not yet modeled. The [3.30 notes](https://www.pathofexile.com/forum/view-thread/4013680) specify the current reroll counts and confirm that the fill offer respects the wand implicit blocking caster modifiers; [PoEDB](https://poedb.tw/us/Rog) lists the other modeled offers.
