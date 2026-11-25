@@ -15,7 +15,7 @@ import time
 import xml.etree.ElementTree as ET
 
 
-def smoke(directory, timeout=90):
+def smoke(directory, timeout=90, *, trade_overlay=False):
     if os.name != "nt":
         raise RuntimeError("The native portable smoke test requires Windows")
     directory = Path(directory).resolve(strict=True)
@@ -38,7 +38,10 @@ def smoke(directory, timeout=90):
     startup = subprocess.STARTUPINFO()
     startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     startup.wShowWindow = subprocess.SW_HIDE
-    process = subprocess.Popen([str(directory / "Path of Building.exe")], cwd=directory, startupinfo=startup)
+    command = [str(directory / "Path of Building.exe")]
+    if trade_overlay:
+        command.append("--trade-overlay")
+    process = subprocess.Popen(command, cwd=directory, startupinfo=startup)
     window = None
     title = None
     try:
@@ -55,12 +58,13 @@ def smoke(directory, timeout=90):
                     length = user32.GetWindowTextLengthW(hwnd)
                     text = ctypes.create_unicode_buffer(length + 1)
                     user32.GetWindowTextW(hwnd, text, len(text))
-                    if " - Path of Building AI Edition" in text.value:
+                    ready = text.value == "PoB AI Edition trade overlay" if trade_overlay else " - Path of Building AI Edition" in text.value
+                    if ready:
                         found.append((hwnd, text.value))
                 return True
             if not user32.EnumWindows(inspect, 0):
                 raise ctypes.WinError(ctypes.get_last_error())
-            if found and not user32.IsHungAppWindow(found[0][0]) and (directory / "Builds").is_dir():
+            if found and not user32.IsHungAppWindow(found[0][0]) and (trade_overlay or (directory / "Builds").is_dir()):
                 window, title = found[0]
                 break
             time.sleep(0.5)
@@ -72,6 +76,10 @@ def smoke(directory, timeout=90):
         if process.returncode != 0:
             raise RuntimeError(f"Application exited with code {process.returncode}")
         settings = directory / "Settings.xml"
+        if trade_overlay:
+            if settings.exists() or (directory / "Builds").exists():
+                raise RuntimeError("The standalone trade overlay wrote build or desktop settings")
+            return {"windowTitle": title, "exitCode": process.returncode, "standaloneTradeOverlay": True}
         if not settings.is_file() or ET.parse(settings).getroot().tag != "PathOfBuilding":
             raise RuntimeError("Portable settings were not saved in the extraction directory")
         return {"windowTitle": title, "exitCode": process.returncode, "settings": str(settings), "builds": str(directory / "Builds")}
@@ -95,6 +103,7 @@ def main():
     parser.add_argument("--require-feed", action="append", default=[], metavar="CATEGORY",
                         help="Require a market category in the verified worker review. Repeat for more categories")
     parser.add_argument("--protected-checks", type=int, default=600, help="Minimum protected samples expected from this baseline")
+    parser.add_argument("--trade-overlay", action="store_true", help="Start the standalone trade overlay instead of the build editor")
     args = parser.parse_args()
     if bool(args.loot_filter) != bool(args.league):
         parser.error("--loot-filter and --league must be supplied together")
@@ -111,7 +120,7 @@ def main():
     protections = args.protected_samples.resolve(strict=True) if args.protected_samples else None
     if protections and (not protections.is_file() or protections.suffix.lower() != ".json" or directory in protections.parents):
         parser.error("Use a protected sample .json file located outside the fresh extraction")
-    result = smoke(directory)
+    result = smoke(directory, trade_overlay=args.trade_overlay)
     if baseline:
         result["lootSync"] = smoke_loot_sync(directory, baseline, args.league, args.protected_checks,
                                             market_cache=args.market_cache, protections=protections,

@@ -160,6 +160,30 @@ function M.listingTargetForItem(item)
 	return require("Modules.LootFilterGearListings").target(item,baseName)
 end
 
+function M.overlayTarget(raw)
+	local text=raw:gsub("\r\n","\n")
+	local class,rarity,name=text:match("^Item Class: ([^\n]+)\nRarity: ([^\n]+)\n([^\n]+)")
+	if not marketName(name) or name:find("^%-%-") or name:find("%^") then return end
+	local category, level, quality
+	if rarity=="Unique" then
+		local base=text:match("^Item Class: [^\n]+\nRarity: [^\n]+\n[^\n]+\n([^\n]+)")
+		local item=data and data.itemBases[base or ""]
+		if item then
+			category=uniqueCategories[item.type] or data.weaponTypeInfo[item.type] and "UniqueWeapon"
+		end
+		if name=="Forbidden Flame" or name=="Forbidden Flesh" then category="ForbiddenJewel" end
+	elseif rarity=="Gem" and (class=="Skill Gems" or class=="Active Skill Gems" or class=="Support Gems") then
+		category="SkillGem"
+		level=tonumber(text:match("\nLevel: (%d+)"))
+		quality=tonumber(text:match("\nQuality: %+(%d+)%%")) or 0
+		if not level or level<1 or level>40 or quality>100 then return end
+	elseif rarity=="Currency" or rarity=="Divination Card" then
+		category=({["Stackable Currency"]="Currency",["Divination Cards"]="DivinationCard",["Map Fragments"]="Fragment",
+			["Embers of the Allflame"]="AllflameEmber"})[class]
+	end
+	if category then return {name=name,category=category,level=level,quality=quality,details={name}} end
+end
+
 local tradeRollIndex
 local tradeChannels = {{"implicitMods","implicit"},{"explicitMods","explicit"},{"enchantMods","enchant"}}
 local tradeKinds = {implicit=true,explicit=true,enchant=true,crafted=true,fractured=true}

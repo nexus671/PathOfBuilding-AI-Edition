@@ -2179,6 +2179,66 @@ Item Level: 86
 		assert(main.popups[1].title=="Comparable asking prices")
 		print("Putrid Seed listing comparisons preserve the order of granted passives")
 	end
+	do
+		local controller=require("Classes.LootFilterMarketBrowseControl")
+		local previousWait, previousPaste = sync.providerWait,Paste
+		local requests={}
+		Paste=function() error("Overlay review must use the previously copied item") end
+		sync.providerWait=function() return 0 end
+		launch.DownloadPage=function(_,url,done,options)
+			assert(options.followRedirects==false)
+			requests[#requests+1]=url
+			done(nil,"Response code: 403")
+		end
+		main.popups={}
+		if require("ffi").os=="Windows" then
+			local previousRuntime,previousSpawn=GetRuntimePath,SpawnProcess
+			local started
+			GetRuntimePath=function() return "C:/PoB" end
+			SpawnProcess=function(executable,args) started={executable,args} end
+			controller.Open()
+			gearUI:click("overlay")
+			assert(started and started[1]=="C:/PoB/Path of Building.exe" and started[2]=="--trade-overlay")
+			GetRuntimePath,SpawnProcess=previousRuntime,previousSpawn
+			main.popups={}
+		end
+		controller.OpenForOverlay(raw,"Covens")
+		local overlay=main.popups[1].controls
+		assert(overlay.league.buf=="Covens" and overlay.query.buf=="=Amethyst Ring" and overlay.rolledTrade:IsEnabled())
+		assert(not overlay.pasteItem and not overlay.overlay and #requests==0)
+		gearUI:click("rolledTrade")
+		assert(main.popups[1].title=="Review Trade search")
+		main.popups={}
+		controller.OpenForOverlay("Item Class: Stackable Currency\r\nRarity: Currency\r\nChaos Orb\r\n--------","Covens")
+		overlay=main.popups[1].controls
+		assert(overlay.query.buf=="=Chaos Orb" and overlay.category:GetSelValue()=="Currencies")
+		assert(#requests==1 and requests[1]:find("exchange/current/overview?league=Covens&type=Currency",1,true))
+		main.popups={}
+		controller.OpenForOverlay("Item Class: Support Gems\nRarity: Gem\nEmpower Support\n--------\nLevel: 3\nQuality: +20%","Covens")
+		assert(main.popups[1].controls.query.buf=="=Empower Support")
+		assert(#requests==2 and requests[2]:find("stash/current/item/overview?league=Covens&type=SkillGem",1,true))
+		main.popups={}
+		controller.OpenForOverlay("Unrecognized clipboard content","Covens")
+		assert(#requests==2 and not main.popups[1].controls.listingSample:IsEnabled())
+		main.popups,main.inputEvents={},{}
+		local pointerDown, minimized=false,false
+		local state={window=93,captured={game=94,raw=raw},league="Covens",win={
+			present=function(window,game) return window==93 and game==94 end,
+			foreground=function() return 94 end,
+			minimize=function() minimized=true end,
+			minimized=function() return minimized end,
+			pointerDown=function() return pointerDown end,
+		}}
+		local overlay=require("Modules.LootTradeOverlay")
+		overlay.frame(state)
+		state.opened=GetTime()-1000
+		overlay.frame(state)
+		assert(state.active and not state.hadFocus and not minimized,"The overlay should stay visible when Windows leaves the game focused")
+		pointerDown=true
+		overlay.frame(state)
+		assert(not state.active and minimized and main.popups[1].title=="PoB trade overlay setup")
+		sync.providerWait,Paste=previousWait,previousPaste
+	end
 	require("Classes.LootFilterFileBrowser").Open=originalPicker
 	os.remove(path)
 	launch.DownloadPage=oldDownload

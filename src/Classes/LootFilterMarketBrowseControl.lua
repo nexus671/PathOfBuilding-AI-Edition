@@ -220,13 +220,14 @@ local function openTradeHistory(savedLeague)
 	popup = main:OpenPopup(width,276,"GGG trade history",controls,nil,nil,"close")
 end
 
-local function open(build, managedTarget)
+local function open(build, managedTarget, overlay)
 	local width = math.min(680,main.screenW-40)
 	local actionWidth = math.floor((width-48)/3)
 	local controls = {}
-	local busy, popup, target
+	local busy, popup, target, quoteOnOpen
 	ui.label(controls,"leagueLabel",16,24,"PC trade league ID",14)
-	controls.league=new("EditControl"):EditControl(ui.anchor,{16,50,width-32,26},"","Current trade league",nil,80)
+	controls.league=new("EditControl"):EditControl(ui.anchor,{16,50,width-32,26},overlay and overlay.league or "",
+		"Current trade league",nil,80)
 	local options={}
 	for i, category in ipairs(browse.categories) do options[i]=category.label end
 	controls.category=new("DropDownControl"):DropDownControl(ui.anchor,{16,98,width-32,28},options)
@@ -283,9 +284,8 @@ local function open(build, managedTarget)
 			openTradeHistory(controls.league.buf:match("^%s*(.-)%s*$"))
 		end)
 		controls.tradeHistory.enabled = function() return not busy end
-		controls.pasteItem=new("ButtonControl"):ButtonControl(ui.anchor,{16,320,actionWidth,28},"Paste item",function()
+		local function selectCopiedItem(raw)
 			clearTarget()
-			local raw = Paste()
 			if type(raw)~="string" or #raw>24000 or not raw:find("%S") then
 				status("Copy one identified rare item or an anointed Putrid Seed first.")
 				return
@@ -296,6 +296,12 @@ local function open(build, managedTarget)
 				return target,item.baseName,unavailable
 			end)
 			if not ok or not comparison then
+				local entry=overlay and browse.overlayTarget(raw)
+				if entry then
+					selectTarget(entry,"Item copied. Checking the chosen market category.")
+					quoteOnOpen=true
+					return
+				end
 				status(reason or "The copied item lacks comparable rolls or supported equipment properties.")
 				return
 			end
@@ -306,8 +312,21 @@ local function open(build, managedTarget)
 				details={seed and "A listing file compares this jewel's granted passives in order."
 					or "Market estimates are for the base. Compare a listing file for matching item rolls."}},
 				"Item copied. Choose a league and compare a public stash JSON file.")
-		end)
-		controls.pasteItem.enabled = function() return not busy end
+		end
+		if not overlay then
+			controls.pasteItem=new("ButtonControl"):ButtonControl(ui.anchor,{16,320,actionWidth,28},"Paste item",function()
+				selectCopiedItem(Paste())
+			end)
+			controls.pasteItem.enabled = function() return not busy end
+			if require("ffi").os=="Windows" then
+				controls.overlay=new("ButtonControl"):ButtonControl(ui.anchor,{32+actionWidth*2,358,actionWidth,28},"Trade overlay",function()
+					SpawnProcess(GetRuntimePath().."/Path of Building.exe","--trade-overlay")
+				end)
+				controls.overlay.enabled = function() return not busy end
+			end
+		else
+			selectCopiedItem(overlay.raw)
+		end
 		controls.listingSample=new("ButtonControl"):ButtonControl(ui.anchor,{24+actionWidth,320,actionWidth,28},"Compare listing file",function()
 			local league=controls.league.buf:match("^%s*(.-)%s*$")
 			if not league:match("^[%w _-]+$") then status("Enter the trade league ID for the listing file."); return end
@@ -477,10 +496,15 @@ local function open(build, managedTarget)
 	ui.style(controls)
 	local height = managedTarget and 330 or 404
 	popup=main:OpenPopup(width,height,"Browse loot market prices",controls,nil,nil,"close")
+	if quoteOnOpen then controls.get:Click() end
 end
 
 function M.Open(build)
 	return open(build)
+end
+
+function M.OpenForOverlay(raw, league)
+	return open(nil,nil,{raw=raw,league=league})
 end
 
 function M.OpenForManagedRule(rule)
