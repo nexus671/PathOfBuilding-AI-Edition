@@ -16,11 +16,12 @@ local function read(path,limit)
 end
 
 local function write(path,record)
-	local temporary=path..".tmp"
+	local windows=require("Modules.LootTradeOverlayWindows")
+	local temporary=path.."."..windows.processId()..".tmp"
 	local file=assert(io.open(temporary,"wb"),"Could not write the local comparison request")
 	local written=file:write(json.encode(record))
 	local closed=file:close()
-	local success=written and closed and pcall(require("Modules.LootTradeOverlayWindows").replaceFile,temporary,path)
+	local success=written and closed and pcall(windows.replaceFile,temporary,path)
 	if not success then os.remove(temporary);error("Could not save the local comparison request",0) end
 end
 
