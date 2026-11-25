@@ -94,16 +94,17 @@ class CollectorTest(unittest.TestCase):
         with self.assertRaisesRegex(collector.CaptureRequestError, "4 MiB"):
             collector.fetch_page(opener, "cursor", "fixture-token", "fixture")
         response.read.assert_not_called()
-        response.headers = {"Content-Length": "10"}
+        response.headers = {"Content-Length": "10", "Retry-After": "89"}
         response.read.return_value = b"{}"
-        with self.assertRaisesRegex(collector.CaptureRequestError, "incomplete"):
+        with self.assertRaisesRegex(collector.CaptureRequestError, "incomplete") as failure:
             collector.fetch_page(opener, "cursor", "fixture-token", "fixture")
+        self.assertEqual(failure.exception.retry_after, 89)
 
     def test_http_status_failure_is_safe_and_cooldown_is_reported(self):
-        headers = Message()
-        headers["Retry-After"] = "73"
-        for status, delay in ((429, 73), (503, 73), (401, None), (403, None), (302, None)):
-            with self.subTest(status=status):
+        for status, header, delay in ((429, "73", 73), (503, "73", 73), (429, None, 60),
+                                      (403, "76", 76), (401, None, None), (302, None, None)):
+            with self.subTest(status=status, header=header):
+                headers = {"Retry-After": header} if header else {}
                 opener = Mock()
                 opener.open.side_effect = HTTPError("https://example.com/", status, "fixture-token", headers, BytesIO())
                 with self.assertRaises(collector.CaptureRequestError) as failure:
@@ -237,6 +238,104 @@ class RollingCaptureTest(unittest.TestCase):
                 self.assertEqual(collector.main(), 0)
         self.assertTrue(json.loads(stdout.getvalue())["published"])
         self.assertEqual(collector.capture_start(self.output, "Covens"), "c")
+
+
+class CollectorCooldownTest(unittest.TestCase):
+    def setUp(self):
+        self.directory = Path(self.enterContext(TemporaryDirectory()))
+        self.clock = self.enterContext(patch.object(collector.time, "time", return_value=1795545600))
+        self.enterContext(patch.dict("os.environ", {collector.TOKEN_VARIABLE: "fixture-token"}))
+
+    def invoke(self, output, fetch, *options, client="fixture-app"):
+        args = ["collect", "--league", "Covens", "--client-id", client, "--contact", "ops@example.com",
+                "--max-pages", "1", *options, str(output)]
+        stdout, stderr = StringIO(), StringIO()
+        with patch("sys.argv", args), patch.object(collector, "fetch_page", fetch):
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = collector.main()
+        return code, json.loads(stdout.getvalue() or stderr.getvalue())
+
+    def test_reuses_retry_deadline_across_capture_paths_then_resumes(self):
+        pinned = self.directory / "pinned.json"
+        original, _ = collector.collect("Covens", "a", 1, Mock(return_value=(page("b", stash(1)), 0)))
+        publish_capture(pinned, original)
+        fetch = Mock(side_effect=collector.CaptureRequestError("GGG returned HTTP 429", 300))
+        self.assertEqual(self.invoke(pinned, fetch, "--refresh")[0], 75)
+        fetch.assert_called_once()
+        self.assertEqual(pinned.read_bytes(), original)
+        self.clock.return_value += 20
+        fetch = Mock(return_value=(page("c", stash(2)), 0))
+        next_file = self.directory / "next.json"
+        code, report = self.invoke(next_file, fetch, "--resume-from", str(pinned))
+        self.assertEqual((code, report["retryAfterSeconds"]), (75, 280))
+        fetch.assert_not_called()
+        self.assertFalse(next_file.exists())
+        self.clock.return_value += 280
+        code, report = self.invoke(next_file, fetch, "--resume-from", str(pinned))
+        self.assertEqual((code, report["nextCursor"]), (0, "c"))
+        self.assertEqual(fetch.call_args.args[1], "b")
+        state = next(self.directory.glob("*.cooldown.json"))
+        self.assertNotIn("fixture-token", state.read_text())
+        self.assertEqual(json.loads(state.read_bytes())["notBefore"], 0)
+
+    def test_successful_reply_persists_cooldown_before_page_validation(self):
+        output = self.directory / "capture.json"
+        code, report = self.invoke(output, Mock(return_value=(b"invalid JSON", 90)), "--cursor", "start")
+        self.assertEqual(code, 1)
+        self.assertFalse(output.exists())
+        request = Mock()
+        code, report = self.invoke(output, request, "--cursor", "start")
+        self.assertEqual((code, report["retryAfterSeconds"]), (75, 90))
+        request.assert_not_called()
+
+    def test_successful_idle_refresh_preserves_capture_and_persists_wait(self):
+        output = self.directory / "pinned.json"
+        before, _ = collector.collect("Covens", "a", 1, Mock(return_value=(page("b", stash(1)), 0)))
+        publish_capture(output, before)
+        code, report = self.invoke(output, Mock(return_value=(page("b"), 75)), "--refresh")
+        self.assertEqual((code, report["published"], report["retryAfterSeconds"]), (0, False, 75))
+        request = Mock()
+        self.assertEqual(self.invoke(output, request, "--refresh")[0], 75)
+        request.assert_not_called()
+        self.assertEqual(output.read_bytes(), before)
+
+    def test_explicit_file_shares_across_directories_and_binds_client(self):
+        a, b = self.directory / "a", self.directory / "b"
+        a.mkdir()
+        b.mkdir()
+        state = self.directory / "rates.json"
+        options = ("--cursor", "start", "--cooldown-file", str(state))
+        self.assertEqual(self.invoke(a / "a.json", Mock(return_value=(page("next"), 45)), *options)[0], 0)
+        request = Mock()
+        self.assertEqual(self.invoke(b / "b.json", request, *options)[0], 75)
+        self.assertEqual(self.invoke(b / "b.json", request, *options, client="other-app")[0], 1)
+        request.assert_not_called()
+
+    def test_bad_state_storage_and_lock_contention_stop_before_fetch(self):
+        output = self.directory / "capture.json"
+        state = self.directory / "rates.json"
+        options = ("--cursor", "start", "--cooldown-file", str(state))
+        request = Mock()
+        with collector.refresh_lock(state):
+            self.assertEqual(self.invoke(output, request, *options)[0], 1)
+        state.write_text("bad state")
+        self.assertEqual(self.invoke(output, request, *options)[0], 1)
+        self.assertEqual(self.invoke(output, request, "--cursor", "start", "--cooldown-file", str(output))[0], 1)
+        with patch("collect_public_stash_capture.publish_capture", side_effect=PermissionError("fixture")):
+            self.assertEqual(self.invoke(output, request, "--cursor", "start")[0], 1)
+        request.assert_not_called()
+        self.assertFalse(output.exists())
+
+    def test_interruption_leaves_a_short_hold(self):
+        state = self.directory / "rates.json"
+        request = Mock(side_effect=KeyboardInterrupt)
+        with self.assertRaises(KeyboardInterrupt):
+            collector.fetch_with_cooldown(state, "fixture", request, "cursor")
+        hold = collector.read_cooldown(state, "fixture")
+        self.assertEqual(hold - self.clock.return_value, 60)
+        with self.assertRaisesRegex(collector.CaptureRequestError, "still active"):
+            collector.fetch_with_cooldown(state, "fixture", request, "cursor")
+        request.assert_called_once()
 
 
 if __name__ == "__main__":
