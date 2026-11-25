@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1326][2026/11/25]
+
+* Show uncertain and unchecked saved examples during loot filter baseline reviews.
+
 VERSION[2.69.0-ai.preview1325][2026/11/25]
 
 * Remember Windows trade overlay setup and open saved capture prices automatically.
