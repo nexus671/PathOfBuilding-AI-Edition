@@ -638,6 +638,13 @@ end
 local observationFields = {BaseType=true,StackSize=true,AreaLevel=true,ItemLevel=true,Class=true}
 local visibility = {Show=true,Minimal=true,Hide=false}
 
+function M.stackObservation(name, size, area, itemLevel, itemClass)
+	local item = observedStackItem(name,size,area,itemLevel,itemClass)
+	local observation = {}
+	for field in pairs(observationFields) do observation[field] = item[field] end
+	return observation
+end
+
 function M.compareObservedStackBatch(before, after, path)
 	assert(type(path)=="string" and path:lower():match("%.json$"), "Choose a JSON observation file")
 	local raw = assert(readWithLimit(path,256*1024), "Observation file is unavailable or exceeds 256 KiB")

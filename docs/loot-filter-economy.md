@@ -90,7 +90,9 @@ After a verified sync, use **Test observed stack** to enter a stackable item's e
 
 In **Preview changes**, **Offline price preview**, or **Review league change**, **Test observed stack** compares the current and proposed text shown in that preview. You can check the proposed visibility before saving the policy or league.
 
-Choose **Compare file** to review up to 250 recorded stacks at once. Use a JSON array with one entry per observed stack. Repeated entries count as separate observations. Add `ItemLevel` if known and `Class` if the name alone does not identify the stackable class. The results can be grouped by item class or exact area level; these are counts from your file, not estimates of drop rates. Select a recorded stack and choose **Preview labels** for the side-by-side illustration. Results with unresolved includes or other preview assumptions are counted as unresolved, with the warning shown in the item details. When multiple rules match through `Continue`, their line numbers appear in match order.
+In **Test observed stack**, choose **Paste stack** after copying a supported stack with its stack size in Path of Exile. Enter the area level, then choose **Record stack** for each observation. You can also enter values by hand. **Save stacks** writes up to 250 observations to a new JSON file in the PoB user folder. A successful save starts a new batch. **Compare file** opens the saved file or another JSON array with one entry per observed stack. Repeated entries count as separate observations. Add `ItemLevel` if known and `Class` if the name alone does not identify the stackable class.
+
+Batch results group the sample counts by item class and area level. Select a recorded stack and choose **Preview labels** for the side-by-side illustration. Results with unresolved includes or other preview assumptions are counted as unresolved, with the warning shown in the item details. When multiple rules match through `Continue`, their line numbers appear in match order.
 
 ```json
 [

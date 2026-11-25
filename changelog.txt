@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1313][2026/11/25]
+VERSION[2.69.0-ai.preview1314][2026/11/25]
 
 * Plan supported Divine Orb rolls on unique jewels and quivers.
+
+VERSION[2.69.0-ai.preview1313][2026/11/25]
+
+* Record copied stack observations and save batches for loot filter comparison.
 
 VERSION[2.69.0-ai.preview1312][2026/11/25]
 

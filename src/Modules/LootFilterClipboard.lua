@@ -27,7 +27,8 @@ local function exceptionalGem(name,class)
 end
 function M.parse(raw,area)
 	assert(type(raw)=="string" and #raw>0 and #raw<=24000 and not raw:find("\0"),"Paste a copied game item (up to 24 KiB)")
-	raw=raw:gsub("\r\n","\n");local rarity=assert(raw:match("Rarity: (%a+)"),"The clipboard has no item rarity")
+	raw=raw:gsub("\r\n","\n")
+	local rarity=assert(("\n"..raw):match("\nRarity: ([^\n]+)"),"The clipboard has no item rarity"):match("^%s*(.-)%s*$")
 	local class=raw:match("Item Class: ([^\n]+)")
 	local header=raw:match("Rarity: [^\n]+\n(.-)\n%-%-%-%-%-%-%-%-") or raw:match("Rarity: [^\n]+\n(.*)")
 	-- Base names such as "Contract: Bunker" also contain a colon.
@@ -63,7 +64,7 @@ function M.parse(raw,area)
 	-- An explicit clipboard class wins. Infer only when the item base itself is
 	-- known, or the visible normal/currency/gem name is the base name.
 	local baseRarity=rarity:lower()
-	if not class and (ok and native.base or baseRarity=="normal" or baseRarity=="currency" or baseRarity=="gem") then class=library.baseClass(base) end
+	if not class and (ok and native.base or baseRarity=="normal" or baseRarity=="currency" or baseRarity=="gem" or baseRarity=="divination card") then class=library.baseClass(base) end
 	local tier
 	for line in pairs(markers) do
 		local value=line:match("^Unidentified %(Tier (%d+)%)$")
@@ -72,7 +73,7 @@ function M.parse(raw,area)
 			assert(tier==nil or tier==value,"Conflicting clipboard unidentified tier");tier=value
 		end
 	end
-	local mapped={normal="Normal",magic="Magic",rare="Rare",unique="Unique",relic="Unique",currency="Normal",gem="Normal",quest="Normal"}
+	local mapped={normal="Normal",magic="Magic",rare="Rare",unique="Unique",relic="Unique",currency="Normal",gem="Normal",quest="Normal",["divination card"]="Normal"}
 	local item={BaseType=base,Class=class,Rarity=assert(mapped[rarity:lower()],"Unsupported clipboard rarity"),AreaLevel=area,
 		Identified=not markers.Unidentified and tier==nil,Corrupted=markers.Corrupted==true or markers["Twice Corrupted"]==true,
 		TwiceCorrupted=markers["Twice Corrupted"]==true,Mirrored=markers.Mirrored==true}

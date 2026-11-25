@@ -229,6 +229,56 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 		assert(scroll.offset>0,"Could not reach the end of the warning")
 		local cx,cy=long.close:GetPos();local cw,ch=long.close:GetSize()
 		assert(cx>=0 and cy>=0 and cx+cw<=size[1] and cy+ch<=size[2],"Long warnings pushed Close off screen")
+		harness:click("close")
+		local capture = main.popups[1].controls
+		assert(not capture.saveStacks:IsEnabled())
+		local oldPaste = Paste
+		Paste = function() return "Item Class: Stackable Currency\r\nRarity: Currency\r\nOrb of Alteration\r\n--------\r\nStack Size: 5/20" end
+		harness:click("pasteStack")
+		assert(capture.name.buf=="Orb of Alteration" and capture.size.buf=="5" and capture.area.buf=="83")
+		assert(capture.class:GetSelValueByKey("class")=="Stackable Currency")
+		Paste = function() return "no stack here" end
+		harness:click("pasteStack")
+		assert(main.popups[1].title=="Paste stack" and capture.name.buf=="Orb of Alteration")
+		harness:click("close")
+		Paste = oldPaste
+		harness:click("recordStack")
+		harness:click("recordStack")
+		assert(capture.saveStacks:IsEnabled() and StripEscapes(capture.captureStatus.label()):find("2 of 250",1,true))
+		Paste = function() return "Item Class: Divination Cards\nRarity: Divination Card\nThe Doctor\n--------\nStack Size: 2/8" end
+		harness:click("pasteStack")
+		Paste = oldPaste
+		assert(capture.name.buf=="The Doctor" and capture.size.buf=="2" and capture.area.buf=="83")
+		harness:click("recordStack")
+		if output then harness:frame():write(output.."/720-observed-stack-capture.json") end
+		harness:click("close")
+		assert(main.popups[1].title=="Discard unsaved stacks")
+		main:ClosePopup()
+		local exports = require("Modules.LootFilterExports")
+		local originalWrite, written, savedPath = exports.writeNew
+		exports.writeNew = function() error("Existing observation file") end
+		harness:click("saveStacks")
+		assert(main.popups[1].title=="Save stacks" and capture.saveStacks:IsEnabled())
+		harness:click("close")
+		exports.writeNew = function(path, payload)
+			assert(path:match("Loot stack observations .+%.json$"))
+			written = require("dkjson").decode(payload)
+			if output then
+				savedPath = output.."/"..path:match("Loot stack observations .+%.json$")
+				originalWrite(savedPath,payload)
+			end
+		end
+		harness:click("saveStacks")
+		exports.writeNew = originalWrite
+		assert(main.popups[1].title=="Stack observations saved" and not capture.saveStacks:IsEnabled())
+		assert(#written==3 and written[1].BaseType=="Orb of Alteration" and written[1].StackSize==5
+			and written[1].AreaLevel==83 and written[1].Class=="Stackable Currency" and written[1].Rarity==nil)
+		assert(written[2].BaseType==written[1].BaseType and written[2].StackSize==written[1].StackSize)
+		assert(written[3].BaseType=="The Doctor" and written[3].Class=="Divination Cards" and written[3].StackSize==2)
+		if savedPath then
+			local result = sync.compareObservedStackBatch('Hide\n    BaseType == "Orb of Alteration"\n\nShow\n','Show\n',savedPath)
+			assert(result.count==3 and result.shown==2 and result.unchanged==1 and result.units==12)
+		end
 	end
 	sync.compareObservedStack,sync.status=originalStack,previousStatus
 	reviewFixture = nil
