@@ -42,7 +42,7 @@ async function main(){
   children[1].stdin.write(JSON.stringify({jsonrpc:'2.0',method:'notifications/initialized'})+'\n');
   async function call(name,args={}){const response=await rpc('tools/call',{name,arguments:args});assert.ok(!response.error,JSON.stringify(response));assert.ok(!response.result.isError,JSON.stringify(response));return response.result.structuredContent;}
   async function host(kind,frames,untilId,untilStatus){
-    const response=await native.send({kind,frames,untilId,untilStatus});assert.ok(response.ok,response.error);
+    const response=await native.send(typeof frames==='object'?{kind,...frames}:{kind,frames,untilId,untilStatus});assert.ok(response.ok,response.error);
     // The fixture draws about 9,200 commands per frame. Leave room for larger
     // views, while rejecting accumulation across the 24-frame polling batches.
     if(kind==='tick') assert.ok(response.result.drawCommands<100000,'Native recorder retained earlier frames');
@@ -105,6 +105,13 @@ async function main(){
   const extraCopies=largerQualityCopies.concat(Array.from({length:4},()=>`Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +1%`));
   const extraQuality=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:extraCopies},'qualityVendorReview');assert.equal(extraQuality.qualityVendorReview.categories[0].optimal,true);assert.equal(extraQuality.qualityVendorReview.categories[0].groups.length,4);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
+  for(const [method,field] of [['catalog','nativeEngineUnavailable'],['beastCatalog','beastPoolUnavailable'],['allflameProfile','allflameUnavailable']]) {
+    await host('inject-crafting-error',{method});
+    const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,action:{method:'beast_prefix_suffix'},limit:5},'inspected');
+    const message=method==='catalog'?inspected.crafting[field]:inspected.crafting.nativeEngine[field];
+    assert.equal(message,'First problem\nSecond problem');
+    await host('inject-crafting-error',{method,restore:true});
+  }
   const baseRoll=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,action:{method:'alchemy'},targets:[{anyOf:['IncreasedLife4'],minBaseValue:65,maxBaseValue:67}],options:{trials:20,seed:5}},'crafted');
   assert.equal(baseRoll.nativeCrafting.sampled,true);assert.equal(baseRoll.nativeCrafting.trials,20);
   const multiRoll=await queued('calculate_crafting',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nRusted Sword\nItem Level: 86',action:{method:'alchemy'},targets:[{anyOf:['LocalAddedColdDamage2'],minBaseValue:15,baseValueComponent:2}],options:{trials:20,seed:5}},'crafted');
