@@ -50,6 +50,7 @@ function M.clean(kind,entry)
 			savedView={};for _,key in ipairs({"title","notes","budgetText","search"}) do assert(type(view[key])=="string" and #view[key]<=8000,"Invalid Atlas draft text");savedView[key]=view[key] end
 			for _,key in ipairs({"centerX","centerY","scale","focus","inspectorWidth"}) do local v=view[key];assert(v==nil or type(v)=="number" and v==v and math.abs(v)<1e7,"Invalid Atlas view");savedView[key]=v end
 			assert(savedView.scale and savedView.scale>0,"Invalid Atlas scale")
+			assert(view.newDraft==nil or type(view.newDraft)=="boolean","Invalid Atlas draft state");savedView.newDraft=view.newDraft
 			savedView.page=view.page=="Notes & sharing" and view.page or "Tree";savedView.mechanic=view.mechanic;savedView.avoided=copyTable(value.avoided or {});savedView.undo={};savedView.redo={}
 			savedView.stageResume=cleanAtlasStage(view.stageResume)
 		end
