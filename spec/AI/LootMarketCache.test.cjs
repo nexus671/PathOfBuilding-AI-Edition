@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { once } = require('node:events');
-const { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } = require('node:fs');
+const { mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 const { createMarketCache } = require('../../tools/serve_loot_market_cache.cjs');
@@ -13,12 +13,12 @@ const oilPath = '/exchange/current/overview?league=Covens&type=Oil';
 const leagueBody = '[{"id":"Covens","name":"Covens of Umbra"}]';
 const priceBody = '{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.2,"volumePrimaryValue":400}]}';
 
-async function fixture(t, provider, cooldownFile) {
-  const initial = Date.UTC(2026, 10, 23);
+async function fixture(t, provider, cooldownFile, {snapshotDirectory, offset = 0} = {}) {
+  const initial = Date.UTC(2026, 10, 23) + offset;
   let now = initial;
   const requests = [];
   const server = createMarketCache({
-    agent:'PoB economy test (local fixture)', now:()=>now, spacingMs:0, cooldownFile,
+    agent:'PoB economy test (local fixture)', now:()=>now, spacingMs:0, cooldownFile, snapshotDirectory,
     async fetcher(url, options) {
       assert.equal(new URL(url).origin,'https://poe.ninja');
       assert.equal(options.redirect,'error');
@@ -39,6 +39,111 @@ async function fixture(t, provider, cooldownFile) {
 function snapshot(body, time, headers = {}) {
   return new Response(body,{ headers:{ date:new Date(time).toUTCString(), 'cache-control':'max-age=300', ...headers } });
 }
+
+test('restores usable prices with their original age through a provider outage and revalidates expired TTLs',async t=>{
+  const snapshotDirectory = mkdtempSync(join(tmpdir(),'pob-market-snapshots-'));
+  t.after(()=>rmSync(snapshotDirectory,{recursive:true,force:true}));
+  const first = await fixture(t,(path,options,{initial})=>
+    snapshot(path==='/leagues' ? leagueBody : priceBody,initial-30000,{etag:'W/"sample"'}),
+  undefined,{snapshotDirectory});
+  assert.equal(await (await first.request(currencyPath)).text(),priceBody);
+  await first.close();
+
+  const second = await fixture(t,()=>{throw new Error('Provider is offline');},undefined,{snapshotDirectory,offset:120000});
+  const restored = await second.request(currencyPath);
+  assert.equal(await restored.text(),priceBody);
+  assert.equal(restored.headers.get('age'),'150');
+  assert.equal(restored.headers.get('etag'),'W/"sample"');
+  let health = await (await second.request('/health')).json();
+  assert.deepEqual(health.snapshots,{restored:2,discarded:0,errors:0});
+  assert.equal(health.serviceable,2);
+  assert.equal(second.requests.length,0);
+  second.advance(160000);
+  const expired = await second.request(currencyPath);
+  assert.equal(expired.status,502);
+  assert.equal(second.requests[0].tag,'W/"sample"');
+  await second.close();
+
+  const third = await fixture(t,(path,options,{now})=>
+    new Response(null,{status:304,headers:{date:new Date(now).toUTCString()}}),
+  undefined,{snapshotDirectory,offset:310000});
+  const refreshed = await third.request(currencyPath);
+  assert.equal(await refreshed.text(),priceBody);
+  assert.equal(refreshed.headers.get('age'),'340');
+  assert.deepEqual(third.requests.map(request=>request.tag),['W/"sample"','W/"sample"']);
+});
+
+test('discards corrupt and stale records and never restores responses with a revoked cache policy',async t=>{
+  const snapshotDirectory = mkdtempSync(join(tmpdir(),'pob-market-snapshots-'));
+  t.after(()=>rmSync(snapshotDirectory,{recursive:true,force:true}));
+  let revoke = false;
+  const first = await fixture(t,(path,options,{now})=>{
+    if (path===currencyPath && revoke) return new Response(null,{status:304,
+      headers:{date:new Date(now).toUTCString(),'cache-control':'no-store'}});
+    return snapshot(path==='/leagues' ? leagueBody : priceBody,now,{etag:'"entry"'});
+  },undefined,{snapshotDirectory});
+  assert.equal((await first.request(currencyPath)).status,200);
+  assert.equal((await first.request(oilPath)).status,200);
+  assert.equal(readdirSync(snapshotDirectory).length,3);
+  revoke = true;
+  first.advance(310000);
+  assert.equal((await first.request(currencyPath)).headers.get('cache-control'),'no-store');
+  await first.close();
+  const files = readdirSync(snapshotDirectory).map(name=>join(snapshotDirectory,name));
+  assert.equal(files.length,2);
+  const oil = files.find(file=>readFileSync(file).includes('type=Oil'));
+  assert.ok(oil);
+  writeFileSync(oil,'truncated');
+  const second = await fixture(t,(path,options,{now})=>
+    snapshot(path==='/leagues' ? leagueBody : priceBody,now,{'cache-control':'private',etag:'"private"'}),
+  undefined,{snapshotDirectory,offset:3910000});
+  const health = await (await second.request('/health')).json();
+  assert.deepEqual(health.snapshots,{restored:0,discarded:2,errors:0});
+  assert.equal(readdirSync(snapshotDirectory).length,0);
+  assert.equal((await second.request(currencyPath)).status,200);
+  assert.deepEqual(second.requests.map(request=>request.tag),[undefined,undefined]);
+  assert.equal(readdirSync(snapshotDirectory).length,0);
+});
+
+test('keeps recovery storage within the in-memory entry limit and cleans interrupted writes',async t=>{
+  const snapshotDirectory = mkdtempSync(join(tmpdir(),'pob-market-snapshots-'));
+  t.after(()=>rmSync(snapshotDirectory,{recursive:true,force:true}));
+  const orphan = 'pob-market-'+('a'.repeat(64))+'.snapshot.233ac0ba-d5cd-4aeb-be7d-dc10f38990c2.tmp';
+  writeFileSync(join(snapshotDirectory,orphan),'interrupted');
+  writeFileSync(join(snapshotDirectory,'unrelated.txt'),'keep');
+  const leagues = JSON.stringify(Array.from({length:48},(_,index)=>({id:'League '+index,name:'League '+index})));
+  const provider = (path,options,{now})=>snapshot(path==='/leagues' ? leagues : priceBody,now);
+  const first = await fixture(t,provider,undefined,{snapshotDirectory});
+  for (let index=0; index<48; index++) {
+    assert.equal((await first.request('/exchange/current/overview?league=League+'+index+'&type=Currency')).status,200);
+  }
+  assert.equal(readdirSync(snapshotDirectory).filter(name=>name.endsWith('.snapshot')).length,48);
+  assert.equal(readdirSync(snapshotDirectory).includes(orphan),false);
+  assert.equal(readFileSync(join(snapshotDirectory,'unrelated.txt'),'utf8'),'keep');
+  await first.close();
+  const second = await fixture(t,provider,undefined,{snapshotDirectory,offset:1000});
+  const health = await (await second.request('/health')).json();
+  assert.equal(health.cached,48);
+  assert.equal(health.snapshots.restored,48);
+});
+
+test('reports snapshot directory failure while validated prices remain available from memory',async t=>{
+  const root = mkdtempSync(join(tmpdir(),'pob-market-snapshots-'));
+  t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const snapshotDirectory = join(root,'active');
+  const agent = 'PoB economy test (local fixture)';
+  assert.throws(()=>createMarketCache({agent,snapshotDirectory}),/Cannot open the market snapshot directory/);
+  mkdirSync(snapshotDirectory);
+  const relay = await fixture(t,(path,options,{now})=>snapshot(path==='/leagues' ? leagueBody : priceBody,now),
+    undefined,{snapshotDirectory});
+  renameSync(snapshotDirectory,join(root,'unavailable'));
+  assert.equal(await (await relay.request(currencyPath)).text(),priceBody);
+  assert.equal(await (await relay.request(currencyPath)).text(),priceBody);
+  const health = await (await relay.request('/health')).json();
+  assert.equal(health.hits,2);
+  assert.ok(health.snapshots.errors>0);
+  assert.equal(relay.requests.length,2);
+});
 
 test('coalesces concurrent clients, canonicalizes query order and preserves origin age on revalidation',async t=>{
   let unblock;

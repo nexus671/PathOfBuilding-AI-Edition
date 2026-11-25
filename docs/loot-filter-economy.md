@@ -181,9 +181,15 @@ Configure the final HTTPS URL. PoB rejects redirects for economy feeds and prese
 
 The operator runs `node tools/serve_loot_market_cache.cjs` with `POB_MARKET_UPSTREAM_AGENT` set to the application's descriptive User-Agent and contact. It binds to loopback on port 9410 by default. Publish that service through the deployment's HTTPS reverse proxy by stripping the configured path prefix. Restrict the proxy to the intended audience and use `/health` from monitoring to inspect pending work, cache hits, coalesced requests and failures.
 
-For a single relay process, set `POB_MARKET_COOLDOWN_FILE` to a dedicated file in a private, writable state directory retained across restarts. The relay creates the file when needed and saves the upstream retry deadline before replying to a rate limit or service outage. Keep the file with the relay instance. It contains only a deadline, and prices are still cached in memory.
+For a single relay process, set `POB_MARKET_COOLDOWN_FILE` to a dedicated file in a private, writable state directory retained across restarts. The relay creates the file when needed and saves the upstream retry deadline before replying to a rate limit or service outage. Keep the file with the relay instance. It contains only a deadline.
 
 The service accepts only the app's public economy routes and active leagues. It coalesces requests, bounds the upstream queue, respects provider caching, and preserves origin age and retry timing. Throttled, stale, oversized and malformed data go through the app's existing checks before any filter is published. The operator needs to qualify the deployed host with the provider and verify fresh responses from that host before enabling distribution. [poe.ninja API guidelines](https://poe.ninja/docs/api)
+
+Optionally set `POB_MARKET_SNAPSHOT_DIRECTORY` to a separate, private, writable directory kept across restarts. Give each relay process its own directory. Deploy the complete relay tools from the repository.
+
+The relay atomically stores validated responses with a positive shared cache lifetime. It preserves the original HTTP freshness time and expiry on restart. An expired cache lifetime requires upstream revalidation before the response can be used again. Snapshots older than one hour, incomplete writes, and invalid records are discarded. Private, no-store, and immediate-revalidation responses stay out of the disk cache.
+
+The cache retains up to 48 entries and 48 MiB of response bodies. The **snapshots** section of **/health** reports restored and discarded snapshots and storage errors without exposing paths or payloads. The HTTPS qualification tool fails when it observes a storage error. Fix the private directory and restart to verify recovery.
 
 When the configured shared cache rejects an upstream response, **Last attempt** can distinguish a stale feed from an invalid or oversized response alongside HTTP 502. Older caches can still report a generic provider error.
 

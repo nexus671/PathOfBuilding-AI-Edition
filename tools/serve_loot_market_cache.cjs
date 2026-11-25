@@ -5,6 +5,7 @@ const { randomUUID } = require('node:crypto');
 const { closeSync, fstatSync, lstatSync, openSync, readSync, renameSync, rmSync, writeFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const { setTimeout: delay } = require('node:timers/promises');
+const { openMarketSnapshots } = require('./loot_market_snapshots.cjs');
 
 const upstreamBase = 'https://poe.ninja/poe1/api/economy/';
 const exchange = new Set(['Currency', 'Fragment', 'Runegraft', 'AllflameEmber', 'Tattoo', 'Omen', 'DjinnCoin', 'Ducat',
@@ -88,6 +89,10 @@ function retrySeconds(headers, now) {
   return Math.max(15, Math.min(Number.isFinite(requested) ? requested : 60, maxRetrySeconds));
 }
 
+function validTag(value) {
+  return typeof value==='string' && value.length<=160 && /^(?:W\/)?"[^"\x00-\x1f]*"$/.test(value);
+}
+
 function openCooldownState(file, now) {
   const path = resolve(file);
   function save(until) {
@@ -166,12 +171,15 @@ function validatePayload(value, kind) {
   return null;
 }
 
-function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs = 1000, cooldownFile } = {}) {
+function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs = 1000, cooldownFile, snapshotDirectory } = {}) {
   if (!agent || agent.length > 250 || /[^ -~]/.test(agent)) throw new Error('Set a descriptive market User-Agent including an operator contact');
   const cache = new Map();
   const running = new Map();
   let size = 0;
   const cooldown = cooldownFile ? openCooldownState(cooldownFile,now()) : null;
+  const snapshots = snapshotDirectory && openMarketSnapshots(snapshotDirectory,{
+    now,requestKey,validatePayload,validTag,freshnessMs:freshestAge*1000,maxBodyBytes:stashLimit,
+  });
   let retryAt = cooldown?.until ?? 0;
   let cooldownPersistence = cooldown ? 'ready' : null;
   let nextAt = 0;
@@ -195,6 +203,7 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
     for (const entry of cache.values()) if (entry.validUntil>at) serviceable++;
     const cooldownSeconds = Math.max(0,Math.ceil((retryAt-at)/1000));
     return {status:'ready',cached:cache.size,pending:running.size,...stats,cachedBytes:size,serviceable,
+      ...(snapshots ? {snapshots:snapshots.health()} : {}),
       provider:{...provider,state:cooldownSeconds>0 ? 'cooldown' : provider.state,cooldownSeconds,
         ...(cooldownPersistence ? { cooldownPersistence } : {})},rejections:{...rejections}};
   }
@@ -205,20 +214,29 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
     provider.lastValidatedAt = now();
   }
 
-  function remove(key) {
+  function remove(key, removeSnapshot = true) {
     size -= cache.get(key)?.body.length || 0;
     cache.delete(key);
+    if (removeSnapshot) snapshots?.remove(key);
   }
 
-  function save(key, entry) {
-    remove(key);
-    if (!entry.store) return;
+  function save(key, entry, writeSnapshot = true) {
+    remove(key,false);
+    if (!entry.store) {
+      snapshots?.remove(key);
+      return;
+    }
     cache.set(key, entry);
     size += entry.body.length;
     while (cache.size > 48 || size > cacheLimit) {
       const oldest = cache.keys().next().value;
       remove(oldest);
     }
+    if (writeSnapshot && cache.has(key)) snapshots?.save(key,entry);
+  }
+
+  if (snapshots) {
+    for (const {key,entry} of snapshots.entries()) save(key,entry,false);
   }
 
   async function refresh(details, deadline) {
@@ -290,7 +308,7 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
       const leagues = validatePayload(JSON.parse(body.toString('utf8')),details.kind);
       const timing = ageSource(response.headers,now());
       const rawTag = response.headers.get('etag');
-      const etag = rawTag?.length <= 160 && /^(?:W\/)?"[^"\x00-\x1f]*"$/.test(rawTag) ? rawTag : null;
+      const etag = validTag(rawTag) ? rawTag : null;
       const entry = { body, leagues, sourceAt:timing.sourceAt, etag, ...policy,
         validUntil:Math.min(timing.responseAt+policy.ttl*1000,timing.sourceAt+freshestAge*1000) };
       save(details.key,entry);
@@ -381,7 +399,8 @@ if (require.main === module) {
   const port = Number(process.env.POB_MARKET_CACHE_PORT || 9410);
   if (!Number.isInteger(port) || port<1 || port>65535) throw new Error('Choose a valid cache port');
   createMarketCache({ agent:process.env.POB_MARKET_UPSTREAM_AGENT,
-    cooldownFile:process.env.POB_MARKET_COOLDOWN_FILE }).listen(port,'127.0.0.1',() => {
+    cooldownFile:process.env.POB_MARKET_COOLDOWN_FILE,
+    snapshotDirectory:process.env.POB_MARKET_SNAPSHOT_DIRECTORY }).listen(port,'127.0.0.1',() => {
     process.stdout.write(`PoB market cache listening on 127.0.0.1:${port}\n`);
   });
 }
