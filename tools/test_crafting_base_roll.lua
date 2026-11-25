@@ -6,6 +6,37 @@ local regen=assert(model.byId.LifeRegeneration2)
 local influenced=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86\nShaper Item")
 local suppression=assert(influenced.byId.ChanceToDodgeAttacksInfluence2)
 local describe=LoadModule("Modules/StatDescriber")
+local abyss=sim.model("Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86")
+local abyssId="AbyssFlatManaShieldRegenerationJewel3";local abyssMod=assert(abyss.byId[abyssId])
+local counts={}
+for rawValue=196,240 do
+ local draw=(rawValue-196+0.1)/45;local range=sim.rollRange(abyssMod,function() return draw end)
+ local actual=3.3+range*(4-3.3)
+ assert(math.abs(actual-rawValue/60)<1e-9,"Abyss regeneration raw tick was lost")
+ local expected=tonumber(describe({base_mana_regeneration_rate_per_minute=rawValue},"stat_descriptions")[1]:match("Regenerate ([%d%.]+) Mana per second"))
+ local displayed=sim.baseRollValue(abyssMod,range)
+ assert(displayed==expected,"Abyss regeneration display does not match its raw tick")
+ counts[displayed]=(counts[displayed] or 0)+1
+end
+assert(counts[3.3]==5 and counts[3.4]==6 and counts[4]==4,"Abyss regeneration display distribution changed")
+local abyssState=copyTable(abyss.initial);abyssState.rarity="RARE";abyssState.affixes={{id=abyssId,range=sim.rollRange(abyssMod,function()return 0 end)}}
+local abyssImported=sim.model(sim.toItem(abyss,abyssState).raw)
+assert(math.abs(abyssImported.initial.affixes[1].range-abyssState.affixes[1].range)<1e-9,"Abyss raw tick did not survive item import")
+local function hasOutsideWarning(m)
+ for _,warning in ipairs(sim.actionWarnings({method="divine"},m)) do if warning.code=="affix_roll_outside_current_tier" then return true end end
+ return false
+end
+assert(not hasOutsideWarning(abyssImported),"A valid raw tick must not be labelled out of tier")
+local abyssReroll=sim.action(abyssImported,abyssImported.initial,{method="divine"},function()return 0 end)
+assert(math.abs(abyssReroll.affixes[1].range-abyssState.affixes[1].range)<1e-9,"Divine did not retain the first raw tick")
+assert(sim.matches(abyssReroll,{{anyOf={abyssId},minBaseValue=3.3,maxBaseValue=3.3}},nil,abyssImported),"Abyss displayed-value target did not match")
+assert(sim.matches(abyssReroll,{{anyOf={abyssId},minRoll=0}},nil,abyssImported),"The rounded minimum must satisfy a zero roll threshold")
+assert(not sim.matches(abyssReroll,{{anyOf={abyssId},minRoll=0.01}},nil,abyssImported),"The rounded minimum must not satisfy a higher roll threshold")
+abyssReroll.affixes[1].range={abyssReroll.affixes[1].range}
+assert(sim.matches(abyssReroll,{{anyOf={abyssId}}},nil,abyssImported),"A singleton range must preserve the valid raw tick")
+abyssImported.initial.affixes[1].range=-0.5
+assert(hasOutsideWarning(abyssImported),"An unrelated out-of-tier value must still warn")
+assert(not sim.matches(abyssImported.initial,{{anyOf={abyssId}}},nil,abyssImported),"An unrelated out-of-tier value must not be treated as a valid tick")
 -- Reconstructed legacy modifiers have no normal spawn weight in this data.
 -- Compare each modeled raw tick with PoB's translator, not game drop odds.
 local blockBase=sim.model("Rarity: NORMAL\nPinnacle Tower Shield\nItem Level: 86")
