@@ -1,0 +1,206 @@
+describe("Connected planning workflows",function()
+	local bridge=require("Modules.DesktopBuildBridge")
+	local atlas=require("Modules.AtlasPlanner")
+	local function plan(id) return {id=id,title=id,version="3.29.1",budget=138,nodes={}} end
+	before_each(function() newBuild();main.popups={};bridge.prepared=nil;bridge.plan={goal="balanced"} end)
+	after_each(function() require("Modules.JourneyUpgrades").cancel();main.popups={};bridge.prepared=nil end)
+	it("restores active globals after every background yield, completion, error and cancellation",function()
+		local worker=require("Modules.PlanningWorker");local environment=getfenv(worker.resume);local activeMain,activeCache,activeError=environment.main,environment.GlobalCache,launch.ShowErrMsg
+		local job=worker.new(build,function(checkpoint)
+			environment.main={isolated=true};environment.GlobalCache={isolated=true};launch.ShowErrMsg=function() end;checkpoint("Isolated stage")
+			assert.is_true(environment.main.isolated);assert.is_true(environment.GlobalCache.isolated);return 42
+		end)
+		local done,ok=worker.resume(job);assert.is_false(done);assert.is_true(ok);assert.equal(activeMain,main);assert.equal(activeCache,GlobalCache);assert.equal(activeError,launch.ShowErrMsg)
+		local value;done,ok,value=worker.resume(job);assert.is_true(done);assert.is_true(ok);assert.equal(42,value);assert.equal(activeMain,main);assert.equal(activeCache,GlobalCache)
+		job=worker.new(build,function() environment.main={};environment.GlobalCache={};error("isolated failure") end);done,ok=worker.resume(job);assert.is_true(done);assert.is_false(ok);assert.equal(activeMain,main);assert.equal(activeCache,GlobalCache)
+	end)
+	it("matches synchronous native candidate calculations after yielding between stages",function()
+		local proposal={mode="edit",title="Background life",baseRevision=bridge.revision(build),operations={{type="equip_item",slot="Helmet",text="Rarity: RARE\nTrial Hat\nIron Hat\n+100 to maximum Life"}}}
+		local expected=bridge.prepare(build,proposal);local worker=require("Modules.PlanningWorker");local originalMain,originalCache=main,GlobalCache
+		local job=worker.new(build,function(checkpoint) return bridge.prepare(build,proposal,checkpoint) end);local result
+		for i=1,10000 do local done,ok,value=worker.resume(job);assert.equal(originalMain,main);assert.equal(originalCache,GlobalCache);assert.is_true(ok);if done then result=value;break end end
+		assert.is_truthy(result,"Background calculation did not complete within the bounded resume count");assert.is_true(job.slices>1);assert.same(expected.after,result.after);assert.equal(proposal.baseRevision,bridge.revision(build))
+	end)
+	it("records observed timings and resets only the requested build",function()
+		local perf=require("Modules.PlanningPerformance");perf.clear(build);perf.record(build,"Calculation",0.01);perf.record(build,"Calculation",0.03)
+		local row=perf.rows(build)[1];assert.equal(2,row.count);assert.near(20,row.mean,0.001);assert.near(30,row.worst,0.001)
+		local other={};perf.record(other,"Other",0.1);perf.clear(build);assert.equal(0,#perf.rows(build));assert.equal(1,#perf.rows(other))
+	end)
+	it("reports the individual native calculation passes",function()
+		local perf=require("Modules.PlanningPerformance");perf.clear(build);build.calcsTab:BuildOutput(true)
+		local rows={};for _,row in ipairs(perf.rows(build)) do rows[row.name]=row end
+		for _,name in ipairs({"Main calculation","Detailed calculation","Comparison setup"}) do assert.is_truthy(rows[name]);assert.equal(1,rows[name].count);assert.is_true(rows[name].last>=0) end
+	end)
+	it("keeps frame freshness checks cheap and performs an exact check before publishing",function()
+		local upgrades=require("Modules.JourneyUpgrades");local data=require("Modules.BuildJourney").empty()
+		data.wishlist={{id="hat",title="Hat",slot="Helmet",route="buy",targetItem="Rarity: RARE\nHat\nIron Hat\n+100 to maximum Life"}};build.savers.BuildJourney:Replace(data);upgrades.start(build)
+		local revision=bridge.revision;local calls=0;bridge.revision=function(...) calls=calls+1;return revision(...) end
+		local ok,message=pcall(function()
+			for i=1,100 do assert.is_true(upgrades.fresh(build)) end;assert.equal(0,calls)
+			for i=1,1000 do if not upgrades.job then break end;upgrades.tick(build) end
+			assert.is_nil(upgrades.job);assert.equal(1,calls);assert.equal("calculated",upgrades.current(build).entries.hat.status)
+		end)
+		bridge.revision=revision;assert.is_true(ok,message)
+	end)
+	it("cancels a suspended native candidate without leaking state or publishing a partial row",function()
+		local upgrades=require("Modules.JourneyUpgrades");local data=require("Modules.BuildJourney").empty();data.wishlist={{id="hat",title="Hat",slot="Helmet",route="buy",targetItem="Rarity: RARE\nHat\nIron Hat\n+100 to maximum Life"}};build.savers.BuildJourney:Replace(data)
+		local originalMain,originalCache,revision=main,GlobalCache,bridge.revision(build)
+		upgrades.start(build);upgrades.tick(build);upgrades.tick(build);assert.is_truthy(upgrades.job.worker.context)
+		upgrades.cancel();assert.is_nil(upgrades.job);assert.equal(0,upgrades.result.completed);assert.is_nil(upgrades.result.entries.hat);assert.is_true(upgrades.result.cancelled)
+		assert.equal(originalMain,main);assert.equal(originalCache,GlobalCache);assert.equal(revision,bridge.revision(build))
+	end)
+	it("models restart costs, bounded loops and salvage without invented resale proceeds",function()
+		local sim=require("Modules.CraftingSimulator");local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
+		local recipe={rarity="MAGIC",targets={},requirements={minAffixes=0},steps={{method="alchemy",untilRequirements={maxAffixes=0},onFailureAction="restart"}}}
+		local options={trials=1,maxActions=3,baseCost=10,currency="chaos",prices={alchemy=1}}
+		local result=sim.simulate(raw,recipe,options);assert.equal(0,result.successes);assert.equal(2,result.recovery.restarts);assert.equal(33,result.meanCost);assert.equal(1,result.budgetExhausted)
+		assert.equal(33,result.spendingQuantiles.p50);assert.equal(33,result.spendingQuantiles.p90);assert.equal(33,result.spendingQuantiles.p99)
+		recipe.steps[1].onFailureAction="salvage";result=sim.simulate(raw,recipe,options);assert.equal(1,result.recovery.salvaged);assert.equal(11,result.meanCost);assert.equal(1,result.meanActions)
+		recipe.steps[1].onFailureAction="stop";result=sim.simulate(raw,recipe,options);assert.equal(1,result.recovery.stopped);assert.equal(0,result.recovery.salvaged)
+		recipe.steps[1].onFailureAction="invented";assert.is_false(pcall(sim.validateRecipe,recipe))
+	end)
+	it("keeps Atlas stages, requirements and dated setup costs and rejects cyclic progression",function()
+		local store=build.savers.AtlasPlans;local starter=plan("starter");starter.progression={stage="starter"};store:Upsert(starter)
+		local final=plan("final");final.progression={stage="final",previousId="starter"};final.strategy={maps="T16 maps",scarabs="Supplied scarabs",requirements="Complete unlocks",avoid="Reflect",setupCost={amount=25,currency="chaos",source="Manual quote",quotedAt=1700000000}};store:Upsert(final)
+		local xml={};store:Save(xml);local loaded=atlas.new(build);loaded:Load(xml);assert.equal("starter",loaded.plans[2].progression.previousId);assert.equal(25,loaded.plans[2].strategy.setupCost.amount)
+		starter.progression.previousId="final";assert.is_false(pcall(store.Upsert,store,starter));final.progression.previousId="missing";assert.is_false(pcall(store.Upsert,store,final))
+		for i=1,12 do store:Upsert(plan("extra"..i)) end;assert.equal(14,#store.plans)
+	end)
+	it("protects saved Atlas progression when removing or changing a previous stage",function()
+		local store=build.savers.AtlasPlans;local starter=plan("starter");store:Upsert(starter)
+		local final=plan("final");final.progression={stage="final",previousId="starter"};store:Upsert(final)
+		local ok,err=pcall(store.Remove,store,"starter");assert.is_false(ok);assert.matches("follows this plan",err);assert.equal(2,#store.plans)
+		local different=copyTable(starter);different.version="3.29.3"
+		ok,err=pcall(store.Upsert,store,different);assert.is_false(ok);assert.matches("follows this plan",err);assert.equal(starter.version,store.plans[1].version)
+		final.progression.previousId=nil;store:Upsert(final);store:Remove("starter");assert.equal(1,#store.plans)
+		local xml={};store:Save(xml);local loaded=atlas.new(build);loaded:Load(xml);assert.is_nil(loaded.warning);assert.equal("final",loaded.plans[1].id)
+	end)
+	it("offers only previous Atlas stages that preserve an acyclic versioned chain",function()
+		local strategy=require("Modules.AtlasStrategy");local store=build.savers.AtlasPlans
+		local starter=plan("starter");store:Upsert(starter)
+		local middle=plan("middle");middle.progression={stage="intermediate",previousId="starter"};store:Upsert(middle)
+		local final=plan("final");final.progression={stage="final",previousId="middle"};store:Upsert(final)
+		local other=plan("other");other.version="3.29.3";store:Upsert(other)
+		local candidates=strategy.previousCandidates(middle,store.plans)
+		assert.equal(1,#candidates);assert.equal("starter",candidates[1].id)
+		assert.equal(0,#strategy.previousCandidates(starter,store.plans))
+		assert.equal(2,#strategy.previousCandidates(final,store.plans))
+		require("Classes.AtlasPlanningControl").Open(build,middle,function() end)
+		local c=main.popups[1].controls
+		assert.is_truthy(c.previous.tooltipText:find("loop",1,true))
+		assert.equal(2,#c.previous.list);assert.equal("starter",c.previous.list[2].val)
+		main:ClosePopup()
+	end)
+	it("keeps long and branching Atlas stage chains valid without accepting cycles or missing ancestors",function()
+		local strategy=require("Modules.AtlasStrategy");local plans={}
+		for i=1,2000 do local p=plan(tostring(i));if i>1 then p.progression={stage="intermediate",previousId=tostring(i-1)} end;plans[i]=p end
+		local loop1=plan("loop1");loop1.progression={stage="intermediate",previousId="loop2"};plans[#plans+1]=loop1
+		local loop2=plan("loop2");loop2.progression={stage="intermediate",previousId="loop1"};plans[#plans+1]=loop2
+		local broken=plan("broken");broken.progression={stage="final",previousId="missing"};plans[#plans+1]=broken
+		local candidates=strategy.previousCandidates(plan("1000"),plans)
+		assert.equal(999,#candidates);assert.equal("1",candidates[1].id);assert.equal("999",candidates[#candidates].id)
+		assert.equal(2000,#strategy.previousCandidates(plan("new"),plans))
+	end)
+	it("adds map tiers to an Atlas strategy without duplicating or truncating it",function()
+		local draft=plan("tier-picker");draft.strategy={maps="Beach Map"};local saved
+		require("Classes.AtlasPlanningControl").Open(build,draft,function(value) saved=value end)
+		local c=main.popups[1].controls;c.page:SelByValue("Strategy")
+		local function addTier(tier)
+			c.mapTier:Click();local picker=main.popups[1].controls
+			picker.search:SetText("Map (Tier "..tier..")",true);picker.choose:Click()
+		end
+		addTier(16);assert.equal("Beach Map, Map (Tier 16)",c.maps.buf)
+		addTier(16);assert.equal("Beach Map, Map (Tier 16)",c.maps.buf)
+		addTier(5);assert.equal("Beach Map, Map (Tier 16), Map (Tier 5)",c.maps.buf)
+		local previous=c.maps.buf;c.maps:SetText(string.rep("x",3999),true);addTier(1)
+		assert.equal("Atlas strategy",main.popups[1].title);assert.equal(3999,#c.maps.buf)
+		main:ClosePopup();main:ClosePopup();c.maps:SetText(previous,true)
+		c.keep:Click();assert.equal("Beach Map, Map (Tier 16), Map (Tier 5)",saved.strategy.maps)
+	end)
+	it("preserves and explains unavailable imported previous stages until explicitly changed",function()
+		local store=build.savers.AtlasPlans;local other=plan("other");other.version="3.29.3";store:Upsert(other)
+		for _,id in ipairs({"missing","other"}) do
+			local draft=plan("imported");draft.progression={stage="final",previousId=id};local saved
+			require("Classes.AtlasPlanningControl").Open(build,draft,function(value) saved=value end)
+			local c=main.popups[1].controls;assert.equal(id,c.previous:GetSelValueByKey("val"));assert.matches("unavailable",c.transition.list[1][1]);assert.is_false(c.copyRoute.enabled())
+			c.keep:Click();assert.equal(id,saved.progression.previousId)
+			require("Classes.AtlasPlanningControl").Open(build,saved,function(value) saved=value end);c=main.popups[1].controls
+			c.previous:SelByValue("","val");c.previous.selFunc();c.keep:Click();assert.is_nil(saved.progression.previousId)
+		end
+	end)
+	it("exports native planning data and reviews an imported bundle without changing the source",function()
+		build.savers.AtlasPlans:Upsert(plan("starter"))
+		build.savers.CraftingProjects:Upsert({id="hat",title="Hat",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat",goals={},steps={}})
+		local bundles=require("Modules.PlanningBundle");local revision=bridge.revision(build);local raw=bundles.export(build);local imported=bundles.import(raw)
+		assert.equal(1,imported.contents.atlas);assert.equal(1,imported.contents.crafts)
+		local prepared=bridge.prepareBundle(build,imported);assert.equal("new",prepared.mode);assert.is_nil(prepared.candidate.dbFileName);assert.equal(1,#prepared.candidate.savers.AtlasPlans.plans);assert.equal(revision,bridge.revision(build))
+		local json=require("dkjson");local tampered=json.decode(raw);tampered.xml=tampered.xml.." ";assert.is_false(pcall(bundles.import,json.encode(tampered)))
+	end)
+	it("orders Atlas transitions through valid intermediate trees and reports insufficient progression budgets",function()
+		local strategy=require("Modules.AtlasStrategy");local before=atlas.connect(plan("before"),{65225})
+		local target;for _,entry in ipairs(strategy.results(plan("after"),"","Essence")) do if entry.node.kind=="notable" then target=entry.id;break end end
+		local after=atlas.connect(plan("after"),{assert(target)});local transition=strategy.transition(before,after);assert.is_truthy(transition.steps)
+		local state=copyTable(before);state.budget=math.max(before.budget,after.budget)
+		for _,step in ipairs(transition.steps) do
+			if step.action=="Refund" then for index,id in ipairs(state.nodes) do if id==step.id then table.remove(state.nodes,index);break end end else state.nodes[#state.nodes+1]=step.id end
+			state=atlas.validate(state)
+		end
+		assert.same(after.nodes,state.nodes)
+		local empty=plan("empty");empty.budget=0;local bonus=copyTable(before);bonus.budget=0;atlas.validate(bonus)
+		assert.is_nil(strategy.transition(empty,bonus).steps)
+	end)
+	it("finds and verifies a temporary route to an Atlas point grant",function()
+		local strategy=require("Modules.AtlasStrategy");local start={id="start",title="Start",version="3.29.3",budget=138,nodes={}}
+		local shortest=atlas.connect(start,{65225});local goal=atlas.connect(start,{65225},{17321});goal.avoided=nil
+		start.budget=#shortest.nodes;goal.budget=start.budget;local reachable,_,_,proof=atlas.budgetReachability(goal);assert.is_true(reachable);assert.is_truthy(proof)
+		local result=strategy.transition(start,goal);assert.is_true(result.temporary);assert.is_truthy(result.steps)
+		local state=copyTable(start);local refunds=0
+		for _,step in ipairs(result.steps) do
+			if step.action=="Refund" then refunds=refunds+1;for index,id in ipairs(state.nodes) do if id==step.id then table.remove(state.nodes,index);break end end
+			else assert.is_true(atlas.report(state).remaining>0);state.nodes[#state.nodes+1]=step.id end
+			state=atlas.validate(state)
+		end
+		assert.is_true(refunds>0);assert.same(goal.nodes,state.nodes)
+	end)
+	it("does not present a transition from an impossible grant-funded starting plan",function()
+		local strategy=require("Modules.AtlasStrategy");local full=atlas.connect({id="grant-start",title="Grant start",version="3.29.3",budget=138,nodes={}},{65225})
+		local needed=#full.nodes;local impossible=copyTable(full);impossible.budget=needed-1
+		assert.is_false(atlas.budgetReachability(impossible))
+		local result=strategy.transition(impossible,impossible)
+		assert.is_false(result.startingReachable);assert.equal("unreachable",result.startingStatus);assert.is_nil(result.steps)
+		assert.matches("Starting plan cannot be reached",table.concat(result.lines," "))
+		assert.matches("Need "..needed.." earned points",table.concat(result.lines," "))
+		build.savers.AtlasPlans.plans={copyTable(impossible)}
+		local draft=copyTable(impossible);draft.id="next-stage";draft.progression={stage="final",previousId=impossible.id}
+		require("Classes.AtlasPlanningControl").Open(build,draft,function() end)
+		local lines={};for _,row in ipairs(main.popups[1].controls.transition.list) do lines[#lines+1]=StripEscapes(row[1]) end
+		assert.matches("Starting plan cannot be reached",table.concat(lines," "));main:ClosePopup()
+		local earned=copyTable(impossible);earned.budget=needed
+		local afterEarning=strategy.transition(impossible,earned)
+		assert.is_true(afterEarning.startingReachable);assert.equal("reachable",afterEarning.startingStatus);assert.equal(0,#afterEarning.steps)
+		local alternate=atlas.connect({id="alternate",title="Alternate",version="3.29.3",budget=138,nodes={}},{65225},{17321})
+		alternate.avoided=nil;alternate.budget=needed;local reachable,_,_,proof=atlas.budgetReachability(alternate);assert.is_true(reachable);assert.is_truthy(proof)
+		local verified=strategy.transition(alternate,alternate)
+		assert.is_true(verified.startingReachable);assert.equal("reachable",verified.startingStatus);assert.equal(0,#verified.steps)
+	end)
+	it("allows Atlas stage transitions to change saved node preferences",function()
+		local strategy=require("Modules.AtlasStrategy")
+		local before=plan("before-preferences")
+		local tree=atlas.tree(before.version)
+		local target=tree.nodes[tree.start].links[1]
+		before.avoided={target}
+		local after=atlas.connect(plan("after-preferences"),{target})
+		local original=copyTable(before)
+		local transition=strategy.transition(before,after)
+		assert.is_truthy(transition.steps)
+		assert.equal(1,#transition.steps)
+		assert.equal("Allocate",transition.steps[1].action)
+		assert.equal(target,transition.steps[1].id)
+		assert.same(original,before)
+	end)
+	it("creates stress presets from explicit active inputs without mutating them",function()
+		local encounter=require("Modules.CalcEncounter");local source={enemyPhysicalDamage="1000",recoverySimulationWindow=4}
+		local input=encounter.preset(source,{},encounter.presets[7]);assert.equal(200,input.recoverySimulationPhysicalDot);assert.equal(30,input.recoverySimulationWindow);assert.equal(4,source.recoverySimulationWindow);assert.is_nil(source.recoverySimulationPhysicalDot)
+		input=encounter.preset(source,{},encounter.presets[8]);assert.is_true(input.recoverySimulationAttacking);assert.equal("500",input.enemyPhysicalDamage)
+	end)
+end)

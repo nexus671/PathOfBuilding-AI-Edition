@@ -152,12 +152,14 @@ Effective DPS: Curses and enemy properties (such as resistances and status condi
 	-- Add sections from the CalcSections module
 	local sectionData = LoadModule("Modules/CalcSections")
 	for _, section in ipairs(sectionData) do
+		if self.build.planningCheckpoint then self.build.planningCheckpoint() end
 		self:NewSection(unpack(section))
 	end
 
 	self.controls.breakdown = new("CalcBreakdownControl"):CalcBreakdownControl(self)
 
 	self.controls.scrollBar = new("ScrollBarControl"):ScrollBarControl({"TOPRIGHT",self,"TOPRIGHT"}, {0, 0, 18, 0}, 50, "VERTICAL", true)
+	self.controls.scrollBarH = new("ScrollBarControl"):ScrollBarControl({"BOTTOMLEFT",self,"BOTTOMLEFT"}, {0, 0, 0, 14}, self.colWidth, "HORIZONTAL", true)
 	self.powerBuilderInitialized = nil
 	return self
 end
@@ -235,7 +237,12 @@ function CalcsTabClass:Draw(viewPort, inputEvents)
 	local baseX = viewPort.x + 4
 	local baseY = viewPort.y + 30
 	local maxCol = m_floor(viewPort.width / (self.colWidth + 8))
-	if main.portraitMode then maxCol = 3 end
+	local compactScroll = maxCol < 4
+	if main.portraitMode then maxCol = 3 elseif compactScroll then maxCol = 4 end
+	local horizontal = self.controls.scrollBarH
+	horizontal.width = m_max(1, viewPort.width - 18)
+	horizontal:SetContentDimension(compactScroll and ((main.portraitMode and 3 or 4) * (self.colWidth + 8)) or horizontal.width, horizontal.width)
+	self.controls.search.width = compactScroll and m_max(80, m_min(260, viewPort.width - 160)) or 260
 	local colY = { }
 	local maxY = 0
 	for _, section in ipairs(self.sectionList) do
@@ -308,14 +315,19 @@ function CalcsTabClass:Draw(viewPort, inputEvents)
 			end
 		end
 	end
-	self.controls.scrollBar.height = viewPort.height
-	self.controls.scrollBar:SetContentDimension(maxY - (baseY - 26), viewPort.height)
+	local contentHeight = viewPort.height - (horizontal.enabled and 14 or 0)
+	self.controls.scrollBar.height = contentHeight
+	self.controls.scrollBar:SetContentDimension(maxY - (baseY - 26), contentHeight)
 	if self.focusRecoverySimulation then
 		for _,section in ipairs(self.sectionList) do
 			for i,subSection in ipairs(section.subSection) do
 				if subSection.label == "Recovery over Time" then
 					subSection.collapsed = false
-					self.controls.scrollBar.offset = m_min(m_max(0,maxY-viewPort.y-viewPort.height),m_max(0,section.y+section.controls["toggle"..i].y-viewPort.y-40))
+					self.controls.scrollBar:SetOffset(m_max(0, section.y + section.controls["toggle"..i].y - viewPort.y - 40))
+					if horizontal.enabled then
+						if section.width > horizontal.viewDim then horizontal:SetOffset(section.x - viewPort.x)
+						else horizontal:ScrollIntoView(section.x - viewPort.x, section.width) end
+					end
 				end
 			end
 		end
@@ -324,6 +336,8 @@ function CalcsTabClass:Draw(viewPort, inputEvents)
 	for _, section in ipairs(self.sectionList) do
 		if not section.isOverlay then
 			-- Give sections their actual Y position and let them update
+			section.mouseClipRect = horizontal.enabled and { viewPort.x, viewPort.y, viewPort.width - 18, contentHeight } or nil
+			section.x = section.x - horizontal.offset
 			section.y = section.y - self.controls.scrollBar.offset
 			section:UpdatePos()
 		end
@@ -481,10 +495,17 @@ function CalcsTabClass:BuildOutput(deferRecovery)
 		node.finalModList = node.modList
 	end
 
+	local perf = require("Modules.PlanningPerformance")
+	local passStart = os.clock()
 	self.mainEnv = self.calcs.buildOutput(self.build, "MAIN", deferRecovery)
+	perf.record(self.build, "Main calculation", os.clock() - passStart)
 	self.mainOutput = self.mainEnv.player.output
+	if self.build.planningCheckpoint then self.build.planningCheckpoint("Calculate detailed stats") end
+	passStart = os.clock()
 	self.calcsEnv = self.calcs.buildOutput(self.build, "CALCS", deferRecovery)
+	perf.record(self.build, "Detailed calculation", os.clock() - passStart)
 	self.calcsOutput = self.calcsEnv.player.output
+	if self.build.planningCheckpoint then self.build.planningCheckpoint("Prepare comparison calculator") end
 
 	if deferRecovery and self.build.configTab.input.simulateRecovery then
 		require("Modules.RecoveryTasks").start(self, { self.mainEnv, self.calcsEnv })
@@ -496,7 +517,9 @@ function CalcsTabClass:BuildOutput(deferRecovery)
 	end
 	
 	-- Retrieve calculator functions
+	passStart = os.clock()
 	local miscCalcFunc, miscCalcBase = self.calcs.getMiscCalculator(self.build)
+	perf.record(self.build, "Comparison setup", os.clock() - passStart)
 	self.miscCalculator = { miscCalcFunc, miscCalcBase }
 end
 
@@ -508,9 +531,17 @@ function CalcsTabClass:BuildPower()
 		self.powerBuilder = coroutine.create(self.PowerBuilder)
 	end
 	if self.powerBuilder then
+		local sliceStart=os.clock()
 		local res, errMsg = coroutine.resume(self.powerBuilder, self)
-		if launch.devMode and not res then
-			error(errMsg)
+		require("Modules.PlanningPerformance").record(self.build,"Passive power slice",os.clock()-sliceStart)
+		if not res then
+			self.powerBuilder = nil
+			self.powerMax = nil
+			for _,node in pairs(self.build.spec.nodes) do if node.power then wipeTable(node.power) end end
+			for _,node in pairs(self.build.spec.tree.clusterNodeMap) do if node.power then wipeTable(node.power) end end
+			if self.build.powerBuilderCallback then self.build.powerBuilderCallback(errMsg or "Unknown error") end
+			if launch.devMode then error(errMsg) end
+			return
 		end
 		if coroutine.status(self.powerBuilder) == "dead" then
 			self.powerBuilder = nil
@@ -524,7 +555,7 @@ end
 -- Estimate the offensive and defensive power of all unallocated nodes
 function CalcsTabClass:PowerBuilder()
 	-- local timer_start = GetTime()
-	local useFullDPS = self.powerStat and self.powerStat.stat == "FullDPS"
+	local useFullDPS = self.powerStat ~= nil and self.powerStat.stat == "FullDPS"
 	local calcFunc, calcBase = self:GetMiscCalculator()
 	local cache = { }
 	local distanceMap = { }
@@ -775,6 +806,7 @@ end
 function CalcsTabClass:CalculatePowerStat(selection, original, modified)
 	local originalValue = data.powerStatList.GetFromOutput(original, selection)
 	local modifiedValue = data.powerStatList.GetFromOutput(modified, selection)
+	if originalValue == modifiedValue then return 0 end
 	return originalValue - modifiedValue
 end
 

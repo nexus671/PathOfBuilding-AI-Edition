@@ -1,4 +1,68 @@
-# How to release Path of Building Community
+# Releasing Path of Building AI Edition
+<!-- cspell:ignore Lupa -->
+
+AI Edition is developed on `dev`; `main` is the published branch. Validate the
+exact commit and updater manifest before moving a published branch or creating a
+release. A green check on `dev` does not itself publish a release.
+
+A fork-owned portable ZIP can be prepared without installing it:
+
+1. Check out the exact committed `dev` or `main` revision and verify its tests.
+2. Run `python tools/build_portable_package.py <new-output.zip>`. The command
+   requires a clean tracked checkout, verifies each manifest file, and refuses
+   to replace an existing output. It excludes local builds and settings.
+3. Compare the archive with that commit's tracked manifest and expected branch:
+
+   ```powershell
+   python tools/check_portable_package.py <new-output.zip> --expected-commit <full-commit-id> --expected-branch dev
+   ```
+
+   Use `main` when appropriate, then inspect the extracted app before publishing.
+   Without the commit option, the check verifies internal consistency but not
+   source identity. The ZIP records its commit and update branch in
+   `PACKAGE-INFO.txt`; the extracted application stores its own builds and
+   settings beside the program.
+
+On Windows, extract the verified ZIP into a new, empty folder and run:
+
+```powershell
+python tools/smoke_portable_windows.py <fresh-extraction-folder>
+```
+
+The smoke check starts the packaged application hidden, waits for a responsive
+build window, closes it normally, and verifies that settings and a Builds folder
+were created inside the extraction. It refuses an extraction with existing user
+data. Run this against the exact release candidate; it checks startup and local
+data isolation, not every feature or the updater's network behaviour.
+
+To qualify the scheduled economy worker, use a fresh extraction and a supported
+fixed baseline located outside the extraction. This optional check requires
+Python's Lupa with LuaJIT and contacts the configured market source.
+
+```powershell
+python tools/smoke_portable_windows.py <fresh-extraction-folder> --loot-filter <fixed-baseline.filter> --league Covens
+```
+
+It runs one real refresh against a copy, reports the verified feed ages and
+protected checks, and compares the filter, baseline, profile, and review after a
+same-day run. It leaves the evidence inside the extraction. The default minimum
+is 600 protected checks for the tiered test baseline. Pass `--protected-checks`
+with the expected minimum for a different supported baseline. Run the check
+during the same local calendar day and load the approved filter in the PoE
+client separately.
+
+This produces a portable package, not an installer or a published release.
+A fork-owned release process still requires separate verification. The tool does
+not sign files or upload a release.
+
+The release and installer workflows below are inherited from Community Edition.
+The installer workflow uses the Community project's private installer and is
+guarded against running on this fork. AI Edition does not yet have a verified
+fork-owned installer or a documented 1.0 release procedure. Do not use the
+inherited workflow to create AI Edition installer assets. The upstream notes
+below are retained for data-maintenance reference, not fork release steps.
+
+## Community Edition reference
 
 ## Prerequisites
 

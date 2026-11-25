@@ -8,6 +8,8 @@ local calcs = require("Modules.CalcBase")
 local timeCalcs = require("Modules.CalcTime")
 local encounter = require("Modules.CalcEncounter")
 
+local regenerationConversions = { { "LightRadius", "LifeRegen", "LightRadiusAppliesToLifeRegen" }, { "ManaRegen", "EnergyShieldRecharge", "ManaRegenAppliesToEnergyShieldRecharge" } }
+
 local pairs = pairs
 local ipairs = ipairs
 local t_insert = table.insert
@@ -822,6 +824,18 @@ function calcs.defence(env, actor)
 		output.DamageTakenOnBlock = 100 - output.BlockEffect
 	end
 
+	-- Apply Light Radius increases to Life Regeneration, and Mana Regeneration increases to ES Recharge, at the stated percentage.
+	for _, conversion in ipairs(regenerationConversions) do
+		local multiplier = (modDB:Max(nil, conversion[3]) or 0) / 100
+		if multiplier ~= 0 then
+			for _, value in ipairs(modDB:Tabulate("INC", nil, conversion[1])) do
+				local mod = value.mod
+				local modifiers = calcLib.getConvertedModTags(mod, multiplier)
+				modDB:NewMod(conversion[2], "INC", m_floor(mod.value * multiplier), mod.source, mod.flags, mod.keywordFlags, unpack(modifiers))
+			end
+		end
+	end
+
 	if modDB:Flag(nil, "ArmourAppliesToEnergyShieldRecharge") then
 		-- Armour to ES Recharge conversion from Armour and Energy Shield Mastery
 		local multiplier = (modDB:Max(nil, "ImprovedArmourAppliesToEnergyShieldRecharge") or 100) / 100
@@ -1095,7 +1109,7 @@ function calcs.defence(env, actor)
 			end
 		end
 		output.EnergyShield = modDB:Override(nil, "EnergyShield") or m_max(round(energyShield), 0)
-		output.Armour = m_max(round(armour), 0)
+		output.Armour = modDB:Override(nil, "Armour") or m_max(round(armour), 0)
 		output.Evasion = m_max(round(evasion), 0)
 		output.MeleeEvasion = m_max(round(evasion * calcLib.mod(modDB, nil, "MeleeEvasion")), 0)
 		output.ProjectileEvasion = m_max(round(evasion * calcLib.mod(modDB, nil, "ProjectileEvasion")), 0)
@@ -1240,6 +1254,14 @@ function calcs.defence(env, actor)
 			"Total: "..output.SpellDodgeChance+output.SpellDodgeChanceOverCap.."%",
 		}
 	end
+
+	-- Use the non-flask Petrified Blood recovery ceiling only as a default for this modifier.
+	local missingLife = 0
+	if modDB:GetCondition("AffectedByPetrifiedBlood") and output.LifeUnreserved > 0 then
+		local currentLife = m_min(output.LifeUnreserved, output.Life * output.LowLifePercentage / 100)
+		missingLife = 100 * (output.LifeUnreserved - currentLife) / output.LifeUnreserved
+	end
+	output.MissingUnreservedLifePercent = modDB:Override(nil, "MissingUnreservedLifePercent") or missingLife
 
 	-- Recovery modifiers
 	output.LifeRecoveryRateMod = 1
@@ -1453,7 +1475,9 @@ function calcs.defence(env, actor)
 			end
 		end
 		for _, recoupType in ipairs(recoupTypeList) do
-			if recoupType == "Life" and modDB:Flag(nil, "EnergyShieldRecoupInsteadOfLife") then
+			if recoupType == "Life" and modDB:Flag(nil, "CannotRecoupLife") then
+				output.LifeRecoup = 0
+			elseif recoupType == "Life" and modDB:Flag(nil, "EnergyShieldRecoupInsteadOfLife") then
 				output.LifeRecoup = 0
 				local lifeRecoup = modDB:Sum("BASE", nil, "LifeRecoup")
 				modDB:NewMod("EnergyShieldRecoup", "BASE", lifeRecoup, "Life Recoup Conversion")
@@ -1490,7 +1514,9 @@ function calcs.defence(env, actor)
 			for _, damageType in ipairs(dmgTypeList) do
 				local recoup = modDB:Sum("BASE", nil, damageType..recoupType.."Recoup")
 				local recoupName = damageType..recoupType.."Recoup"
-				if recoupType == "Life" and modDB:Flag(nil, "EnergyShieldRecoupInsteadOfLife") then
+				if recoupType == "Life" and modDB:Flag(nil, "CannotRecoupLife") then
+					output[recoupName] = 0
+				elseif recoupType == "Life" and modDB:Flag(nil, "EnergyShieldRecoupInsteadOfLife") then
 					output[recoupName] = 0
 					modDB:NewMod(damageType.."EnergyShieldRecoup", "BASE", recoup, "Life Recoup Conversion")
 				else
@@ -1895,9 +1921,11 @@ function calcs.buildDefenceEstimations(env, actor)
 			local dotDestinationTotal = 0
 			for _, destType in ipairs(dmgTypeList) do
 				if destType ~= damageType then
-					dotShiftTable[destType] = modDB:Sum("BASE", nil, damageType.."DamageTakenAs"..destType, isElemental[damageType] and "ElementalDamageTakenAs"..destType or nil)
+					-- Allow Physical DoT taken as Chaos without also converting damage from hits.
+					local takenAs = modDB:Sum("BASE", nil, damageType.."DamageTakenAs"..destType, isElemental[damageType] and "ElementalDamageTakenAs"..destType or nil)
+					dotShiftTable[destType] = takenAs + modDB:Sum("BASE", nil, damageType.."DamageTakenOverTimeAs"..destType, isElemental[damageType] and "ElementalDamageTakenOverTimeAs"..destType or nil)
 					dotDestinationTotal = dotDestinationTotal + dotShiftTable[destType]
-					shiftTable[destType] = dotShiftTable[destType] + modDB:Sum("BASE", nil, damageType.."DamageFromHitsTakenAs"..destType, isElemental[damageType] and "ElementalDamageFromHitsTakenAs"..destType or nil)
+					shiftTable[destType] = takenAs + modDB:Sum("BASE", nil, damageType.."DamageFromHitsTakenAs"..destType, isElemental[damageType] and "ElementalDamageFromHitsTakenAs"..destType or nil)
 					destTotal = destTotal + shiftTable[destType]
 				end
 			end
@@ -4116,6 +4144,8 @@ function calcs.recoveryOverTime(env, actor)
 				local ok, projected = xpcall(function()
 					local projection = calcs.initEnv(build, env.mode == "CALCS" and "CALCS" or "CALCULATOR", env.override, { noBreakdown = true })
 					projection.recoveryProjection = true
+					projection.recoveryCheckpoint = env.recoveryCheckpoint
+					if projection.recoveryCheckpoint then projection.recoveryCheckpoint() end
 					projection.recoveryGuardSuppressed = not guardActive
 					projection.recoveryManualFlasks = true
 					projection.recoveryCrabBarriers = crabCount
@@ -4237,11 +4267,17 @@ function calcs.recoveryOverTime(env, actor)
 		end
 		for i,item in ipairs(flaskList) do
 			local d = item.flaskData
+			local noGainDuringEffect = false
+			for _,lines in ipairs({item.enchantModLines or { }, item.explicitModLines or { }}) do
+				for _,line in ipairs(lines) do
+					if (line.line or ""):lower():match("^%s*gains no charges during effect%s*$") then noGainDuringEffect = true end
+				end
+			end
 			local recovery = item.base.flask.life and "Life" or item.base.flask.mana and "Mana" or "Utility"
 			local generation, gain = chargeRates(item)
 			local duration = d.duration * (1 + mods:Sum("INC", nil, "FlaskDuration") / 100)
 			local config = { charges=d.chargesMax, used=encounter.chargesUsed(item.base.flask.chargesUsed,d.chargesUsedInc or 0,mods:Sum("INC", nil, "FlaskChargesUsed")),
-				duration=duration, generation=generation,gain=gain,freeChance=mods:Sum("BASE",nil,"FlaskChanceNotConsumeCharges") }
+				duration=duration, generation=generation,gain=gain,freeChance=mods:Sum("BASE",nil,"FlaskChanceNotConsumeCharges"),noGainDuringEffect=noGainDuringEffect and recovery=="Utility" }
 			flaskBanks[i] = encounter.charges(config,timeCalcs.random(encounter.seed(seed,0,10+i)))
 			config.bank = flaskBanks[i]
 			if recovery == "Utility" then flaskSchedules[i] = timeCalcs.flask(config)
@@ -4680,7 +4716,7 @@ function calcs.recoveryOverTime(env, actor)
 			"Includes recoup and physical-prevention regeneration cohorts, delayed Life loss, ordinary ES recharge and Ghost Shroud charges/recovery.",
 			dissolution and "Dissolution: actual Life and reservation are separate. Two seconds without damage to Life clears reservation; healing only restores actual Life. Delayed Life loss can kill without full reservation." or "Life/ES/Mana recovery is capped at the configured recoverable pools.",
 			env.configInput.recoverySimulationAttacking and "Outgoing hits pay costs, apply instant recovery and create leech instances with startup, expiry, rate caps and removal at full unless retained. Unaffordable attacks are skipped." or "Standing still: main-skill leech, gain on hit and skill costs are excluded.",
-			timedEffects and s_format("Flasks start with full charges; utility/enduring effects reuse at expiry. Other recovery flasks trigger below %.0f%% of recoverable pools after %.0fms (observed at most 50ms apart), end at full and can heal above PB's cap. Includes passive charges, local hit/critical charges and non-consumption; no kill charges.", env.configInput.recoverySimulationFlaskThreshold or 50, env.configInput.recoverySimulationFlaskReaction or 100) or "Selected flasks, Elusive, Crab Barriers and guard buffs stay at configured values; their expiry is excluded.",
+				timedEffects and s_format("Flasks start with full charges; utility/enduring effects reuse at expiry. Other recovery flasks trigger below %.0f%% of recoverable pools after %.0fms (observed at most 50ms apart), end at full and can heal above PB's cap. Includes passive charges, local hit/critical charges and non-consumption; Enkindling blocks charge gain during its effect. No kill charges.", env.configInput.recoverySimulationFlaskThreshold or 50, env.configInput.recoverySimulationFlaskReaction or 100) or "Selected flasks, Elusive, Crab Barriers and guard buffs stay at configured values; their expiry is excluded.",
 			timedEffects and "Crab Barriers regenerate every 0.5s, lose stacks on physical damage from hits, and respect Craiceann loss/protection/gain modifiers. Native mitigation and block bonuses are recalculated. Elusive decays; Nightblade can reapply it on outgoing critical hits." or "Temporary defense tracking is disabled.",
 			"Configured continuous damage uses current ES/bypass, EB and MoM routing, interrupts unprotected recharge, and accumulates Dissolution reservation. Damage-only inputs do not trigger hit recovery or Crab losses. Hit-derived enemy ailments are not inferred as permanent DoTs.",
 			"Ordinary Ward restoration, native Aegis refill delays and recharge protection are timed. Guard recasting, if enabled, is a paid manual-use policy; trigger thresholds are not simulated.",

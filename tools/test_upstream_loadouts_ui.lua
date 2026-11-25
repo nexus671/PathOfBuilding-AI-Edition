@@ -1,0 +1,11 @@
+local output=assert(arg[1]);arg={};dofile('HeadlessWrapper.lua');main.disableDevAutoSave=true
+local UI=require('Modules.HeadlessUI')
+for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
+ newBuild();main.popups={};build.savers.CraftingProjects:Upsert({id='loadout-craft',title='Saved craft',slot='Helmet',startingItem='Rarity: NORMAL\nIron Hat\nItem Level: 86',goals={},steps={}});local ui=UI.install({width=size[1],height=size[2]});ui:bind(build);build:OpenBuildSetManagePopup();ui:frame()
+ local manager=main.popups[1].controls[1];assert(manager and manager.controls.new,'Loadout manager missing');ui:frame():write(output..'/'..size[1]..'-loadouts-manage.json')
+ local x,y=manager.controls.new:GetPos();local w,h=manager.controls.new:GetSize();ui:clickAt(x+w/2,y+h/2);assert(main.popups[1].title=='New Loadout','New loadout dialog missing');ui:text('edit','Mapping');ui:frame():write(output..'/'..size[1]..'-loadouts-new.json');ui:click('save');assert(#build.loadoutsList==2 and build.loadoutsList[2].title=='Mapping','Loadout was not created')
+ manager=main.popups[1].controls[1];x,y=manager:GetPos();ui:clickAt(x+30,y+24);assert(manager.selIndex==2,"Second loadout was not selected");x,y=manager.controls.rename:GetPos();w,h=manager.controls.rename:GetSize();ui:clickAt(x+w/2,y+h/2);assert(main.popups[1].title=='Rename Loadout');ui:text('edit','Bossing');ui:click('save');assert(build.loadoutsList[2].title=='Bossing','Loadout was not renamed')
+ manager=main.popups[1].controls[1];x,y=manager:GetPos();ui:clickAt(x+30,y+24);assert(manager.selIndex==2,"Renamed loadout was not selected");x,y=manager.controls.copy:GetPos();w,h=manager.controls.copy:GetSize();ui:clickAt(x+w/2,y+h/2);assert(main.popups[1].title=='Copy Loadout');ui:text('edit','Variant');ui:click('save');assert(#build.loadoutsList==3,'Loadout was not copied')
+ local xml=build:SaveDB('Loadout integration test');ui:restore();main.popups={};loadBuildFromXML(xml,'Loadout integration test');assert(#build.loadoutsList==3 and build.loadoutsList[2].title=='Bossing' and build.loadoutsList[3].title=='Variant','Saved loadouts did not reopen');assert(build.savers.CraftingProjects.projects[1].title=='Saved craft','Loadout changes lost the saved craft')
+end
+print('UPSTREAM_LOADOUT_UI_OK')

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "commit": "4c0e73c9ecc700c4cfae4f76755fb74a8d954a10",
+  "source": "NeverSinkDev/NeverSink-Filter",
+  "license": "MIT",
+  "files": {
+    "0.filter": {
+      "sha256": "893aad3f6282ba40bfbe14c96cfa5c752efd9a2d9615760f57495ab9072caf62",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%200-SOFT.filter"
+    },
+    "1.filter": {
+      "sha256": "b6e81de56ab96f32d33242a66f7a3696cebfc2c8ce12eb9ee5bbfdcdcb19f64b",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%201-REGULAR.filter"
+    },
+    "2.filter": {
+      "sha256": "80704db30c85d97a756c06bed0597e42853007d904e5da77b90d5cfce1488297",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%202-SEMI-STRICT.filter"
+    },
+    "3.filter": {
+      "sha256": "edb695f5dad3ec74e0c6b7918c9aeac1f5be69ea1f8ecde5023d34989c52da1a",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%203-STRICT.filter"
+    },
+    "4.filter": {
+      "sha256": "227061f886a9a5a03a134954a77adc01c0cfce087b426fcdc829e6ad6dc329f0",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%204-VERY-STRICT.filter"
+    },
+    "5.filter": {
+      "sha256": "dd3cf22d721b1a956d1402e217683161543938f867e8f9c595517e8c796b940e",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%205-UBER-STRICT.filter"
+    },
+    "6.filter": {
+      "sha256": "84aa2090c10b5374144b98b42d55bf701c19abecb40fb75baebbc25c54da42bb",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%206-UBER-PLUS-STRICT.filter"
+    }
+  },
+  "nativePatch": "3.30"
+}

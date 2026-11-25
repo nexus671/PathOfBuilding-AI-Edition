@@ -14,6 +14,12 @@ jobs:
   release:
     runs-on: windows-latest
     steps:
+            - name: Check installer source
+              if: ${{ github.repository != 'PathOfBuildingCommunity/PathOfBuilding' }}
+              shell: pwsh
+              run: |
+                Write-Error 'This inherited workflow builds the Community installer, not AI Edition. Configure and verify a fork-owned installer before publishing one.'
+                exit 1
             - name: Checkout
               uses: actions/checkout@v3
               with:

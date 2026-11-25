@@ -1,0 +1,170 @@
+-- Run from src with a build XML path. The build is loaded in memory and never saved.
+local fixture = assert(arg[1], "Supply a build XML path")
+local cycles = tonumber(arg[2]) or 5
+assert(cycles >= 1 and cycles <= 20 and cycles == math.floor(cycles))
+local forcedRecovery = arg[3] == "deferred-recovery"
+local desktopRecovery = forcedRecovery or arg[3] == "desktop-recovery"
+assert(not arg[3] or desktopRecovery, "Third argument must be deferred-recovery or desktop-recovery")
+local warningProfile=arg[4]=="warning-profile"
+assert(not arg[4] or warningProfile, "Fourth argument must be warning-profile")
+arg = {}
+dofile("HeadlessWrapper.lua")
+main.disableDevAutoSave = true
+local file = assert(io.open(fixture, "rb"))
+local raw = file:read("*a")
+file:close()
+loadBuildFromXML(raw, "Read-only tree UI benchmark")
+assert(not main.popups[1], "The supplied build requires conversion")
+if forcedRecovery then
+	build.configTab.input.simulateRecovery = true
+	build.configTab.input.recoverySimulationTrials = 32
+	build.configTab.input.recoverySimulationWindow = 60
+end
+local bridge = require("Modules.DesktopBuildBridge")
+local revision = bridge.revision(build)
+local ui = require("Modules.HeadlessUI").install({width=1280,height=720,interactiveRecovery=desktopRecovery})
+local recoveryStarted=false
+local recoverySlices
+if desktopRecovery then
+	local tasks = require("Modules.RecoveryTasks")
+	local tick = tasks.tick
+	tasks.tick = function(tab, ...)
+		local active = tab.recoveryJob ~= nil
+		local start = os.clock()
+		local result = tick(tab, ...)
+		if active and recoverySlices then
+			local elapsed = (os.clock() - start) * 1000
+			recoverySlices.count = recoverySlices.count + 1
+			recoverySlices.totalMs = recoverySlices.totalMs + elapsed
+			recoverySlices.worstMs = math.max(recoverySlices.worstMs, elapsed)
+		end
+		return result
+	end
+	local buildOutput=build.calcsTab.BuildOutput
+	build.calcsTab.BuildOutput=function(self,...)
+		local result=buildOutput(self,...);recoveryStarted=recoveryStarted or self.recoveryJob~=nil;return result
+	end
+end
+build.viewMode = "TREE"
+ui:bind(build)
+local viewer = build.treeTab.viewer
+local originalDraw, viewport = viewer.Draw
+viewer.Draw = function(self, host, rect, events)
+	viewport = rect
+	return originalDraw(self, host, rect, events)
+end
+ui:frame()
+local selected
+for _, node in pairsSortByKey(build.spec.nodes) do
+	if not node.alloc and (node.type == "Normal" or node.type == "Notable") and not node.isMultipleChoiceOption
+		and not node.ascendancyName and node.path and #node.path == 1 and node.rsq
+		and not node.isProxy and node.group and not node.group.isProxy then
+		selected = node
+		break
+	end
+end
+assert(selected, "No visible adjacent small or notable passive found")
+viewer:Focus(selected.x, selected.y, viewport, build)
+ui:frame()
+local x, y = viewport.x + viewport.width / 2, viewport.y + viewport.height / 2
+local rows = {}
+local function finishRecovery()
+	if not desktopRecovery or not build.configTab.input.simulateRecovery then return nil end
+	local count, total, worst = 0, 0, 0
+	while build.calcsTab.recoveryJob do
+		assert(count < 10000, "Recovery worker did not complete")
+		local start = os.clock()
+		ui:frame()
+		local elapsed = (os.clock() - start) * 1000
+		count, total, worst = count + 1, total + elapsed, math.max(worst, elapsed)
+	end
+	for _, env in ipairs({ build.calcsTab.mainEnv, build.calcsTab.calcsEnv }) do
+		assert(not env.player.output.RecoverySimulationPending, "Recovery result is still pending")
+		assert(not env.player.output.RecoverySimulationUnsupported, "Recovery simulation failed or is unsupported")
+		assert(env.player.recoverySimulationResults, "Recovery worker completed without results")
+	end
+	return { frames=count, totalFrameMs=total, worstFrameMs=worst, workerSlices=recoverySlices }
+end
+-- Warning-only probes are measured separately from whole BuildOutput time.
+-- These timers add overhead and do not measure native rendering latency.
+local calcs=build.calcsTab.calcs
+local probeDepth,initTime,performTime,initCalls,performCalls=0,0,0,0,0
+if warningProfile then
+	local originalInit,originalPerform=calcs.initEnv,calcs.perform
+	calcs.initEnv=function(...)
+		local inside=probeDepth>0;local start=os.clock();local a,b,c,d=originalInit(...)
+		if inside then initTime=initTime+(os.clock()-start)*1000;initCalls=initCalls+1 end
+		return a,b,c,d
+	end
+	calcs.perform=function(...)
+		local inside=probeDepth>0;local start=os.clock();local a,b,c,d=originalPerform(...)
+		if inside then performTime=performTime+(os.clock()-start)*1000;performCalls=performCalls+1 end
+		return a,b,c,d
+	end
+end
+local originalProbe=calcs.buildActiveSkill
+local warningCalls,warningTime,warningWorst=0,0,0
+local warningSkills={}
+calcs.buildActiveSkill=function(env,mode,skill,uuid,flags,minimum,cache,warningOnly,...)
+	local start=os.clock()
+	if warningProfile and warningOnly then probeDepth=probeDepth+1 end
+	local output,activeSkill=originalProbe(env,mode,skill,uuid,flags,minimum,cache,warningOnly,...)
+	if warningProfile and warningOnly then probeDepth=probeDepth-1 end
+	if warningOnly then
+		local elapsed=(os.clock()-start)*1000;warningCalls=warningCalls+1;warningTime=warningTime+elapsed;warningWorst=math.max(warningWorst,elapsed)
+		if warningProfile then
+			local effect=skill and skill.activeEffect;local granted=effect and effect.grantedEffect
+			local name=granted and granted.name or "Unknown skill";local row=warningSkills[name] or {name=name,count=0,totalMs=0,worstMs=0}
+			row.count=row.count+1;row.totalMs=row.totalMs+elapsed;row.worstMs=math.max(row.worstMs,elapsed);warningSkills[name]=row
+		end
+	end
+	return output,activeSkill
+end
+local originalOutput=build.calcsTab.BuildOutput
+local outputTime,outputCalls=0,0
+build.calcsTab.BuildOutput=function(self,...) local start=os.clock();local result=originalOutput(self,...);outputTime=outputTime+(os.clock()-start)*1000;outputCalls=outputCalls+1;return result end
+for _ = 1, cycles do
+	local baselineTime,baselineCalls=outputTime,outputCalls
+	warningCalls,warningTime,warningWorst=0,0,0
+	warningSkills={}
+	initTime,performTime,initCalls,performCalls=0,0,0,0
+	recoveryStarted=false
+	recoverySlices={count=0,totalMs=0,worstMs=0}
+	local start = os.clock()
+	ui.cursorX, ui.cursorY = x, y
+	ui:frame()
+	local hovered = os.clock()
+	ui:dispatch(build, {{type="KeyDown",key="LEFTBUTTON"}})
+	local pressed = os.clock()
+	ui:dispatch(build, {{type="KeyUp",key="LEFTBUTTON"}})
+	local clicked = os.clock()
+	assert(selected.alloc, "Click did not allocate the intended passive")
+	ui:frame()
+	local updated = os.clock()
+	local measuredOutput,measuredCalls=outputTime-baselineTime,outputCalls-baselineCalls
+	local warning={count=warningCalls,totalMs=warningTime,worstMs=warningWorst}
+	if warningProfile then warning.initialization={calls=initCalls,inclusiveMs=initTime};warning.perform={calls=performCalls,inclusiveMs=performTime}
+		warning.skills={};for _,row in pairs(warningSkills) do warning.skills[#warning.skills+1]=copyTable(row) end
+		table.sort(warning.skills,function(a,b) if a.totalMs~=b.totalMs then return a.totalMs>b.totalMs end;return a.name<b.name end)
+	end
+	if desktopRecovery and build.configTab.input.simulateRecovery then assert(recoveryStarted, "Tree update did not start deferred recovery") end
+	local recovery = finishRecovery()
+	recoveryStarted=false
+	recoverySlices={count=0,totalMs=0,worstMs=0}
+	ui:clickAt(x,y)
+	assert(not selected.alloc, "Second click did not remove the passive")
+	ui:frame()
+	if desktopRecovery and build.configTab.input.simulateRecovery then assert(recoveryStarted, "Tree removal did not start deferred recovery") end
+	finishRecovery()
+	if warningProfile then
+		local count,total=0,0
+		for _,entry in ipairs(warning.skills) do count=count+entry.count;total=total+entry.totalMs end
+		assert(count==warning.count and math.abs(total-warning.totalMs)<0.001,"Warning skill timings changed after the measured frame")
+	end
+	rows[#rows+1] = { hoverMs=(hovered-start)*1000, pressMs=(pressed-hovered)*1000,
+		releaseMs=(clicked-pressed)*1000, updateFrameMs=(updated-clicked)*1000, buildOutputMs=measuredOutput, buildOutputCalls=measuredCalls, warningProbes=warning, recovery=recovery }
+end
+assert(bridge.revision(build) == revision, "The benchmark did not restore the build revision")
+print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,restored=true,
+	recoveryMode=forcedRecovery and "deferred" or desktopRecovery and "desktop with saved settings" or "build configuration",
+	limitations="Headless CPU timings include draw-command capture and profiling overhead; they do not measure native rendering or frame rate."}))

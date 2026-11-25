@@ -1,7 +1,9 @@
 -- Evidence and readable comparisons for native build candidates.
 local M = { }
+local friendlyMetrics={CombinedDPS="Combined DPS",FullDPS="Full skill DPS",FireResist="Fire resistance",ColdResist="Cold resistance",LightningResist="Lightning resistance",ChaosResist="Chaos resistance",Str="Strength",Dex="Dexterity",Int="Intelligence"}
 M.goals = { "balanced", "boss_damage", "mapping", "survival", "comfort" }
 M.labels = {CombinedDPS="Combined DPS",FullDPS="Full DPS",TotalEHP="EHP",LifeUnreserved="Unreserved Life",EnergyShield="Energy Shield",ManaUnreserved="Unreserved Mana",PhysicalMaximumHitTaken="Physical maximum hit",ChaosMaximumHitTaken="Chaos maximum hit",RecoverySimulationSurvivalChance="Encounter survival (%)",RecoverySimulationDamageDPS="Encounter DPS",RecoverySimulationAttackUptime="Affordable attack fraction",Speed="Skill speed",EffectiveMovementSpeedMod="Movement speed",ManaRegen="Mana regeneration"}
+for key,label in pairs(friendlyMetrics) do M.labels[key]=label end
 
 local function sortedKeys(t)
 	local keys = { }
@@ -26,7 +28,9 @@ function M.snapshot(build)
 		result.skills[#result.skills+1] = (group.label or "").." ["..(group.slot or "unassigned").."] "..table.concat(names," + ")..(group.enabled == false and " (disabled)" or "")..(group.includeInFullDPS and " [Full DPS]" or "").." main="..tostring(group.mainActiveSkill or 1)
 	end
 	result.mainGroup = build.mainSocketGroup
-	result.craftingProjects = copyTable(build.savers.CraftingProjects.projects)
+	result.craftingProjects = require("Modules.CraftingProjects").copy(build.savers.CraftingProjects.projects)
+	result.journey = build.savers.BuildJourney and copyTable(build.savers.BuildJourney.data)
+	result.lootFilters = copyTable(build.savers.LootFilters.data)
 	result.atlasPlans = copyTable(build.savers.AtlasPlans.plans)
 	for _,node in pairs(build.spec.nodes) do if node.alloc then result.passives[node.id] = (node.name or node.dn or node.type or "Passive")..(build.spec.masterySelections[node.id] and " (mastery "..build.spec.masterySelections[node.id]..")" or "") end end
 	return result
@@ -52,17 +56,144 @@ function M.changes(before, after)
 	for key in pairs(after.config) do config[key]=true end
 	for _,key in ipairs(sortedKeys(config)) do if before.config[key] ~= after.config[key] then add("Configuration "..key..": "..tostring(before.config[key]).." -> "..tostring(after.config[key])) end end
 	if before.notes ~= after.notes then add("Notes updated:"); for line in after.notes:gmatch("[^\n]+") do add("  "..line) end end
-	if not tableDeepEquals(before.craftingProjects,after.craftingProjects) then
+	if not tableDeepEquals(before.journey,after.journey) or not tableDeepEquals(after.journey,before.journey) then
+		add("Build journey updated; unchanged entries are omitted. Use build Save to persist.")
+		for _,line in ipairs(require("Modules.BuildJourney").review(before.journey,after.journey)) do add(line) end
+	end
+	if not tableDeepEquals(before.craftingProjects,after.craftingProjects) or not tableDeepEquals(after.craftingProjects,before.craftingProjects) then
 		add("Crafting projects updated (saved only with an explicit build Save)")
-		for _,project in ipairs(after.craftingProjects) do for _,line in ipairs(require("Modules.CraftingProjects").lines(project)) do add(line) end end
+		local originals,present={},{}
+		for _,project in ipairs(before.craftingProjects or {}) do originals[project.id]=project end
+		for _,project in ipairs(after.craftingProjects or {}) do
+			present[project.id]=true
+			local old=originals[project.id]
+			if not old or not tableDeepEquals(old,project) or not tableDeepEquals(project,old) then
+				add((old and "Updated" or "Added").." crafting project: "..project.title)
+				if old then for _,line in ipairs(require("Modules.CraftingProjects").reviewChanges(old,project)) do add("  "..line) end end
+				for _,line in ipairs(require("Modules.CraftingProjects").lines(project)) do add(line) end
+			end
+		end
+		for _,project in ipairs(before.craftingProjects or {}) do if not present[project.id] then
+			local linked=0;for _,entry in ipairs(after.journey and after.journey.wishlist or {}) do if entry.projectId==project.id then linked=linked+1 end end
+			local items=#(project.inventory or {})
+			add("Removed crafting project: "..project.title.." ["..project.id.."] | "..items.." saved inventory "..(items==1 and "item" or "items").." | "..linked.." linked gear "..(linked==1 and "goal remains" or "goals remain"))
+		end end
 	end
 	if not tableDeepEquals(before.atlasPlans,after.atlasPlans) then
 		add("Atlas plans updated (planning only; character stats are unchanged by Atlas nodes)")
+		local oldPlans,present={},{};for _,old in ipairs(before.atlasPlans or {}) do oldPlans[old.id]=old end
+		local atlas=require("Modules.AtlasPlanner");local json=require("dkjson")
+		local function same(a,b)
+			if type(a)=="table" and type(b)=="table" then return tableDeepEquals(a,b) and tableDeepEquals(b,a) end
+			return a==b
+		end
+		local function display(value) if value==nil then return "(not saved)" end;if type(value)=="table" then return json.encode(value) end;if value=="" then return "(empty)" end;return tostring(value) end
 		for _,plan in ipairs(after.atlasPlans or {}) do
-			local report=require("Modules.AtlasPlanner").report(plan)
-			add(plan.title.." ["..plan.version.."] "..report.used.." points; budget "..report.budget.." + "..report.bonus)
+			present[plan.id]=true;local old=oldPlans[plan.id]
+			if not old or not same(old,plan) then
+			add((old and "Updated" or "Added").." Atlas plan: "..plan.title.." ["..plan.id.."]")
+			if not old then
+				if plan.progression then add("  Progression: "..plan.progression.stage..(plan.progression.previousId and " (previous: "..plan.progression.previousId..")" or "")) end
+				for _,field in ipairs({"maps","scarabs","requirements","avoid","notes","setupCost"}) do local value=plan.strategy and plan.strategy[field];if value~=nil and value~="" then add("  Strategy "..field..": "..display(value)) end end
+				for _,field in ipairs({"desired","avoided"}) do if plan[field] then local names={};for _,id in ipairs(plan[field]) do names[#names+1]=atlas.tree(plan.version).nodes[id].name.." ["..id.."]" end;add("  "..field..": "..(#names>0 and table.concat(names,", ") or "None")) end end
+				for _,region in ipairs(plan.shapedRegions or {}) do local maps={};for _,map in ipairs(region.maps) do maps[#maps+1]=map.name.." ("..map.freeThreads.." free Threads)" end;add("  Shaped Region "..region.mechanic..": "..(#maps>0 and table.concat(maps,", ") or "no maps")) end
+				for _,draft in ipairs(plan.mapDrafts or {}) do
+					add("  Added map draft: "..draft.title.." ["..draft.id.."] | Tier "..draft.tier.." "..draft.rarity..(draft.corrupted and ", corrupted" or ""))
+					for field in pairsSortByKey(draft) do if field~="id" and field~="title" then add("    "..field..": "..display(draft[field])) end end
+				end
+			end
+			if old then
+				local comparison=old.version==plan.version and require("Modules.AtlasStrategy").compare(old,plan) or nil
+				if comparison then
+					add("  Atlas passives: "..#comparison.added.." added, "..#comparison.removed.." removed; "..#comparison.choiceChanges.." choice changes.")
+					if comparison.genesisChanges then add("  Genesis passives: "..#comparison.genesisChanges.added.." added, "..#comparison.genesisChanges.removed.." removed; point and refund rules remain unverified.") end
+				end
+				for _,field in ipairs({"title","budget","notes"}) do if not same(old[field],plan[field]) then add("  "..field..": "..display(old[field]).." -> "..display(plan[field])) end end
+				local function progression(value) return value and (value.stage..(value.previousId and " (previous: "..value.previousId..")" or "")) or "(not saved)" end
+				if not same(old.progression,plan.progression) then add("  Progression: "..progression(old.progression).." -> "..progression(plan.progression)) end
+				local function preferences(value,version)
+					if not value then return "(not saved)" end
+					local names={};local tree=atlas.tree(version);for _,id in ipairs(value) do names[#names+1]=tree.nodes[id].name.." ["..id.."]" end
+					return #names>0 and table.concat(names,", ") or "None"
+				end
+				for _,field in ipairs({"desired","avoided"}) do if not same(old[field],plan[field]) then add("  "..field..": "..preferences(old[field],old.version).." -> "..preferences(plan[field],plan.version)) end end
+				local function regions(value)
+					if not value then return "(not saved)" end
+					local result={};for _,region in ipairs(value) do local maps={};for _,map in ipairs(region.maps) do maps[#maps+1]=map.name.." ("..map.freeThreads.." free Threads)" end;result[#result+1]=region.mechanic..": "..(#maps>0 and table.concat(maps,", ") or "no maps") end
+					return #result>0 and table.concat(result,"; ") or "None"
+				end
+				if not same(old.shapedRegions,plan.shapedRegions) then add("  Shaped Regions: "..regions(old.shapedRegions).." -> "..regions(plan.shapedRegions)) end
+				if old.strategy and not plan.strategy then add("  Strategy section removed.") elseif not old.strategy and plan.strategy then add("  Strategy section added.") end
+				local strategyLabels={maps="Maps",scarabs="Supplies",requirements="Requirements",avoid="Avoid",notes="Notes",setupCost="Setup cost"}
+				for _,field in ipairs({"maps","scarabs","requirements","avoid","notes","setupCost"}) do
+					local prior=old.strategy and old.strategy[field];local current=plan.strategy and plan.strategy[field]
+					if prior=="" then prior=nil end;if current=="" then current=nil end
+					if not same(prior,current) then add("  Strategy "..strategyLabels[field]..": "..display(prior).." -> "..display(current)) end
+				end
+				local priorDrafts,nextDrafts={},{};for _,draft in ipairs(old.mapDrafts or {}) do priorDrafts[draft.id]=draft end;for _,draft in ipairs(plan.mapDrafts or {}) do nextDrafts[draft.id]=draft end
+				local oldOrder,newOrder={},{};for _,draft in ipairs(old.mapDrafts or {}) do if nextDrafts[draft.id] then oldOrder[#oldOrder+1]=draft.id end end;for _,draft in ipairs(plan.mapDrafts or {}) do if priorDrafts[draft.id] then newOrder[#newOrder+1]=draft.id end end
+				if table.concat(oldOrder,"\0")~=table.concat(newOrder,"\0") then add("  Reordered map drafts: "..table.concat(oldOrder,", ").." -> "..table.concat(newOrder,", ")) end
+				local function draftLabel(draft) return draft.title.." ["..draft.id.."] | Tier "..draft.tier.." "..draft.rarity..(draft.corrupted and ", corrupted" or "") end
+				local function draftFields(prior,current)
+					local fields={};for field in pairs(current) do if field~="id" and field~="title" then fields[field]=true end end
+					if prior then for field in pairs(prior) do if field~="id" and field~="title" then fields[field]=true end end end
+					for field in pairsSortByKey(fields) do
+						if not prior then add("    "..field..": "..display(current[field]))
+						elseif not same(prior[field],current[field]) then add("    "..field..": "..display(prior[field]).." -> "..display(current[field])) end
+					end
+				end
+				for _,draft in ipairs(plan.mapDrafts or {}) do local prior=priorDrafts[draft.id]
+					if not prior then add("  Added map draft: "..draftLabel(draft));draftFields(nil,draft)
+					elseif not same(prior,draft) then add("  Updated map draft: "..draftLabel(draft));if prior.title~=draft.title then add("    Name: "..prior.title.." -> "..draft.title) end;draftFields(prior,draft) end
+				end
+				for _,draft in ipairs(old.mapDrafts or {}) do if not nextDrafts[draft.id] then add("  Removed map draft: "..draftLabel(draft)) end end
+				if comparison then
+					if #comparison.modifierChanges>0 then
+						add("  Additive modifier changes are before interactions, not effective map chances.")
+						for _,change in ipairs(comparison.modifierChanges) do add(string.format("    %+g%% | %s",change.delta,change.text)) end
+					end
+					local previouslyAllocated={};for _,id in ipairs(old.nodes) do previouslyAllocated[id]=true end
+					for _,choice in ipairs(comparison.choiceChanges) do
+						local node=atlas.tree(plan.version).nodes[choice.id]
+						local beforeEffect=choice.previousEffect and table.concat(atlas.nodeStats(old,node)," ") or previouslyAllocated[choice.id] and "(not selected)" or "(not allocated)"
+						local afterEffect=choice.effect and table.concat(choice.stats," ") or "(not selected)"
+						add("  Choice "..choice.name.." ["..choice.id.."]: "..beforeEffect.." -> "..afterEffect)
+					end
+					local genesis=comparison.genesisChanges
+					if genesis then
+						if not genesis.beforePresent or not genesis.afterPresent then add("  A Genesis section is absent; in-game allocations are unknown.") end
+						for _,node in ipairs(genesis.added) do add("  Added Genesis passive: "..node.branch.." / "..node.name.." ["..node.id.."]") end
+						for _,node in ipairs(genesis.removed) do add("  Removed Genesis passive: "..node.branch.." / "..node.name.." ["..node.id.."]") end
+					end
+					for _,node in ipairs(comparison.added) do add("  Added Atlas passive: "..node.name.." ["..node.id.."]") end
+					for _,node in ipairs(comparison.removed) do add("  Removed Atlas passive: "..node.name.." ["..node.id.."]") end
+				else add("  Atlas version: "..old.version.." -> "..plan.version.."; passive IDs are not compared across versions.") end
+			end
+			local report=atlas.report(plan)
+			add(plan.title.." ["..require("Modules.AtlasPlanner").versionLabel(plan.version).."] "..report.used.." points; budget "..report.budget.." + "..report.bonus)
 			for _,id in ipairs(plan.nodes) do add("  #"..id.." "..require("Modules.AtlasPlanner").tree(plan.version).nodes[id].name) end
+			if plan.genesis then
+				local genesis=require("Modules.GenesisPlanner");local graph=genesis.tree();local summary=genesis.report(plan.genesis)
+				add("  Genesis ["..plan.genesis.version.."] "..#plan.genesis.nodes.." selected nodes; allocation rules need game verification")
+				local equipment=summary.counts[22476]
+				if equipment.allocated>0 then add("  Equipment Genesis: "..equipment.allocated.." selected passives; the 3.29 notes list a maximum of "..equipment.publishedMaximum.." points. Womb and choice costs need verification.") end
+				for _,id in ipairs(plan.genesis.nodes) do local node=graph.nodes[id];add("    "..genesis.roots[node.root]..": "..node.name.." | "..table.concat(node.stats," ")) end
+				if #summary.missingChoices>0 then add("  Genesis choices not selected: "..#summary.missingChoices) end
+			elseif oldPlans[plan.id] and oldPlans[plan.id].genesis then add("  Genesis allocations removed") end
+			for _,choice in ipairs(plan.choices or {}) do
+				local planner=require("Modules.AtlasPlanner");local node=planner.tree(plan.version).nodes[choice.node]
+				add("  Selected effect: "..node.name.." | "..table.concat(planner.nodeStats(plan,node)," "))
+			end
+			for _,missing in ipairs(report.missingChoices) do add("  Effect not selected: "..missing.name.." ["..missing.id.."]") end
 			if plan.notes ~= "" then add("  "..plan.notes) end
+			end
+		end
+		for _,old in ipairs(before.atlasPlans or {}) do if not present[old.id] then add("Removed Atlas plan: "..old.title.." ["..old.id.."]") end end
+	end
+	if not tableDeepEquals(before.lootFilters,after.lootFilters) then
+		add("Loot filters updated; export and build Save remain explicit.")
+		for _,entry in ipairs(require("Modules.LootFilterEditing").review(before.lootFilters,after.lootFilters)) do
+			add(entry.label);for _,detail in ipairs(entry.details) do add("  "..detail) end
 		end
 	end
 	if #lines == 0 then add("No character, equipment, gem, passive, configuration, Atlas plan or notes changes.") end
@@ -75,6 +206,8 @@ function M.audit(build)
 	local result = {assumptions={},dependencies={},nativeWarnings=copyTable(build.controls.warnings.lines)}
 	local function assumption(key,message) result.assumptions[#result.assumptions+1] = {key=key,text=message} end
 	local function dependency(key,message) result.dependencies[#result.dependencies+1] = {key=key,text=message} end
+	if treeVersions[build.spec.treeVersion].preview then assumption("previewTree","3.30 preview tree. Items, gems and new mechanics may not yet be modeled; verify unsupported modifiers before relying on these calculations.") end
+	if treeVersions[build.spec.treeVersion].num==3.30 and not treeVersions[build.spec.treeVersion].preview then assumption("patchData","3.30 trees are available; gem, item and new mechanic support is still being updated. Review unsupported modifiers.") end
 	assumption("enemyIsBoss","Enemy preset: "..tostring(c.enemyIsBoss or "None")..". Match the encounter you intend to test.")
 	for _,key in ipairs(sortedKeys(c)) do
 		if c[key] == true and (key:match("^condition") or key:match("^use.*Charges")) then assumption(key,"Enabled condition: "..key..". Check its source and uptime.") end
@@ -163,6 +296,29 @@ function M.diagnose(build)
 		end
 	end
 	return result
+end
+
+function M.explain(prepared)
+	local lines={"Measured result for the complete proposal", "These are paired native calculation outputs. Individual changes have not been isolated."}
+	for _,key in ipairs({"TotalEHP","PhysicalMaximumHitTaken","ChaosMaximumHitTaken","RecoverySimulationSurvivalChance","RecoverySimulationTime","RecoverySimulationDamageDPS"}) do
+		local a,b=prepared.before[key],prepared.after[key]
+		if a and b then lines[#lines+1]=string.format("%s: %.2f -> %.2f (%+.2f)",M.labels[key] or key,a,b,b-a) end
+	end
+	local before=prepared.base.calcsTab.calcsOutput;local after=prepared.candidate.calcsTab.calcsOutput
+	local groups={
+		{"Pools and mitigation",{"LifeUnreserved","EnergyShield","ManaUnreserved","Armour","Evasion","PhysicalDamageReduction","FireResist","ColdResist","LightningResist","ChaosResist"}},
+		{"Avoidance and block",{"EvadeChance","BlockChance","SpellBlockChance","SpellSuppressionChance","AttackDodgeChance","SpellDodgeChance","AvoidAllDamageFromHitsChance"}},
+		{"Recovery",{"LifeRegen","EnergyShieldRegen","ManaRegen","EnergyShieldRecharge","EnergyShieldRechargeDelay","MaxLifeLeechRate","MaxEnergyShieldLeechRate","LifeOnBlock","EnergyShieldOnBlock","ManaOnBlock"}},
+	}
+	for _,group in ipairs(groups) do
+		lines[#lines+1]="";lines[#lines+1]=group[1];local count=0
+		for _,key in ipairs(group[2]) do local a,b=before[key],after[key];if type(a)=="number" and type(b)=="number" and math.abs(a-b)>0.00001 then lines[#lines+1]=string.format("%s: %.2f -> %.2f (%+.2f)",M.labels[key] or key:gsub("(%l)(%u)","%1 %2"),a,b,b-a);count=count+1 end end
+		if count==0 then lines[#lines+1]="No changed outputs recorded in this group." end
+	end
+	lines[#lines+1]="";lines[#lines+1]="Static EHP and timed survival measure different things. Recharge needs an uninterrupted window; recovery only helps if the character survives until it applies."
+	if prepared.evaluation and prepared.evaluation.configurationChanged then lines[#lines+1]="Encounter or configuration settings changed. Compare under matching settings before attributing the result to equipment or passives." end
+	lines[#lines+1]="Use the encounter chart and native Calcs breakdowns to inspect event order and individual formulas."
+	return lines
 end
 
 return M

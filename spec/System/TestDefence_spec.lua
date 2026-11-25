@@ -3,8 +3,145 @@ describe("TestDefence", function()
 		newBuild()
 	end)
 
+	it("omits zero-base gear from defensive breakdown tables", function()
+		local control = build.calcsTab.controls.breakdown
+		local actor = { breakdown = { Test = { slots = {
+			{ item = { armourData = {}, rarity = "RARE", name = "Test Armour" }, base = 0, source = "Body Armour" },
+		} } } }
+		control.GetActor = function() return actor end
+		control.sectionList = {}
+		control:AddBreakdownSection({ breakdown = "Test", gearOnly = true })
+		assert.are.equal(0, #control.sectionList)
+
+		control:AddBreakdownSection({ breakdown = "Test", gearOnly = false })
+		assert.are.equal(1, #control.sectionList)
+		assert.are.equal(1, #control.sectionList[1].rowList)
+
+		actor.breakdown.Test.slots[1].base = 12
+		control.sectionList = {}
+		control:AddBreakdownSection({ breakdown = "Test", gearOnly = true })
+		assert.are.equal(1, #control.sectionList)
+		assert.are.equal(1, #control.sectionList[1].rowList)
+	end)
+
 	teardown(function()
 		-- newBuild() takes care of resetting everything in setup()
+	end)
+
+	it("applies the Scales of Justice ailment condition to maximum life and mana", function()
+		-- Exercise the parser rather than the checked-in result for this item.
+		modLib.parseModCache["Unaffected by Ignite or Shock if Maximum Life and Maximum Mana are within 500"] = nil
+		for _, raw in ipairs(dofile("Data/Uniques/shield.lua")) do
+			if raw:match("^The Scales of Justice\n") then
+				build.itemsTab:CreateDisplayItemFromRaw("Rarity: UNIQUE\n" .. raw)
+				break
+			end
+		end
+		local item = build.itemsTab.displayItem
+		assert.is_not_nil(item)
+		build.itemsTab:AddDisplayItem()
+		build.itemsTab.slots["Weapon 2"]:SetSelItemId(item.id)
+		build.configTab:BuildModList()
+		runCallback("OnFrame")
+		local baseLife = build.calcsTab.mainOutput.Life
+		local baseMana = build.calcsTab.mainOutput.Mana
+		for _, case in ipairs({
+			{ life = 1000, mana = 1499, effect = 0 },
+			{ life = 1000, mana = 1500, effect = 0 },
+			{ life = 1000, mana = 1501, effect = 100 },
+			{ life = 1501, mana = 1000, effect = 100 },
+			{ life = 1499, mana = 1000, effect = 0 },
+			{ life = 1500, mana = 1000, effect = 0 },
+		}) do
+			build.configTab.input.customMods = "+" .. (case.life - baseLife) .. " to maximum Life\n+" .. (case.mana - baseMana) .. " to maximum Mana"
+			build.configTab:BuildModList()
+			runCallback("OnFrame")
+			local output = build.calcsTab.mainOutput
+			assert.are.equal(case.life, output.Life)
+			assert.are.equal(case.mana, output.Mana)
+			assert.are.equal(case.effect, output.SelfIgniteEffect)
+			assert.are.equal(case.effect, output.SelfShockEffect)
+			assert.are.equal(0, output.ShockAvoidChance)
+		end
+		build.skillsTab:PasteSocketGroup("Clarity 1/0  1")
+		runCallback("OnFrame")
+		local output = build.calcsTab.mainOutput
+		assert.is_true(output.ManaUnreserved < output.Mana)
+		assert.are.equal(0, output.SelfIgniteEffect)
+		assert.are.equal(0, output.SelfShockEffect)
+		build.itemsTab.slots["Weapon 2"]:SetSelItemId(0)
+		build.buildFlag = true
+		runCallback("OnFrame")
+		assert.are.equal(100, build.calcsTab.mainOutput.SelfIgniteEffect)
+		assert.are.equal(100, build.calcsTab.mainOutput.SelfShockEffect)
+	end)
+
+	it("converts physical damage over time independently of hit damage", function()
+		build.configTab.input.enemyDamageType = "DamageOverTime"
+		for _, damageType in ipairs({ "Physical", "Lightning", "Cold", "Fire", "Chaos" }) do
+			build.configTab.input["enemy"..damageType.."Damage"] = damageType == "Physical" and 1000 or 0
+		end
+		local common = "+300% to Chaos Resistance\n10% of Physical Damage taken as Chaos Damage\n20% of Physical Damage from Hits taken as Chaos Damage"
+		-- Shared, hit-only and DoT-only conversion must stay separate, including on removal.
+		for _, value in ipairs({ 10, 0 }) do
+			build.configTab.input.customMods = common..(value > 0 and "\n"..value.."% of Physical Damage over Time taken as Chaos Damage" or "")
+			build.configTab:BuildModList()
+			runCallback("OnFrame")
+			local actor = build.calcsTab.mainEnv.player
+			local output = actor.output
+			assert.are.equal(925 - 7.5 * value, output.TotalDegen)
+			assert.are.equal(70, actor.damageShiftTable.Physical.Physical)
+			assert.are.equal(30, actor.damageShiftTable.Physical.Chaos)
+			assert.are.equal(100, actor.damageOverTimeShiftTable.Cold.Cold)
+		end
+	end)
+
+	it("applies the Scales of Justice ailment condition to maximum life and mana", function()
+		-- Exercise the parser rather than the checked-in result for this item.
+		modLib.parseModCache["Unaffected by Ignite or Shock if Maximum Life and Maximum Mana are within 500"] = nil
+		for _, raw in ipairs(dofile("Data/Uniques/shield.lua")) do
+			if raw:match("^The Scales of Justice\n") then
+				build.itemsTab:CreateDisplayItemFromRaw("Rarity: UNIQUE\n" .. raw)
+				break
+			end
+		end
+		local item = build.itemsTab.displayItem
+		assert.is_not_nil(item)
+		build.itemsTab:AddDisplayItem()
+		build.itemsTab.slots["Weapon 2"]:SetSelItemId(item.id)
+		build.configTab:BuildModList()
+		runCallback("OnFrame")
+		local baseLife = build.calcsTab.mainOutput.Life
+		local baseMana = build.calcsTab.mainOutput.Mana
+		for _, case in ipairs({
+			{ life = 1000, mana = 1499, effect = 0 },
+			{ life = 1000, mana = 1500, effect = 0 },
+			{ life = 1000, mana = 1501, effect = 100 },
+			{ life = 1501, mana = 1000, effect = 100 },
+			{ life = 1499, mana = 1000, effect = 0 },
+			{ life = 1500, mana = 1000, effect = 0 },
+		}) do
+			build.configTab.input.customMods = "+" .. (case.life - baseLife) .. " to maximum Life\n+" .. (case.mana - baseMana) .. " to maximum Mana"
+			build.configTab:BuildModList()
+			runCallback("OnFrame")
+			local output = build.calcsTab.mainOutput
+			assert.are.equal(case.life, output.Life)
+			assert.are.equal(case.mana, output.Mana)
+			assert.are.equal(case.effect, output.SelfIgniteEffect)
+			assert.are.equal(case.effect, output.SelfShockEffect)
+			assert.are.equal(0, output.ShockAvoidChance)
+		end
+		build.skillsTab:PasteSocketGroup("Clarity 1/0  1")
+		runCallback("OnFrame")
+		local output = build.calcsTab.mainOutput
+		assert.is_true(output.ManaUnreserved < output.Mana)
+		assert.are.equal(0, output.SelfIgniteEffect)
+		assert.are.equal(0, output.SelfShockEffect)
+		build.itemsTab.slots["Weapon 2"]:SetSelItemId(0)
+		build.buildFlag = true
+		runCallback("OnFrame")
+		assert.are.equal(100, build.calcsTab.mainOutput.SelfIgniteEffect)
+		assert.are.equal(100, build.calcsTab.mainOutput.SelfShockEffect)
 	end)
 
 	-- a small helper function to calculate damage taken from limited test parameters
@@ -16,6 +153,45 @@ describe("TestDefence", function()
 		local _, takenDamages = takenHitFromTypeMaxHit(type, enemyDamageMulti)
 		return build.calcsTab.calcs.reducePoolsByDamage(nil, takenDamages, build.calcsTab.calcsEnv.player)
 	end
+
+	it("counts tree Defences in the Inc. from Tree stats", function()
+		local node, value
+		for _, candidate in pairs(build.spec.nodes) do
+			local mod = candidate.modList and candidate.modList[1]
+			if mod and #candidate.modList == 1 and mod.name == "Defences" and mod.type == "INC" and #mod == 0 then
+				node, value = candidate, mod.value
+				break
+			end
+		end
+		assert.is_not_nil(node)
+		node.alloc = true
+		build.spec.allocNodes[node.id] = node
+		build.buildFlag = true
+		runCallback("OnFrame")
+
+		local output = build.calcsTab.mainOutput
+		local actual = {
+			["Spec:ArmourInc"] = output["Spec:ArmourInc"],
+			["Spec:EvasionInc"] = output["Spec:EvasionInc"],
+			["Spec:EnergyShieldInc"] = output["Spec:EnergyShieldInc"],
+		}
+		for _, section in ipairs(LoadModule("Modules/CalcSections")) do
+			for _, row in ipairs(section[5][1].data) do
+				if row.label == "Inc. from Tree" and section[2] ~= "Life" and section[2] ~= "Mana" then
+					actual[section[2]] = formatCalcStr(row[1].format, build.calcsTab.mainEnv.player, row[1])
+				end
+			end
+		end
+		assert.are.same({
+			["Spec:ArmourInc"] = value,
+			["Spec:EvasionInc"] = value,
+			["Spec:EnergyShieldInc"] = value,
+			Armour = value.."%",
+			Evasion = value.."%",
+			EnergyShield = value.."%",
+			Ward = value.."%",
+		}, actual)
+	end)
 
 	it("attributes resistances inherited by minions to Bonemeld after loading a build", function()
 		build.skillsTab:PasteSocketGroup("Raise Zombie 20/0  1")
@@ -1815,5 +1991,20 @@ describe("TestDefence", function()
 
 		assert.is_true(higherResistEHP >= lowerResistEHP,
 			string.format("EHP fell from %.1f to %.1f", lowerResistEHP, higherResistEHP))
+	end)
+
+	it("treats negative unreserved mana as 0 for Arcane Cloak", function()
+		newBuild()
+		build.skillsTab:PasteSocketGroup("Arc 20/0  1")
+		build.skillsTab:PasteSocketGroup("Determination 20/0  1\nPride 20/0  1\nMalevolence 20/0  1")
+		build.mainSocketGroup = 1
+		runCallback("OnFrame")
+		local baseDPS = build.calcsTab.mainOutput.TotalDPS
+
+		build.skillsTab:PasteSocketGroup("Arcane Cloak 20/0  1")
+		runCallback("OnFrame")
+		local output = build.calcsTab.mainOutput
+		assert.is_true(output.ManaUnreserved < 0)
+		assert.are.equal(baseDPS, output.TotalDPS)
 	end)
 end)

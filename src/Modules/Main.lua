@@ -159,6 +159,8 @@ function main:Init()
 	self.uniqueDB = { list = { }, byTitle = { }, loading = true }
 	---@type ItemDBData
 	self.rareDB = { list = {}, loading = true }
+	---@type ItemDBData
+	self.visceraDB = { list = {}, loading = true }
 
 	local function loadItemDBs()
 		for type, typeList in pairsYield(data.uniques) do
@@ -198,6 +200,19 @@ function main:Init()
 
 		self.rareDB.loading = nil
 		ConPrintf("Rares loaded")
+
+		for _, raw in pairsYield(data.viscera) do
+			local newItem = new("Item"):Item(raw, "NORMAL", true)
+			if newItem.base then
+				newItem:BuildAndParseRaw()
+				self.visceraDB.list[newItem.name] = newItem
+			elseif launch.devMode then
+				ConPrintf("Viscera DB unrecognised item:\n%s", raw)
+			end
+		end
+
+		self.visceraDB.loading = nil
+		ConPrintf("Viscera loaded")
 	end
 
 	if self.saveNewModCache then
@@ -210,7 +225,12 @@ function main:Init()
 					-- the trade hash field is split by stat descriptor, which
 					-- means we shouldn't have problems with long stats being
 					-- split
-					for _, line in pairs(mod.tradeHashes) do
+					local descriptorLines = mod.tradeHashes
+					if not descriptorLines or not next(descriptorLines) then
+						descriptorLines = { }
+						for _, line in ipairs(mod) do descriptorLines[#descriptorLines + 1] = { line } end
+					end
+					for _, line in pairs(descriptorLines) do
 						local rangedLine = itemLib.applyRange(table.concat(line, " "), 0.5)
 						modLib.parseMod(rangedLine)
 					end
@@ -339,7 +359,7 @@ function main:SaveModCache()
 				out:write("end)();(function()\n")
 				count = 0
 			else
-				count += 1
+				count = count + 1
 			end
 		end
 	end
@@ -372,11 +392,19 @@ function main:CanExit()
 end
 
 function main:Shutdown()
+	local compare=package.loaded["Modules.LootTradeBuildCompare"]
+	if compare then compare.close() end
 	self:CallMode("Shutdown")
 	self:SaveSettings()
 end
 
 function main:OnFrame()
+	if not launch.headless and self.userPath then
+		local now = os.time()
+		require("Modules.LootFilterDailySync").tickAll(now)
+		local filterAccount = package.loaded["Modules.LootFilterAccount"]
+		if filterAccount then filterAccount.tick(now) end
+	end
 	self.screenW, self.screenH = GetVirtualScreenSize()
 
 	if self.screenH > self.screenW then
@@ -407,6 +435,10 @@ function main:OnFrame()
 	end
 
 	self:CallMode("OnFrame", self.inputEvents, self.viewPort)
+	if not launch.headless and require("ffi").os=="Windows" then
+		require("Modules.LootTradeBuildCompare").tick(self.userPath,
+			not self.newMode and self.mode=="BUILD" and self.modes.BUILD or nil,os.time())
+	end
 
 	if launch.updateErrMsg then
 		ToastNotification:Add(string.format("Update check failed!\n%s", launch.updateErrMsg))
@@ -671,6 +703,7 @@ function main:LoadSettings(ignoreBuild)
 				if node.attrib.disableScrollControlInteraction then
 					self.disableScrollControlInteraction = node.attrib.disableScrollControlInteraction == "true"
 				end
+				self.planningTextLarge=node.attrib.planningTextLarge=="true"
 				if node.attrib.dpiScaleOverridePercent then
 					self.dpiScaleOverridePercent = tonumber(node.attrib.dpiScaleOverridePercent) or 0
 					SetDPIScaleOverridePercent(self.dpiScaleOverridePercent)
@@ -808,6 +841,7 @@ function main:SaveSettings()
 		showAllItemAffixes = tostring(self.showAllItemAffixes),
 		disableScrollControlInteraction = tostring(self.disableScrollControlInteraction),
 		dpiScaleOverridePercent = tostring(self.dpiScaleOverridePercent),
+		planningTextLarge = tostring(self.planningTextLarge or false),
 	} })
 	local res, errMsg = common.xml.SaveXMLFile(setXML, self.userPath.."Settings.xml")
 	if not res then
@@ -1335,26 +1369,11 @@ function main:SetManifestBranch(branchName)
 end
 
 function main:OpenUpdatePopup()
-	local changeList = { }
-	local changelogName = launch.devMode and "../changelog.txt" or "changelog.txt"
-	local changelogFile = io.open(changelogName, "r")
-	if changelogFile then
-		changelogFile:close()
-		for line in io.lines(changelogName) do
-			local ver, date = line:match("^VERSION%[(.+)%]%[(.+)%]$")
-			if ver then
-				if ver == launch.versionNumber then
-					break
-				end
-				if #changeList > 0 then
-					t_insert(changeList, { height = 12 })
-				end
-				t_insert(changeList, { height = 20, "^7Version "..ver.." ("..date..")" })
-			else
-				t_insert(changeList, { height = 14, "^7"..line })
-			end
-		end
-	end
+	local notes = require("Modules.UpdateNotes")
+	local target, changelogHash = notes.target("Update/manifest.xml")
+	local installedLog = launch.devMode and "../changelog.txt" or "changelog.txt"
+	local text = notes.readVerified("Update/changelog.txt", changelogHash) or notes.readVerified(installedLog, changelogHash)
+	local changeList = require("Modules.PlanningUI").rows(notes.describe(text, launch.versionNumber, target), 740, 16)
 	local controls = { }
 	controls.changeLog = new("TextListControl"):TextListControl(nil, {0, 20, 780, 542}, nil, changeList)
 	controls.update = new("ButtonControl"):ButtonControl(nil, {-45, 570, 80, 20}, "Update", function()

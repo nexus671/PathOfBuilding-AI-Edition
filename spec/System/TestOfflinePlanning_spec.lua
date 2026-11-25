@@ -1,0 +1,148 @@
+-- cspell:ignore RRBG
+describe("Offline planning refinements",function()
+	local filters=require("Modules.LootFilters")
+	local parser=require("Modules.LootFilterParser")
+	local atlas=require("Modules.AtlasPlanner")
+	local sim=require("Modules.CraftingSimulator")
+	local originalGraph
+	after_each(function() if originalGraph then atlas.cache["3.27.0"]=originalGraph;originalGraph=nil end;main.popups={} end)
+	it("displays arbitrary valid AI appearance values without silently selecting a preset",function()
+		newBuild();main.popups={};local p=filters.profile("custom","Custom");p.appearance={minimumFontSize=25,alertVolume=150}
+		require("Classes.LootFilterGlobalControl").Open(p,function() end)
+		local c=main.popups[1].controls;assert.equal(25,c.minimumFontSize:GetSelValueByKey("val"));assert.equal(150,c.alertVolume:GetSelValueByKey("val"))
+	end)
+	it("decorates the entire filter without changing matching or imported source",function()
+		local p=filters.profile("appearance","Appearance")
+		p.template='Show\n BaseType == "Iron Hat"\n SetFontSize 18\n CustomAlertSoundOptional "my # sound.wav" 125\n PlayEffect Red Temp\n Continue\nHide\n BaseType == "Iron Ring"\n SetFontSize 45'
+		local source=p.template;local plain=parser.parse(filters.compile(p))
+		p.appearance={minimumFontSize=40,alertVolume=0,disableEffects=true}
+		local raw=filters.compile(p);local decorated=parser.parse(raw)
+		assert.equal(source,p.template);assert.equal(#plain.rules,#decorated.rules)
+		for i,r in ipairs(plain.rules) do assert.equal(r.action,decorated.rules[i].action);for j,c in ipairs(r.conditions) do local d=decorated.rules[i].conditions[j];assert.equal(c.keyword,d.keyword);assert.equal(c.operator,d.operator);assert.same(c.values,d.values) end;assert.equal(r.continue,decorated.rules[i].continue) end
+		local last=decorated.rules[#decorated.rules-1];assert.same({"40"},last.styles.SetFontSize);assert.same({"my # sound.wav","0"},last.styles.CustomAlertSoundOptional);assert.same({"None"},last.styles.PlayEffect)
+		assert.same({"45"},decorated.rules[#decorated.rules].styles.SetFontSize)
+		assert.same(p.appearance,filters.validate({schemaVersion=1,activeId=p.id,profiles={p}}).profiles[1].appearance)
+		p.appearance=nil;assert.equal(filters.compile(p),filters.compile(filters.validate({schemaVersion=1,activeId=p.id,profiles={p}}).profiles[1]))
+		local inherited=parser.parse(require("Modules.LootFilterDecorators").apply('Show\n SetFontSize 45\n Continue\nShow',{minimumFontSize=40}));assert.is_nil(inherited.rules[2].styles.SetFontSize)
+	end)
+	it("compiles every strictness with personal rules and reversible appearance",function()
+		local p=filters.profile("variants","Variants");p.rules={filters.rule("hat","Hat",{'BaseType == "Iron Hat"'})};p.appearance={minimumFontSize=40};local before=copyTable(p)
+		local variants=filters.variants(p);assert.equal(7,#variants);assert.same(before,p)
+		for i,variant in ipairs(variants) do assert.equal(i-1,variant.strictness);assert.is_truthy(variant.text:find("# PoB rule: Hat",1,true));assert.is_true(#variant.text>100000) end
+		assert.is_not.equal(variants[1].text,variants[7].text)
+		p.template='Show';assert.is_false(pcall(filters.variants,p))
+	end)
+	it("preserves disabled alerts and effective default volumes during global restyling",function()
+		local decorate=require("Modules.LootFilterDecorators").apply
+		local raw='Show\n PlayAlertSound None\n CustomAlertSound "None"\n Continue\nShow\n PlayAlertSound 4\n Continue\nShow\n CustomAlertSound "test.wav"\n Continue\nShow\n PlayAlertSoundPositional 5 80'
+		local styled=parser.parse(decorate(raw,{alertId=6})).rules
+		assert.same({"None"},styled[1].styles.PlayAlertSound);assert.same({"None"},styled[1].styles.CustomAlertSound)
+		assert.same({"6"},styled[2].styles.PlayAlertSound);assert.same({"6","100"},styled[3].styles.PlayAlertSound)
+		assert.same({"6","80"},styled[4].styles.PlayAlertSoundPositional)
+		local muted=parser.parse(decorate(raw,{alertVolume=0})).rules
+		assert.same({"None"},muted[1].styles.PlayAlertSound);assert.same({"None"},muted[1].styles.CustomAlertSound)
+		assert.same({"4","0"},muted[2].styles.PlayAlertSound);assert.same({"test.wav","0"},muted[3].styles.CustomAlertSound)
+	end)
+	it("does not preview a numbered alert when custom audio or silence takes precedence",function()
+		local audio=require("Modules.LootFilterAudio")
+		assert.equal(4,audio.alert({PlayAlertSound={"4"}}))
+		local id,reason=audio.alert({PlayAlertSound={"4","0"}});assert.is_nil(id);assert.matches("volume is zero",reason)
+		id,reason=audio.alert({PlayAlertSound={"4"},CustomAlertSound={"custom.wav"}});assert.is_nil(id);assert.matches("overrides",reason)
+		id,reason=audio.alert({PlayAlertSound={"4"},CustomAlertSoundOptional={"custom.wav"}});assert.is_nil(id);assert.matches("fall back",reason)
+		id,reason=audio.alert({PlayAlertSound={"4"},CustomAlertSoundOptional={"custom.wav","0"}});assert.is_nil(id);assert.matches("fall back",reason)
+		id,reason=audio.alert({CustomAlertSoundOptional={"custom.wav","0"}});assert.is_nil(id);assert.matches("volume is zero",reason)
+		id,reason=audio.alert({CustomAlertSoundOptional={"custom.wav"}});assert.is_nil(id);assert.matches("only if its file is available",reason)
+		id,reason=audio.alert({PlayAlertSound={"4"},CustomAlertSound={"None"}});assert.is_nil(id);assert.matches("disabled",reason)
+	end)
+	it("keeps imports separate and rejects malformed global settings",function()
+		local decorate=require("Modules.LootFilterDecorators").apply
+		local parsed=parser.parse(decorate('Show\n BaseType == "Iron Hat"\nImport "shared.filter" Optional\nHide\n BaseType == "Iron Ring"',{minimumFontSize=40}))
+		assert.equal(1,#parsed.imports);assert.is_nil(parsed.rules[1].styles.SetFontSize);assert.is_nil(parsed.rules[2].styles.SetFontSize)
+		local p=filters.profile("bad","Bad");for _,settings in ipairs({{minimumFontSize=46},{alertVolume=-1},{alertVolume="0"},{disableEffects=1}}) do p.appearance=settings;assert.is_false(pcall(filters.compile,p)) end
+	end)
+	it("matches exact colour counts with an optional linked-group requirement",function()
+		local model=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local state=copyTable(model.initial);state.sockets={{color="R",group=0},{color="R",group=0},{color="G",group=1},{color="W",group=1}}
+		assert.is_true(sim.matches(state,{},nil,model,{socketColours="RRG"}))
+		assert.is_false(sim.matches(state,{},nil,model,{socketColours="RRG",linkedColours=true}))
+		assert.is_true(sim.matches(state,{},nil,model,{socketColours="GW",linkedColours=true}))
+		assert.is_false(sim.matches(state,{},nil,model,{socketColours="RGB"}))
+		assert.is_false(sim.matches(state,{},nil,model,{socketColours="RRR"}))
+		-- White sockets are requested as white, rather than counted as every colour.
+		assert.is_false(sim.matches(state,{},nil,model,{socketColours="GB"}))
+		state.sockets={};assert.is_false(sim.matches(state,{},nil,model,{socketColours="R"}))
+	end)
+	it("validates and retains colour targets for recipes and repeated steps",function()
+		local recipe={steps={{method="chromatic",maxAttempts=5,untilRequirements={socketColours="RRBG",linkedColours=true}}},targets={},requirements={socketColours="RRBG",linkedColours=true}}
+		assert.same(recipe,sim.validateRecipe(recipe))
+		for _,conditions in ipairs({{socketColours=""},{socketColours="RRRRRRR"},{socketColours="RGX"},{socketColours="R",linkedColours=1},{linkedColours=true}}) do recipe.requirements=conditions;assert.is_false(pcall(sim.validateRecipe,recipe)) end
+	end)
+	it("targets actual Abyssal sockets independently of modifier text and linked gems",function()
+		local model=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86");local state=copyTable(model.initial)
+		state.rarity="RARE";state.affixes={{id="DelveAbyssJewelSocket1",range=0.5}};state.sockets={{color="R",group=0}}
+		assert.is_false(sim.matches(state,{},nil,model,{minAbyssSockets=1}))
+		state.sockets={{color="R",group=0},{color="G",group=0},{color="A",group=1}}
+		assert.is_true(sim.matches(state,{},nil,model,{minAbyssSockets=1,links=2}));assert.is_false(sim.matches(state,{},nil,model,{minAbyssSockets=2}))
+		assert.is_false(sim.matches(state,{},nil,model,{minAbyssSockets=1,links=3}))
+		local recipe={steps={{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingAbyss"},untilRequirements={minAbyssSockets=1}}},targets={},requirements={minAbyssSockets=1}}
+		assert.same(recipe,sim.validateRecipe(recipe))
+		newBuild();local store=build.savers.CraftingProjects
+		store:Upsert({id="abyss-goal",title="Abyss helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={},nativeRecipe=recipe})
+		local xml={};store:Save(xml);local reloaded=require("Modules.CraftingProjects").new(build);reloaded:Load(xml)
+		assert.same(recipe,reloaded.projects[1].nativeRecipe)
+		for _,bad in ipairs({-1,7,1.5}) do recipe.requirements={minAbyssSockets=bad};assert.is_false(pcall(sim.validateRecipe,recipe)) end
+	end)
+	it("keeps the Abyss socket goal through the item-properties editor",function()
+		main.popups={};local saved
+		local editor=require("Classes.CraftingTargetControl").Open({},nil,nil,function(_,value) saved=value end)
+		editor.minAbyssSockets:SetText("1");editor.keep:Click();assert.equal(1,saved.minAbyssSockets)
+		editor=require("Classes.CraftingTargetControl").Open({},saved,nil,function() end);assert.equal("1",editor.minAbyssSockets.buf);editor.close:Click()
+	end)
+	it("uses property conditions in action odds and fossil comparisons",function()
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
+		local failed=sim.calculate(raw,{method="alchemy"},{},nil,{trials=8,requirements={socketColours="R"}})
+		assert.is_true(failed.sampled);assert.equal(0,failed.successChance)
+		local passed=sim.calculate(raw,{method="alchemy"},{},nil,{trials=8,requirements={minAffixes=4}});assert.equal(100,passed.successChance)
+		local fossil="Metadata/Items/Currency/CurrencyDelveCraftingPhysical"
+		local result=sim.optimizeFossils(raw,{}, {fossils={fossil},maxSockets=1,trials=4,requirements={socketColours="R"}})
+		assert.equal(1,#result.combinations);assert.is_nil(result.combinations[1].error);assert.equal(0,result.combinations[1].successChance)
+	end)
+	it("finds a nearest-target route when rotations exceed the point budget",function()
+		originalGraph=atlas.tree("3.27.0")
+		local links={{2,3,7},{1,9,12,14},{1,4,5,6,9,10},{3},{3,7,12},{3,12},{1,5,8,11},{7,12},{2,3,10},{3,9,13},{7},{2,5,6,8},{10},{2}}
+		local tree={start=1,maxPoints=14,nodes={}};for id,list in ipairs(links) do tree.nodes[id]={id=id,links=list} end;atlas.cache["3.27.0"]=tree
+		local targets={8,12,6,13,9};local plan={id="test",title="Test",version="3.27.0",budget=7,nodes={},notes=""}
+		assert.is_false(pcall(atlas.connect,plan,targets))
+		assert.is_false(pcall(atlas.connect,plan,{9,13,6,12,8}))
+		for offset=1,#targets-1 do
+			local order={};for i=1,#targets do order[i]=targets[(i+offset-1)%#targets+1] end
+			assert.is_false(pcall(atlas.connect,plan,order))
+		end
+		local result,added,routing=atlas.connectOptimized(plan,targets)
+		assert.equal(7,#result.nodes);assert.equal(7,#added);assert.is_nil(routing.originalCost)
+		local exactCheckpoint=false
+		local job=coroutine.create(function() return atlas.connectOptimized(plan,targets,nil,{checkpoint=function(progress)
+			if progress.phase=="exact" then exactCheckpoint=true end;coroutine.yield()
+		end}) end)
+		while coroutine.status(job)~="dead" do local ok,err=coroutine.resume(job);assert.is_true(ok,tostring(err)) end
+		assert.is_true(exactCheckpoint)
+		for _,id in ipairs(targets) do assert.is_truthy(isValueInTable(result.nodes,id)) end
+		assert.same({},plan.nodes)
+		plan.nodes={2};plan.budget=14
+		local avoided=atlas.connectOptimized(plan,targets,{7})
+		assert.is_truthy(isValueInTable(avoided.nodes,2));assert.is_nil((isValueInTable(avoided.nodes,7)))
+		assert.same(avoided,atlas.connectOptimized(plan,targets,{7}))
+	end)
+	it("compares Atlas orders without changing existing allocations or exclusions",function()
+		originalGraph=atlas.tree("3.27.0")
+		local links={{2,3},{1,4},{1,4,5},{2,3},{3}}
+		local tree={start=1,maxPoints=10,nodes={}};for id,list in ipairs(links) do tree.nodes[id]={id=id,links=list} end;atlas.cache["3.27.0"]=tree
+		local plan={id="test",title="Test",version="3.27.0",budget=10,nodes={},notes=""};local before=copyTable(plan)
+		local baseline=atlas.connect(plan,{4,5});local optimized,added,routing=atlas.connectOptimized(plan,{4,5})
+		assert.equal(4,#baseline.nodes);assert.equal(3,#optimized.nodes);assert.equal(1,routing.saved);assert.equal(3,#added);assert.same(before,plan)
+		plan.budget=3;assert.is_false(pcall(atlas.connect,plan,{4,5}));assert.equal(3,#atlas.connectOptimized(plan,{4,5}).nodes)
+		plan.budget=10;plan.nodes={2};assert.same({2,3,4,5},atlas.connectOptimized(plan,{4,5}).nodes)
+		assert.is_false(pcall(atlas.connectOptimized,plan,{4,5},{3}));assert.is_false(pcall(atlas.connectOptimized,plan,{4},{2}))
+		assert.same(plan,atlas.connectOptimized(plan,{}));assert.is_false(pcall(atlas.connectOptimized,plan,{99}))
+	end)
+end)

@@ -139,6 +139,8 @@ function PassiveTreeViewClass:GetJewelSocketOverlay(jewel, isExpansion)
 		return isExpansion and "JewelSocketActivePrismaticAlt" or "JewelSocketActivePrismatic"
 	elseif jewel.base and jewel.base.subType == "Abyss" then
 		return isExpansion and "JewelSocketActiveAbyssAlt" or "JewelSocketActiveAbyss"
+	elseif jewel.base and jewel.base.subType == "Blightcore" then
+		return "JewelSocketActiveBlightcore"
 	elseif jewel.base and jewel.base.subType == "Charm" then
 		if jewel.baseName == "Ursine Charm" then
 			return "CharmSocketActiveStr"
@@ -180,8 +182,13 @@ function PassiveTreeViewClass:GetCompareNodeColor(node, compareNode, spec, build
 		return 0, 1, 0
 	elseif not compareNode.alloc and node.alloc then
 		return 1, 0, 0
-	elseif node.type == "Mastery" and compareNode.alloc and node.alloc and node.sd ~= compareNode.sd then
-		return 0, 0, 1
+	elseif node.type == "Mastery" and compareNode.alloc and node.alloc then
+		local pOverride = spec.hashOverrides and spec.hashOverrides[node.id]
+		local cOverride = self.compareSpec.hashOverrides and self.compareSpec.hashOverrides[node.id]
+		if spec.masterySelections[node.id] ~= self.compareSpec.masterySelections[node.id]
+			or (pOverride and pOverride.dn) ~= (cOverride and cOverride.dn) then
+			return 0, 0, 1
+		end
 	elseif node.type == "Socket" and compareNode.alloc and node.alloc then
 		local pJewelId = spec.jewels[node.id]
 		local pJewel = pJewelId and build.itemsTab.items[pJewelId]
@@ -714,6 +721,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		connector.c[3], connector.c[4] = treeToScreen(vert[3], vert[4])
 		connector.c[5], connector.c[6] = treeToScreen(vert[5], vert[6])
 		connector.c[7], connector.c[8] = treeToScreen(vert[7], vert[8])
+		local c = connector.c
 
 		if hoverDep and hoverDep[node1] and hoverDep[node2] then
 			-- Both nodes depend on the node currently being hovered over, so color the line red
@@ -723,16 +731,22 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			setConnectorColor(0.75, 0.75, 0.75)
 		end
 		SetDrawColor(unpack(connectorColor))
+		-- Check all corners: a line can cross the screen with both endpoints outside.
+		-- Keep the color update even for hidden connectors to preserve drawing state.
+		if self:IsQuadOffscreen(c, main.screenW, main.screenH) then
+			return
+		end
 		local assetName = connector.type .. state
 		-- The game uses Abyss connector art only when both connected nodes are conquered.
 		if isAbyssConquered(node1) and isAbyssConquered(node2) then
 			assetName = "Abyss" .. assetName
+		elseif node1.isBlightcore or node2.isBlightcore then
+			assetName = "Blight" .. assetName
 		end
 		local asset = tree.assets[assetName] or tree.assets[connector.type..state]
 		-- Atlas assets provide bounds that map the usual connector coordinates into one sprite.
 		local left, top = asset[1] or 0, asset[2] or 0
 		local width, height = (asset[3] or 1) - left, (asset[4] or 1) - top
-		local c = connector.c
 		DrawImageQuad(asset.handle,
 			c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8],
 			left + c[9] * width, top + c[10] * height,
@@ -849,10 +863,13 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			end
 			if node.type == "Socket" then
 				-- Node is a jewel socket, retrieve the socketed jewel (if present) so we can display the correct art
-				base = tree.assets[(node.name == "Charm Socket" and "Azmeri" or "" ) .. node.overlay[state .. (node.expansionJewel and "Alt" or "")]]
 				local socket, jewel = build.itemsTab:GetSocketAndJewelForNodeID(nodeId)
+				-- A socketed Putrid Seed uses the normal jewel socket art, even
+				-- in a Large Jewel Socket
+				local useAltArt = node.expansionJewel and not (isAlloc and jewel and jewel.base.subType == "Blightcore")
+				base = tree.assets[(node.name == "Charm Socket" and "Azmeri" or "" ) .. node.overlay[state .. (useAltArt and "Alt" or "")]]
 				if isAlloc and jewel then
-					overlay = self:GetJewelSocketOverlay(jewel, node.expansionJewel)
+					overlay = self:GetJewelSocketOverlay(jewel, useAltArt)
 				end
 		elseif node.type == "Mastery" then
 			local override = spec.hashOverrides and spec.hashOverrides[node.id]
@@ -887,15 +904,17 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				base = node.sprites[node.type:lower()..(isAlloc and "Active" or "Inactive")]
 				local overlayKey = state .. (node.ascendancyName and "Ascend" or "") .. (node.isBlighted and "Blighted" or "")
 				local overlayName = node.overlay[overlayKey]
+				local frameState = state == "alloc" and "Allocated" or state == "path" and "CanAllocate" or "Unallocated"
 				if isAbyssConquered(node) and (node.type == "Notable" or node.type == "Keystone") then
 					-- AlternateTreeArt gives Abyss replacements their own notable,
 					-- keystone, and ascendancy-notable frames.
 					local frameType = node.ascendancyName and "Ascendancy" or node.type
-					local frameState = state == "alloc" and "Allocated" or state == "path" and "CanAllocate" or "Unallocated"
 					local abyssOverlay = "Abyss" .. frameType .. "Frame" .. frameState
 					if tree.assets[abyssOverlay] then
 						overlayName = abyssOverlay
 					end
+				elseif node.isBlightcore and node.type == "Notable" and tree.assets["BlightNotableFrame" .. frameState] then
+					overlayName = "BlightNotableFrame" .. frameState
 				end
 				if node.ascendancyName then
 					local prefix = node.bloodlineOverlayPrefix or (tree.bloodlineSpritePrefixes and tree.bloodlineSpritePrefixes[node.ascendancyName])
@@ -919,7 +938,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				if self.heatMapStat and self.heatMapStat.stat then
 					-- Calculate color based on a single stat
 					local stat = m_max(node.power.singleStat or 0, 0)
-					local statCol = (stat / build.calcsTab.powerMax.singleStat * 1.5) ^ 0.5
+					local statCol = data.powerStatList.HeatmapIntensity(stat, build.calcsTab.powerMax.singleStat)
 					if main.nodePowerTheme == "RED/BLUE" then
 						SetDrawColor(statCol, 0, 0)
 					elseif main.nodePowerTheme == "RED/GREEN" then
@@ -931,8 +950,8 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 					-- Calculate color based on DPS and defensive powers
 					local offence = m_max(node.power.offence or 0, 0)
 					local defence = m_max(node.power.defence or 0, 0)
-					local dpsCol = (offence / build.calcsTab.powerMax.offence * 1.5) ^ 0.5
-					local defCol = (defence / build.calcsTab.powerMax.defence * 1.5) ^ 0.5
+					local dpsCol = data.powerStatList.HeatmapIntensity(offence, build.calcsTab.powerMax.offence)
+					local defCol = data.powerStatList.HeatmapIntensity(defence, build.calcsTab.powerMax.defence)
 					local mixCol = (m_max(dpsCol - 0.5, 0) + m_max(defCol - 0.5, 0)) / 2
 					if main.nodePowerTheme == "RED/BLUE" then
 						SetDrawColor(dpsCol, mixCol, defCol)
@@ -1121,11 +1140,12 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 				local state = "alloc"
 				local base, overlay
 				if compareNode.type == "Socket" then
-					base = tree.assets[compareNode.overlay and compareNode.overlay[state .. (compareNode.expansionJewel and "Alt" or "")] or "JewelSocketActiveBlue"]
 					-- Look up jewel from compare build to show correct colored socket overlay
 					local cJewel = self:GetCompareJewel(nodeId)
+					local useAltArt = compareNode.expansionJewel and not (cJewel and cJewel.base.subType == "Blightcore")
+					base = tree.assets[compareNode.overlay and compareNode.overlay[state .. (useAltArt and "Alt" or "")] or "JewelSocketActiveBlue"]
 					if cJewel then
-						overlay = self:GetJewelSocketOverlay(cJewel, compareNode.expansionJewel)
+						overlay = self:GetJewelSocketOverlay(cJewel, useAltArt)
 					end
 				elseif compareNode.type == "Mastery" then
 					if compareNode.masterySprites and compareNode.masterySprites.activeIcon then
@@ -1282,6 +1302,14 @@ function PassiveTreeViewClass:DrawImageRotated(handle, x, y, width, height, angl
 	DrawImageQuad(handle, x1, y1, x2, y2, x3, y3, x4, y4, ...)
 end
 
+-- Only cull quads separated from the entire screen by one edge.
+function PassiveTreeViewClass:IsQuadOffscreen(c, width, height)
+	return (c[1] < 0 and c[3] < 0 and c[5] < 0 and c[7] < 0)
+		or (c[1] > width and c[3] > width and c[5] > width and c[7] > width)
+		or (c[2] < 0 and c[4] < 0 and c[6] < 0 and c[8] < 0)
+		or (c[2] > height and c[4] > height and c[6] > height and c[8] > height)
+end
+
 -- Draws the given asset at the given position
 function PassiveTreeViewClass:DrawAsset(data, x, y, scale, isHalf)
 	if not data then
@@ -1295,6 +1323,12 @@ function PassiveTreeViewClass:DrawAsset(data, x, y, scale, isHalf)
 	end
 	local width = data.width * scale * 1.33
 	local height = data.height * scale * 1.33
+	-- Half-backgrounds use two vertically mirrored images, each twice as tall.
+	local verticalExtent = height * (isHalf and 2 or 1)
+	if x + width < 0 or x - width > main.screenW
+		or y + verticalExtent < 0 or y - verticalExtent > main.screenH then
+		return
+	end
 	if isHalf then
 		DrawImage(data.handle, x - width, y - height * 2, width * 2, height * 2)
 		DrawImage(data.handle, x - width, y, width * 2, height * 2, 0, 1, 1, 0)

@@ -1,0 +1,4 @@
+**
+!tools/
+!tools/serve_loot_market_cache.cjs
+!tools/loot_market_snapshots.cjs

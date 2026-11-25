@@ -1,0 +1,224 @@
+-- Review copied items only; no stash access or currency transaction.
+local M={maxBytes=4*1024*1024}
+local jewelleryClasses={Rings=true,Amulets=true,Belts=true}
+-- Descriptors used by PoB's item parser for the supported catalyst types.
+local catalystTypes={}
+for _,name in ipairs({"Attack","Speed","Suffix","Life and Mana","Caster","Attribute","Physical and Chaos","Resistance","Prefix","Defence","Elemental","Critical"}) do catalystTypes[name:lower()]=name end
+local function clean(value) return (value:gsub("^%s+",""):gsub("%s+$","")) end
+local function groupByQuality(items)
+	local groups,group,total={}, {},0
+	for _,item in ipairs(items) do
+		group[#group+1]=item;total=total+item.quality
+		if #group>=2 and total>=40 then groups[#groups+1]={items=group,quality=total};group={};total=0 end
+	end
+	return groups,group,total
+end
+-- Pair large rolls with the smallest sufficient roll, then use larger rolls
+-- when several items are needed. Quality is bounded to 1-100 by the parser.
+local function balancedGroups(items)
+	local buckets={};for q=1,100 do buckets[q]={} end
+	for _,item in ipairs(items) do local bucket=buckets[item.quality];bucket[#bucket+1]=item end
+	local remaining=#items;local groups,leftover,leftoverQuality={},{},0
+	local function take(q) remaining=remaining-1;return table.remove(buckets[q]) end
+	local function highest() for q=100,1,-1 do if #buckets[q]>0 then return q end end end
+	while remaining>=2 do
+		local q=highest();local group={take(q)};local total=q
+		while remaining>0 and (total<40 or #group<2) do
+			local nextQuality
+			for candidate=math.max(1,40-total),100 do if #buckets[candidate]>0 then nextQuality=candidate;break end end
+			nextQuality=nextQuality or highest();group[#group+1]=take(nextQuality);total=total+nextQuality
+		end
+		if total<40 then for _,item in ipairs(group) do leftover[#leftover+1]=item;leftoverQuality=leftoverQuality+item.quality end;break end
+		groups[#groups+1]={items=group,quality=total}
+	end
+	for q=1,100 do for _,item in ipairs(buckets[q]) do leftover[#leftover+1]=item;leftoverQuality=leftoverQuality+item.quality end end
+	return groups,leftover,leftoverQuality
+end
+-- Try to reach the mathematical upper bound without enumerating every item
+-- subset. Equal quality values are interchangeable; search their counts and
+-- stop at a fixed work budget. Failure does not prove the heuristic optimal.
+local function upperBoundGroups(items,target,total)
+	if #items>128 then return nil end
+	local buckets,counts,qualities={},{},{}
+	for _,item in ipairs(items) do
+		local q=item.quality
+		if not buckets[q] then buckets[q]={};counts[q]=0;qualities[#qualities+1]=q end
+		buckets[q][#buckets[q]+1]=item;counts[q]=counts[q]+1
+	end
+	table.sort(qualities,function(a,b) return a>b end)
+	local work,aborted,chosen=0,false,{}
+	local function tick() work=work+1;if work>100000 then aborted=true;return false end;return true end
+	local solve
+	solve=function(need,remaining,sum)
+		if need==0 then return true end
+		if aborted or remaining<need*2 or sum<need*40 or not tick() then return false end
+		local highest
+		for _,q in ipairs(qualities) do if counts[q]>0 then highest=q;break end end
+		if not highest then return false end
+		counts[highest]=counts[highest]-1;local group={highest}
+		local function fill(start,groupSum,left,leftSum)
+			if aborted or not tick() then return false end
+			if #group>=2 and groupSum>=40 then
+				chosen[#chosen+1]=copyTable(group)
+				if solve(need-1,left,leftSum) then return true end
+				chosen[#chosen]=nil;return false
+			end
+			if left==0 or groupSum+leftSum<40 or left<2*(need-1)+math.max(0,2-#group) then return false end
+			for i=start,#qualities do
+				if not tick() then return false end
+				local q=qualities[i]
+				if counts[q]>0 then
+					counts[q]=counts[q]-1;group[#group+1]=q
+					if fill(i,groupSum+q,left-1,leftSum-q) then return true end
+					group[#group]=nil;counts[q]=counts[q]+1
+				end
+			end
+			return false
+		end
+		if fill(1,highest,remaining-1,sum-highest) then return true end
+		counts[highest]=counts[highest]+1;return false
+	end
+	if not solve(target,#items,total) then return nil end
+	local groups,leftover,leftoverQuality={},{},0
+	for _,selected in ipairs(chosen) do
+		local group,quality={},0
+		for _,q in ipairs(selected) do group[#group+1]=table.remove(buckets[q]);quality=quality+q end
+		groups[#groups+1]={items=group,quality=quality}
+	end
+	for _,q in ipairs(qualities) do for _,item in ipairs(buckets[q]) do leftover[#leftover+1]=item;leftoverQuality=leftoverQuality+q end end
+	return groups,leftover,leftoverQuality
+end
+-- Search small collections exactly, with a fixed work budget. Larger or hard
+-- inputs keep the linear heuristic; no item is rejected because of its count.
+local function bestGroups(items)
+	local greedy,leftover,leftoverQuality=groupByQuality(items)
+	local balanced,balancedLeft,balancedQuality=balancedGroups(items)
+	if #balanced>#greedy then greedy,leftover,leftoverQuality=balanced,balancedLeft,balancedQuality end
+	local total=0;for _,item in ipairs(items) do total=total+item.quality end
+	local upper=math.min(math.floor(total/40),math.floor(#items/2))
+	if #greedy==upper then return greedy,leftover,leftoverQuality,true end
+	if #items>18 then
+		local groups,rest,restQuality=upperBoundGroups(items,upper,total)
+		if groups then return groups,rest,restQuality,true end
+		return greedy,leftover,leftoverQuality,false
+	end
+	local bit=require("bit");local band=bit.band;local size=2^#items;local sums,counts,minimum,positions={[0]=0},{[0]=0},{},{}
+	for i=1,#items do positions[2^(i-1)]=i end
+	for mask=1,size-1 do
+		local first=band(mask,-mask);local prior=mask-first;local q=items[positions[first]].quality
+		sums[mask]=sums[prior]+q;counts[mask]=counts[prior]+1;minimum[mask]=math.min(minimum[prior] or q,q)
+	end
+	local best,choice={[0]=0},{};local work,aborted=0,false
+	local function solve(mask)
+		if best[mask]~=nil then return best[mask] end
+		local upper=math.min(math.floor(sums[mask]/40),math.floor(counts[mask]/2))
+		if upper==0 then best[mask]=0;choice[mask]=0;return 0 end
+		local first=band(mask,-mask);local value,selected=0,0;local sub=mask
+		while sub>0 do
+			work=work+1;if work>100000 then aborted=true;return 0 end
+			if band(sub,first)~=0 and counts[sub]>=2 and sums[sub]>=40 and (counts[sub]==2 or sums[sub]-minimum[sub]<40) then
+				local candidate=1+solve(mask-sub);if aborted then return 0 end
+				if candidate>value then value,selected=candidate,sub end
+				if value==upper then break end
+			end
+			sub=band(sub-1,mask)
+		end
+		if value<upper then local without=solve(mask-first);if aborted then return 0 end;if without>value then value,selected=without,0 end end
+		best[mask]=value;choice[mask]=selected;return value
+	end
+	local mask=size-1;solve(mask);if aborted then return greedy,leftover,leftoverQuality,false end
+	local groups,remaining,remainingQuality={},{},0
+	while mask>0 do
+		if best[mask]==0 then for i,item in ipairs(items) do if band(mask,2^(i-1))~=0 then remaining[#remaining+1]=item;remainingQuality=remainingQuality+item.quality end end;break end
+		local selected=choice[mask]
+		if selected==0 then local first=band(mask,-mask);local item=items[positions[first]];remaining[#remaining+1]=item;remainingQuality=remainingQuality+item.quality;mask=mask-first
+		else local group={};for i,item in ipairs(items) do if band(selected,2^(i-1))~=0 then group[#group+1]=item end end;groups[#groups+1]={items=group,quality=sums[selected]};mask=mask-selected end
+	end
+	return groups,remaining,remainingQuality,true
+end
+function M.parse(raw)
+	assert(type(raw)=="string" and #raw>0 and #raw<=24000 and not raw:find("%z"),"Paste one copied item up to 24 KiB")
+	raw=raw:gsub("\r\n","\n"):gsub("\r","\n")
+	local lines={};for line in (raw.."\n"):gmatch("([^\n]*)\n") do line=clean(line);if line~="" then lines[#lines+1]=line end end
+	local class=lines[1] and lines[1]:match("^Item Class:%s*(.+)$")
+	-- Game clipboard labels differ from the filter-language class names.
+	class=({["Active Skill Gems"]="Skill Gems",["Support Skill Gems"]="Support Gems"})[class] or class
+	local kind=require("Modules.LootFilterCampaign").qualityCategory(class)
+	local flaskClasses={ ["Life Flasks"]=true,["Mana Flasks"]=true,["Hybrid Flasks"]=true,["Utility Flasks"]=true,["Critical Utility Flasks"]=true,["Tinctures"]=true }
+	local jewellery=jewelleryClasses[class] or false
+	local category=kind=="Quality weapon" and "Weapons" or kind=="Quality armour" and "Armour" or flaskClasses[class] and "Flasks and tinctures" or (class=="Skill Gems" or class=="Support Gems") and "Gems" or jewellery and "Jewellery"
+	assert(category,"Copy a weapon, armour, jewellery, flask, tincture or gem with its item class")
+	local rarity=lines[2] and lines[2]:match("^Rarity:%s*(%a+)$")
+	assert(category=="Gems" and rarity=="Gem" or category~="Gems" and rarity and ({Normal=true,Magic=true,Rare=true,Unique=true})[rarity],"The copied item needs a supported rarity")
+	-- Magic items normally have one displayed name, including their affixes.
+	-- Unidentified rare or unique items can also have a single name line.
+	-- Keep that visible name for review without guessing the underlying base.
+	local function property(line)
+		return line and (line:match("^Quality[:%s%(]") or line:match("^Item Level:") or line:match("^Sockets:") or line:match("^Requirements:"))
+	end
+	local endOfName=lines[4]=="--------" or property(lines[4])
+	local singleName=endOfName and (rarity=="Magic" or (rarity=="Rare" or rarity=="Unique") and (raw:match("\nUnidentified\n") or raw:match("\nUnidentified %(Tier %d+%)\n") or raw:match("\nUnidentified$") or raw:match("\nUnidentified %(Tier %d+%)$")))
+	local base=lines[(rarity=="Normal" or rarity=="Gem" or singleName) and 3 or 4]
+	assert(base and base~="--------" and not property(base) and #base<=160 and not base:find("[%c%^]"),"The copied item needs a visible base type")
+	local quality,qualityType
+	for _,line in ipairs(lines) do
+		local value=line:match("^Quality:%s*%+?(%d+)%%") or line:match("^Quality %([^%)]+%):%s*%+?(%d+)%%")
+		if value then
+			assert(not quality,"Copied item has multiple quality values");quality=tonumber(value)
+			local descriptor=line:match("^Quality %(([%a%s]+) Modifiers%):")
+			if jewellery and descriptor then qualityType=catalystTypes[descriptor:lower()] end
+		end
+	end
+	local gemId=class=="Skill Gems" and data.gemForBaseName[base:lower()]
+	local vaal=gemId and data.gems[gemId] and data.gems[gemId].vaalGem==true or false
+	assert(quality and quality>=1 and quality<=100 or vaal and (quality==nil or quality==0),"The copied item needs quality between 1% and 100%, or a recognized Vaal skill gem")
+	return {base=base,class=class,rarity=rarity,quality=quality,qualityType=qualityType,jewellery=jewellery or nil,category=category,vaalGem=vaal}
+end
+function M.review(items)
+	assert(type(items)=="table","Supply copied items")
+	for index in pairs(items) do assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#items,"Copied items must be an array") end
+	local categories={{name="Weapons",reward="Blacksmith's Whetstone",items={},groups={},leftover={}},{name="Armour",reward="Armourer's Scrap",items={},groups={},leftover={}},{name="Flasks and tinctures",reward="Glassblower's Bauble",items={},groups={},leftover={}},{name="Gems",reward="Gemcutter's Prism",items={},groups={},leftover={}}}
+	local vaal={groups={},remaining={},count=0};local byName={};for _,category in ipairs(categories) do byName[category.name]=category end;local bytes=0
+	for index,raw in ipairs(items) do
+		assert(type(raw)=="string","Item "..index.." must be copied item text");bytes=bytes+#raw;assert(bytes<=M.maxBytes,"Copied items exceed the 4 MiB review limit")
+		local ok,item=pcall(M.parse,raw);assert(ok,"Item "..index..": "..tostring(item));item.index=index
+		local category
+		if item.jewellery then
+			local name="Jewellery: "..(item.qualityType or "unknown quality type")
+			item.category=name;category=byName[name]
+			if not category then category={name=name,reward="Random Catalyst",qualityType=item.qualityType,unknownType=not item.qualityType,items={},groups={},leftover={}};byName[name]=category;categories[#categories+1]=category end
+		else category=byName[item.category] end
+		category.items[#category.items+1]=item
+		if item.vaalGem then
+			vaal.count=vaal.count+1;vaal.remaining[#vaal.remaining+1]=item
+			if #vaal.remaining==5 then vaal.groups[#vaal.groups+1]={items=vaal.remaining};vaal.remaining={} end
+		end
+	end
+	table.sort(categories,function(a,b)
+		local aJew=a.name:match("^Jewellery:")~=nil;local bJew=b.name:match("^Jewellery:")~=nil
+		if aJew~=bJew then return not aJew end
+		if aJew then return a.name<b.name end
+		local order={Weapons=1,Armour=2,["Flasks and tinctures"]=3,Gems=4};return order[a.name]<order[b.name]
+	end)
+	for _,category in ipairs(categories) do
+		local rest={};category.unknownQuality={};category.zeroQuality={}
+		for _,item in ipairs(category.items) do
+			if item.quality==nil then category.unknownQuality[#category.unknownQuality+1]=item
+			elseif item.quality==0 then category.zeroQuality[#category.zeroQuality+1]=item
+			else
+				if category.name=="Gems" and item.quality>20 then category.eligibilityUncertain=true end
+				if item.jewellery and (category.unknownType or item.rarity=="Normal" and item.quality>=20 or item.quality>=40) then category.eligibilityUncertain=true end
+				if not item.jewellery and item.rarity=="Normal" and item.quality>=20 or category.name=="Gems" and item.quality==20 then category.groups[#category.groups+1]={items={item},quality=item.quality,single=true,singleKind=category.name=="Gems" and "gem" or "normal"}
+				else rest[#rest+1]=item end
+			end
+		end
+		table.sort(rest,function(a,b) if a.quality~=b.quality then return a.quality>b.quality end return a.index<b.index end)
+		local groups,leftover,leftoverQuality,optimal
+		if category.unknownType then groups={};leftover=rest;leftoverQuality=0;for _,item in ipairs(rest) do leftoverQuality=leftoverQuality+item.quality end;optimal=false
+		else groups,leftover,leftoverQuality,optimal=bestGroups(rest) end
+		for _,group in ipairs(groups) do category.groups[#category.groups+1]=group end
+		category.leftover=leftover;category.leftoverQuality=leftoverQuality;category.optimal=optimal and not category.eligibilityUncertain and #category.unknownQuality==0
+	end
+	return {categories=categories,vaal=vaal,totalItems=#items,note="Vaal Orb groups use five recognized Vaal skill gems in normal mode; Ruthless eligibility is unverified. Vaal and quality groups are independent and may use the same items. Optimal quality counts are proven for the modeled recipe and supplied quality values when marked; otherwise groups are suggestions. Jewellery is grouped only by recognized matching quality types; a random Catalyst is suggested for groups totalling at least 40%. Single-item jewellery offers and gems above 20% are unverified. Each paste must be a different item. Check eligibility and the actual vendor offer; this does not read your stash."}
+end
+return M

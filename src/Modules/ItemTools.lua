@@ -11,6 +11,12 @@ local m_floor = math.floor
 
 itemLib = { }
 
+-- These item lines can change how other individual modifiers are scaled.
+function itemLib.isModifierMagnitudeLine(line)
+	line = line:lower()
+	return line:find("modifier magnitude", 1, true) or line:find("effect of prefixes", 1, true) or line:find("effect of suffixes", 1, true)
+end
+
 -- Cluster-template positions, shared by the passive tree and the item editor.
 -- Index 0 is the entrance; half of totalIndicies is the back of the cluster.
 function itemLib.getClusterJewelNotableIndices(clusterJewel, jewelData, notableCount)
@@ -371,12 +377,15 @@ function itemLib.applyRange(line, range, valueScalar, baseValueScalar)
 	else -- fallback to old method for determining scalability
 		-- ConPrintf("Couldn't find scalability data falling back to old implementation: %s", strippedLine)
 		local precisionSame = true
+		local precisionIndex = 0
 		-- Create a line with ranges removed to check if the mod is a high precision mod.
 		local testLine = not line:find("-", 1, true) and line or
 			line:gsub("(%+?)%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)",
 				function(plus, min, max)
+					precisionIndex = precisionIndex + 1
+					local valueRange = ranges and (ranges[precisionIndex] or 0.5) or range
 					min = tonumber(min)
-					local maxPrecision = min + range * (tonumber(max) - min)
+					local maxPrecision = min + valueRange * (tonumber(max) - min)
 					local minPrecision = m_floor(maxPrecision + 0.5)
 					if minPrecision ~= maxPrecision then
 						precisionSame = false
@@ -409,8 +418,9 @@ function itemLib.applyRange(line, range, valueScalar, baseValueScalar)
 		line = line:gsub("(%+?)%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)",
 				function(plus, min, max)
 					numbers = numbers + 1
+					local valueRange = ranges and (ranges[numbers] or 0.5) or range
 					local power = 10 ^ (precision or 0)
-					local numVal = m_floor((tonumber(min) + range * (tonumber(max) - tonumber(min))) * power + 0.5) /
+					local numVal = m_floor((tonumber(min) + valueRange * (tonumber(max) - tonumber(min))) * power + 0.5) /
 						power
 					return (numVal < 0 and "" or plus) .. tostring(numVal)
 				end)
@@ -422,6 +432,25 @@ function itemLib.applyRange(line, range, valueScalar, baseValueScalar)
 
 		return itemLib.applyValueScalar(line, valueScalar, baseValueScalar, numbers, precision)
 	end
+end
+
+-- Scalars and legacy singleton vectors apply to the whole modifier.
+-- Independent vectors advance across all lines.
+function itemLib.applyModRanges(mod, range)
+	if type(range) == "table" and #range == 1 then range = range[1] end
+	local lines, index = { }, 0
+	for _, line in ipairs(mod) do
+		local values = range
+		if type(range) == "table" then
+			values = { }
+			for _ in line:gmatch("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)") do
+				index = index + 1
+				values[#values + 1] = range[index] or 0.5
+			end
+		end
+		lines[#lines + 1] = itemLib.applyRange(line, values or 0.5)
+	end
+	return lines
 end
 
 function itemLib.isModLineScalable(line, range, valueScalar)

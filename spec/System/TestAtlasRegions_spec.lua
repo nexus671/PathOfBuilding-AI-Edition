@@ -1,0 +1,72 @@
+describe("Manually tracked Shaped Regions",function()
+	local regions=require("Modules.AtlasRegions")
+	local atlas=require("Modules.AtlasPlanner")
+	local function fixture() return {
+		{mechanic="Blight",maps={{name="Beach Map",freeThreads=2},{name="Strand Map",freeThreads=3}}},
+		{mechanic="Breach",maps={{name="beach map",freeThreads=4},{name="Dunes Map",freeThreads=1}}},
+		{mechanic="Abyss",maps={{name="Strand Map",freeThreads=6}}},
+	} end
+	it("removes a run map from every overlapping region and advances only completed objectives",function()
+		local input=fixture();local before=copyTable(input)
+		local result=regions.complete(input," Beach Map ",{"Blight"})
+		assert.same(before,input);assert.same({{name="Strand Map",freeThreads=4}},result[1].maps)
+		assert.same({{name="Dunes Map",freeThreads=1}},result[2].maps);assert.same(input[3],result[3])
+		local both=regions.complete(input,"Beach Map",{"Blight","Breach"});assert.equal(2,both[2].maps[1].freeThreads)
+		local skipped=regions.complete(input,"Beach Map",{});assert.equal(3,skipped[1].maps[1].freeThreads)
+		assert.has_error(function() regions.complete(input,"Beach Map",{"Abyss"}) end)
+		assert.has_error(function() regions.complete(input,"Unknown",{}) end)
+	end)
+	it("groups observed maps across regions without changing their saved observations",function()
+		local input=fixture();local before=copyTable(input);local overview=regions.overview(input)
+		assert.same(before,input);assert.equal(3,#overview)
+		assert.equal("Beach Map",overview[1].name);assert.same({{mechanic="Blight",freeThreads=2},{mechanic="Breach",freeThreads=4}},overview[1].regions)
+		assert.equal("Dunes Map",overview[2].name);assert.same({{mechanic="Abyss",freeThreads=6},{mechanic="Blight",freeThreads=3}},overview[3].regions)
+	end)
+	it("records an overlapping map from the overview only after confirmation",function()
+		newBuild();main.popups={};local kept
+		local controls=require("Classes.AtlasRegionsControl").Open({shapedRegions=fixture()},function(value) kept=value end)
+		local function chooseMap()
+			controls.overview:Click();local picker=main.popups[1].controls;picker.search:SetText("Beach Map",true);picker.choose:Click()
+		end
+		chooseMap();local confirm=main.popups[1].controls;assert.equal("Blight",confirm.objective1.label);assert.equal("Breach",confirm.objective2.label)
+		confirm.close:Click();chooseMap();confirm=main.popups[1].controls;confirm.objective1.state=true;confirm.apply:Click();controls.keep:Click()
+		assert.same({{name="Strand Map",freeThreads=4}},kept[1].maps);assert.same({{name="Dunes Map",freeThreads=1}},kept[2].maps)
+	end)
+	it("opens the Thread checker with the selected region's observed count",function()
+		newBuild();main.popups={};local controls=require("Classes.AtlasRegionsControl").Open({shapedRegions=fixture()},function() end)
+		controls.region:SelByValue("Blight");controls.region.selFunc();controls.list.onClick({line=controls.list.list[2]})
+		assert.is_true(controls.threadCheck:IsEnabled());controls.threadCheck:Click()
+		local checker=main.popups[1].controls;assert.equal("3",checker.threads.buf);assert.equal("83",checker.level.buf)
+		local result={};for _,row in ipairs(checker.results.list) do result[#result+1]=StripEscapes(row[1] or "") end
+		local text=table.concat(result," ");assert.matches("Blight: %+40%%",text);assert.not_matches("Abyss:",text)
+		checker.close:Click();assert.equal("Strand Map",controls.map.buf);assert.equal("3",controls.count.buf);main.popups={}
+	end)
+	it("undoes and redoes a run across all overlapping regions",function()
+		newBuild();main.popups={};local kept;local controls=require("Classes.AtlasRegionsControl").Open({shapedRegions=fixture()},function(value) kept=value end)
+		assert.is_false(controls.undo:IsEnabled());controls.overview:Click();local picker=main.popups[1].controls;picker.search:SetText("Beach Map",true);picker.choose:Click()
+		local confirm=main.popups[1].controls;confirm.objective1.state=true;confirm.apply:Click();assert.is_true(controls.undo:IsEnabled())
+		controls.undo:Click();assert.is_true(controls.redo:IsEnabled());controls.redo:Click();controls.undo:Click();controls.keep:Click()
+		assert.same(fixture(),kept);main.popups={}
+	end)
+	it("explains when an observed count exceeds the Thread checker's range",function()
+		newBuild();main.popups={};local input=fixture();input[1].maps[1].freeThreads=101
+		local controls=require("Classes.AtlasRegionsControl").Open({shapedRegions=input},function() end)
+		controls.region:SelByValue("Blight");controls.region.selFunc();controls.list.onClick({line=controls.list.list[1]})
+		assert.is_false(controls.threadCheck:IsEnabled());assert.matches("supports up to 100",controls.status.label);assert.matches("supports up to 100",controls.threadCheck.tooltipText());assert.equal("Shaped Regions",main.popups[1].title);main.popups={}
+	end)
+	it("validates observations without silently dropping duplicates or invalid counts",function()
+		local bad=fixture();bad[1].maps[2].name="beach MAP";assert.has_error(function() regions.validate(bad) end)
+		bad=fixture();bad[2].mechanic="Blight";assert.has_error(function() regions.validate(bad) end)
+		bad=fixture();bad[1].maps[1].freeThreads=-1;assert.has_error(function() regions.validate(bad) end)
+		bad=fixture();bad[1].maps[1].freeThreads=1.5;assert.has_error(function() regions.validate(bad) end)
+		bad=fixture();bad[1].maps[2].freeThreads=1000;assert.has_error(function() regions.complete(bad,"Beach Map",{"Blight"}) end)
+	end)
+	it("keeps regions through Atlas export and build save/reopen",function()
+		newBuild();local plan={id="regions",title="Regions",version="3.30.0-preview",budget=150,nodes={},shapedRegions=fixture()}
+		local validated=atlas.validate(plan);assert.same(fixture(),validated.shapedRegions)
+		assert.same(validated,atlas.import(atlas.export(validated)))
+		build.savers.AtlasPlans:Upsert(validated);local xml=build:SaveDB("Region test");loadBuildFromXML(xml,"Region test")
+		assert.same(fixture(),build.savers.AtlasPlans.plans[1].shapedRegions)
+		plan.version="3.29.3";plan.budget=120;assert.has_error(function() atlas.validate(plan) end)
+	end)
+end)

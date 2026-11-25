@@ -18,6 +18,16 @@ SetMainObject(launch)
 jit.opt.start('maxtrace=4000','maxmcode=8192')
 collectgarbage("setpause", 400)
 
+function GetVirtualScreenSize()
+	local width, height = GetScreenSize()
+	local scale = GetScreenScale and GetScreenScale() or 1.0
+	if scale ~= 1.0 then
+		width = math.floor(width / scale)
+		height = math.floor(height / scale)
+	end
+	return width, height
+end
+
 function launch:OnInit()
 	self.devMode = false
 	self.installedMode = false
@@ -27,7 +37,9 @@ function launch:OnInit()
 	self.lastUpdateCheck = GetTime()
 	self.subScripts = { }
 	self.startTime = startTime
-	local firstRunFile = io.open("first.run", "r")
+	local syncOnly = arg and (arg[1] == "--loot-filter-sync" or arg[1] == "--loot-filter-sync-scheduled")
+	local overlayOnly = arg and arg[1] == "--trade-overlay"
+	local firstRunFile = not (syncOnly or overlayOnly) and io.open("first.run", "r")
 	if firstRunFile then
 		firstRunFile:close()
 		os.remove("first.run")
@@ -66,6 +78,16 @@ function launch:OnInit()
 		self.installedMode = true
 		installedFile:close()
 	end
+	if syncOnly then
+		self.lootSyncWorker = require("Modules.LootFilterBackground")
+		self.lootSyncWorker.start(self, arg[1] == "--loot-filter-sync-scheduled")
+		return
+	end
+	if overlayOnly then
+		self.tradeOverlayDriver = require("Modules.LootTradeOverlay")
+		self.tradeOverlay = self.tradeOverlayDriver.start(self)
+		return
+	end
 	RenderInit("DPI_AWARE")
 	ConPrintf("Loading main script...")
 	local errMsg
@@ -101,12 +123,21 @@ function launch:CanExit()
 end
 
 function launch:OnExit()
+	if self.tradeOverlay then self.tradeOverlayDriver.close(self.tradeOverlay) end
 	if self.main and self.main.Shutdown then
 		PCall(self.main.Shutdown, self.main)
 	end
 end
 
 function launch:OnFrame()
+	if self.tradeOverlay then
+		self.tradeOverlayDriver.frame(self.tradeOverlay)
+		return
+	end
+	if self.lootSyncWorker then
+		self.lootSyncWorker.frame(self)
+		return
+	end
 	if self.main then
 		if self.main.OnFrame then
 			local errMsg = PCall(self.main.OnFrame, self.main)
@@ -141,6 +172,10 @@ function launch:OnFrame()
 end
 
 function launch:OnKeyDown(key, doubleClick)
+	if self.tradeOverlay then
+		self.tradeOverlayDriver.key(self.tradeOverlay,"KeyDown",key,doubleClick)
+		return
+	end
 	if key == "F5" and self.devMode then
 		self.doRestart = "Restarting..."
 	elseif key == "F6" and self.devMode then
@@ -175,6 +210,10 @@ function launch:OnKeyDown(key, doubleClick)
 end
 
 function launch:OnKeyUp(key)
+	if self.tradeOverlay then
+		self.tradeOverlayDriver.key(self.tradeOverlay,"KeyUp",key)
+		return
+	end
 	if not self.promptMsg then
 		if self.main and self.main.OnKeyUp then
 			local errMsg = PCall(self.main.OnKeyUp, self.main, key)
@@ -186,6 +225,10 @@ function launch:OnKeyUp(key)
 end
 
 function launch:OnChar(key)
+	if self.tradeOverlay then
+		self.tradeOverlayDriver.key(self.tradeOverlay,"Char",key)
+		return
+	end
 	if self.promptMsg then
 		self:RunPromptFunc(key)
 	else
@@ -255,13 +298,15 @@ end
 ---Download the given page in the background, and calls the provided callback function when done:
 ---@param url string
 ---@param callback fun(response:table, errMsg:string) @ response = { header, body }
----@param params? table @ params = { header, body }
+---@param params? table @ params = { header, body, timeout, maxBytes, followRedirects }
 function launch:DownloadPage(url, callback, params)
 	params = params or {}
 	local script = [[
-		local url, requestHeader, requestBody, connectionProtocol, proxyURL, noSSL = ...
+		local url, requestHeader, requestBody, connectionProtocol, proxyURL, noSSL, timeout, maxBytes, followRedirects = ...
 		local responseHeader = ""
 		local responseBody = ""
+		local bytes, oversized = 0, false
+		local chunks = {}
 		ConPrintf("Downloading page at: %s", url)
 		local curl = require("lcurl.safe")
 		local easy = curl.easy()
@@ -275,7 +320,11 @@ function launch:DownloadPage(url, callback, params)
 		easy:setopt_url(url)
 		easy:setopt(curl.OPT_USERAGENT, "Path of Building/]]..self.versionNumber..[[")
 		easy:setopt(curl.OPT_ACCEPT_ENCODING, "")
-		easy:setopt(curl.OPT_FOLLOWLOCATION, 1)
+		easy:setopt(curl.OPT_FOLLOWLOCATION, followRedirects == false and 0 or 1)
+		if timeout then
+			easy:setopt(curl.OPT_TIMEOUT, timeout)
+			easy:setopt(curl.OPT_CONNECTTIMEOUT, math.min(timeout, 10))
+		end
 		if requestBody then
 			easy:setopt(curl.OPT_POST, true)
 			easy:setopt(curl.OPT_POSTFIELDS, requestBody)
@@ -295,14 +344,19 @@ function launch:DownloadPage(url, callback, params)
 			return true
 		end)
 		easy:setopt_writefunction(function(data)
-			responseBody = responseBody .. data
+			bytes = bytes + #data
+			if maxBytes and bytes > maxBytes then oversized=true;return false end
+			chunks[#chunks+1] = data
 			return true
 		end)
 		local _, error = easy:perform()
 		local code = easy:getinfo(curl.INFO_RESPONSE_CODE)
 		easy:close()
+		responseBody = table.concat(chunks)
 		local errMsg
-		if error then
+		if oversized then
+			errMsg = "Response exceeds the size limit"
+		elseif error then
 			errMsg = error:msg()
 		elseif code ~= 200 then
 			errMsg = "Response code: "..code
@@ -312,7 +366,7 @@ function launch:DownloadPage(url, callback, params)
 		ConPrintf("Download complete. Status: %s", errMsg or "OK")
 		return responseBody, errMsg, responseHeader
 	]]
-	local id = LaunchSubScript(script, "", "ConPrintf", url, params.header, params.body, self.connectionProtocol, self.proxyURL, self.noSSL or false)
+	local id = LaunchSubScript(script, "", "ConPrintf", url, params.header, params.body, self.connectionProtocol, self.proxyURL, self.noSSL or false, params.timeout, params.maxBytes, params.followRedirects ~= false)
 	if id then
 		self.subScripts[id] = {
 			type = "DOWNLOAD",

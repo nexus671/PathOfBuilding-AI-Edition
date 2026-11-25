@@ -43,6 +43,17 @@ for i, entry in ipairs(LISTED_STATUS_OPTIONS) do
 end
 
 
+local function uniqueTradeName(item)
+	local name = (item.title or item.name):gsub("^Foulborn%s+", ""):gsub("%s+$", "")
+	name = (name:match("^(.-)%s+%d+$") or name):lower()
+	local best
+	for _, entry in pairs(main.uniqueDB.list) do
+		local candidate = entry.title
+		if entry.baseName == item.baseName and name:find(candidate:lower(), 1, true) and (not best or #candidate > #best or (#candidate == #best and candidate < best)) then best = candidate end
+	end
+	return best
+end
+
 -- Build the trade search URL based on popup selections
 local function buildURL(item, slotName, controls, modEntries, defenceEntries, isUnique)
 	-- Determine realm and league from the popup's dropdowns
@@ -71,15 +82,9 @@ local function buildURL(item, slotName, controls, modEntries, defenceEntries, is
 	local queryFilters = {}
 
 	if isUnique then
-		-- Search by unique name
-		-- Strip "Foulborn" prefix from unique name for trade search
-		local tradeName = (item.title or item.name):gsub("^Foulborn%s+", "")
-		-- only strip a trailing numeric identifier to avoid e.g. including
-		-- timeless jewel ids or other numbers appended to the item name.
-		tradeName = tradeName:gsub("%s+$", "")
-		tradeName = tradeName:match("^(.-)%s+%d+$") or tradeName
-		queryTable.name = tradeName
+		queryTable.name = uniqueTradeName(item)
 		queryTable.type = item.baseName
+		if not queryTable.name then queryFilters.type_filters = { filters = { rarity = { option = "unique" } } } end
 		-- If item is Foulborn, add the foulborn_item filter
 		if item.foulborn then
 			queryFilters.misc_filters = queryFilters.misc_filters or { filters = {} }
@@ -196,8 +201,8 @@ local function buildURL(item, slotName, controls, modEntries, defenceEntries, is
 	local encodedLeague = league:gsub("[^%w%-%.%_%~]", function(c)
 		return string.format("%%%02X", string.byte(c))
 	end):gsub(" ", "+")
-	url ..= "/" .. encodedLeague
-	url ..= "/" .. tradeHelpers.B64GzipEncode(queryJson)
+	url = url .. "/" .. encodedLeague
+	url = url .. "/" .. tradeHelpers.B64GzipEncode(queryJson)
 
 	return url
 end
@@ -254,13 +259,13 @@ function M.addModEntries(item, modTypeSources)
 							value = value,
 						}
 						if not tradeId then
-							local resultHashes, value, invert = tradeHelpers.findTradeHash(resolvedLine)
+							local resultHashes, value, invert, prefix = tradeHelpers.findTradeHash(resolvedLine)
 							-- convert hashes to string ids
 							local resultIds = {}
 							if resultHashes then
 								local existingStats = getStats()
 								for idx = 1, #resultHashes do
-									local id = string.format("%s.stat_%s", source.type, resultHashes[idx])
+									local id = string.format("%s.%s%s", source.type, prefix, resultHashes[idx])
 									if existingStats[id] then
 										t_insert(resultIds, id)
 									end
@@ -283,6 +288,7 @@ function M.openPopup(item, slotName, primaryBuild)
 	if not item then return end
 
 	local isUnique = item.rarity == "UNIQUE" or item.rarity == "RELIC"
+	local missingUniqueBase = isUnique and (type(item.baseName) ~= "string" or not item.baseName:match("%S"))
 	local controls = {}
 	local uri = ""
 	local rowHeight = 24
@@ -416,6 +422,11 @@ function M.openPopup(item, slotName, primaryBuild)
 		-- Unique item name label
 		controls.nameLabel = new("LabelControl"):LabelControl(nil, {0, ctrlY, 0, 16}, "^x" .. (colorCodes[item.rarity] or "FFFFFF"):gsub("%^x","") .. item.name)
 		ctrlY = ctrlY + rowHeight
+		if missingUniqueBase or not uniqueTradeName(item) then
+			local message = missingUniqueBase and "Item base not recognised: trade search unavailable." or "Name not recognised: searching all uniques of this base."
+			controls.nameWarning = new("LabelControl"):LabelControl(nil, {0, ctrlY, 0, 16}, "^xFFBB77" .. message)
+			ctrlY = ctrlY + rowHeight
+		end
 	else
 		-- Category label
 		local categoryLabel = tradeHelpers.getTradeCategoryLabel(slotName, item)
@@ -512,12 +523,13 @@ function M.openPopup(item, slotName, primaryBuild)
 	-- Search button
 	ctrlY = ctrlY + 8
 	controls.search = new("ButtonControl"):ButtonControl(nil, { 0, ctrlY, 110, 20 }, "Open URL", function()
+		if missingUniqueBase or not uri or uri == "" then return end
 		Copy(uri)
 		OpenURL(uri)
 	end, nil)
-	controls.search.tooltipText = "The URL is also copied to the clipboard."
+	controls.search.tooltipText = missingUniqueBase and "A recognised item base is required for this search." or "The URL is also copied to the clipboard."
 	controls.search.enabled = function()
-		return uri and uri ~= ""
+		return not missingUniqueBase and uri and uri ~= ""
 	end
 
 	controls.close = new("ButtonControl"):ButtonControl(nil, { popupWidth / 2 - 50, ctrlY, 60, 20 }, "Close", function()

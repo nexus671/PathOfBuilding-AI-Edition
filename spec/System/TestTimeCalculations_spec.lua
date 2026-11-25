@@ -68,6 +68,20 @@ describe("Finite combat windows", function()
 		options.window = options.window or 10
 		return time.survival(options)
 	end
+	it("preserves recovery results and checks the budget between expensive events",function()
+		local events=0
+		local function run(checkpoint)
+			return simulate({window=20,interval=0.1,rates={Life=1},checkpoint=checkpoint,
+				hit=function(p) events=events+1;p.Life=p.Life-0.1;return p end})
+		end
+		local expected=run();events=0;local yields=0;local result
+		local thread=coroutine.create(function() return run(function()
+			assert.is_true(events<=1,"Check the frame budget before processing another event")
+			events=0;yields=yields+1;coroutine.yield()
+		end) end)
+		while coroutine.status(thread)~="dead" do local ok,value=coroutine.resume(thread);assert.is_true(ok,tostring(value));result=value end
+		assert.is_true(yields>10);assert.are.same(expected,result)
+	end)
 
 	it("does not recover before a lethal first hit", function()
 		local result = simulate({ rates = { Life = 1000 }, hit = function(p) p.Life = p.Life - 100; return p end })
@@ -107,6 +121,48 @@ describe("Finite combat windows", function()
 			rates = { Mana = 100 }, hit = function(p) p.EnergyShield = 0; return p end })
 		assert.are.near(10, result.pools.EnergyShield, 1e-7)
 		assert.are.equal(20, result.pools.Mana)
+	end)
+
+	it("labels recharge delays and interruptions without inventing recharge", function()
+		local events={}
+		local function observe(t,_,event) events[#events+1]={time=t,event=event} end
+		for _,rate in ipairs({0,function() return 0 end}) do
+			events={};simulate({window=2,interval=1,recharge=rate,observe=observe,hit=function(p) p.Life=p.Life-1;return p,{},true end})
+			for _,entry in ipairs(events) do assert.is_false(entry.event:find("Recharge",1,true)~=nil) end
+		end
+		events={}
+		simulate({window=4,interval=3,recharge=function() return 10 end,rechargeDelay=2,observe=observe,
+			pools={Life=100,Mana=0,EnergyShield=50},caps={Life=100,Mana=0,EnergyShield=100},
+			hit=function(p) p.EnergyShield=p.EnergyShield-1;return p,{},true end})
+		local delayed,started,interrupted
+		for _,entry in ipairs(events) do
+			if entry.event=="Recharge delayed by hit" then delayed=entry.time end
+			if entry.event=="Recharge started" then started=entry.time end
+			if entry.event=="Recharge interrupted by hit" then interrupted=entry.time end
+		end
+		assert.are.equal(0,delayed);assert.are.equal(2,started);assert.are.equal(3,interrupted)
+		local function result(withTrace)
+			return simulate({window=4,interval=3,recharge=10,rechargeDelay=2,observe=withTrace and function() end or nil,
+				pools={Life=100,Mana=0,EnergyShield=50},caps={Life=100,Mana=0,EnergyShield=100},
+				hit=function(p) p.EnergyShield=p.EnergyShield-1;return p,{},true end})
+		end
+		assert.same(result(false),result(true))
+	end)
+
+	it("keeps recharge active when a skill spends a full protected pool", function()
+		for _, resource in ipairs({"EnergyShield", "Life"}) do
+			local pools = {Life=100, Mana=0, EnergyShield=resource == "EnergyShield" and 100 or 0}
+			local caps = {Life=100, Mana=0, EnergyShield=pools.EnergyShield}
+			local result = simulate({window=1,interval=100,step=math.huge,pools=pools,caps=caps,
+				rechargeResource=resource,recharge=10,rechargeDelay=2,hit=function(p) return p end,
+				attackInterval=100,attack=function(p) p[resource]=p[resource]-20;return p,true end})
+			assert.are.near(90,result.pools[resource],1e-8)
+		end
+		-- An unknown pre-window recharge start must not grant recent Wicked Ward protection.
+		local hit = simulate({window=1,interval=100,step=math.huge,wickedWard=true,recharge=10,rechargeDelay=2,
+			pools={Life=100,Mana=0,EnergyShield=100},caps={Life=100,Mana=0,EnergyShield=100},
+			hit=function(p) p.EnergyShield=p.EnergyShield-20;return p,{},true end})
+		assert.are.near(80,hit.pools.EnergyShield,1e-8)
 	end)
 
 	it("interrupts recharge when on-block recovery hides ES damage", function()
@@ -427,6 +483,16 @@ describe("Finite combat windows", function()
 		build.configTab.input.recoverySimulationTimedEffects = true
 		build.configTab:BuildModList(); runCallback("OnFrame")
 		assert.is_true(build.calcsTab.calcsOutput.RecoverySimulationTime < fixed)
+	end)
+
+	it("suppresses ordered guard buffs in recovery projections", function()
+		build.skillsTab:PasteSocketGroup("Molten Shell 20/0  1")
+		build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1]);runCallback("OnFrame")
+		local calcs=build.calcsTab.calcs
+		local active=calcs.initEnv(build,"CALCULATOR");calcs.perform(active)
+		assert.is_true(active.player.output.GuardSkillActive)
+		local projected=calcs.initEnv(build,"CALCULATOR");projected.recoveryGuardSuppressed=true;calcs.perform(projected)
+		assert.is_false(projected.player.output.GuardSkillActive)
 	end)
 
 	it("expires guard protection and supports a paid recast policy", function()

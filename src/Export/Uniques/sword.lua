@@ -259,7 +259,7 @@ CriticalMultiplierImplicitSword2H1
 LocalIncreasedPhysicalDamagePercentUnique__48
 LocalIncreasedAttackSpeedUnique__40
 CannotBePoisonedUnique__2
-AdditionalTinctureUnique__1
+You can have 2 additional Tinctures active
 TinctureRemoveToxicityOnKillUnique__1
 ]],[[
 Oni-Goroshi
@@ -1065,5 +1065,16 @@ Source: Steal from a unique{Curio Display} during a Grand Heist
 Crafted: true
 Implicits: 1
 CriticalMultiplierImplicitSword1
+]],[[
+The Sword of Ages
+Exquisite Blade
+League: Covens
+Implicits: 1
+CriticalMultiplierImplicitSword3
+SandMirageOnAttackMovementSkillUnique__1
+GlobalIncreaseMovementSkillGemLevelUnique__1
+LocalIncreasedPhysicalDamagePercentUnique__59
+LocalIncreasedAttackSpeedUnique__47
+DamageWithMovementSkillsUniqueTwoHandSword20
 ]]
 }

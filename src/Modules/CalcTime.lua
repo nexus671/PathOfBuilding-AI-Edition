@@ -323,7 +323,17 @@ function M.survival(config)
 	local t, nextHit, hits, lastRechargeDamage = 0, 0, 0, 0
 	local sampleInterval, nextSample = max(0.25,window / 240), 0
 	local nextAttack, attempts, attacks = config.attack and 0 or math.huge, 0, 0
-	local rechargeActive, rechargeBegan = false, -math.huge
+	-- Recharge can continue at a full pool and is not interrupted by skill costs.
+	-- Its previous start time is unknown, so do not assume Wicked Ward is recent.
+	local rechargeResource = config.rechargeResource or "EnergyShield"
+	local rechargeCap = config.caps[rechargeResource] or 0
+	local rechargeRate = config.recharge
+	if rechargeCap > 0 and pools[rechargeResource] >= rechargeCap then
+		if type(rechargeRate) == "function" then rechargeRate = rechargeRate(pools, 0) end
+	else
+		rechargeRate = 0
+	end
+	local rechargeActive, rechargeBegan = (rechargeRate or 0) > 0, -math.huge
 	local continuousInterruption = false
 	local reservationRelease = math.huge
 	local cohorts = { }
@@ -339,10 +349,9 @@ function M.survival(config)
 		return { time = at, hits = hits, survived = survived, pools = pools, attacks = attacks, attempts = attempts }
 	end
 	if config.observe then config.observe(0,pools,"Start") end
-	local checkpointSteps = 0
 	while t <= window do
-		checkpointSteps = checkpointSteps + 1
-		if config.checkpoint and checkpointSteps % 32 == 1 then config.checkpoint() end
+		-- A single event can be expensive; do not batch several past the frame budget.
+		if config.checkpoint then config.checkpoint() end
 		-- End ordinary leech at the full-pool boundary before simultaneous costs
 		-- or incoming hits can make the resource appear non-full again.
 		if config.leech then config.leech:rates(t, pools) end
@@ -363,8 +372,19 @@ function M.survival(config)
 			hits = hits + 1
 			if interrupted or pools.EnergyShield < oldES then
 				if not (config.wickedWard and rechargeActive and t - rechargeBegan < 4 - 1e-9) then
+					local wasRecharging = rechargeActive
 					lastRechargeDamage, rechargeActive = t, false
-					if config.observe then config.observe(t,pools,"Recharge interrupted by hit") end
+					if config.observe then
+						local available = wasRecharging
+						if not available then
+							local rate = config.recharge
+							if type(rate) == "function" then rate = rate(pools, t) end
+							rate = rate or 0
+							local resource = config.rechargeResource or "EnergyShield"
+							available = rate > 0 and (config.caps[resource] or 0) > 0
+						end
+						if available then config.observe(t,pools,wasRecharging and "Recharge interrupted by hit" or "Recharge delayed by hit") end
+					end
 				end
 			end
 			if config.dissolution and (config.actualDissolution and (pools.LifeDamageReserved or 0) > 0 or not config.actualDissolution and pools.Life < oldLife) then reservationRelease = t + 2 end

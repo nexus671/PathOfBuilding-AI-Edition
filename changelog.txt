@@ -1,77 +1,1159 @@
-VERSION[ai][2026/11/11]
+VERSION[2.69.0-ai.1.0.0][2026/11/25]
 
---- AI Edition ---
-* Keep tree edits responsive while recovery simulations finish between frames.
-* Replace outdated simulation work when the build changes, with an Updating indicator.
-* Cache repeated recovery calculations and give node-power work a shorter frame budget.
-* Preserve trial counts, seeds, timeline results and isolated build previews.
+* Plan builds, crafting projects, Atlas strategies and loot filters, with local AI tools.
+* Crafting odds and encounter simulations may be experimental; check the coverage guides before use.
+* Atlas and Genesis details have not been fully verified against the live game.
 
-VERSION[ai][2026/11/11]
+VERSION[2.69.0-ai.preview1339][2026/11/25]
 
---- AI Edition ---
-* Plan the Atlas natively with pinned Standard 3.27.0 and 3.29.1 graphs.
-* Search nodes, connect paths, avoid nodes, track point budgets and keep named plans with builds.
-* Share versioned plans and official links, and propose Atlas strategies through MCP desktop review.
-* Atlas plans stay separate from character calculations; see the Atlas guide for coverage.
+* Review all preserved managed filter rules, including through AI tools.
 
-VERSION[ai][2026/11/11]
+VERSION[2.69.0-ai.preview1338][2026/11/25]
 
---- AI Edition ---
-* Emulate currency, bench and essence crafts with a native crafting engine.
-* Run bounded recipes with modeled success, sampling intervals and supplied costs.
-* Keep crafting projects with builds and preview outcomes through desktop review.
-* Unsupported methods fail explicitly; see the crafting guide for coverage and assumptions.
+* Explain unavailable crafting modifier actions and fit the picker at compact widths.
 
-VERSION[ai][2026/11/11]
+VERSION[2.69.0-ai.preview1337][2026/11/25]
 
---- AI Edition ---
-* Plan around goals and budgets with supplied price quotes.
-* Compare candidates and calculate cumulative leveling milestones.
-* Review readable changes, dependencies and encounter evidence.
-* Keep bounded session history, multiple undo steps and connection diagnostics.
+* Reject conflicting cache validators before reusing market prices.
 
-VERSION[ai][2026/11/11]
+VERSION[2.69.0-ai.preview1336][2026/11/25]
 
---- AI Edition ---
-* Create and edit builds through MCP proposals with native calculations.
-* Review changes in the desktop before applying an unsaved candidate.
-* Keep the original build in memory for restoration; never save automatically.
+* Keep unspecified modifiers unknown in filter scene examples.
 
-VERSION[ai][2026/11/11]
+VERSION[2.69.0-ai.preview1335][2026/11/25]
 
---- AI Edition ---
-* Fetch a fresh manifest when checking for updates, preventing cached manifests from queuing a rollback.
+* Compare Betrayal examples in the loot filter simulator.
 
-VERSION[ai][2026/11/11]
+VERSION[2.69.0-ai.preview1334][2026/11/25]
 
---- AI Edition ---
-* Bring encounter setup, results and charts into one workspace.
-* Show resource pools before and after lethal hits.
-* Add AI briefs and a local read-only MCP report connection.
+* Expose item filters and recent stash observations in AI gear comparisons.
 
-VERSION[ai][2026/11/11]
+VERSION[2.69.0-ai.preview1333][2026/11/25]
 
---- AI Edition ---
-* Fix recovery, flasks and temporary defenses in encounter simulations.
-* Improve tincture quality calculations and poison stack limits.
-* Clean up the project page and simulation guide.
+* Let AI tools page through all verified filter price decisions.
 
-VERSION[beta][2026/11/10]
+VERSION[2.69.0-ai.preview1332][2026/11/25]
+
+* Edit item level, corruption and link filters in the rolled-item trade review.
+
+VERSION[2.69.0-ai.preview1331][2026/11/25]
+
+* Let AI tools review verified filter decision examples in pages.
+
+VERSION[2.69.0-ai.preview1330][2026/11/25]
+
+* Exclude older stash observations from automatic overlay prices and keep recorded asks available for review.
+
+VERSION[2.69.0-ai.preview1329][2026/11/25]
+
+* Page through every illustrative case for a current filter price decision.
+
+VERSION[2.69.0-ai.preview1328][2026/11/25]
+
+* Flag import assumptions in loot filter baseline example reviews.
+
+VERSION[2.69.0-ai.preview1327][2026/11/25]
+
+* Preview an inspected overlay item against the active build without equipping it.
+
+VERSION[2.69.0-ai.preview1326][2026/11/25]
+
+* Show uncertain and unchecked saved examples during loot filter baseline reviews.
+
+VERSION[2.69.0-ai.preview1325][2026/11/25]
+
+* Remember Windows trade overlay setup and open saved capture prices automatically.
+
+VERSION[2.69.0-ai.preview1324][2026/11/25]
+
+* Search long Atlas session-draft titles by their full text.
+
+VERSION[2.69.0-ai.preview1323][2026/11/25]
+
+* Add a standalone Windows trade overlay preview for Path of Exile 1.
+
+VERSION[2.69.0-ai.preview1322][2026/11/25]
+
+* Prevent applying Atlas routes that add no nodes.
+
+VERSION[2.69.0-ai.preview1321][2026/11/25]
+
+* Compare anointed Putrid Seed jewels against exact ordered rolls in saved listings.
+
+VERSION[2.69.0-ai.preview1320][2026/11/25]
+
+* Compare selected rare modifier rolls in saved listing captures from the loot market and AI bridge.
+
+VERSION[2.69.0-ai.preview1319][2026/11/25]
+
+* Find long Divine modifier names by their full text and review them in a wider list.
+
+VERSION[2.69.0-ai.preview1318][2026/11/25]
+
+* Review rare modifier filters and roll bounds before opening official Trade.
+
+VERSION[2.69.0-ai.preview1317][2026/11/25]
+
+* Plan supported Watcher's Eye Divine rolls from saved selections or identifiable copied modifiers.
+
+VERSION[2.69.0-ai.preview1316][2026/11/25]
+
+* Compare copied and equipped rare quivers against exact public stash listings.
+
+VERSION[2.69.0-ai.preview1315][2026/11/25]
+
+* Recognize unique variants with different base items when planning Divine rolls.
+
+VERSION[2.69.0-ai.preview1314][2026/11/25]
+
+* Plan supported Divine Orb rolls on unique jewels and quivers.
+
+VERSION[2.69.0-ai.preview1313][2026/11/25]
+
+* Record copied stack observations and save batches for loot filter comparison.
+
+VERSION[2.69.0-ai.preview1312][2026/11/25]
+
+* Explain map reroll restrictions on the map card.
+
+VERSION[2.69.0-ai.preview1311][2026/11/25]
+
+* Explain untouched managed price rules and show the area level of sampled stack decisions.
+* Match exact GGG trade history for Atlas Threads and Chaotic Resonators.
+
+VERSION[2.69.0-ai.preview1310][2026/11/25]
+
+* Explain when map reroll estimate actions are unavailable.
+
+VERSION[2.69.0-ai.preview1309][2026/11/25]
+
+* Clarify the crafting goals supported for unique items.
+
+VERSION[2.69.0-ai.preview1308][2026/11/24]
+
+* Recognize exceptional and ordinary gems more accurately in pasted filter previews.
+
+VERSION[2.69.0-ai.preview1307][2026/11/24]
+
+* Compare rolled rare Cluster Jewels by passive layout and exact modifiers.
+
+VERSION[2.69.0-ai.preview1306][2026/11/24]
+
+* Clarify the filter items supported by managed price rules.
+
+VERSION[2.69.0-ai.preview1305][2026/11/24]
+
+* Browse completed GGG currency trades by PC, Xbox or PlayStation realm.
+
+VERSION[2.69.0-ai.preview1304][2026/11/24]
+
+* Preserve regeneration rolls hidden by rounded range endpoints.
+
+VERSION[2.69.0-ai.preview1303][2026/11/24]
+
+* Compare copied rare items against local stash listings directly in the market browser.
+
+VERSION[2.69.0-ai.preview1302][2026/11/24]
+
+* Correct recognized legacy spell-block crafting rolls.
+
+VERSION[2.69.0-ai.preview1301][2026/11/24]
+
+* Compare exact rolled prices for ordinary and Abyss jewels from local stash captures.
+
+VERSION[2.69.0-ai.preview1300][2026/11/24]
+
+* Improve text measurement and rendering in headless UI tests.
+
+VERSION[2.69.0-ai.preview1299][2026/11/24]
+
+* Correct intermediate rolls for recognized spell-suppression modifiers.
+
+VERSION[2.69.0-ai.preview1298][2026/11/24]
+
+* Review rare-base exceptions in the fixed baseline and verified filter from Daily price sync.
+
+VERSION[2.69.0-ai.preview1297][2026/11/24]
+
+* Preserve helpful details in map and crafting warnings sent to AI tools.
+
+VERSION[2.69.0-ai.preview1296][2026/11/24]
+
+* Explain Tier 5 rare bases shown outside the marked Rank A/B list.
+
+VERSION[2.69.0-ai.preview1295][2026/11/24]
+
+* Preserve Atlas drafts if another plan claims their ID before saving.
+* Leave more room for the Atlas tree in compact windows.
+* Make crafting inspection errors easier to understand in AI tools.
+
+VERSION[2.69.0-ai.preview1294][2026/11/24]
+
+* Preserve personal tiered rare and corrupted affix rules during baseline changes.
+
+VERSION[2.69.0-ai.preview1293][2026/11/24]
+
+* Bind daily loot price history to the exact market item and price ID.
+
+VERSION[2.69.0-ai.preview1292][2026/11/24]
+
+* Compare rolled rare armour and weapon asking prices in the market browser and AI tools.
+
+VERSION[2.69.0-ai.preview1291][2026/11/24]
+
+* Prevent new crafting, Atlas and filter records from reusing saved IDs.
+
+VERSION[2.69.0-ai.preview1290][2026/11/24]
+
+* Let AI tools compare equipped or copied jewellery against a local listing snapshot.
+* Keep daily filter sync usable in compact windows.
+* Keep the Genesis passive count visible in compact windows.
+
+VERSION[2.69.0-ai.preview1289][2026/11/24]
+
+* Exclude unverified special item states from gear listing comparisons.
+
+VERSION[2.69.0-ai.preview1288][2026/11/24]
+
+* Prevent duplicate daily filter sync profile IDs and repeated revision tokens.
+
+VERSION[2.69.0-ai.preview1287][2026/11/24]
+
+* Compare gear listings across captured stash pages and apply later tab changes.
+
+VERSION[2.69.0-ai.preview1286][2026/11/24]
+
+* Compare recorded loot stacks by item class and area level.
+* Flag uncertain filter comparisons and show their warnings.
+* Show matching rule order for recorded stack comparisons.
+* Show colors, beams and sounds in observed stack reviews.
+* Preview observed loot labels side by side.
+* Open label previews from recorded stack files.
+
+VERSION[2.69.0-ai.preview1285][2026/11/24]
+
+* Compare rare jewellery rolls and asking prices from a local public stash snapshot.
+
+VERSION[2.69.0-ai.preview1284][2026/11/24]
+
+* Show full crafting target modifier names on hover.
+* Make planner errors clearer in AI tools.
+
+VERSION[2.69.0-ai.preview1283][2026/11/24]
+
+* Explain duplicate and incompatible crafting target alternatives before adding them.
+* Wrap crafting target descriptions to fit compact windows.
+
+VERSION[2.69.0-ai.preview1282][2026/11/24]
+
+* Show the available and typical quote counts when price sync rejects a thin feed.
+
+VERSION[2.69.0-ai.preview1281][2026/11/24]
+
+* Keep the verified loot filter when a price feed loses most of its usual coverage.
+
+VERSION[2.69.0-ai.preview1280][2026/11/24]
+
+* Compare a file of recorded stacks against current and proposed filter rules.
+
+VERSION[2.69.0-ai.preview1279][2026/11/24]
+
+* Test an observed stack against a price preview before saving any changes.
+
+VERSION[2.69.0-ai.preview1278][2026/11/24]
+
+* Improve headless text cursor accuracy and long-line responsiveness.
+
+VERSION[2.69.0-ai.preview1277][2026/11/24]
+
+* Make Calcs sections reachable in compact windows with horizontal scrolling.
+
+VERSION[2.69.0-ai.preview1276][2026/11/24]
+
+* Keep the build header and its menus usable in compact windows.
+
+VERSION[2.69.0-ai.preview1275][2026/11/24]
+
+* Show Petrification Statue when granted by Gorgon's Gaze or Greater Chimeral Eye.
+* Warn that its enemy slow and petrification are not included in calculations.
+
+VERSION[2.69.0-ai.preview1274][2026/11/24]
+
+* Compare an observed stack against the fixed baseline and the latest verified filter.
+
+VERSION[2.69.0-ai.preview1273][2026/11/24]
+
+* Search official trade from the market browser using a crafting base and its known item level.
+
+VERSION[2.69.0-ai.preview1272][2026/11/24]
+
+* Show the correct stack-style preview for the selected threshold.
+
+VERSION[2.69.0-ai.preview1271][2026/11/24]
+
+* Integrate upstream Path of Building 2.69.0.
+* Keep the Spectre Library usable while editing its gem level.
+* Fit Spectre Library selection and details in compact windows.
+* Sort Spectres with unknown attack times after known attack speeds.
+
+VERSION[2.69.0][2026/11/24]
 
 --- New to Path of Building ---
+* Add config for Careful Counterattack (AdamZ-8113)
+* Show shrine options for The Covetous Dark (AdamZ-8113)
+* Add support for animate guardian gear buffs (fabianmaurer)
+* Add config for Fleshrend stacks from Pact of Ghorr (lucaskarsten)
+* Add support for Cost Efficiency of Retaliation skills mastery (TPlant)
+* Add support for bricked imbued support gems (vaisest)
+* Upgrade Loadout Management UI (FenikSRT4)
+* Update Spectre Library UI (Blitz54)
+
+--- User Interface ---
+* Fix ugly Covetous Dark variants (vaisest)
+* Fix tooltips not working when another UI element has focus (vaisest)
+* Fix tree comparison highlighting same mastery selections (vaisest)
+* Add a breakdown for mana/life reservation efficiency (vaisest)
+* Add config for brine charges (cupkax)
+* Add item type icons and (equipped) text to items tab (vaisest)
+* Fix hover on Calcs tab for ES/Ward when there is a global source but 0 from gear (Blitz54)
+* Add header images for Viscera items (Blitz54)
+
+--- Fixed Calculations ---
+* Fix Wickerman tree check and Viscera glove/boot bonuses (juddisjudd)
+* Add totem flag to Witchhunter's Pyre (vaisest)
+* Fix inverted negative resistance exceeding the enemy's maximum resistance (lucaskarsten)
+* Fix Waxen Soul shrine buff effect per Life Reserved not applying (lucaskarsten)
+* Fix Arcane Cloak using negative unreserved mana (eduardomdalmaso)
+
+--- Fixed Behaviours ---
+* Fix repeated attacks triggering triggers incorrectly (vaisest)
+* Fix Life Mastery working with The Apostate (TPlant)
+* Fix editing build not triggering compare tab rebuilds (vaisest)
+* Fix some Hide of the Vendigo interactions (vaisest)
+* Fix Mantle of Dreams blocking support parts of skill gems (vaisest)
+
+--- Accuracy Improvements ---
+* Fix missing skill on Greater Chimeral Eye (Wires77)
+
+--- Fixed Bugs ---
+* Fix invalid trade site query on modified unique title (vaisest)
+* Fix item granted skills permanently modifying skill data (vaisest)
+
+VERSION[2.68.1-ai.preview1270][2026/11/24]
+
+* Explain when a pickup cap cannot tighten any managed rule in the fixed filter baseline.
+
+VERSION[2.68.1-ai.preview1269][2026/11/24]
+
+* Compare Imbued gems in your build by gem and support when the market reports an aggregate quote.
+
+VERSION[2.68.1-ai.preview1268][2026/11/24]
+
+* Clarify when Atlas comparison bonus counts do not change.
+
+VERSION[2.68.1-ai.preview1267][2026/11/24]
+
+* Match verified regular gem prices using the provider's live variant labels.
+
+VERSION[2.68.1-ai.preview1266][2026/11/24]
+
+* Fit crafting inventory actions in smaller windows.
+
+VERSION[2.68.1-ai.preview1265][2026/11/24]
+
+* Review market filter outcomes for Normal, Magic, and Rare maps separately.
+
+VERSION[2.68.1-ai.preview1264][2026/11/24]
+
+* Retain the last verified loot filter when a market price collection contains malformed rows.
+* Show why a shared price cache rejected an invalid or stale feed.
+
+VERSION[2.68.1-ai.preview1263][2026/11/24]
+
+* Explain unsupported Thread counts and fit Atlas region actions in smaller windows.
+
+VERSION[2.68.1-ai.preview1262][2026/11/24]
+
+* Improve regeneration roll precision for rounded crafting modifiers.
+
+VERSION[2.68.1-ai.preview1261][2026/11/24]
+
+* Count distinct cutoff changes accurately in Windows economy notifications.
+
+VERSION[2.68.1-ai.preview1260][2026/11/24]
+
+* Add native controls for editing the maximum hidden stack size of managed commodity rules.
+
+VERSION[2.68.1-ai.preview1259][2026/11/24]
+
+* Review a PoE 1 PC trade league change against verified prices before saving daily sync settings.
+
+VERSION[2.68.1-ai.preview1258][2026/11/24]
+
+* Re-enable muted alerts through shared filter styles.
+
+VERSION[2.68.1-ai.preview1257][2026/11/24]
+
+* Replace shared loot-filter colours and sounds.
+
+VERSION[2.68.1-ai.preview1256][2026/11/24]
+
+* Keep previously verified lower hide cutoffs when individual market quotes become unusable.
+* Align relay qualification with native exchange quote evidence.
+
+VERSION[2.68.1-ai.preview1255][2026/11/24]
+
+* Require a value for new loot filter conditions.
+* Identify category colours overridden by whole-filter appearance.
+
+VERSION[2.68.1-ai.preview1254][2026/11/24]
+
+* Fix skill-gem support effects with Mantle of Dreams, from upstream.
+* Fix defensive breakdowns for gear with no base value, from upstream.
+
+VERSION[2.68.1-ai.preview1253][2026/11/23]
+
+* Defer additional slow loot filter profiles before the Windows task reaches its execution limit.
+
+VERSION[2.68.1-ai.preview1252][2026/11/23]
+
+* Report the actual Windows background sync result when a failure cannot be saved.
+
+VERSION[2.68.1-ai.preview1251][2026/11/23]
+
+* Keep filter tier instructions readable in small windows.
+* Keep crafting simulation budget and price values visible in small windows.
+* Explain when actions in the enlarged Atlas tree are unavailable.
+
+VERSION[2.68.1-ai.preview1250][2026/11/23]
+
+* Finish interrupted loot filter refreshes locally once the installed filter and its backup are verified.
+
+VERSION[2.68.1-ai.preview1249][2026/11/23]
+
+* Use conservative liquidity for duplicate exchange and map quotes in daily filter sync.
+
+VERSION[2.68.1-ai.preview1248][2026/11/23]
+
+* Browse all documented PoE 1 stash item categories with conservative variant and listing evidence.
+
+VERSION[2.68.1-ai.preview1247][2026/11/23]
+
+* Open a larger Atlas tree in compact windows to inspect and edit routes.
+
+VERSION[2.68.1-ai.preview1246][2026/11/23]
+
+* Show the failed price feed and reason in daily sync and diagnostics.
+* Check the exact market quote from a managed price rule before saving it.
+
+VERSION[2.68.1-ai.preview1245][2026/11/23]
+
+* Keep campaign pickups, filter rules, drop testing and styling usable in smaller windows.
+
+VERSION[2.68.1-ai.preview1244][2026/11/23]
+
+* Use bundled raw precision for matching mana and percentage regeneration modifier rolls.
+
+VERSION[2.68.1-ai.preview1243][2026/11/23]
+
+* Choose exact exchange feeds for managed commodity rules and Allflame embers.
+* Show the provider price ID and evidence for every requested market feed.
+
+VERSION[2.68.1-ai.preview1242][2026/11/23]
+
+* Keep crafting projects and workbench controls usable in smaller windows.
+
+VERSION[2.68.1-ai.preview1241][2026/11/23]
+
+* Keep Atlas planning controls usable in smaller windows.
+
+VERSION[2.68.1-ai.preview1240][2026/11/23]
+
+* Keep the tiered-test protected drop checks when additional samples are configured.
+
+VERSION[2.68.1-ai.preview1239][2026/11/23]
+
+* Keep daily price sync and its Windows task on the configured price source.
+* Require economy feeds to respond from their configured endpoint.
+* Browse prices across all documented PoE 1 exchange categories.
+
+VERSION[2.68.1-ai.preview1238][2026/11/23]
+
+* Preserve damaged planning data, improve bundle recovery, and fit build reviews in small windows.
+* Keep loot-filter views and navigation usable in smaller windows, including search text.
+
+VERSION[2.68.1-ai.preview1237][2026/11/23]
+
+* Inspect and repair the Windows background task from daily sync.
+
+VERSION[2.68.1-ai.preview1236][2026/11/23]
+
+* Keep provider cooldowns across PoB windows and Windows background jobs.
+
+VERSION[2.68.1-ai.preview1235][2026/11/23]
+
+* Manage exact skill and support gem hides with listing-backed prices and preserve other variants.
+
+VERSION[2.68.1-ai.preview1234][2026/11/23]
+
+* Support an opt-in shared HTTPS market cache with bounded requests and source freshness checks.
+
+VERSION[2.68.1-ai.preview1233][2026/11/23]
+
+* Share price-provider cooldowns across manual market review, league selection and scheduled refreshes.
+
+VERSION[2.68.1-ai.preview1232][2026/11/23]
+
+* Compare unidentified unique price coverage against PoB's item catalogue and reject conflicting price IDs.
+
+VERSION[2.68.1-ai.preview1231][2026/11/23]
+
+* Choose a current PC trade league for new daily sync profiles and keep setup open after selection.
+
+VERSION[2.68.1-ai.preview1230][2026/11/23]
+
+* Review proposed pickup settings offline with opt-in, age-limited snapshots from verified refreshes.
+* Choose separate minimap icons and light beams for each price highlight tier and check both tiers in the review.
+
+VERSION[2.68.1-ai.preview1229][2026/11/23]
+
+* Add item crafting goals for additive hit-damage avoidance.
+
+VERSION[2.68.1-ai.preview1228][2026/11/23]
+
+* Set crafting goals for suppression, block modifiers and ailment avoidance.
+
+VERSION[2.68.1-ai.preview1227][2026/11/23]
+
+* Keep the verified loot filter when map pricing is incomplete and reject conflicting quote IDs.
+* Compare selected build gems, equipped uniques, and crafting bases in the market browser.
+* Check each declared Fated base, fractured equipment class, and hidden scroll on daily refresh.
+
+VERSION[2.68.1-ai.preview1226][2026/11/23]
+
+* Sort Viscera item templates by calculated build stats.
+
+VERSION[2.68.1-ai.preview1225][2026/11/23]
+
+* Compare new upstream files against imported filters and retain reviewed personal edits.
+
+VERSION[2.68.1-ai.preview1224][2026/11/23]
+
+* Add a Vaal gem to the filter vendor-recipe simulator.
+
+VERSION[2.68.1-ai.preview1223][2026/11/23]
+
+* Sample supported life-regeneration modifiers using their raw per-minute values.
+
+VERSION[2.68.1-ai.preview1222][2026/11/23]
+
+* Improve fractional crafting roll sampling when modifier precision is known.
+
+VERSION[2.68.1-ai.preview1221][2026/11/23]
+
+* Correct sampled probabilities for descending integer modifier ranges.
+
+VERSION[2.68.1-ai.preview1220][2026/11/23]
+
+* Target negative crafting modifier rolls using their signed values.
+
+VERSION[2.68.1-ai.preview1219][2026/11/23]
+
+* Target individual values on multi-range crafting modifiers.
+
+VERSION[2.68.1-ai.preview1218][2026/11/23]
+
+* Find exact gem and crafting-base quotes, compare listing support and flag conflicting estimates.
+
+VERSION[2.68.1-ai.preview1217][2026/11/23]
+
+* Set numeric base-roll targets for supported crafting modifiers.
+
+VERSION[2.68.1-ai.preview1216][2026/11/23]
+
+* Review and adopt external filter edits into the fixed daily baseline while preserving managed rules and protected drops.
+* Review the quotes and protected-drop results from recent successful daily runs.
+
+VERSION[2.68.1-ai.preview1215][2026/11/23]
+
+* Optionally highlight managed stacks by their market value without changing whether they show.
+* Optionally confirm any increase in a managed hide cutoff against completed GGG trades.
+
+VERSION[2.68.1-ai.preview1214][2026/11/23]
+
+* Add flat life, resistance and attribute goals to crafting.
+
+VERSION[2.68.1-ai.preview1213][2026/11/23]
+
+* Keep the last verified daily filter when an established exchange feed loses most of its liquid quotes.
+* Review and restore recorded filter backups with an exact diff and an undo point.
+* Optionally cap verified backups after a successful daily refresh.
+* Compare listing-backed prices across different uniques on the same base.
+
+VERSION[2.68.1-ai.preview1212][2026/11/23]
+
+* Improve larger Atlas routes by reconsidering shared paths.
+
+VERSION[2.68.1-ai.preview1211][2026/11/23]
+
+* Keep ordinary included-file editing working with optional preview settings.
+
+VERSION[2.68.1-ai.preview1210][2026/11/23]
+
+* Preview optional filter imports as absent without changing exports.
+
+VERSION[2.68.1-ai.preview1209][2026/11/23]
+
+* Publish a verified daily filter to a selected Path of Exile account filter after reviewing the exact diff.
+* Review verified age by price feed and compare eligible prices against official GGG trades.
+* Remove partial sync output after failed Windows writes while keeping the verified filter recoverable.
+* Diagnose expired trade-league settings while preserving the last verified filter.
+
+VERSION[2.68.1-ai.preview1208][2026/11/23]
+
+* Preserve socket-colour shorthand in filter samples.
+
+VERSION[2.68.1-ai.preview1207][2026/11/23]
+
+* Reject inconsistent socket samples in filter previews.
+
+VERSION[2.68.1-ai.preview1206][2026/11/23]
+
+* Clarify unresolved filter rule explanations.
+
+VERSION[2.68.1-ai.preview1205][2026/11/23]
+
+* Explain uncertain filter price-impact examples in reviews and AI results.
+
+VERSION[2.68.1-ai.preview1204][2026/11/23]
+
+* Show uncertain item levels in filter price-impact previews.
+
+VERSION[2.68.1-ai.preview1203][2026/11/23]
+
+* Correct protected-drop and price-review sample properties.
+
+VERSION[2.68.1-ai.preview1202][2026/11/23]
+
+* Run named loot sync profiles with separate leagues, filters, and schedules.
+* Price managed ordinary, Blighted, and Blight-ravaged map tiers with separate listing checks.
+* Review NeverSink base updates before applying them, and read the last verified price diff through the AI bridge.
+
+VERSION[2.68.1-ai.preview1201][2026/11/23]
+
+* Find saved crafting and Atlas plans by their details.
+
+VERSION[2.68.1-ai.preview1200][2026/11/23]
+
+* Add multi-condition editing for unique jewel roll targets.
+
+VERSION[2.68.1-ai.preview1199][2026/11/23]
+
+* Author managed currency and card rules from the PoB filter workspace.
+* Set different campaign and map pickup targets, with optional per-item hide caps backed by daily market history.
+* Review the before-and-after outcomes of recent price decisions.
+
+VERSION[2.68.1-ai.preview1198][2026/11/23]
+
+* Plan supported roll targets on corrupted unique jewel outcomes.
+
+VERSION[2.68.1-ai.preview1197][2026/11/23]
+
+* Optionally run daily loot filter sync through Windows Task Scheduler while PoB is closed.
+* Optionally receive Windows notifications when a scheduled refresh fails or meaningfully changes the filter.
+* Preserve exchange backoff across PoB and background worker restarts.
+
+VERSION[2.68.1-ai.preview1196][2026/11/23]
+
+* Preview and plan Blessed Orb rolls on recognized unique base implicits.
+
+VERSION[2.68.1-ai.preview1195][2026/11/23]
+
+* Find the local filter selected in Path of Exile and schedule economy sync at a local hour and minute.
+* Copy sync diagnostics and see the latest failed update after restarting PoB.
+* Preserve personal filter edits on either side of the managed price section.
+
+VERSION[2.68.1-ai.preview1194][2026/11/23]
+
+* Browse market prices for cards, uniques, maps, gems, and bases.
+* Use verified market prices for managed divination card hides and require enough market volume for each category.
+* Review external filter edits, check daily sync status through the AI bridge, and recover from an interrupted replacement.
+
+VERSION[2.68.1-ai.preview1193][2026/11/23]
+
+* Compare saved and draft loot filters on the same examples.
+
+VERSION[2.68.1-ai.preview1192][2026/11/23]
+
+* Add undo and redo to Shaped Region drafts.
+
+VERSION[2.68.1-ai.preview1191][2026/11/23]
+
+* Plan multiple unique-item Divine Orb roll conditions together.
+
+VERSION[2.68.1-ai.preview1190][2026/11/23]
+
+* Track ordinary recipe resources and donor items along reachable routes.
+
+VERSION[2.68.1-ai.preview1189][2026/11/23]
+
+* Only track crafting materials from reachable unique recipe routes.
+
+VERSION[2.68.1-ai.preview1188][2026/11/23]
+
+* Refresh generated modifier data for the new Imbued supports.
+
+VERSION[2.68.1-ai.preview1187][2026/11/23]
+
+* Bring in upstream loadout management, Imbued supports, and calculation fixes.
+
+VERSION[2.68.1-ai.preview1186][2026/11/23]
+
+* Fix the headless UI test size limit.
+
+VERSION[2.68.1-ai.preview1185][2026/11/23]
+
+* Explain crafting target and simulation limits before an action is attempted.
+
+VERSION[2.68.1-ai.preview1184][2026/11/23]
+
+* Validate recorded map modifiers before estimating rerolls.
+
+VERSION[2.68.1-ai.preview1183][2026/11/23]
+
+* Correct the observed maximum cost in map reroll estimates.
+
+VERSION[2.68.1-ai.preview1182][2026/11/23]
+
+* Warn about more impossible whole-number loot-filter conditions.
+
+VERSION[2.68.1-ai.preview1181][2026/11/23]
+
+* Review modeled crafts before they consume foreseeing.
+
+VERSION[2.68.1-ai.preview1180][2026/11/23]
+
+* Model Hinekora’s Lock and Gwennen foreseeing with clearly labeled hypothetical previews.
+
+VERSION[2.68.1-ai.preview1179][2026/11/23]
+
+* Bundle all seven loot-filter strictnesses with their custom sounds.
+
+VERSION[2.68.1-ai.preview1178][2026/11/23]
+
+* Keep long sound-folder paths readable in the bundle dialog.
+
+VERSION[2.68.1-ai.preview1177][2026/11/23]
+
+* Export a portable loot filter ZIP with referenced custom sounds.
+
+VERSION[2.68.1-ai.preview1176][2026/11/23]
+
+* Explain historical Rog jewel-offer restrictions when planning crafts.
+
+VERSION[2.68.1-ai.preview1175][2026/11/23]
+
+* Preserve Temple map preview assumptions in saved plans and AI tools.
+
+VERSION[2.68.1-ai.preview1174][2026/11/23]
+
+* Preview a hypothetical Temple second corruption for ordinary maps.
+
+VERSION[2.68.1-ai.preview1173][2026/11/23]
+
+* Review matching quality jewellery for Catalyst vendor groups and optional filter pickups.
+
+VERSION[2.68.1-ai.preview1172][2026/11/23]
+
+* Improve maximum Chaos vendor-set estimates for paired weapons and rings.
+
+VERSION[2.68.1-ai.preview1171][2026/11/23]
+
+* Choose Chaos or Exalted priorities in same-name rare reviews.
+
+VERSION[2.68.1-ai.preview1170][2026/11/23]
+
+* Add the experimental Bestiary maximum-sockets craft for supported unique items.
+
+VERSION[2.68.1-ai.preview1169][2026/11/23]
+
+* Add an experimental Bestiary maximum-sockets craft for ordinary equipment.
+
+VERSION[2.68.1-ai.preview1168][2026/11/23]
+
+* Reject extra data after an imported planning bundle.
+
+VERSION[2.68.1-ai.preview1167][2026/11/23]
+
+* Explain invalid and oversized planning bundles in the UI.
+
+VERSION[2.68.1-ai.preview1166][2026/11/23]
+
+* Reorder and remove custom filter sounds in a staged list.
+
+VERSION[2.68.1-ai.preview1165][2026/11/22]
+
+* Preview a chosen WAV from a custom filter sound list.
+
+VERSION[2.68.1-ai.preview1164][2026/11/22]
+
+* Find saved crafting items from Planning Tools.
+
+VERSION[2.68.1-ai.preview1163][2026/11/22]
+
+* Explain how AI clients can cancel saved-item searches.
+
+VERSION[2.68.1-ai.preview1162][2026/11/22]
+
+* Let AI item lookups reject a changed build revision.
+
+VERSION[2.68.1-ai.preview1161][2026/11/22]
+
+* Let AI clients inspect one saved crafting snapshot directly.
+
+VERSION[2.68.1-ai.preview1160][2026/11/22]
+
+* Let AI clients search saved crafting items by their outcome modifiers.
+
+VERSION[2.68.1-ai.preview1159][2026/11/22]
+
+* Search saved crafting items by their outcome modifiers and source notes.
+
+VERSION[2.68.1-ai.preview1158][2026/11/22]
+
+* Verify release notes consistently across Windows and other platforms.
+
+VERSION[2.68.1-ai.preview1157][2026/11/22]
+
+* Speed up repeated browsing of saved crafting items.
+
+VERSION[2.68.1-ai.preview1156][2026/11/22]
+
+* Explain more impossible numeric and stack-count filter conditions.
+
+VERSION[2.68.1-ai.preview1155][2026/11/22]
+
+* Preserve crafting source assumptions separately from editable notes.
+
+VERSION[2.68.1-ai.preview1154][2026/11/22]
+
+* Let saved-item inventory show its retained source notes.
+
+VERSION[2.68.1-ai.preview1153][2026/11/22]
+
+* Explain when a base has no bundled unique rarity example.
+
+VERSION[2.68.1-ai.preview1152][2026/11/22]
+
+* Preserve conditional example notes when resuming saved item snapshots.
+
+VERSION[2.68.1-ai.preview1151][2026/11/22]
+
+* Let AI clients prepare reviewable projects from conditional rarity examples.
+
+VERSION[2.68.1-ai.preview1150][2026/11/22]
+
+* Keep conditional bench-rarity examples as separate crafting projects.
+
+VERSION[2.68.1-ai.preview1149][2026/11/22]
+
+* Preview conditional bench-rarity examples and same-base unique references.
+* Let headless UI tests locate fonts in portable packages.
+
+VERSION[2.68.1-ai.preview1148][2026/11/22]
+
+* Review market-based loot filter changes and sync a local filter daily from a fixed baseline in PoB.
+* Verify protected drops before replacement and restore the previous filter from the sync dialog.
+
+VERSION[2.68.1-ai.preview1147][2026/11/22]
+
+* Preserve unique crafting redo history when a preview matches the saved item.
+
+VERSION[2.68.1-ai.preview1146][2026/11/22]
+
+* Keep separate local recovery drafts for each crafting project.
+
+VERSION[2.68.1-ai.preview1145][2026/11/22]
+
+* Detect empty item-level and rarity ranges in filter blocks.
+
+VERSION[2.68.1-ai.preview1144][2026/11/22]
+
+* Warn about conflicting numeric and rarity conditions in filter blocks.
+
+VERSION[2.68.1-ai.preview1143][2026/11/22]
+
+* Recognize Vaal Temple's base implicit in copied maps.
+
+VERSION[2.68.1-ai.preview1142][2026/11/22]
+
+* Preview the conditional Vaal Temple map corruption outcome.
+
+VERSION[2.68.1-ai.preview1141][2026/11/22]
+
+* Keep map tier-up preview assumptions visible in saved plans.
+
+VERSION[2.68.1-ai.preview1140][2026/11/22]
+
+* Preview a conditional one-tier map corruption outcome.
+
+VERSION[2.68.1-ai.preview1139][2026/11/22]
+
+* Show verified notes for the downloaded update.
+
+VERSION[2.68.1-ai.preview1138][2026/11/22]
+
+* Keep filter results visible when previewing sounds.
+
+VERSION[2.68.1-ai.preview1137][2026/11/22]
+
+* Label the selected item in the loot simulator.
+
+VERSION[ai][2026/11/13]
+
+--- AI Edition ---
+* Support Harvest resistance swaps on Abyss jewels.
+* Support Harvest maximum-resistance swaps on shields.
+* Support Harvest resistance swaps on ordinary and maximum-resistance jewels.
+* Reroll modifier values during Harvest resistance swaps.
+* Explain 3.30 Harvest resistance-swap costs and unverified ingredient pairs.
+* Distinguish 3.30 Harvest nodes from Viridian Wildwood encounter nodes.
+* Find 3.30 Atlas mechanics and shared mechanic nodes in planning filters.
+* Compare tiered unidentified gear in the loot-filter simulator.
+* Preserve unidentified item state through item-editor rebuilds.
+* Recognize tiered unidentified items when importing their base types.
+* Preserve explicit unidentified item tiers in pasted loot-filter examples.
+* Review shown, hidden and uncertain examples across a loot-filter scene.
+* Apply catalyst quality to generated and Blessed-updated base implicits.
+* Apply the 3.30 cluster-jewel small-passive speed family when crafting.
+* Update 3.30 base implicits and let Blessed Orbs update recognized legacy values.
+* Allow existing Orbs of Binding on low-item-level equipment.
+* Open filter previews faster while retaining priority-conflict checks.
+* Prepare simulator build-target examples across frames and reuse unchanged filter previews.
+* Keep pending filter updates running when changing filter screens or resizing the workspace.
+* Generate build-adjusted filter pickups in stages and discard outdated results.
+* Avoid repeatedly rebuilding unchanged filter targets when a crafting guide needs review.
+* Load crafting data in stages when checking linked filter targets.
+* Check linked filter targets in smaller background steps.
+* Explain incomplete ingredient coverage in crafting-based filter pickups.
+* Report crafting recipes that cannot be inspected when refreshing filter pickups.
+* Add modeled crafting-recipe currencies to build-adjusted loot filters.
+* Refresh linked-filter warnings immediately after skill or weapon-set changes.
+* Explain custom and muted alerts instead of playing misleading preview tones.
+* Flag invalid loot-filter alert sound IDs and volumes.
+* Preserve unquoted filter values and comments when migrating removed bases.
+* Exclude disabled and inactive weapon-set skills from generated filter rules.
+* Preserve recipe pickups and use the active weapon set when choosing equipped filter families.
+* Update crafting targets and affix details when recombination changes the base.
+* Show base and item-level changes in crafting history after recombination.
+* Include possible costs when crafting recipes loop back after corruption.
+* Include saved-recipe starting states when listing crafting resources.
+* Include corrupted socket-bench costs in the recipe resource price editor.
+* Allow Atlas transition previews when node preferences change between stages.
+* Show coherent equipment examples for common socket-based filter rules.
+* Explain conflicting socket counts and colours in loot-filter test drops.
+* Correct strict socket comparisons in loot-filter previews.
+* Let node-power reports show losses as well as gains, and explain empty results.
+* Keep node-power heatmaps stable when values are zero or infinite.
+* Prevent service artwork from silently becoming a currency price.
+* Keep Talisman imprint service prices separate from Bestiary Orb prices.
+* Show Bestiary artwork for the rare Talisman imprint craft.
+* Add the Bestiary rare Talisman imprint to crafting and AI plans.
+* Prevent crafting plans from restoring an imprint onto a fractured item.
+* Show the nodes and bonuses in each Atlas route before applying it.
+* Find alternate Atlas routes for targets two nodes away.
+* Report malformed loot-filter imports as syntax errors.
+* Break down build-calculation timings in performance diagnostics.
+* Keep the numbered fallback when changing a custom filter alert.
+* Show the custom alert volume when a filter rule also has a built-in fallback.
+* Preserve disabled alerts and default volumes when restyling loot filters.
+* Flag legacy-only Orbs of Binding in crafting plans and correct the full-lock cost guide.
+* Find and show temporary Atlas grant paths when planning stage transitions.
+* Check that Atlas point grants can be reached before using their points.
+* Report failed AI planning requests with the correct request ID.
+* Show native rarity colours on loot-filter previews when a rule has no text colour.
+* Build more representative loot-filter examples for rare items and explicit-modifier rules.
+* Label generic loot-filter rules by their conditions instead of unrelated example items.
+* Avoid false filter-priority conflicts between different modifier-count rules.
+* Preserve quoted filter conditions when restyling and explicitly silence inherited alerts.
+* Recognize known zero-socket items in loot-filter previews.
+* Export all loot-filter strictnesses together as a ZIP archive.
+* Add Bestiary maximum-link crafting with separate beast costs.
+* Guard crafting data updates against incomplete or unchanged exports.
+* Respect caster-blocking wand implicits in crafting pools and bench rerolls.
+* Export modifier-count filter conditions with valid joined operators.
+* Handle UTF-8 byte-order marks in included loot-filter files.
+* Keep included filter edits when switching files or saving the list.
+* Attach referenced loot-filter files for offline preview and export.
+* Preserve quoted loot-filter names when previewing and editing rules.
+* Review Atlas branch removals before disconnecting multiple nodes.
+* Match numeric text in loot-filter names without treating it as a modifier count.
+* Show and edit recipe failure recovery choices in the failure selector.
+* Keep saved recipe routes unchanged when an invalid edit is rejected.
+* Keep explicit finish routes at the end when adding recipe steps.
+* Edit recipe fossil combinations and preserve routes when replacing an action.
+* Configure fossil combinations directly in crafting recipes.
+* Add base-specific bench crafts, Essences and tagged Harvest actions directly to recipes.
+* Add common currency and bench reroll steps directly to crafting recipes.
+* Show bench reroll choices only when the working item has a possible removal sequence.
+* Model one/three-modifier bench rerolls with experimental partial affix locks.
+* Enter explicit modifier names when testing identified drops against loot filters.
+* Keep loot-filter explicit-modifier previews uncertain when identification state is unknown or the item is unidentified.
+* Read influence markers from pasted ordinary equipment for loot-filter testing.
+* Choose Yes, No or Unknown for loot-filter test properties instead of typing booleans.
+* Support TwiceCorrupted filter rules and recognise pasted twice-corrupted items.
+* Compare a nearest-target order when optimizing Atlas routes, finding more point-efficient connections.
+* Explain the assumed Tainted Fusing group and direction selection in crafting results.
+* Match Harvest choices against possible partial-lock selections and explain conditional availability.
+* Model Harvest reforges and augments with experimental partial affix locks.
+* Enumerate partial-lock Annulment outcomes under the stated uniform-selection model.
+* Allow independent socket, quality, implicit and enchantment crafts while an experimental partial lock is present.
+* Add experimental 3.30 partial prefix and suffix locks for core crafting actions.
+* Calculate ordinary Annulment outcomes exactly under the current model, including fractures and full affix locks.
+* Update crafting bench costs that changed from Orbs of Chance to Orbs of Alteration in 3.30.
+* Protect saved Atlas progression when deleting a stage or changing its tree version.
+* Correct loot-filter previews for socket rules that mix count and colour alternatives.
+* Record the selected build tree as context for crafting results instead of labelling the newest available tree as the selected one.
+* Keep historical Allflame and unverified recombination-odds notes with crafting results, comparisons, charts and AI responses.
+* Updated recombination to preserve the selected base's level and exclude incompatible rollable modifiers before drawing counts; permit different defence bases in the same item class.
+* Marked Allflame crafting as historical 3.29 content in the workbench and AI inspection.
+* Updated full prefix and suffix lock ingredient costs for 3.30 item types.
+* Updated standard Orb of Annulment previews for the 3.30 attack and caster blocker change.
+* Added the 3.30 white-socket bench craft, with corrupted-item costs and deterministic previews.
+* Explain invalid socket rules and test-drop colours instead of showing a misleading filter preview; refresh the explanation when the sample changes.
+* Correct socket and link comparisons in loot filter previews when rules specify both a count and colours.
+* Treat Abyss and Delve sockets as unlinked in filter previews, and prevent Abyss sockets from producing false linked crafting targets.
+* Preserve a Stygian Vise's Abyss socket when continuing or saving a craft.
+* Reject non-contiguous socket groups in imported crafting states so linked-colour targets cannot report a false match.
+* Show unresolved implicit warnings directly in the crafting workbench, including for keyboard navigation, while retaining prior results.
+* Explain ambiguous imported implicits before starting a crafting calculation, preserve valid structured Eldritch overrides, and clarify the per-trial action limit in results.
+* Recovered unambiguous corrupted implicit identities from pasted items for crafting targets, saved-state recovery and MCP; ambiguous imports now explain why implicit odds cannot be checked.
+* Preserved Twice Corrupted items through importing, tainted crafting, hypothetical editing, saved projects and MCP.
+* Fixed headless UI audits attributing tooltip text to neighbouring buttons, while retaining viewport and control-clipping checks.
+* Added Omen of Trichromatism with currency artwork, RGB guarantees, input checks, recipe and MCP support, and both ingredient costs.
+* Disabled unsupported Allflame profiles before editing, with an explanatory tooltip.
+* Separated modeled ingredient and service quantities from price overrides in crafting results and MCP, with per-trial averages and an illustrated resource browser.
+* Marked unfinished crafting targets, run settings and advanced options as working drafts while keeping restored views and saved quote changes clean.
+* Added crafting-project removal and undo, including inventory, quotes, checkpoints, order and working-draft restoration.
+* Added reviewed MCP project removals with clear change summaries, and preserved compatible drafts and removal undo through AI edits.
+* Reset stale save-state labels when opening another build and tracked unfinished crafts separately per project.
+* Kept saved-recipe starting states independent of manual working-item edits.
+* Preserved crafting calculations and results through window resizing, text-size changes and planning navigation.
+* Kept background fossil comparisons available without interrupting other tools, and retained cancellation after a view rebuild.
+* Cleared temporary analyses and cancelled old crafting work when switching builds; improved asynchronous error messages.
+* Cleared running and completed Atlas route previews when opening another build.
+* Fixed Run more trials switching away from a saved recipe; refinement now retains the captured item, steps, targets, seed, prices and budget.
+* Named the selected simulation action, clarified saved-recipe inputs and prevented duplicate crafting calculations.
+* Retained captured result setups through layout changes and cancelled a workbench's own calculation when closing it.
+* Isolated selected-action price overrides from shared currency quotes, preserving zero prices and reporting unused overrides through the UI and MCP.
+* Fixed property-only recipe comparisons and retained invalid action prices with clear errors.
+* Added verified ingredients for crafted-mod removal and one/three-modifier bench reforges, and made simulation costs easier to see.
+* Included resource/action override provenance in fossil comparisons and CSV exports, and exposed action price keys to MCP clients.
+* Preserved long four-fossil Allflame action-price keys across working-craft save and reopen.
+* Added verified bench ingredients to native resource quotes, recipe costs and MCP inspection, preserving unknown costs and action overrides.
+* Added a visual fossil comparison with artwork, cost/chance sorting, quote provenance, CSV export and selection without crafting.
+* Retained fossil configuration, rejected duplicate selections and stopped assuming unrevealed Tangled outcomes.
+* Rejected conflicting saved quote aliases before admission and kept empty quote-book units consistent.
+* Checked recovery simulation frame budgets between individual steps to reduce long background slices.
+* Added visual saved resource quotes with currency art, source/date metadata and reuse between gear projects, simulations, recipe comparisons and MCP.
+* Kept action price overrides with their selected action and prevented accidental price-unit relabelling.
+* Reduced AI snapshot pauses by avoiding active-item reparses and repeated XML parsing while preserving native save data and revision guards.
+* Preserved independent rolls across multi-line affixes in native items, imports, comparisons and crafting previews.
+* Added Omen-assisted linking, exact socket calculations and discoverable socket-service costs through MCP.
+* Accepted and validated independently rolled Blessed Orb values across the native engine and MCP.
+* Fixed item previews for independently rolled corrupted and Eldritch implicits and Blessed Orb ranges.
+* Shared crafting prerequisites between menus and execution for Bestiary, Ducats, memory currencies and Dominance.
+* Matched bench, Essence and Harvest choices to the current item, retained valid selections and exposed availability through MCP.
+* Cleared the planning header at narrow widths and included file actions in overlap audits.
+* Separated the compact item-property form from modifier-group controls without changing saved targets.
+* Reduced long AI preparation pauses with cooperative parsing, control creation and calculation stages.
+* Explained unavailable Aspect and Sacred Orb crafts before execution.
+* Added native weapon and defence stat goals to crafting, recipe stop conditions and MCP inspection.
+* Disabled socket-bench choices without valid options and improved long build-name and save-status labels.
+* Invalid Atlas setup costs now keep the form open; crafting validation messages are clearer and preserve typed input.
+* Added native weapon DPS, speed, critical chance and Ward to crafting item cards and comparisons.
+* Made the crafting rules version visible on the workbench, with one-click coverage details.
+* Updated Atlas map-supply wording for current strategies while retaining older saved notes.
+* Avoided duplicate recovery trials while loading AI proposal candidates, retaining complete final calculations.
+* Added Harvest quality enchantments with native item previews, recipe goals, saved state and Lifeforce costs.
+* Fixed socket-bench preparation costs being charged again when the input already has the requested socket count.
+* Added a colour wheel, brightness/opacity controls and exact RGBA input to filter appearance editors.
+* Fixed campaign numeric entry and restored drop-preview and colour-swatch tooltips.
+* Added category-specific filter styling, full file change review and simulator paging for all saved examples.
+* Kept ad-hoc test items separate from saved sets and improved sample selection and unavailable-action behavior.
+* Reduced repeated bundled-preset migration work while preserving all seven exports and diagnostics.
+* Added saved filter example sets and named appearance palettes that travel with the build.
+* Prevented recalculated full-DPS summaries from falsely invalidating AI proposals.
+* Added campaign base-family pickup policies, progressive upgrade windows and a compiled filter structure browser.
+* Fixed duplicate filter overrides across views, equipment/gem sample classes and repeated catalogue/dependency work.
+* Added full catalogue paging and faster, source-stable headless UI verification.
+* Added editable item tiers, reusable filter modules, clipboard samples, change review and local draft recovery.
+* Added full filter colour/alert/icon controls, priority-conflict diagnostics and links to changed build targets.
+* Added crafting modifier tables, target-group editing, draggable recipe routes, item inventory and budget charts.
+* Added saved Atlas targets/exclusions, cooperative route previews, investment summaries and comparison overlays.
+* Improved planning typography, unavailable-action explanations and preservation of drafts across linked tools.
+* Added reversible whole-filter font, alert and beam settings, plus batch export of all seven strictnesses.
+* Crafting recipes can target exact socket colours, including a single linked group.
+* Action odds and fossil comparisons now honor item-property goals and partial target-group counts.
+* Atlas starting routes and optional AI routing compare target orders within the supplied budget.
+* Redesigned loot filters with setup cards, a searchable base catalogue, clickable loot scenes and live appearance controls.
+* Added colour swatches, label size, all numbered sound choices, map icons and personal-rule theme updates.
+* Base preset edits now create personal overrides while preserving the imported or pinned source.
+* Added visual loot-filter profiles with build, crafting and Atlas pickup rules, drop previews and file export.
+* Added pinned NeverSink presets, 3.30 item migrations, Normal/Ruthless modes and reviewed account publication.
+* AI tools can generate, test, compile and propose saved loot-filter profiles through native review.
+* Integrated upstream 3.30 Standard/Ruthless trees, distance wording, tincture/shield fixes and tree breakdown corrections.
+* Trade results can include the potential of a compatible bench craft (upstream #10164).
+* New builds now default to the published 3.30 tree and its Atlas, while saved builds retain their versions.
+* Added opt-in official 3.30 passive and Atlas previews with bundled artwork and pinned source hashes.
+* Added the 150 point preview Atlas budget and stable Atlas 3.29.3, preserving saved tree versions.
+* Added calculation timings and cooperative upgrade workers with fewer repeated build snapshots.
+* Added crafting failure recovery, restart costs and median / unlucky spending cards.
+* Added reviewed survival stress presets, Atlas progression stages and strategy requirements.
+* Added portable planning bundles with native new-build review, including kept crafting checkpoints.
+* Refined all planning tools with guided crafting, comparison tables, readable guides and clearer save states.
+* Added large text, keyboard list selection, remembered navigation and resizable Journey details.
+* Added AI connection receipts and round-trip tests, clearer proposal review and interactive chart controls.
+* Compare equipped and wishlist item cards, choose prerequisites by name and track milestone progress.
+* Measure wishlist upgrades with native calculations and compare benefit per recorded resource.
+* Test the complete MCP planning, native review and save/reopen workflow without opening a window.
+* Added Journey: linked milestones, gear wishlist, resource budget, leveling guide and explained next tasks.
+* Keep and resume working crafts, including item state, action history, targets and settings.
+* AI tools can read and propose Journey plans through native desktop review.
+* Save crafting plans for every gear slot and alternatives without a project-count cap.
+* Refined crafting item cards with grouped affixes and inline currency search and modifier details.
+* Added direct Atlas mechanic filters and preserved unfinished edits when resizing.
+* Full-width Atlas planning with search, mechanic filters, routes, minimap and saved strategy comparisons.
+* Item crafting workbench with currency artwork, modifier inspection, history, targets and recipe comparisons.
+* Integrated AI planning, encounter charts, keyboard navigation and resizable panels.
+
+VERSION[2.68.1][2026/11/17]
+
+--- User Interface ---
+* Fix visibility of Viscera list on larger screens (Wires77)
+
+
+VERSION[2.68.0][2026/11/17]
+
+--- Covens of Umbra ---
+* Tree, Skills, Uniques, and other mod support by vaisest, mcagnion, canuysal, uLow
+* Wickerman support in the Items tab by AdamZ-8113 and Wires77
+* Add support for the Putrid Seed mycelium jewel (vaisest)
+
+--- New to Path of Building ---
+* Add support for adding vestigial implicits (vaisest)
+* Add the corresponding Forbidden Flesh or Flame jewel when one is added to a build (cupkax)
+* Add tree nodes to mod "browser", show support, and sources (vaisest)
+* Add breakdowns to the build side bar on mouseover (vaisest)
 * Add support for Chain Hook of Angling (LocalIdentity)
 * Add support for Rhex talisman damage conversion mod (vaisest)
-* Add respective Forbidden Flesh / Flame jewel when adding 1 of them to a build (cupkax)
 * Add proper Pearl of Tsoatha support (vaisest)
 * Add support for Baleful Dominion Keystone (vaisest)
 * Add support for Gaze of the Lich (vaisest)
 * Add Mercenary mods (vaisest)
-* Add support for adding vestigial implicits (vaisest)
 * Add support for corrupting with more than two modifiers (vaisest)
-* Add tree nodes to mod "browser", show support, and sources (vaisest)
-* Add breakdowns to the build side bar on mouseover (vaisest)
-* Add crafting support for Cane of Kulemak, Replic Paradoxica, Queen's Hunger and That Which was Taken (vaisest)
-* Improve timeless jewel finder UI (vaisest)
+* Add crafting support for Cane of Kulemak, Replica Paradoxica, Queen's Hunger and That Which was Taken (vaisest)
+* Add drop-restricted delve and incursion mods to crafting and trader (vaisest)
 * Add NOT filters to trader (vaisest)
 * Add support for Pantheon Aspect skills (cupkax)
 * Allow config tab sections to be collapsed and expanded (cupkax)
@@ -79,31 +1161,34 @@ VERSION[beta][2026/11/10]
 * Add option to allow auto-socketing timeless jewel (cupkax)
 * Improve buy similar matching and add abyss jewels (vaisest)
 * Support generic elemental resistance penetration immunity (Nerotox)
-* Speed up Full DPS comparisons by caching trigger source calculations (Kitava’s Thirst) (AdamZ-8113)
-* Feature: Show cluster jewel notable positions in the item editor (Nerotox)
-* Show timeless passive source names in Calcs (AdamZ-8113)
 * Support Follow Through cluster jewel notable (AdamZ-8113)
-* Search for items by modifier in craft item menu. (AdamZ-8113)
-* Show sources of disabled damage types on Calcs page (AdamZ-8113)
+* Add search for items by modifier in the craft item menu (AdamZ-8113)
 * [pob2-port] Add gem quality breakdown and break down quality in tooltips (github-actions[bot])
-* Update many uniques that had small issues (kylande01)
+* Support Polaric Devastation (mcagnion)
+* Implement scoring % breakdown to Trader result dropdown (vaisest)
 
 --- Fixed Crashes ---
-* Fix Crash when hovering over the PvP toggle while having Shaper Beam (LocalIdentity)
+* Fix crash when hovering over the PvP toggle while having Shaper Beam (LocalIdentity)
 * Fix crash when last saved league doesn't exist anymore (vaisest)
 * Fix Megalomaniac trader crash (vaisest)
 * Fix crash when a custom mod has an invalid support gem in it (Trifall)
 * Fix invalid mod parsing for mods that grant skills (Trifall)
 * Fix corruption source crash with fifth implicit (mcagnion)
+* Fix crash when importing/selecting a character with imbued support gems (AdamZ-8113)
 
 --- User Interface ---
 * Fix Compare Config tab visual issues (LocalIdentity)
+* Improve timeless jewel finder UI (vaisest)
 * Add flavour text for Dread Captain's Cutlass and Subsume the Source (Blitz54)
 * Show augmented Armour/Evasion/Ward/Energy Shield in blue on item tooltip (Blitz54)
 * Change draw layer of calc popouts (Blitz54)
+* Preserve the save warning for Notes and Party edits after generating a share code (AdamZ-8113)
 * Fix custom mod browser list changing between launches (mcagnion)
 * Preserve sources of resistances granted to minions (AdamZ-8113)
-* Avoid rescanning all builds when closing a build (LocalIdentity)
+* Show sources of disabled damage types on Calcs page (AdamZ-8113)
+* Show cluster jewel notable positions in the item editor (Nerotox)
+* Show timeless passive source names in Calcs (AdamZ-8113)
+* Fix 3.27 Breachlord image (Blitz54)
 
 --- Fixed Calculations ---
 * Fix Sirus Meteor not dealing Chaos Damage (LocalIdentity)
@@ -122,10 +1207,12 @@ VERSION[beta][2026/11/10]
 * Fix EHP falling with life gained on block when defences increase (mcagnion)
 * Fix Cruelty applying to Totem, Trap and Mine skills (lemmertz)
 * Fix Sacrifice Support life calculation for totems (AdamZ-8113)
-* Fix: Pact uptime with repeated spells (Nerotox)
+* Fix Pact uptime with repeated spells (Nerotox)
 * Fix Breachlord gem levels applying to supports (AdamZ-8113)
 * Respect spell cooldowns for traps/mines while calculating DPS (AdamZ-8113)
 * Fix Conjoined Spire AoE calc (vaisest)
+* Fix Excommunicate Support not applying (Wires77)
+* Fix Energy Blade quality attack speed applying as more multiplier (lucaskarsten)
 
 --- Fixed Behaviours ---
 * Fix Ball Lightning not using enemy radius selector (LocalIdentity)
@@ -145,8 +1232,8 @@ VERSION[beta][2026/11/10]
 * Fix Mana-Infused Staff not respecting Staff requirements (cupkax)
 * Fix Nightblade support not working with Windburst (cupkax)
 * Fix Mana-Infused Staff incorrectly working if reserving Life (cupkax)
-* Fix Jinxed Juju's spectre mod support  (cupkax)
-* Fix unique modifier parsing regressions from #9480 (AdamZ-8113)
+* Fix Jinxed Juju's spectre mod support (cupkax)
+* Fix sort function for enchants (and other paths) on offhand not working (AdamZ-8113)
 * Allow Glimpse of Chaos corruption implicits on all helmets (Nerotox)
 * Fix pob.codes imports with query parameters (AdamZ-8113)
 * Fix items from builds saved before 2.67 loading with wrong values (mcagnion)
@@ -154,25 +1241,25 @@ VERSION[beta][2026/11/10]
 * Skip hidden slots when sorting item database by stats (AdamZ-8113)
 * Fix weighted trade search repeating when exactly 10 results match (mcagnion)
 * Avoid defaulting fortification to minimum stacks (vaisest)
-* Fix: Timeless Abyss Jewels active in cluster sockets (Nerotox)
-* Preserve the save warning for Notes and Party edits after generating a share code (AdamZ-8113)
+* Fix Timeless Abyss Jewels being active in cluster sockets (Nerotox)
 * Fix Mana-Infused Staff zero-mana reservation state (mcagnion)
 * Fix trade searches not working (github-actions[bot])
 
 --- Accuracy Improvements ---
 * Fix some unique wand implicits and last mod of Eclipse Solaris (zwglau)
-* Fix 3.27 Breachlord image (Blitz54)
 * Fix Badge of the Brotherhood implicit (Nerotox)
 * Fix Zana's Ingenuity modifier groups (Nerotox)
 * Fix base types of Dissolution of the Flesh and Rigwald's Curse (mcagnion)
 * Update Replica Dragonfang's Flight to use versions and variants (AdamZ-8113)
+* Fix Screams of the Desiccated modifier parsing (AdamZ-8113)
+* Fix Glorious Vanity Ahuana conqueror name (vaisest)
+* Update many uniques that had small issues (kylande01)
 
 --- Other changes ---
-* Add drop-restricted delve and incursion mods to crafting and trader (vaisest)
 * Improve calc performance (vaisest)
-* Improve path finding and radius jewel performance (vaisest)
-* Update to SimpleGraphic v2.5.5 (github-actions[bot])
-* Update to SimpleGraphic v2.5.6 (github-actions[bot])
+* Improve pathfinding and radius jewel performance (vaisest)
+* Avoid re-scanning all builds when closing a build (LocalIdentity)
+* Speed up Full DPS comparisons by caching trigger source calculations (Kitava’s Thirst) (AdamZ-8113)
 
 VERSION[2.67.2][2026/08/07]
 

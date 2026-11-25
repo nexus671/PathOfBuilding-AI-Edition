@@ -1,0 +1,289 @@
+{
+  "source": {
+    "commit": "c97553d1fc14a134dd6813e672d2b45fddf5b42d",
+    "sha256": "8549a332c5de55ba5b3a7208adf2fca321ccce3ba50698200a78e867cba1f4e4"
+  },
+  "pools": {
+    "ENKINDLING": [
+      {
+        "id": "FlaskEnchantmentSealIncreasedEffect_",
+        "index": 1,
+        "weight": 250,
+        "stats": [
+          {
+            "id": "local_flask_cannot_gain_charges_during_flask_effect",
+            "max": 1,
+            "min": 1
+          },
+          {
+            "id": "local_flask_effect_+%",
+            "max": 70,
+            "min": 60
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentSealIncreasedDuration",
+        "index": 2,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_cannot_gain_charges_during_flask_effect",
+            "max": 1,
+            "min": 1
+          },
+          {
+            "id": "local_flask_duration_+%",
+            "max": 100,
+            "min": 80
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentSealIncreasedChargesGained",
+        "index": 3,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_cannot_gain_charges_during_flask_effect",
+            "max": 1,
+            "min": 1
+          },
+          {
+            "id": "local_charges_added_+%",
+            "max": 80,
+            "min": 60
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentSealReducedChargesUsed",
+        "index": 4,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_cannot_gain_charges_during_flask_effect",
+            "max": 1,
+            "min": 1
+          },
+          {
+            "id": "local_charges_used_+%",
+            "max": -25,
+            "min": -35
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentSealMaximumCharges____",
+        "index": 5,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_cannot_gain_charges_during_flask_effect",
+            "max": 1,
+            "min": 1
+          },
+          {
+            "id": "local_extra_max_charges",
+            "max": 60,
+            "min": 40
+          }
+        ]
+      }
+    ],
+    "INSTILLING": [
+      {
+        "id": "FlaskEnchantmentInjectorAdjacentFlasks___",
+        "index": 1,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_adjacent_flask_use",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorFlaskEffectEnd",
+        "index": 2,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_flask_effect_ended",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnFullCharges__",
+        "index": 3,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_full_charges",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnGuardSkillUsed",
+        "index": 4,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_guard_skill_used",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnTravelSkillUsed",
+        "index": 5,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_travel_skill_used",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnGuardSkillExpired",
+        "index": 6,
+        "weight": 0,
+        "stats": [
+          {
+            "id": "local_flask_use_on_guard_skill_expired",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnHittingRareOrUnique_",
+        "index": 7,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_hitting_rare_unique_enemy_while_inactive",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnAffectedByFreeze__",
+        "index": 8,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_affected_by_freeze",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnAffectedByChill",
+        "index": 9,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_affected_by_chill",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnAffectedByShock_",
+        "index": 10,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_affected_by_shock",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnAffectedByIgnite",
+        "index": 11,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_affected_by_ignite",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnAffectedByBleed",
+        "index": 12,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_affected_by_bleed",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnAffectedByPoison_",
+        "index": 13,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_affected_by_poison",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnDamageBlocked",
+        "index": 14,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_damage_blocked",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnTakingSavageHit_",
+        "index": 15,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_taking_savage_hit",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      },
+      {
+        "id": "FlaskEnchantmentInjectorOnUsingLifeFlask",
+        "index": 16,
+        "weight": 100,
+        "stats": [
+          {
+            "id": "local_flask_use_on_using_a_life_flask",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      }
+    ]
+  }
+}

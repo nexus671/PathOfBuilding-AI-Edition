@@ -1,0 +1,78 @@
+-- Build-owned copies of external filter texts for offline previews and export.
+local ui=require("Modules.PlanningUI")
+local filters=require("Modules.LootFilters")
+local M={}
+function M.Open(profile,keep)
+	local draft=copyTable(profile);draft.importFiles=draft.importFiles or {};draft.absentOptionalImports=draft.absentOptionalImports or {};local c={};local selected=0;local suggested
+	local w,h=math.min(860,main.screenW-40),math.min(640,main.screenH-60)
+	ui.description(c,"help",16,28,w-32,48,{"Find unresolved imports, then paste contents or load a local file. Optional files can be assumed absent for preview only."},14)
+	c.files=new("DropDownControl"):DropDownControl(ui.anchor,{16,82,w-32,26},{})
+	ui.label(c,"nameLabel",16,120,"Import filename",14)
+	c.name=new("EditControl"):EditControl(ui.anchor,{16,142,w-32,26},"",nil,nil,240)
+	ui.label(c,"textLabel",16,180,"Filter file contents",14)
+	c.text=new("EditControl"):EditControl(ui.anchor,{16,202,w-32,h-370},"",nil,"^%C\t\n",filters.limit,nil,14,true)
+	ui.label(c,"pathLabel",16,h-160,"Local file path",14)
+	c.path=new("EditControl"):EditControl(ui.anchor,{16,h-140,w-284,26},"",nil,nil,1024)
+	local function loadFile()
+		local ok,contents=pcall(require("Modules.LootFilterImports").readFile,c.path.buf,filters.limit)
+		if not ok then ui.errorPopup("Included filter",contents);return end
+		if c.name.buf=="" then c.name:SetText(c.path.buf:match("([^/\\]+)$") or "") end
+		c.text:SetText(contents)
+	end
+	c.browseFile=new("ButtonControl"):ButtonControl(ui.anchor,{w-256,h-140,100,26},"Browse",function()
+		require("Classes.LootFilterFileBrowser").Open(c.path.buf,function(path) c.path:SetText(path);loadFile() end)
+	end)
+	c.loadFile=new("ButtonControl"):ButtonControl(ui.anchor,{w-148,h-140,132,26},"Load file",loadFile)
+	local function refresh(index)
+		selected=index or 0;suggested=nil;local list={{label="Add a file",val=0}}
+		for i,file in ipairs(draft.importFiles) do list[#list+1]={label=file.name,val=i} end
+		c.files:SetList(list);c.files:SelByValue(selected,"val");local file=draft.importFiles[selected]
+		c.name:SetText(file and file.name or "");c.text:SetText(file and file.text or "")
+	end
+	local function saveCurrent(required)
+		local old=draft.importFiles[selected];local name,contents=c.name.buf,c.text.buf
+		if not required and not old and suggested==name and contents=="" then return selected end
+		if not required and not old and name=="" and contents=="" then return selected end
+		if old and old.name==name and old.text==contents then return selected end
+		local next=copyTable(draft);local file={name=name,text=contents}
+		local index=selected==0 and #next.importFiles+1 or selected;next.importFiles[index]=file
+		draft=filters.validate({schemaVersion=1,activeId=next.id,profiles={next}}).profiles[1]
+		draft.absentOptionalImports=draft.absentOptionalImports or {}
+		return index
+	end
+	c.files.selFunc=function(_,entry)
+		local target=entry.val;local ok,why=pcall(saveCurrent,false)
+		if ok then refresh(target) else c.files:SelByValue(selected,"val");ui.errorPopup("Included filter",why) end
+	end
+	local function button(key,x,width,label,callback) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,h-96,width,28},label,function()
+		local ok,why=pcall(callback);if not ok then require("Modules.PlanningUI").errorPopup("Included filter",why) end
+	end) end
+	button("saveFile",16,152,"Add / update",function() refresh(saveCurrent(true)) end)
+	button("removeFile",180,120,"Remove",function() assert(selected>0,"Select a file first");table.remove(draft.importFiles,selected);refresh(0) end)
+	c.removeFile.enabled=function() return selected>0 end
+	button("findImports",312,160,"Find unresolved",function()
+		local saved=saveCurrent(false);refresh(saved)
+		local assumed={};for _,name in ipairs(draft.absentOptionalImports) do assumed[name]=true end
+		local entries={};for _,row in ipairs(require("Modules.LootFilterImports").unresolved(draft.template or "",draft.importFiles,filters.limit)) do
+			local status=row.cycle and "Circular reference" or row.optional and (assumed[row.name] and "Preview assumes absent" or "Optional file not attached") or "Required file not attached"
+			entries[#entries+1]={id=row.name,label=row.name.." | "..status,category=status,details={status,row.count..(row.count==1 and " occurrence" or " occurrences"),row.cycle and "Edit an included file to break the cycle." or "Select this name, then paste the file contents.",row.optional and "Toggle the preview assumption only if the file will be absent in game. Export keeps the original import." or "This file must be available to the game."},cycle=row.cycle,optional=row.optional}
+		end
+		if #entries==0 then main:OpenMessagePopup("Included filters","No unresolved imports were found in the supplied filter files.");return end
+		require("Classes.PlanningBrowserControl").Open("Unresolved filter imports",entries,{action="Select file",choose=function(entry)
+			if entry.cycle then
+				for index,file in ipairs(draft.importFiles) do if file.name==entry.id then refresh(index);return end end
+			else refresh(0);c.name:SetText(entry.id);suggested=entry.id end
+		end,secondary={label="Toggle absent",canRun=function(entry) return entry.optional and not entry.cycle end,run=function(entry)
+			local found=false;for i=#draft.absentOptionalImports,1,-1 do if draft.absentOptionalImports[i]==entry.id then table.remove(draft.absentOptionalImports,i);found=true end end
+			if not found then draft.absentOptionalImports[#draft.absentOptionalImports+1]=entry.id end
+			main:ClosePopup();c.findImports:Click()
+		end}})
+	end)
+	c.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-48,152,28},"Keep files",function()
+		local ok,why=pcall(saveCurrent,false);if not ok then ui.errorPopup("Included filter",why);return end
+		keep(draft.importFiles,#draft.absentOptionalImports>0 and draft.absentOptionalImports or nil);main:ClosePopup()
+	end)
+	c.cancel=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-48,140,28},"Cancel",function() main:ClosePopup() end)
+	refresh(0);ui.style(c,{keep=true});main:OpenPopup(w,h,"Included filter files",c,nil,"name","cancel")
+end
+return M

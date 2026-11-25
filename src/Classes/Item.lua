@@ -33,9 +33,10 @@ local function getCatalystScalar(catalystId, mod, quality)
 		return 1
 	end
 	local tags = mod.modTags
-	if not catalystId or type(catalystId) ~= "number" or not catalystTags[catalystId] or not tags or type(tags) ~= "table" or #tags == 0 then
+	if not catalystId or type(catalystId) ~= "number" or not catalystTags[catalystId] or tags ~= nil and type(tags) ~= "table" then
 		return 1
 	end
+	tags = tags or { }
 	if not quality then
 		quality = 20
 	end
@@ -59,6 +60,40 @@ local function getCatalystScalar(catalystId, mod, quality)
 		end
 	end
 	return 1
+end
+
+local function modMatchesMagnitude(mod, modType, magnitudeMod)
+	if magnitudeMod.modType and magnitudeMod.modType ~= modType then
+		return false
+	end
+	local tagLookup = { }
+	for _, tag in ipairs(mod.modTags or { }) do
+		tagLookup[tag] = true
+	end
+	-- These are not actual mod tags, but do appear in modifier magnitude mods.
+	for _, lineFlag in ipairs({ "unveiled", "prefix", "suffix" }) do
+		if mod[lineFlag] then
+			tagLookup[lineFlag] = true
+		end
+	end
+	for _, tag in ipairs(magnitudeMod.tags or { }) do
+		if not tagLookup[tag] then
+			return false
+		end
+	end
+	if magnitudeMod.anyTags then
+		local anyTagMatches = false
+		for _, tag in ipairs(magnitudeMod.anyTags) do
+			if tagLookup[tag] then
+				anyTagMatches = true
+				break
+			end
+		end
+		if not anyTagMatches then
+			return false
+		end
+	end
+	return true
 end
 
 local function normaliseModLine(line)
@@ -96,6 +131,39 @@ function ItemClass:Item(raw, rarity, highQuality)
 		self:ParseRaw(sanitiseText(raw), rarity, highQuality)
 	end
 	return self
+end
+
+-- Accepts parsed lines and proposed mods; modType selects applicable modifier-magnitude effects.
+function ItemClass:GetModLineValueScalar(mod, modType)
+	local valueScalar = getCatalystScalar(self.catalyst, mod, self.catalystQuality)
+	if mod.unscalable then
+		return valueScalar
+	end
+	-- Modifiers that grant skills are not affected by modifier magnitude.
+	local grantsSkill = false
+	for _, parsedMod in ipairs(mod.modList or { }) do
+		if parsedMod.name == "ExtraSkill" then
+			grantsSkill = true
+			break
+		end
+	end
+	if mod.extra and not grantsSkill and mod.line then
+		local line = mod.line:lower()
+		grantsSkill = line:match("^grants level %d+ ") or line:match("^grants %D+$")
+	end
+	if grantsSkill then
+		return valueScalar
+	end
+	for _, magnitudeMod in ipairs(self.modMagnitudeMods or { }) do
+		if modMatchesMagnitude(mod, modType, magnitudeMod) then
+			if magnitudeMod.multiplier then
+				valueScalar = valueScalar * magnitudeMod.multiplier
+			else
+				valueScalar = valueScalar + magnitudeMod.quality / 100
+			end
+		end
+	end
+	return valueScalar
 end
 
 -- Reset all influence keys to false
@@ -431,6 +499,13 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 	self.quality = nil
 	self.tinctureValues = nil
 	self.tinctureImportedQuality = nil
+	self.tinctureImportedEffect = nil
+	self.tinctureBaseExplicit = nil
+	self.tinctureBasePrefix = nil
+	self.tinctureBaseSuffix = nil
+	self.tinctureBaseImplicit = nil
+	self.twiceCorrupted = nil
+	self.unidentifiedMarker = nil
 	self.rawLines = { }
 	-- Find non-blank lines and trim whitespace
 	for line in raw:gmatch("%s*([^\n]*%S)") do
@@ -447,6 +522,10 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 			l = l + 1 -- Item class is already determined by the base type
 		end
 		local rarity = self.rawLines[l]:match("^Rarity: (%a+)")
+		if itemClass == "Viscera" and not rarity then
+			self.rarity = "NORMAL"
+			mode = "GAME"
+		end
 		if rarity then
 			mode = "GAME"
 			if colorCodes[rarity:upper()] then
@@ -474,8 +553,9 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 		-- Determine if "Unidentified" item
 		local unidentified = false
 		for _, line in ipairs(self.rawLines) do
-			if line == "Unidentified" then
+			if line == "Unidentified" or line:match("^Unidentified %(Tier %d+%)$") then
 				unidentified = true
+				self.unidentifiedMarker = line
 				break
 			end
 		end
@@ -541,7 +621,10 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 		if line == "Veiled Prefix" or line == "Veiled Suffix" then
 			self.veiled = true
 		end
-		if flaskBuffLines and flaskBuffLines[line] then
+		if itemClass == "Viscera" and (line == "Head" or line == "Torso" or line == "Upper Limb" or line == "Lower Limb"
+			or line == "Take this to the Wickerman in a town or hideout to attach it.") then
+			-- Slot labels and instructions in the game clipboard are not modifiers.
+		elseif flaskBuffLines and flaskBuffLines[line] then
 			flaskBuffLines[line] = nil
 		elseif tinctureBuffLines and tinctureBuffLines[line] then
 			tinctureBuffLines[line] = nil
@@ -551,10 +634,15 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 			self.checkSection = true
 		elseif line == "Split" then
 			self.split = true
+		elseif line == "Unidentified" or line:match("^Unidentified %(Tier %d+%)$") then
+			-- State marker, not a modifier.
 		elseif line == "Mirrored" then
 			self.mirrored = true
 		elseif line == "Corrupted" then
 			self.corrupted = true
+		elseif line == "Twice Corrupted" then
+			self.corrupted = true
+			self.twiceCorrupted = true
 		elseif line == "Fractured Item" then
 			self.fractured = true
 		elseif line == "Synthesised Item" then
@@ -674,6 +762,16 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 					self.tinctureValues = specVal == "Final" and "Final" or nil
 				elseif specName == "Tincture Imported Quality" then
 					self.tinctureImportedQuality = specToNumber(specVal)
+				elseif specName == "Tincture Imported Effect" then
+					self.tinctureImportedEffect = specToNumber(specVal)
+				elseif specName == "Tincture Base Explicit" then
+					self.tinctureBaseExplicit = specVal == "true" or nil
+				elseif specName == "Tincture Base Prefix" then
+					self.tinctureBasePrefix = specVal == "true" or nil
+				elseif specName == "Tincture Base Suffix" then
+					self.tinctureBaseSuffix = specVal == "true" or nil
+				elseif specName == "Tincture Base Implicit" then
+					self.tinctureBaseImplicit = specVal == "true" or nil
 				elseif specName == "Item Level" then
 					self.itemLevel = specToNumber(specVal)
 				elseif specName == "Memory Strands" then
@@ -973,14 +1071,14 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 					if self.name:match("Energy Blade") and itemClass then -- Special handling for energy blade base.
 						self.name = itemClass:match("One Hand") and "Energy Blade One Handed" or "Energy Blade Two Handed"
 					end
-					if data.itemBases[self.name] then
+					if data.itemBases[self.name] and (itemClass ~= "Viscera" or data.itemBases[self.name].type == "Viscera") then
 						baseName = self.name
 					else
 						local bestMatch = {length = -1}
 						-- Partial match (magic items with affixes)
 						for itemBaseName, baseData in pairs(data.itemBases) do
 							local s, e = self.name:find(itemBaseName, 1, true)
-							if s and e and (e-s > bestMatch.length) then
+							if s and e and (itemClass ~= "Viscera" or baseData.type == "Viscera") and (e-s > bestMatch.length) then
 								bestMatch.match = itemBaseName
 								bestMatch.length = e-s
 								bestMatch.e = e
@@ -1011,6 +1109,7 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 					baseName = "Two-Toned Boots (Armour/Energy Shield)"
 				end
 				local base = data.itemBases[baseName]
+				if itemClass == "Viscera" and base and base.type ~= "Viscera" then base = nil end
 				if base then
 					-- Items with variants can have multiple bases
 					self.baseLines[baseName] = {
@@ -1058,7 +1157,7 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 						else
 							self.enchantments = data.enchantments[self.base.type]
 						end
-						self.corruptible = self.base.type ~= "Flask"
+						self.corruptible = self.base.type ~= "Flask" and self.base.type ~= "Viscera"
 						self.canBeInfluenced = self.base.influenceTags ~= nil
 						self.clusterJewel = data.clusterJewels and data.clusterJewels.jewels[self.baseName]
 						self.requirements.str = self.base.req.str or 0
@@ -1099,7 +1198,19 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 				end
 				-- Advanced copy uses current(base) for fixed-value modifiers,
 				-- in addition to the current(min-max) form handled below.
-				line = line:gsub("(%-?%d+%.?%d*)%((%-?%d+%.?%d*)%)", "%1")
+				local displayed = line:gsub("(%-?%d+%.?%d*)%((%-?%d+%.?%d*)%)", "%1")
+				if hasModifierHeaders and catalystScalar > 1 then
+					local baseLine, count = line:gsub("(%-?%d+%.?%d*)%((%-?%d+%.?%d*)%)", "%2")
+					-- Recover a fixed base only when the native scaler reproduces the
+					-- entire displayed line, including unscalable and decimal values.
+					if count > 0 and itemLib.applyRange(baseLine, 1, catalystScalar, modLine.corruptedRange) == displayed then
+						line = baseLine
+					else
+						line = displayed
+					end
+				else
+					line = displayed
+				end
 				if self.pendingAffixList and #self.pendingAffixList > 0 then
 					if #self.pendingAffixList > 1 then
 						-- Probably a conqueror or essence mod since the mod name is the same for all of them
@@ -1413,59 +1524,16 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 	if self.advancedCopy or self.crafted then
 		-- apply mod magnitude boost to matching mods
 		if #self.modMagnitudeMods > 0 then
-			for _, modMagnitudeMod in ipairs(self.modMagnitudeMods) do
-				local modLists
-				if modMagnitudeMod.modType then
-					modLists = { self[modMagnitudeMod.modType .. "ModLines"] }
-				else
-					modLists = { self.implicitModLines, self.explicitModLines, self.enchantModLines }
-				end
-				for _, mods in ipairs(modLists) do
-					for _, mod in ipairs(mods or {}) do
-						-- avoid scaling variant lines which are not active
-						if mod.variantList and (self:GetModLineVariantCount(mod) == 0) then
-							goto modMagnitudeContinue
-						end
-						-- Modifiers that grant skills are not affected by modifier magnitude.
-						local grantsSkill = false
-						for _, parsedMod in ipairs(mod.modList) do
-							if parsedMod.name == "ExtraSkill" then
-								grantsSkill = true
-								break
-							end
-						end
-						if mod.extra and not grantsSkill then
-							local line = mod.line:lower()
-							grantsSkill = line:match("^grants level %d+ ") or line:match("^grants %D+$")
-						end
-						-- Create a fast lookup table for all provided tags
-						local tagLookup = {}
-						for _, curTag in ipairs(mod.modTags) do
-							tagLookup[curTag] = true;
-						end
-						-- these aren't actual mod tags but do appear in mod magnitude mods
-						for _, lineFlag in ipairs({ "unveiled", "prefix", "suffix" }) do
-							if mod[lineFlag] then
-								tagLookup[lineFlag] = true
-							end
-						end
-						local match = true
-						for _, magnitudeTag in ipairs(modMagnitudeMod.tags) do
-							if not tagLookup[magnitudeTag] then
-								match = false
-							end
-						end
-						if modMagnitudeMod.anyTags and not (tagLookup[modMagnitudeMod.anyTags[1]] or tagLookup[modMagnitudeMod.anyTags[2]]) then
-							match = false
-						end
-						if match and not mod.unscalable and not grantsSkill then
-							if modMagnitudeMod.multiplier then
-								mod.valueScalar = (mod.valueScalar or 1) * modMagnitudeMod.multiplier
-							else
-								mod.valueScalar = (mod.valueScalar or 1) + (modMagnitudeMod.quality / 100)
-							end
-						end
-						if mod.valueScalar and mod.valueScalar ~= 1 then
+			for _, entry in ipairs({
+				{ modType = "implicit", mods = self.implicitModLines },
+				{ modType = "explicit", mods = self.explicitModLines },
+				{ modType = "enchant", mods = self.enchantModLines },
+			}) do
+				for _, mod in ipairs(entry.mods or { }) do
+					-- Avoid scaling variant lines which are not active.
+					if not mod.variantList or self:GetModLineVariantCount(mod) > 0 then
+						mod.valueScalar = self:GetModLineValueScalar(mod, entry.modType)
+						if mod.valueScalar ~= 1 then
 							local rangedLine = itemLib.applyRange(mod.line, mod.range or 1, mod.valueScalar, 1)
 							local modList, extra = modLib.parseMod(rangedLine)
 							if modList then
@@ -1474,7 +1542,6 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 								mod.extra = extra
 							end
 						end
-						::modMagnitudeContinue::
 					end
 				end
 			end
@@ -1658,7 +1725,17 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 			enchantIndex = enchantIndex + 1
 		end
 	end
+	if self.base and self.base.subType == "Blightcore" then
+		-- Anointing a Putrid Seed grows four passives
+		self.canBeAnointed = true
+		self.canHaveTwoEnchants = true
+		self.canHaveThreeEnchants = true
+		self.canHaveFourEnchants = true
+	end
 	self:BuildModList()
+	if self.type == "Tincture" and self.tinctureValues == "Final" and self.tinctureImportedEffect == nil then
+		self.tinctureImportedEffect = self.tinctureData.effectInc or 0
+	end
 	if deferJewelRadiusIndexAssignment then
 		self.jewelRadiusIndex = self.jewelData.radiusIndex
 	end
@@ -1822,6 +1899,11 @@ function ItemClass:BuildRaw()
 	if self.type == "Tincture" and self.tinctureValues == "Final" then
 		t_insert(rawLines, "Tincture Values: Final")
 		t_insert(rawLines, "Tincture Imported Quality: "..tostring(self.tinctureImportedQuality or self.quality or 0))
+		t_insert(rawLines, "Tincture Imported Effect: "..tostring(self.tinctureImportedEffect or self.tinctureData and self.tinctureData.effectInc or 0))
+		if self.tinctureBaseExplicit then t_insert(rawLines, "Tincture Base Explicit: true") end
+		if self.tinctureBasePrefix then t_insert(rawLines, "Tincture Base Prefix: true") end
+		if self.tinctureBaseSuffix then t_insert(rawLines, "Tincture Base Suffix: true") end
+		if self.tinctureBaseImplicit then t_insert(rawLines, "Tincture Base Implicit: true") end
 	end
 	if self.league then
 		t_insert(rawLines, "League: " .. self.league)
@@ -2057,6 +2139,9 @@ function ItemClass:BuildRaw()
 	for _, modLine in ipairs(self.crucibleModLines) do
 		writeModLine(modLine)
 	end
+	if self.unidentifiedMarker then
+		t_insert(rawLines, self.unidentifiedMarker)
+	end
 	if self.split then
 		t_insert(rawLines, "Split")
 	end
@@ -2066,8 +2151,11 @@ function ItemClass:BuildRaw()
 	if self.fractured then
 		t_insert(rawLines, "Fractured Item")
 	end
+	if self.synthesised then
+		t_insert(rawLines, "Synthesised Item")
+	end
 	if self.corrupted or self.scourge then
-		t_insert(rawLines, "Corrupted")
+		t_insert(rawLines, self.corrupted and self.twiceCorrupted and "Twice Corrupted" or "Corrupted")
 	end
 	if self.foilType then
 		t_insert(rawLines, "Foil Unique" .. " (" .. self.foilType .. ")")
@@ -2095,6 +2183,18 @@ function ItemClass:Craft()
 	self.nameSuffix = ""
 	self.requirements.level = self.base.req.level
 	local statOrder = { }
+	local preserveSources = self.preserveAffixSources or self.catalyst and (self.catalystQuality == nil or self.catalystQuality > 0) or #(self.modMagnitudeMods or { }) > 0
+	if not preserveSources then
+		for _, list in ipairs({ self.prefixes, self.suffixes }) do
+			for i = 1, (list.limit or (self.affixLimit / 2)) do
+				local affix = list[i]
+				local mod = affix and self.affixes[affix.modId]
+				for _, line in ipairs(mod or { }) do if itemLib.isModifierMagnitudeLine(line) then preserveSources = true; break end end
+				if preserveSources then break end
+			end
+			if preserveSources then break end
+		end
+	end
 	for _, list in ipairs({ self.prefixes, self.suffixes }) do
 		for i = 1, (list.limit or (self.affixLimit / 2)) do
 			local affix = list[i]
@@ -2109,13 +2209,24 @@ function ItemClass:Craft()
 					self.nameSuffix = self.nameSuffix .. " " .. mod.affix
 				end
 				self.requirements.level = m_max(self.requirements.level or 0, m_floor(mod.level * 0.8))
-				for i, line in ipairs(mod) do
-					line = itemLib.applyRange(line, affix.range or 0.5)
+				for i, line in ipairs(itemLib.applyModRanges(mod, affix.range)) do
 					local order = mod.statOrder[i]
-					if statOrder[order] then
-						-- Combine stats
+					local bySource = statOrder[order] or { }
+					statOrder[order] = bySource
+					local tags = copyTable(mod.modTags or { })
+					table.sort(tags)
+					local sourceKey = mod.type .. (affix.fractured and ":fractured" or ":ordinary")
+					for _, tag in ipairs(tags) do sourceKey = sourceKey .. #tag .. ":" .. tag end
+					local existing = bySource[sourceKey]
+					local fractional = line:find("%d+%.%d+") or existing and existing.line:find("%d+%.%d+")
+					local sameText = existing and line:gsub("%d+%.?%d*", "#") == existing.line:gsub("%d+%.?%d*", "#")
+					local lower = line:lower()
+					local grantsSkill = lower:find("supported by level", 1, true) or lower:find("grants level", 1, true)
+					if existing and not preserveSources and not fractional and sameText and not grantsSkill then
+						-- Only combine integer contributions from the same
+						-- source; fractional values must retain their precision.
 						local start = 1
-						statOrder[order].line = statOrder[order].line:gsub("%d+", function(num)
+						bySource[sourceKey].line = bySource[sourceKey].line:gsub("%d+", function(num)
 							local s, e, other = line:find("(%d+)", start)
 							start = e + 1
 							return tonumber(num) + tonumber(other)
@@ -2128,7 +2239,7 @@ function ItemClass:Craft()
 							modLine.suffix = true
 						end
 						t_insert(self.explicitModLines, modLine)
-						statOrder[order] = modLine
+						if not existing then bySource[sourceKey] = modLine end
 					end
 				end
 			end
@@ -2205,6 +2316,12 @@ function ItemClass:GetPrimarySlot()
 		return "Flask 1"
 	elseif self.type == "Graft" then
 		return "Graft 1"
+	elseif self.type == "Viscera" then
+		for tag, _ in pairs(self.base.tags) do
+			if tag:match("^viscera_") then
+				return ({viscera_head="Wickerman Head",viscera_body="Wickerman Torso",viscera_arm="Wickerman Upper Limb",viscera_leg="Wickerman Lower Limb"})[tag]
+			end
+		end
 	else
 		return self.type
 	end
@@ -2508,6 +2625,10 @@ function ItemClass:BuildModListForSlotNum(baseList, slotNum)
 		for _, value in ipairs(modList:List(nil, "JewelData")) do
 			jewelData[value.key] = value.value
 		end
+		if self.base.subType == "Blightcore" then
+			-- In order of the jewel's granted passive stats
+			jewelData.blightcoreNotables = modList:List(nil, "BlightcoreNotable")
+		end
 		if modList:List(nil, "ImpossibleEscapeKeystones") then
 			jewelData.impossibleEscapeKeystones = { }
 			for _, value in ipairs(modList:List(nil, "ImpossibleEscapeKeystones")) do
@@ -2591,7 +2712,7 @@ function ItemClass:BuildModList()
 			end
 		end
 	end
-	local function processModLine(modLine)
+	local function processModLine(modLine, tincturePart)
 		if modLine.disabled then
 			return
 		end
@@ -2614,6 +2735,9 @@ function ItemClass:BuildModList()
 			if not modLine.extra then
 				for _, mod in ipairs(modLine.modList) do
 					for _ = 1, variantCount do
+						if self.type == "Tincture" and self.tinctureValues == "Final" and (tincturePart == "implicit" and self.tinctureBaseImplicit or tincturePart == "explicit" and (self.tinctureBaseExplicit or modLine.prefix and self.tinctureBasePrefix or modLine.suffix and self.tinctureBaseSuffix)) then
+							mod=copyTable(mod);mod.tinctureBase=true
+						end
 						baseList:AddMod(modLib.setSource(mod, self.modSource))
 					end
 				end
@@ -2633,10 +2757,10 @@ function ItemClass:BuildModList()
 		processModLine(modLine)
 	end
 	for _, modLine in ipairs(self.implicitModLines) do
-		processModLine(modLine)
+		processModLine(modLine, "implicit")
 	end
 	for _, modLine in ipairs(self.explicitModLines) do
-		processModLine(modLine)
+		processModLine(modLine, "explicit")
 	end
 	for _, modLine in ipairs(self.crucibleModLines) do
 		processModLine(modLine)
@@ -2665,12 +2789,14 @@ function ItemClass:BuildModList()
 				source = self.modSource,
 				triggered = skill.triggered,
 				triggerChance = skill.triggerChance,
+				-- Keep the influence requirement so calculation setup can enable or remove the granted curse.
+				itemRequirement = skill.itemRequirement,
 			})
 		end
 	end
 	local socketCount = calcLocal(baseList, "SocketCount", "BASE", 0)
 	self.abyssalSocketCount = calcLocal(baseList, "AbyssalSocketCount", "BASE", 0)
-	self.selectableSocketCount = m_max(self.base.socketLimit or 0, #self.sockets) - self.abyssalSocketCount
+	self.selectableSocketCount = m_max(0, m_max(self.base.socketLimit or 0, #self.sockets) + calcLocal(baseList, "MaximumSocketCount", "BASE", 0) - self.abyssalSocketCount)
 	if calcLocal(baseList, "NoSockets", "FLAG", 0) then
 		-- Remove all sockets
 		wipeTable(self.sockets)

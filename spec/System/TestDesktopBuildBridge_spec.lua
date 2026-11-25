@@ -27,6 +27,16 @@ describe("Desktop build proposals", function()
 	local function proposal(operations,mode)
 		return {mode=mode or "edit",title="AI test candidate",baseRevision=bridge.revision(build),operations=operations}
 	end
+	it("accepts larger guide requests and rejects requests over one MiB",function()
+		build.savers.CraftingProjects:Upsert({id="large",title="Guide",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}})
+		fakeFiles();bridge.enable(build);local steps={}
+		for i=1,300 do steps[i]={action=tostring(i)..":"..string.rep("x",990)} end
+		files.request=json.encode({id="large-guide",session=bridge.session,proposal=proposal({{type="patch_crafting_guide",projectId="large",patch={steps=steps}}})})
+		assert.is_true(#files.request>256*1024);bridge.poll(build,true)
+		assert.equal("review",bridge.status.status);assert.equal(300,#bridge.prepared.candidate.savers.CraftingProjects.projects[1].steps)
+		bridge.prepared=nil;files.request=string.rep("x",1024*1024+1);bridge.poll(build,true)
+		assert.equal("failed",bridge.status.status);assert.matches("exceeds",bridge.status.error,1,true)
+	end)
 
 	it("calculates edits without touching the desktop build, cache, or notes editor", function()
 		local revision, cache = bridge.revision(build),_G.GlobalCache
@@ -46,6 +56,38 @@ describe("Desktop build proposals", function()
 		assert.are.equal("Fireball",prepared.candidate.skillsTab.socketGroupList[1].gemList[1].nameSpec)
 		assert.is_true(prepared.after.CombinedDPS > 0)
 		assert.are.equal(nil,prepared.candidate.dbFileName)
+	end)
+
+	it("runs recovery trials only for the finished candidate in synchronous and background previews",function()
+		local input=build.configTab.input
+		input.simulateRecovery=true;input.recoverySimulationTrials=1;input.recoverySimulationWindow=1
+		input.recoverySimulationCompareSet=nil
+		build.configTab:BuildModList();build.calcsTab:BuildOutput()
+		local revision=bridge.revision(build);local cache=_G.GlobalCache
+		local request=proposal({{type="equip_item",slot="Helmet",text="Rarity: RARE\nRecovery Hat\nIron Hat\n+100 to maximum Life"}})
+		local time=require("Modules.CalcTime");local survival=time.survival;local calls=0
+		time.survival=function(config) calls=calls+1;return survival(config) end
+		local ok,synchronous,background=pcall(function()
+			local synchronous=bridge.prepare(build,request)
+			assert.are.equal(2,calls)
+			calls=0
+			local worker=require("Modules.PlanningWorker");local frozen=bridge.freeze(build)
+			local job=worker.new(build,function(checkpoint) return bridge.prepare(build,request,checkpoint,nil,frozen) end)
+			for _=1,10000 do
+				local done,success,result=worker.resume(job);assert.is_true(success)
+				if done then return synchronous,result end
+			end
+			error("Background preview did not finish")
+		end)
+		time.survival=survival
+		assert.is_true(ok,tostring(synchronous));assert.are.equal(2,calls)
+		assert.are.same(synchronous.after,background.after)
+		assert.is_number(background.after.RecoverySimulationSurvivalChance)
+		assert.is_true(background.after.LifeUnreserved>background.before.LifeUnreserved)
+		assert.is_nil(background.candidate.calcsTab.recoveryJob)
+		assert.is_nil(background.candidate.calcsTab.calcsOutput.RecoverySimulationPending)
+		assert.is_nil(background.candidate.planningDeferInitialRecovery)
+		assert.are.equal(revision,bridge.revision(build));assert.are.equal(cache,_G.GlobalCache)
 	end)
 
 	it("rejects stale revisions before preparing or applying", function()
@@ -134,6 +176,17 @@ describe("Desktop build proposals", function()
 		assert.are.equal("Review AI build proposal",main.popups[1].title)
 		main.popups[1]:Draw({x=0,y=0,width=1920,height=1080})
 		main:ClosePopup(); main:ClosePopup()
+	end)
+	it("ignores derived full DPS row values and ordering while retaining real edit guards",function()
+		local output=build.calcsTab.mainOutput;local previous,display=output.SkillDPS,build.displayStats
+		local ok,err=pcall(function()
+			build.displayStats={{stat="SkillDPS"}};output.SkillDPS={{name="Fireball",count=1,dps=100},{name="Ignite",count=1,dps=200}}
+			local before=bridge.revision(build);assert.is_truthy(bridge.serialize(build):find("FullDPSSkill",1,true))
+			output.SkillDPS={output.SkillDPS[2],output.SkillDPS[1]};output.SkillDPS[1].dps=300
+			assert.equal(before,bridge.revision(build));assert.equal(before,bridge.freeze(build).revision)
+			build.notesTab.controls.edit:SetText("A real source edit");assert.is_not.equal(before,bridge.revision(build))
+		end)
+		output.SkillDPS,build.displayStats=previous,display;assert.is_true(ok,err)
 	end)
 
 	it("explains gear, gem requirements and actual connecting passive changes", function()
@@ -277,5 +330,63 @@ describe("Desktop build proposals", function()
 		assert.is_true(#bridge.status.crafting.matches <= 5)
 		assert.are.equal(revision,bridge.revision(build))
 		assert.are.equal(0,#build.savers.CraftingProjects.projects)
+	end)
+	it("reviews saved crafting unlocks without changing the build",function()
+		fakeFiles();local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86";local recipe={steps={{method="bench",modId="bench:partial-prefix-1"}},targets={},requirements={minAffixes=1}}
+		build.savers.CraftingProjects:Upsert({id="body",title="Body",slot="Body Armour",startingItem=raw,goals={},steps={},nativeRecipe=recipe})
+		bridge.enable(build);local revision=bridge.revision(build)
+		files.request=json.encode({id="unlock-review",kind="craftUnlockReview",session=bridge.session,baseRevision=revision,projectId="body"})
+		bridge.poll(build,true);local jobs=require("Modules.CraftingTasks")
+		for _=1,2000 do if not jobs.job then break end;jobs.tick(build) end
+		assert.is_nil(jobs.job);assert.equal("craftUnlocks",bridge.status.status);assert.equal("Sanctuary Map",bridge.status.craftUnlocks.entries[1].unlock.map)
+		assert.equal("untracked",bridge.status.craftUnlocks.entries[1].taskStatus);assert.equal(0,#build.savers.BuildJourney.data.milestones);assert.equal(revision,bridge.revision(build))
+		files.request=json.encode({id="stale-unlock-review",kind="craftUnlockReview",session=bridge.session,baseRevision=revision,projectId="body"});bridge.poll(build,true)
+		build.savers.BuildJourney:Put("milestones",{id="new-task",title="Changed while reviewing",kind="task",priority=3})
+		for _=1,2000 do if not jobs.job then break end;jobs.tick(build) end
+		assert.is_nil(jobs.job);assert.equal("failed",bridge.status.status);assert.matches("Build changed",bridge.status.error,1,true)
+	end)
+	it("does not report hidden unidentified map modifiers as zero",function()
+		fakeFiles();bridge.enable(build);local revision=bridge.revision(build)
+		files.request=json.encode({id="unidentified-map",kind="inspect_map_modifiers",session=bridge.session,baseRevision=revision,baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",unidentified=true,selected={}})
+		bridge.poll(build,true);local jobs=require("Modules.CraftingTasks");for _=1,2000 do if not jobs.job then break end;jobs.tick(build) end
+		assert.is_nil(jobs.job);assert.equal("mapData",bridge.status.status);local data=bridge.status.mapData
+		assert.is_true(data.unidentified);assert.is_nil(data.summary);assert.is_nil(data.counts);assert.is_nil(data.total);assert.matches("unknown",data.note,1,true);assert.equal(30,data.unidentifiedOpeningBonus.atlasDrops);assert.matches("opened unidentified",data.unidentifiedOpeningBonus.condition,1,true)
+		assert.matches("Identify",data.currencyOptionsWarning,1,true);assert.equal(revision,bridge.revision(build))
+	end)
+	it("projects Delirium without modifying the build",function()
+		fakeFiles();bridge.enable(build);local revision=bridge.revision(build)
+		files.request=json.encode({id="delirium-projection",kind="project_map_delirium",session=bridge.session,baseRevision=revision,currentPercent=35,currentType="Currency",nextType="Maps",gain=10})
+		bridge.poll(build,true);local jobs=require("Modules.CraftingTasks");for _=1,2000 do if not jobs.job then break end;jobs.tick(build) end
+		assert.is_nil(jobs.job);assert.equal("mapData",bridge.status.status);assert.is_false(bridge.status.mapData.sameType);assert.equal(10,bridge.status.mapData.example.percent);assert.equal(revision,bridge.revision(build))
+	end)
+	it("preserves conditional Vaal context in map inspection",function()
+		fakeFiles();bridge.enable(build);local revision=bridge.revision(build)
+		files.request=json.encode({id="vaal-map",kind="inspect_map_modifiers",session=bridge.session,baseRevision=revision,baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",corrupted=true,vaalPreview=true,selected={}})
+		bridge.poll(build,true);local jobs=require("Modules.CraftingTasks");for _=1,2000 do if not jobs.job then break end;jobs.tick(build) end
+		assert.is_nil(jobs.job);assert.equal("mapData",bridge.status.status);assert.is_true(bridge.status.mapData.vaalPreview)
+		assert.matches("conditional Vaal preview",bridge.status.mapData.note,1,true);assert.equal("temple_add",bridge.status.mapData.currencyOptions[1].id);assert.is_true(bridge.status.mapData.currencyOptions[1].available)
+	end)
+	it("previews an overlapping Shaped Region run without saving it",function()
+		fakeFiles();bridge.enable(build);local revision=bridge.revision(build)
+		local plan={id="regions",title="Regions",version="3.30.0-preview",budget=150,nodes={},shapedRegions={
+			{mechanic="Blight",maps={{name="Beach Map",freeThreads=2},{name="Strand Map",freeThreads=3}}},
+			{mechanic="Breach",maps={{name="beach map",freeThreads=4},{name="Dunes Map",freeThreads=1}}}}}
+		files.request=json.encode({id="region-run",kind="atlasRegionRun",session=bridge.session,baseRevision=revision,plan=plan,map="Beach Map",completed={"Blight"}})
+		bridge.poll(build,true);assert.equal("atlas",bridge.status.status)
+		assert.same({{name="Strand Map",freeThreads=4}},bridge.status.atlas.plan.shapedRegions[1].maps)
+		assert.same({{name="Dunes Map",freeThreads=1}},bridge.status.atlas.plan.shapedRegions[2].maps)
+		assert.equal("Dunes Map",bridge.status.atlas.maps[1].name);assert.equal(revision,bridge.revision(build));assert.equal(0,#build.savers.AtlasPlans.plans)
+	end)
+	it("checks Thread restrictions through the desktop bridge without changing the build",function()
+		fakeFiles();bridge.enable(build);local revision=bridge.revision(build)
+		files.request=json.encode({id="threads",kind="atlasThreads",session=bridge.session,baseRevision=revision,areaLevel=73,threads=2,spentThreads=2,spentAbyssThreads=1})
+		bridge.poll(build,true);assert.equal("atlas",bridge.status.status);assert.equal(7,#bridge.status.atlas.modifiers)
+		assert.is_true(bridge.status.atlas.abyssalConsort.restricted);assert.equal(1,bridge.status.atlas.abyssalConsort.spentThreads);assert.equal("confirmed_spend",bridge.status.atlas.guaranteeStatus);assert.equal(1,bridge.status.atlas.guaranteedModifiers)
+		local count=0;for _,row in ipairs(bridge.status.atlas.modifiers) do if row.restrictionsMet then count=count+1 end end
+		assert.equal(3,count);assert.equal(revision,bridge.revision(build))
+		files.request=json.encode({id="threads-free",kind="atlasThreads",session=bridge.session,baseRevision=revision,areaLevel=73,threads=8,spentThreads=0})
+		bridge.poll(build,true);assert.equal("atlas",bridge.status.status);assert.equal("free_only_unverified",bridge.status.atlas.guaranteeStatus);assert.is_nil(bridge.status.atlas.guaranteedModifiers);assert.equal(3,bridge.status.atlas.guaranteedWhenSpending)
+		files.request=json.encode({id="threads-invalid",kind="atlasThreads",session=bridge.session,baseRevision=revision,areaLevel=73,threads=1,spentThreads=2})
+		bridge.poll(build,true);assert.equal("failed",bridge.status.status);assert.matches("cannot exceed",bridge.status.error);assert.equal(revision,bridge.revision(build))
 	end)
 end)

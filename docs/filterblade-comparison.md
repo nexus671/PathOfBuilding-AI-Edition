@@ -1,0 +1,73 @@
+# FilterBlade feature review
+
+Reviewed the live [PoE 1 FilterBlade site](https://www.filterblade.xyz/?game=Poe1) on November 12, 2026: Start, Overview, Customize (including currency tier lists), Simulate, Themes, Advanced, campaign auto-adjust and the anonymous export flow. Login, saved cloud content and paid background services were not exercised. That review preceded the fork's update to NeverSink 8.21.1 for 3.30.
+
+This is a comparison, not a claim of FilterBlade parity. Its website, customizer definitions, economy service and cloud systems are separate from the MIT-licensed NeverSink filter files.
+
+| FilterBlade capability | Our fork after this redesign | Remaining work |
+| --- | --- | --- |
+| Guided start page | Campaign, early mapping and endgame cards | More character-specific starter presets |
+| Strictness presets | Seven pinned NeverSink levels | Updated through fork releases |
+| Game modes | Normal and Ruthless | No PoE 2 support; Softcore/Hardcore economy tiers are separate work |
+| Build auto-adjust | Reads saved crafts, planned gear, gems, resources and Atlas plans | More stage-specific vendor recipes |
+| Campaign weapon selection | Eighteen native families, equipped-family selection, editable weapon-style starters and progressive base-level windows | More character-specific class presets |
+| Campaign armour selection | Armour/evasion/ES combinations and Ward, with native base art | More starter presets |
+| Campaign vendor rares | Base preset rules and campaign pickup policies, plus copied-item reviews for quality groups (including matching jewellery catalyst quality), rare equipment sets and same-base rarity sets; quality grouping compares heuristics and bounded searches, and proves the maximum when it reaches an upper bound | Rare set combinations, bonuses and vendor priority need in-game verification; other completed vendor sets remain unsupported |
+| Endgame build adjustment | Exact saved targets, opted-in crafting alternatives and Atlas pickups | Trade/SSF-specific policies |
+| Item overview and colour examples | Live scene using the compiled filter | Explanatory galleries for every item family |
+| Hierarchical customizer | Category sidebar, search, personal/base/policy scope and collapsible compiled sections | Human-edited subcategories |
+| Base-filter rule browsing | Full parsed preset catalogue with styled examples | Human-edited descriptions for every source rule |
+| Category coverage | Sixteen families including cards, flasks, tinctures, jewels, recipes and special currency | Deeper nested sections |
+| Rule editing | Stable override identities across catalogue, matched rules and structure; warnings for conflicting numeric bounds, impossible integer ranges and rarity conditions; provable shadowing diagnostics, including single- and multi-value rarity comparisons and intersections, numeric ranges containing exact values or narrower ranges, two simultaneously narrower numeric ranges, more specific condition sets with bounded subset lookup, covered exact base-type or class lists, including collective coverage by several earlier blocks, partial-name coverage, and a covered exact or partial name list combined with a narrower numeric range or exact value | Broader predicate-overlap analysis; comparisons are bounded and may miss conflicts |
+| Show/hide toggles | Personal enable/disable; action editor | Per-category inclusion policies |
+| Rule order | Select with one click, edit with a double-click, and drag personal rules or use arrows or Alt+Up/Down relative to visible rules | Base-filter rule order remains pinned |
+| Currency tier lists | Custom/preset tier browsing, exact item movement, drag/drop, tier creation/removal/order | Economy-driven automatic reassignment |
+| Stacked currency tiering | Custom stack thresholds can reuse another custom tier's visibility and appearance while preserving item conditions and Continue behavior; apply a threshold to all custom tiers at once | Automatic economy-based promotion and preset-wide stack controls |
+| Economy-based tiers | Pinned NeverSink snapshot | Live pricing, outlier handling and recalculation |
+| Global search | Searches names and raw condition/action text; planning Tools also searches saved Atlas strategy and node details, crafting item and guide text, and personal filter rules, with direct access to background snapshot-modifier search and on-demand preset search | More cross-page item and modifier discovery |
+| Loot generator | Searchable example scenes and saved sets with item-name previews, including Fated gear pairs, a tier 1–17 map comparison, vendor recipes (including Vaal gems, same-base rarities and quality flasks and tinctures), threads, flasks, tinctures, cards, essences, crafting materials, Heist, Expedition, Blight oils and maps, Breach, Beyond, Incursion, Legion, Delirium, Harvest, Ritual, Abyss, Ultimatum, Sanctum, pinnacle-boss fragments, and build targets. Base drop levels and inventory sizes use the pinned 3.30.0.4 export; ambiguous values, unique drop levels and unspecified gear sockets remain unknown | Representative drop distributions and more encounter presets |
+| Hidden-drop display | Simulator toggle and searchable scene review with shown, minimal, hidden and uncertain counts | Counts describe examples, not drop rates |
+| Click a simulated item | Explains results and opens matched blocks for editing | More unknown-property guidance |
+| Item configuration | Editable properties and game-clipboard import in the desktop and MCP filter tests. Known base drop level and dimensions come from pinned data; ambiguous values remain unknown | Hidden identities are never inferred |
+| Item history | Session history plus persistent named sets of exact sample properties | More encounter sample presets |
+| Generator level settings | Shared area/item-level controls and a tiered-gear comparison scene | More encounter-specific samples |
+| Expensive-drop generation | Currency scene, exact custom samples and pinned high-emphasis currency highlights | Live economic valuation and representative drop distributions |
+| Preview background | Stone, dark and light scenes | Additional environments |
+| Individual colours | Colour wheel, brightness and opacity controls, swatches, exact RGBA input and live preview | More built-in palette presets |
+| Font size | Live size slider | Additional typography presets |
+| Alert sound selection | All 16 numbered IDs plus silence; browse, add, reorder and remove custom files and preview a selected local PCM WAV on Windows | Exact game audio preview and broader sound pack management |
+| Minimap icons | All twelve shapes, colour/size selection and native geometry previews | Exact game-texture rendering |
+| Themes | Generated-target palettes, personal restyling, whole-filter decorators and named appearance snapshots | More built-in themes |
+| Global one-click edits | Reversible whole-filter and category font/colour, alert identity/volume, icon and beam controls | More saved appearance presets |
+| Shared modules | Portable named snapshots, cross-profile copy and explicit updates | Public discovery and module dependency graphs |
+| Review changes | Rule/item review, file-level compiled/base comparisons, provable conflicts and undo/redo | Richer predicate overlap analysis |
+| Filter structure | Compiled section/family tree, priority conflicts, exact block text, editing and file comparison | More source-rule descriptions |
+| Test local filter | Main and included files can be pasted, browsed or loaded from a local path and saved with the build. An explicit action loads nested sibling .filter references; missing, path-like and circular references are listed. Nested files expand for simulation and export | System-native file dialog |
+| Save/resume | Native Save/bundles, page drafts and two-slot local draft recovery | Further crash/restart field testing |
+| Cloud saved filters | Account list/import UI | FilterBlade cloud saves are not connected |
+| Share filters/modules | Build sharing and portable bundles | Dedicated public filter/module catalogue |
+| One-time PoE upload | Explicit reviewed API publication | Live verification with a filter-authorised account |
+| Automatic uploads | Not implemented | Requires a separately operated update service |
+| Frequent economy refresh | Not connected | FilterBlade's hosted economy feed is not bundled |
+| Single-filter download | Copy/export `.filter`, preserving existing files; optional ZIP includes local custom sounds with rewritten references | In-game sound-bundle validation and optional replacement workflow |
+| Export all strictnesses | Seven files or one ZIP, including personal edits and appearance, with collision checks; a sound bundle can include all seven and shared local sounds | Imported filters have no preset variants; sound paths need in-game validation |
+| Validation | Native parser checks and account-server validation when authorised | Broader syntax coverage and live game validation |
+| Mobile layout | Desktop layouts tested at 960, 1024 and 1280 widths | Native PoB is not a mobile web app |
+
+Planning tools can suggest full rare equipment sets from copied rare items, including two rings and either a two-handed weapon or two supported one-hand slots. The selection favors higher item levels while preserving the number of complete sets; it includes the [historically documented two-shield combination](https://www.poewiki.net/wiki/Vendor_recipe_system#Full_Rare_Sets), which needs current-game verification. A Chaos preference selects level 60–74 anchors and leaves items below 60 out of suggested sets; grouping is heuristic; a count-based upper bound can prove the maximum set count under its modeled equipment and level rules, and otherwise the review shows that bound. This does not verify game eligibility or currency yield. The review lists missing slots for the next set from the items not already assigned, and the displayed possible currency depends on the lowest item level. The same missing-slot data is available to MCP clients. The [3.30 notes](https://www.pathofexile.com/forum/view-thread/4013680) specify Alchemy Orbs for sets containing an item below level 60; Chaos and Regal bands follow the historical recipe. Weapon combinations, bonuses, special items and vendor priority remain unverified. The planner does not read the stash; review the actual vendor offer. MCP exposes the same review as `review_rare_vendor_sets`.
+
+Boolean conditions containing multiple values, or a mixed boolean and gem-name `TransfiguredGem` list, produce an unknown preview and a validation warning. Their original text is preserved because current-game interpretation is unverified. Named `TransfiguredGem` lists remain supported.
+
+Example base properties come from the pinned [3.30.0.4 RePoE export](https://github.com/repoe-fork/repoe-fork.github.io/tree/c97553d1fc14a134dd6813e672d2b45fddf5b42d), with base-item SHA-256 `b16dc6c967b7e70ee369fba80506cdf08a1fa5bc5dd5c4f07aaddead97c98b2f`. Rebuild with `python tools/update_loot_filter_base_metadata.py path/to/base_items.json`; use `--check` to verify. If same-named base records disagree, the affected property remains unknown. Unique drop levels and unspecified equipment sockets are also unknown. For clearly non-equipment classes such as incubators, breachstones and Heist targets, the preview uses the zero base-defence percentile described in the [official filter reference](https://www.pathofexile.com/item-filter/about); unfamiliar classes remain unknown.
+
+Example item classes use the pinned [3.30.0.4 RePoE export](https://github.com/repoe-fork/repoe-fork.github.io/tree/c97553d1fc14a134dd6813e672d2b45fddf5b42d). Names with conflicting or missing classes, hidden records and trade proxies remain unresolved unless the rule supplies a class. Rebuild or verify with `python tools/update_loot_filter_base_classes.py path/to/base_items.json path/to/item_classes.json` and optionally `--check`; both inputs are hash-checked.
+
+The reviewed 3.30.0.4 export adds Originator's and Primordial Exalted Orbs and raises the listed drop levels of Foulborn Regal and Foulborn Orb of Augmentation from 68 to 75; other filter-relevant base fields and item-class records match 3.30.0.3. These values come from client data and do not verify live drop availability.
+
+Exact budget titles also recognize selected oils, tattoos, currency shards, Soul Cores, Ancient Orbs, Cartographer's Chisels and Gemcutter's Prisms from the pinned 3.30.0.2 export. These names identify items, not current drop availability. Rebuild the list with `python tools/update_filter_budget_items.py path/to/base_items.json`; use `--check` to verify it.
+
+A unique item in the gear wishlist or a crafting project adds a pickup for unique items of its base type, whether it is the project's starting item or target. This can include other uniques sharing that base; the copied item's item level is not used as a minimum.
+
+Scene examples do not invent explicit modifier lists for magic, rare or unique items; when a rule depends on missing modifiers the preview remains uncertain. The simulator includes a Betrayal catalogue scene for comparing Threads, veiled currency and a scarab. These examples do not establish current drop availability. The remaining offline polish includes additional starter presets and encounter sample collections. Hosted economy updates remain separate service work. The release checklist tracks implementation and repeated workflow verification.
+
+Reference screenshots were captured outside the repository during the review. Third-party advertising scripts logged browser errors; the main anonymous customizer and simulator remained usable. No login, publication, purchase or subscription was performed.

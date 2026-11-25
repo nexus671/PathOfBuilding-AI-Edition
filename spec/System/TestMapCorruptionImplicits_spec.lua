@@ -1,0 +1,38 @@
+describe("Map corruption implicits",function()
+ local impl=require("Modules.MapCorruptionImplicits")
+ local map=require("Modules.MapCraftingData")
+ local atlas=require("Modules.AtlasPlanner")
+ local base="Metadata/Items/Maps/MapWorldsStrand"
+ it("records current and legacy modifier details without counting them as explicit bonuses",function()
+  assert.equal(9,#impl.list())
+  local info=impl.describe({id="MapCorruptionItemRarity",value=15},83)
+  assert.equal("+15% Item Rarity",info.text);assert.is_nil(info.legacy)
+  local legacy=impl.describe({id="MapCorruptionItemQuantity"},83);assert.is_true(legacy.legacy)
+  local result=map.inspect(base,16,83,{},"",0,10,nil,"rare",nil,true,{id=info.id,value=15})
+  assert.equal(info.text,result.implicit.text);assert.equal(0,result.summary.totals.rarity.min)
+  assert.has_error(function() map.inspect(base,16,83,{},"",0,10,nil,"rare",nil,false,{id=info.id}) end)
+  assert.has_error(function() impl.describe({id=info.id,value=21},83) end)
+ end)
+ it("combines rarity and pack size while retaining explicit-only values",function()
+  local ids={"MapMonsterAreaOfEffectMapWorlds"};local inspect=function(implicit) return map.inspect(base,16,83,ids,"",0,10,nil,"rare",nil,true,implicit).summary end
+  local rarity=inspect({id="MapCorruptionItemRarity",value=15})
+  assert.equal(8,rarity.totals.rarity.min);assert.equal(23,rarity.estimatedTotals.rarity.min);assert.equal(5,rarity.estimatedTotals.packSize.min)
+  local pack=inspect({id="MapCorruptionPackSize"});assert.equal(10,pack.estimatedTotals.packSize.min);assert.equal(15,pack.estimatedTotals.packSize.max)
+  local legacy=inspect({id="MapCorruptionItemQuantity",value=15});assert.equal(13,legacy.estimatedTotals.atlasDrops.min);assert.matches("legacy Item Quantity",legacy.estimateNote)
+ end)
+ it("estimates magnitude effects per explicit stat and preserves the unscaled breakdown",function()
+  local ids={"MapMonsterAreaOfEffectMapWorlds","MapMonsterFireDamageMapWorlds"}
+  local exact=map.inspect(base,16,83,ids,"",0,10,nil,"rare",nil,true,{id="MapCorruptionModEffect",value=20}).summary
+  assert.equal(29,exact.totals.atlasDrops.min);assert.equal(34,exact.estimatedTotals.atlasDrops.min)
+  assert.equal(17,exact.totals.rarity.min);assert.equal(19,exact.estimatedTotals.rarity.min)
+  assert.equal(13,exact.estimatedTotals.packSize.min);assert.matches("rounding down",exact.estimateNote)
+  local ranged=map.inspect(base,16,83,ids,"",0,10,nil,"rare",nil,true,{id="MapCorruptionModEffect"}).summary
+  assert.equal(31,ranged.estimatedTotals.atlasDrops.min);assert.equal(34,ranged.estimatedTotals.atlasDrops.max)
+ end)
+ it("retains the implicit in map drafts and permits future identities",function()
+  local draft={id="test",title="Map",patch=map.source().patch,baseId=base,tier=16,itemLevel=83,rarity="rare",selected={},corrupted=true,implicit={id="MapCorruptionItemRarity",value=15}}
+  assert.same(draft.implicit,atlas.validateMapDraft(draft).implicit)
+  draft.implicit.id="UnknownFutureImplicit";assert.equal("UnknownFutureImplicit",atlas.validateMapDraft(draft).implicit.id)
+  draft.corrupted=false;assert.has_error(function() atlas.validateMapDraft(draft) end)
+ end)
+end)

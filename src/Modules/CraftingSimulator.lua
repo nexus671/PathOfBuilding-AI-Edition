@@ -1,14 +1,202 @@
+-- cspell:ignore Ukatoa Ukatoas Katakohi unmodeled
+-- cspell:ignore RGBW
 -- Independent, bounded crafting model using PoB's game-data modifier tables.
 local encounter = require("Modules.CalcEncounter")
-local M = { }
-M.methods = {"transmute","alteration","augmentation","regal","alchemy","chaos","exalt","annul","scour","divine","bench","remove_crafted","essence"}
-M.labels = {transmute="Orb of Transmutation",alteration="Orb of Alteration",augmentation="Orb of Augmentation",regal="Regal Orb",alchemy="Orb of Alchemy",chaos="Chaos Orb",exalt="Exalted Orb",annul="Orb of Annulment",scour="Orb of Scouring",divine="Divine Orb",bench="Crafting bench",remove_crafted="Remove crafted modifiers",essence="Essence"}
+local M = {methodChecks={}}
+-- GGG 3.30: these cluster small-passive speed modifiers share one family.
+-- Socket-reducing enchantments occupy a glove socket even after later crafts.
+function M.socketLimit(model,state)
+	local item=model.item;local limit=item.base.socketLimit or 0
+	if state and state.enchantCleared then return limit end
+	if state and state.katakohiEnchants then return math.max(0,limit-#state.katakohiEnchants) end
+	if item.type=="Gloves" then
+		for _,line in ipairs(item.enchantModLines or {}) do
+			local value=StripEscapes(line.line or ""):match("^%-(%d+) to maximum Sockets$")
+			if value then limit=limit-tonumber(value) end
+		end
+	end
+	return math.max(0,limit)
+end
+M.clusterSpeedGroup="3.30 cluster small-passive speed family"
+function M.isClusterSpeedMod(model,id)
+	if not model.item.clusterJewel then return false end
+	local mod=model.byId[id]
+	if not id:match("^AfflictionJewelSmallPassivesGrant") or not mod then return false end
+	for _,line in ipairs(mod) do
+		if line:find("Added Small Passive Skills also grant:",1,true) and (line:find("Attack Speed",1,true) or line:find("Cast Speed",1,true) or line:find("Attack and Cast Speed",1,true)) then return true end
+	end
+	return false
+end
+M.methods = {"transmute","alteration","augmentation","regal","alchemy","chaos","exalt","annul","scour","divine","mirror","bench","remove_crafted","essence"}
+M.labels = {transmute="Orb of Transmutation",alteration="Orb of Alteration",augmentation="Orb of Augmentation",regal="Regal Orb",alchemy="Orb of Alchemy",chaos="Chaos Orb",exalt="Exalted Orb",annul="Orb of Annulment",scour="Orb of Scouring",divine="Divine Orb",mirror="Mirror of Kalandra",bench="Crafting bench",remove_crafted="Remove crafted modifiers",essence="Essence"}
+function M.withTreeContext(result,version)
+	result.dataPatch=result.dataPatch or M.dataPatch
+	result.modifierPatch=result.modifierPatch or M.modifierPatch
+	if version~=nil then
+		assert(type(version)=="string" and treeVersions[version],"Unknown build tree version")
+		result.treeVersion=version;result.treeVersionScope="build_context_only"
+	end
+	result.latestAvailableTreeVersion=latestTreeVersion
+	return result
+end
+local partialWarningMessage="Partial locks assume uniform selection; bench rerolls select once, Harvest augment selects before adding, and conversions select before changing a modifier. Unpredictable recombination treats locks as non-exclusive. Some selections fail and are not charged in this model; actual behavior is unverified. Other interactions remain unsupported."
+-- Legacy whole-action quotes remain valid when no more specific quote exists.
+function M.genericPriceKey(action)
+	if action.method=="harvest_resistance" then return action.method end
+	if action.beastLevel and (action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix") then return action.method end
+end
+local function gildedCorruption(action)
+	if action.method=="vaal" or action.method=="locus" then return true end
+	if action.method=="gwennen" and (action.firstOutcome==1012 or action.secondOutcome==1012) then return true end
+	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingVaal" then return true end end
+	return false
+end
+local function gildedFossil(action)
+	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice" then return true end end
+	return false
+end
+local function gildedCorruptionWarning()
+	return {code="gilded_corruption_incomplete",message="For added corruption on a Gilded item with identified Eldritch or synthesised implicits, the model assumes equal replacement chances among the remaining implicits and the vendor implicit. For a supported ordinary base implicit, the first added corruption assumes equal chances of replacing the base or vendor implicit; this also applies at the Locus if the first corruption left both intact. A second added corruption assumes it replaces a retained base. Other Gilded corruption combinations remain incomplete and may remove too many implicits. These chances and interactions are unverified.",source="https://www.poewiki.net/wiki/Gilded_Fossil"}
+end
+function M.hasProtectedImplicit(model,state)
+	if not model or not model.item or model.item.synthesised or state and (state.corruptedImplicits or state.implicits) then return false end
+	for _,line in ipairs(model.item.implicitModLines or {}) do
+		if StripEscapes(line.line or "")=="Implicit Modifiers Cannot Be Changed" then return true end
+	end
+	return false
+end
+function M.actionWarnings(action,model)
+	local result={}
+	if action.method=="sacred" then result[#result+1]={code="sacred_roll_assumptions",message="Assumes 32 equally likely shared rolls; game odds are unverified.",source="https://github.com/LocalExile/LocalExile/blob/95835dc3809ad10e4681a4af9fdde10becd983d8/Agents/docs/protocol/13-items.md"} end
+	if action.method=="mirror" then result[#result+1]={code="mirror_copy",message="The result is the mirrored copy; the original remains unchanged. Item-class and special-property eligibility need current-game verification."} end
+	if action.method=="instilling" or action.method=="enkindling" then result[#result+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."} end
+	if action.method=="bench_flask_enchant" then result[#result+1]={code="flask_bench_assumptions",message="Flask enchantment bench costs use pinned client data; eligibility, recipe availability and replacement behavior are unverified in game."} end
+	local item=model and model.item
+	if item and item.craftingNameInferred then result[#result+1]={code="magic_affix_name",message="An imported modifier was identified using the magic item name. Verify that the name is the original in-game name; a manually edited name can lead to the wrong modifier tier."} end
+	-- Native imports can preserve legacy values; hypothetical state can also
+	-- contain them. Neither proves current-game availability.
+	local function outsideTier(state,context)
+		for _,entry in ipairs(state and state.affixes or {}) do
+			local ranges=type(entry.range)=="table" and entry.range or {entry.range or 0.5}
+			for _,value in ipairs(ranges) do
+				if type(value)=="number" and (value<0 or value>1) then
+					local mod=context and context.byId and context.byId[entry.id]
+					if #ranges~=1 or not mod or not M.isRawRegenRange(mod,value) then return true end
+				end
+			end
+		end
+		return false
+	end
+	local unusualRoll=outsideTier(model and model.initial,model)
+	if item and item.type=="Tincture" and item.tinctureValues=="Final" and ((item.tinctureImportedQuality or 0)>0 or (item.tinctureImportedEffect or item.tinctureData and item.tinctureData.effectInc or 0)~=0) then
+		result[#result+1]={code="tincture_imported_values",message="This copied tincture has locally scaled modifier values. The crafting model may infer the wrong modifier tier, and newly rolled modifiers can use a different scale from retained values. Modifier goals, previews and character effects may be inaccurate; verify the item before relying on this result."}
+	end
+	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingVaal" and gildedFossil(action) then
+		result[#result+1]={code="bloodstained_implicit_assumptions",message="The combined Bloodstained and Gilded model replaces the existing implicit set and adds both a corruption and a vendor implicit, following community documentation. Current-patch behavior and protected implicit interactions are unverified.",source="https://www.poewiki.net/wiki/Bloodstained_Fossil"};break
+	end end
+	if gildedCorruption(action) and M.hasProtectedImplicit(model,model and model.initial) then
+		result[#result+1]={code="protected_implicit_corruption",message="The model treats an implicit-change corruption outcome as no change to protected implicits, including a Gilded modifier. The 3.30 second-corruption interaction is unverified.",source="https://www.poewiki.net/wiki/Composite_Ring"}
+	end
+	if gildedCorruption(action) and (gildedFossil(action) or model and model.initial and model.initial.vendorImplicit) then result[#result+1]=gildedCorruptionWarning() end
+	if gildedFossil(action) then result[#result+1]={code="gilded_vendor_weights",message="Hidden Gilded vendor outcomes are sampled using the pinned 3.30 client weights. Current server odds are not independently verified, and copied item text does not reveal the outcome."} end
+	if action.method=="blessed" then result[#result+1]={code="blessed_roll_assumptions",message="Implicit values are sampled within their modeled ranges and may repeat the previous value. Current-game repeat behavior and hidden roll distributions are not verified.",source="https://www.poewiki.net/wiki/Blessed_Orb"} end
+	if action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix" then result[#result+1]={code="beast_level_pool",message=action.beastLevel and ("Uses the supplied beast level "..action.beastLevel.." for the added modifier. This interaction is based on community research and is not verified in the current game.") or "This model uses the item level for the added modifier. Community research reports that these Bestiary crafts use the beast's level instead, so the eligible pool and odds can differ.",source="https://www.poewiki.net/wiki/Beastcrafting"} end
+	if action.method=="beast_flask" then result[#result+1]={code="beast_flask_assumptions",message="Uses one red beast and models the named suffix with the bundled modifier range. Eligibility, item-level restrictions and roll distributions need current-game verification; hybrid flasks are excluded.",source="https://www.pathofexile.com/forum/view-thread/4013680"} end
+	if action.method=="vorici_socket_count" then result[#result+1]={code="vorici_socket_assumptions",message="Vorici samples 100 independent rolls using the experimental Jeweller model and keeps the greatest socket count. Odds, retained socket positions and eligibility are unverified.",source="https://www.pathofexile.com/forum/view-thread/3985332"} end
+	if action.method=="vorici_socket_colours" then result[#result+1]={code="vorici_colour_assumptions",message="Vorici samples 25 independent rolls using the experimental Chromatic model and keeps the first tied result with the most non-white ordinary sockets. Abyssal sockets are preserved; their eligibility, colour probabilities and tie behavior are unverified.",source="https://www.pathofexile.com/forum/view-thread/3985332"} end
+	local abyss=false
+	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingAbyss" then abyss=true end end
+	for _,entry in ipairs(model and model.initial and model.initial.affixes or {}) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true end end
+	if (action.method=="awakener" or action.method=="recombine" or action.method=="recombine_predictable") and type(action.donorItem)=="string" then
+		local ok,donor=pcall(M.model,action.donorItem)
+		if ok then
+			unusualRoll=unusualRoll or outsideTier(donor.initial,donor)
+			if not abyss then for _,entry in ipairs(donor.initial.affixes) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true;break end end end
+		end
+	end
+	if unusualRoll then result[#result+1]={code="affix_roll_outside_current_tier",message="A modifier has a roll outside its current tier range. It may be a legacy value or a hypothetical input; verify its origin before relying on item values or crafting goals."} end
+	if abyss then result[#result+1]={code="abyss_socket_layout",message="Experimental: adding the Abyssal socket modifier replaces the final socket; removing it restores an unlinked white socket. Placement, zero-socket behavior and removal are not verified.",source="https://www.poewiki.net/wiki/Abyssal_socket"} end
+	if action.method=="bench" and type(action.modId)=="string" and action.modId:match("^bench:partial%-") then result[#result+1]={code="partial_lock_model",message=partialWarningMessage} end
+	if action.method=="recombine" then result[#result+1]={code="recombination_count_odds",message="Recombination uses preliminary 3.30 small-pool observations, older larger-pool estimates and assumed square-root modifier weights. Crafted and non-rollable modifiers default to 1000; partial locks count as non-exclusive and do not protect other affixes. Special cases and weights are uncertain.",source="https://www.reddit.com/r/pathofexile/comments/1xxt2jr/330_recombinator_updated_oddsstrategies/",asOfPatch="3.30"} end
+	if action.method=="recombine" and model and data.weaponTypeInfo[model.item.type] then result[#result+1]={code="recombination_weapon_crafted",message="Crafted weapon modifiers are treated as exclusive except partial locks, based on preliminary community testing; this classification may change.",source="https://www.reddit.com/r/pathofexile/comments/1xxt2jr/330_recombinator_updated_oddsstrategies/",asOfPatch="3.30"} end
+	if action.method=="harvest_damage" then result[#result+1]={code="harvest_damage_assumptions",message="Experimental: matching elemental modifier IDs are treated as corresponding tiers, and eligible modifiers are selected uniformly. The game's tier mapping and selection odds are not verified; unsupported families are rejected."} end
+	if action.method=="harvest_resistance" then result[#result+1]={code="harvest_resistance_assumptions",message="Resistance conversion assumes matching elemental tiers and uniform selection among eligible modifiers. The game's tier mapping and selection odds are not verified; unsupported families are rejected."} end
+	if action.method=="tainted_exalt" then result[#result+1]={code="tainted_exalt_branch_limits",message="The model chooses add or remove equally. A branch can fail if no modifier can be added or removed; failed transitions are not charged. Behavior at these limits and branch odds are unverified in game."} end
+	if action.method=="tainted_chaos" then result[#result+1]={code="tainted_chaos_branch_odds",message="The model assumes equal chances to reforge or remove modifiers. The game's branch odds are unverified; the reforge uses the ordinary rare-item modifier model."} end
+	if action.method=="ducat_ukatoa" then result[#result+1]={code="ukatoa_assumptions",message="Ukatoa assumes equal Exarch/Eater and tier 1-4 chances; these odds are unverified. Modifier selection uses pinned spawn weights.",source="https://poedb.tw/us/Ukatoas_Ducat"} end
+	if action.method=="ducat_katakohi" then result[#result+1]={code="katakohi_assumptions",message="Experimental: base-attribute pools, uniform one-to-three socket counts and selection, weighted distinct modifiers, replacement of existing enchantments, and retained socket links are assumptions. Actual roll rules are unverified.",source="https://poedb.tw/us/Katakohis_Ducat"} end
+	if action.method=="locus" then result[#result+1]={code="locus_assumptions",message=model and model.item.type=="Jewel" and "Jewel Locus assumes 25% implicit, 25% no change and 50% destruction; these outcomes, odds and replacement selection are unverified." or "Locus assumes 25% implicit, 25% socket and 50% destruction outcomes; these are not verified 3.30 odds. Socket conversion and replacement selection, including ordinary base, Eldritch and synthesised replacement, are also assumptions.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
+	if action.method=="vaal" and model and model.item.type=="Flask" then result[#result+1]={code="flask_vaal_weights",message="Flask quality changes from -10 to +10; equal outcome weights are assumed and unverified.",source="https://www.pathofexile.com/forum/view-thread/3496784"} end
+	if action.method=="vaal" and model and model.item.type=="Jewel" and model.item.base.subType=="Abyss" then result[#result+1]={code="abyss_vaal_assumptions",message="Abyss jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
+	if action.method=="vaal" and model and model.item.clusterJewel then result[#result+1]={code="cluster_vaal_assumptions",message="Cluster jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
+	if action.method=="vaal" and model and model.item.baseName=="Prismatic Jewel" then result[#result+1]={code="prismatic_vaal_assumptions",message="Prismatic jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Jewel"} end
+	if action.method=="vaal" and model and M.socketLimit(model,model.initial)>0 then result[#result+1]={code="vaal_socket_reroll_unmodeled",message="The rare corruption outcome can reroll sockets and links in game; the resulting layout is unknown in this model. Set an observed or hypothetical layout before socket crafts or exporting the item.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
+	if action.method=="vaal" and model and #require("Modules.CraftingJewelCorruption").candidates(model.item.baseName)>0 then result[#result+1]={code="ordinary_jewel_corruption_assumptions",message="Experimental: assumes equal branch and unique-selection weights, independent normalized unique rolls and a four-modifier rare reroll. The bundled unique pool, eligibility and actual odds are unverified; transformed uniques cannot be crafted further in this model.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
+	if action.method=="vaal" then result[#result+1]={code="vaal_implicit_selection",message="When replacing one of several Eldritch or synthesised implicits, the model assumes each is equally likely. Synthesised modifier boundaries use the bundled catalogue; its coverage and the game's selection odds are unverified.",source="https://www.poewiki.net/wiki/Corrupted"} end
+	if action.method=="beast_max_sockets" then result[#result+1]={code="beast_max_sockets_assumptions",message="Experimental: the maximum follows the base and item-level limit; existing colours and links are retained and added sockets are white and unlinked. Eligibility, socket limits and layout behavior are unverified.",source="https://www.poewiki.net/wiki/Beastcrafting"} end
+	if action.method=="binding" then result[#result+1]={code="binding_legacy",message="Orbs of Binding are no longer generated in 3.30; existing orbs still work.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
+	if action.method=="jeweller" then result[#result+1]={code="jeweller_estimate",message="Experimental: historical weapon socket weights are assumed for all bases. Quality increases only the maximum-count chance in this model; weights, quality and retained socket/link positions are unverified.",source="https://www.poewiki.net/wiki/Jeweller%27s_Orb"} end
+	if action.method=="tainted_quality" then result[#result+1]={code="tainted_quality_estimate",message="Tainted armour and weapon quality uses an assumed uniform 1-20% range. GGG confirmed the 20% maximum; the minimum and distribution are unverified.",source="https://www.pathofexile.com/forum/view-thread/3531661",asOfPatch="3.25"} end
+	if action.method=="fusing" then result[#result+1]={code="fusing_estimate",message="Experimental: link-group weights use historical 20% quality observations; applying them to shorter items, quality scaling and excluding the current layout are assumptions. Current game odds are unverified.",source="https://www.reddit.com/r/pathofexile/comments/75t1c9/i_used_100000_fusings_for_science_statistics/"} end
+	if action.method=="veiled_chaos" then result[#result+1]={code="veiled_chaos_assumptions",message="The reforge uses the ordinary rare-modifier count and weights, chooses and reserves the veil side before the ordinary modifiers; unveil offers are generated afterward. Veil side and offer selection use the existing Veiled Exalted model. These odds, ordering and lock interactions are unverified; a partial-lock selection that protects the existing veil fails without a modeled charge.",source="https://www.pathofexile.com/forum/view-thread/4016174",asOfPatch="3.30.0b Hotfix 4"} end
+	if action.method=="rog_reroll" then
+		local jewelWarning=require("Modules.CraftingRog").jewelOfferWarning(model,action)
+		if jewelWarning then result[#result+1]={code="rog_jewel_offer_history",message=jewelWarning,source="https://www.poewiki.net/wiki/Rog"} end
+	end
+	if action.method=="rog_reroll" then
+		local removal=action.rogOperation=="remove_lowest" or action.rogOperation=="remove_lowest_two"
+		local socketOffer=action.rogOperation=="socket_count" or action.rogOperation=="socket_links"
+		local valueOffer=action.rogOperation=="values_one" or action.rogOperation=="values_side" or action.rogOperation=="values_implicit"
+		result[#result+1]={code="rog_reroll_assumptions",message=valueOffer and "Experimental: selects one modifier uniformly when applicable, samples independent value rolls, ranks candidates by average normalized numeric position and keeps the first tie. Higher numeric values are not always better; offer availability, selection, ranking and roll distributions are unverified." or socketOffer and "Experimental: models independent Jeweller or Fusing rolls and keeps the first highest result. Offer availability, eligibility, socket retention, tie rules and probabilities are unverified." or (action.rogOperation=="upgrade_highest" or action.rogOperation=="upgrade_highest_all") and "Experimental: selects distinct modifiers uniformly and upgrades each to its highest uniquely identified legal tier, rerolling values. Offer availability, item-level limits, selection and tier rules are unverified; ambiguous and boundary tiers are excluded." or action.rogOperation=="upgrade" and "Experimental: selects distinct modifiers uniformly, upgrades each to its nearest uniquely identified legal tier and rerolls values. Offer availability, eligibility, selection and tier rules are unverified; ambiguous and boundary tiers are excluded." or removal and "Experimental: removes the lowest required-level modifiers, assuming equal chances among ties. Offer eligibility and special interactions are unverified." or action.rogOperation=="set_quality" and "Sets weapon or armour quality to 20%. Offer eligibility and special interactions are unverified." or action.rogOperation=="fill" and "Experimental: fills open slots with sequential ordinary-weight rolls. Order, weights and special interactions are unverified; a later roll can fail when no legal modifier remains." or "Experimental: assumes independent ordinary-weight rolls, side-reroll count preservation, average modifier-level ranking and first-on-tie selection. Offer generation, ranking, weights and special interactions are unverified; some selections can fail.",source=(valueOffer or socketOffer or removal or action.rogOperation=="upgrade" or action.rogOperation=="upgrade_highest" or action.rogOperation=="upgrade_highest_all") and "https://poedb.tw/us/Rog" or action.rogOperation=="set_quality" and "https://poedb.tw/us/Broker_Deals_with_Rog" or "https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"}
+	end
+	if action.method=="hinekora_lock" or action.method=="gwennen" and (action.firstOutcome==1002 or action.secondOutcome==1002) then result[#result+1]={code="foreseeing_model",message="The Lock action or branch records only a hypothetical foreseeing marker; seeded previews cannot predict the game's hidden outcome. A successful modeled action clears it, including modeled no-change results. Eligibility and special interactions are unverified."} end
+	if action.method=="gwennen" then result[#result+1]={code="gwennen_estimate",message="Experimental: assumes a fair coin, uniform selection and removal counts, normalized maximum-roll checks and ordinary currency transitions. Offer generation, costs and special interactions are not verified.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
+	if action.method=="gwennen" and (action.firstOutcome==1020 or action.firstOutcome==1021 or action.firstOutcome==1043 or action.firstOutcome==1044 or action.secondOutcome==1020 or action.secondOutcome==1021 or action.secondOutcome==1043 or action.secondOutcome==1044) then result[#result+1]={code="gwennen_tier_assumptions",message="Tier changes assume uniform selection without replacement among all modifiers, and use the nearest uniquely identified legal tier in the same ordinary family. Gwennen's selection, item-level restrictions and tier rules are unverified; ambiguous, crafted and boundary-tier modifiers are excluded.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
+	if action.method=="gwennen" and (action.firstOutcome==1018 or action.firstOutcome==1019 or action.secondOutcome==1018 or action.secondOutcome==1019) then result[#result+1]={code="gwennen_side_reroll_assumptions",message="Side rerolls preserve the original number of modifiers on that side, based on comparable Rog research. Applying that rule and the ordinary modifier weights to Gwennen is unverified; some modeled selections can fail.",source="https://www.sirgog.com/wp-content/uploads/2022/12/rog.pdf"} end
+	if action.method=="gwennen" and (type(action.firstOutcome)=="number" and action.firstOutcome>=1033 and action.firstOutcome<=1040 or type(action.secondOutcome)=="number" and action.secondOutcome>=1033 and action.secondOutcome<=1040) then result[#result+1]={code="gwennen_best_assumptions",message="Best-of outcomes use independent ordinary modifier rolls from the starting item, rank by average modifier level on the affected side, and keep the first tied result. Side rerolls preserve the number of modifiers. Gwennen's ranking, weights, tie rules and interactions are unverified; some modeled selections can fail.",source="https://www.sirgog.com/wp-content/uploads/2022/12/rog.pdf"} end
+	if action.method=="gwennen" and (action.firstOutcome==1031 or action.secondOutcome==1031) then result[#result+1]={code="gwennen_influence_assumptions",message="Influence types are assumed equally likely among supported types. Eligibility and interactions with influence, synthesis, fractures and Eldritch implicits are not verified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
+	if action.method=="gwennen" and (action.firstOutcome==1032 or action.secondOutcome==1032) then result[#result+1]={code="gwennen_implicit_assumptions",message="Recognized ordinary, Eldritch and synthesised implicit modifiers are rerolled only when a varying normalized value is below its maximum. Eligibility, maximum checks and roll distributions are unverified; special or ambiguous base implicits are excluded.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
+	if action.method=="gwennen" and (action.firstOutcome==1013 or action.secondOutcome==1013) then result[#result+1]={code="gwennen_pantheon_assumptions",message="Pantheon Aspect uses the Brinehook model: four eligible modifiers are assumed equally likely and an open suffix is required. Gwennen eligibility, weights and interactions are unverified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
+	if action.method=="gwennen" and (action.firstOutcome==1010 or action.firstOutcome==1011 or action.secondOutcome==1010 or action.secondOutcome==1011) then result[#result+1]={code="gwennen_socket_colour_assumptions",message="Socket colour rerolls use the estimated Chromatic Orb model. The first result tied for the most non-white ordinary sockets is kept; Gwennen's tie rule, eligibility and probabilities are unverified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
+	if action.method=="gwennen" and (action.firstOutcome==1016 or action.firstOutcome==1017 or action.secondOutcome==1016 or action.secondOutcome==1017) then result[#result+1]={code="gwennen_socket_link_assumptions",message="Link rerolls use the experimental Fusing model, drawing independent layouts from the starting item and keeping the first tied result with the longest link. Gwennen's repeat rule, tie rule, eligibility and odds are unverified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
+	if action.method=="gwennen" and (action.firstOutcome==1028 or action.secondOutcome==1028) then result[#result+1]={code="gwennen_socket_count_assumptions",message="Socket count rerolls use 50 independent draws from the experimental Jeweller model, keeping the greatest count. Gwennen's repeat rule, eligibility, retained sockets and probabilities are unverified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
+	if action.method=="gwennen" and (action.firstOutcome==1030 or action.secondOutcome==1030) then result[#result+1]={code="gwennen_socket_count_disputed",message="The offer text says 100 socket rerolls while its listed function argument says 50. This scenario assumes "..tostring(action.gwennenSocketRerolls).." independent Jeweller-model rolls; the actual count, probabilities, eligibility and retained sockets are unverified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
+	if action.method=="gwennen" and (action.firstOutcome==1027 or action.secondOutcome==1027) then result[#result+1]={code="gwennen_preserve_assumptions",message="The retained modifier is selected uniformly; the resulting modifier count and new rolls use the ordinary rare-item model. Gwennen's selection, count distribution and interactions are unverified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
+	if action.method=="gwennen" and (action.firstOutcome==1012 or action.secondOutcome==1012) then result[#result+1]={code="gwennen_corruption",message="Corruption uses the existing Vaal model; rare-reroll socket and link changes are not modeled."} end
+	if action.method=="gwennen" then result[#result+1]={code="gwennen_empty_sockets",message="Remove socketed gems before giving an item to Gwennen in game. The crafting planner does not track which sockets contain gems.",source="https://www.pathofexile.com/forum/view-thread/4015564",asOfPatch="3.30.0b Hotfix 2"} end
+	if action.method=="gwennen" then result[#result+1]={code="gwennen_item_commitment",message="In game, Gwennen keeps the item until you choose a Take a Chance outcome. Review both outcomes and the artifact cost before committing.",source="https://www.pathofexile.com/forum/view-thread/4014963",asOfPatch="3.30.0b"} end
+	if action.allflame or action.method=="ducat_kishara" or action.method=="ducat_katakohi" then result[#result+1]={code="allflame_historical",message="Allflame is historical and did not return to core in 3.30."} end
+	if model and model.item.type=="Jewel" and model.item.base.subType=="Abyss" and (action.method=="tainted_exalt" or action.method=="tainted_chaos") then
+		result[#result+1]={code="abyss_capacity_assumption",message="This model assumes every corrupted Abyss jewel can have three prefixes and three suffixes. Whether that capacity depends on the jewel's corruption source is unverified."}
+	end
+	return result
+end
+local function partialWarning(warnings)
+	for _,warning in ipairs(warnings) do if warning.code=="partial_lock_model" then return warnings end end
+	warnings[#warnings+1]={code="partial_lock_model",message=partialWarningMessage}
+	return warnings
+end
+local function veilBenchWarning(warnings)
+	warnings[#warnings+1]={code="veil_bench_assumptions",message="When bench crafting before an unveil, the planner recomputes compatible offers from retained random draws. The actual game's offer generation and reopening behavior are unverified; observed or older saved choices cannot be recomputed."}
+end
+function M.recipeWarnings(recipe,model)
+	local result,seen={},{};local pending=model and model.initial and model.initial.veil~=nil
+	local mayHaveGilded=model and model.initial and model.initial.vendorImplicit~=nil
+	for _,action in ipairs(recipe and recipe.steps or {}) do if gildedFossil(action) then mayHaveGilded=true;break end end
+	for _,action in ipairs(recipe and recipe.steps or {}) do
+		for _,warning in ipairs(M.actionWarnings(action,model)) do if not seen[warning.code] then result[#result+1]=warning;seen[warning.code]=true end end
+		if mayHaveGilded and gildedCorruption(action) and not seen.gilded_corruption_incomplete then result[#result+1]=gildedCorruptionWarning();seen.gilded_corruption_incomplete=true end
+		if pending and (action.method=="bench" or action.method=="remove_crafted") and not seen.veil_bench_assumptions then veilBenchWarning(result);seen.veil_bench_assumptions=true end
+		if action.method=="veiled_orb" or action.method=="veiled_chaos" then pending=true elseif action.method=="unveil" then pending=false end
+	end
+	return result
+end
 M.limits = {"Experimental PoE 1 model, not a complete game crafting implementation.",
 	"Supported: ordinary equipment, known modifier IDs, fractured modifiers, basic currencies, bench modifiers and essences. Meta modifiers protect/remap only the supported actions.",
-	"Unsupported actions fail explicitly: fossils, Harvest, recombination, influence orbs, corruption, sockets/links, veiled crafts and special league mechanics.",
+	"Supported crafts include fossils, Harvest, recombination, influence, corruption, sockets and veiled crafts; unsupported combinations fail explicitly. Review each action's model notes.",
 	"Rerolls model 4/5/6 rare modifiers with weights 8/3/1, and 1/2 magic modifiers equally. These distribution assumptions and PoB data coverage affect estimates.",
-	"Integer roll ranges use inclusive integer draws. Fractional display ranges use illustrative normalized rolls because the underlying stat precision is not present in this data export.",
-	"Targets match modifier IDs, not numeric roll thresholds. Wilson intervals measure sampling uncertainty only. Results describe the bounded recipe, not guaranteed in-game costs."}
+	"Integer roll ranges use inclusive integer draws. Recognized fractional formats and matching per-minute regeneration modifiers use inclusive raw precision ticks; other fractional ranges use illustrative normalized rolls. Actual distributions remain unverified.",
+	"Modifier targets match IDs and optional normalized rolls or supported base-roll components. Base values precede catalyst and character scaling. Wilson intervals measure sampling uncertainty only. Results describe the bounded recipe, not guaranteed in-game costs."}
 
 local function integer(value,low,high,label)
 	assert(type(value) == "number" and value == math.floor(value) and value >= low and value <= high,"Invalid "..label)
@@ -27,42 +215,117 @@ local function renderLines(item)
 	table.sort(lines)
 	return table.concat(lines,"\n")
 end
+local function retainedBaseLines(model,state)
+	local lines={}
+	if state.baseImplicitRetained then for _,line in ipairs(model.item.implicitModLines or {}) do
+		if not model.item.corrupted or line.modGroup=="retained_base_implicit" then lines[#lines+1]=line end
+	end end
+	return lines
+end
 local function flags(model,state)
 	local result={ }
+	local function rollBlock(line)
+		if line == "Cannot roll Attack Modifiers" then result.attack=true end
+		if line == "Cannot roll Caster Modifiers" then result.caster=true end
+	end
 	for _,entry in ipairs(state.affixes) do
 		local mod=model.byId[entry.id]
+		if mod.partialLock then result[mod.partialLock.side]=mod.partialLock.count end
 		for _,line in ipairs(mod) do
-			if line == "Prefixes Cannot Be Changed" then result.prefixes=true end
-			if line == "Suffixes Cannot Be Changed" then result.suffixes=true end
-			if line == "Cannot roll Attack Modifiers" then result.attack=true end
-			if line == "Cannot roll Caster Modifiers" then result.caster=true end
+			if line == "Prefixes Cannot Be Changed" or line == "Prefix Modifiers cannot be changed" then result.prefixes=true end
+			if line == "Suffixes Cannot Be Changed" or line == "Suffix Modifiers cannot be changed" then result.suffixes=true end
+			if line == "Cannot roll Attack Modifiers" then result.explicitAttack=true end
+			if line == "Cannot roll Caster Modifiers" then result.explicitCaster=true end
+			rollBlock(line)
 			if line == "Can have up to 3 Crafted Modifiers" then result.multipleCrafts=true end
 		end
 	end
+	-- Replaced implicits take precedence over the starting item's base implicit.
+	local replacement=state.corruptedImplicits or state.implicits
+	if replacement then
+		for _,entries in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(entries) do for _,line in ipairs(model.byId[entry.id] or {}) do rollBlock(line) end end end
+		for _,index in ipairs(state.synthRetained or {}) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do rollBlock(StripEscapes(line.line or "")) end end
+		for _,line in ipairs(retainedBaseLines(model,state)) do rollBlock(StripEscapes(line.line or "")) end
+	else
+		if state.synthRolls then for index in ipairs(model.synthesisGroups) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do rollBlock(StripEscapes(line.line or "")) end end
+		else for _,line in ipairs(model.item.implicitModLines or {}) do rollBlock(StripEscapes(line.line or "")) end end
+		if state.vendorImplicit then for _,line in ipairs(model.byId[state.vendorImplicit] or {}) do rollBlock(line) end end
+	end
 	return result
 end
+M.blockFlags=flags
 local function counts(model,state)
 	local result={Prefix=0,Suffix=0,crafted=0,total=#state.affixes,groups={},tags={}}
 	for _,entry in ipairs(state.affixes) do
 		local mod=assert(model.byId[entry.id],"Unknown modifier ID: "..tostring(entry.id))
 		result[mod.type]=result[mod.type]+1
 		if mod.group then result.groups[mod.group]=true end
+		if model.item.clusterJewel and M.isClusterSpeedMod(model,entry.id) then result.groups[M.clusterSpeedGroup]=true end
 		if entry.crafted then result.crafted=result.crafted+1 end
 		for _,tag in ipairs(mod.tags or { }) do result.tags[tag]=true end
 	end
 	return result
 end
 
+-- Use the native renderer so every preview retains the same independent rolls.
+function M.rolledLines(mod,range) return itemLib.applyModRanges(mod,range) end
+-- Component numbers follow numeric ranges from left to right, then top to
+-- bottom. Parse the rendered line to retain PoB's rounding and precision.
+function M.baseRollValue(mod,range,component)
+	local ranges,count={},0
+	for i,line in ipairs(mod or {}) do
+		for a,b in line:gmatch("()%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)()") do
+			count=count+1;ranges[count]={line=i,first=a,last=b}
+		end
+	end
+	if count==0 then return nil,"This modifier has no numeric base roll" end
+	if component==nil and count~=1 then return nil,"Choose a component for modifiers with multiple numeric ranges" end
+	component=component or 1;local chosen=ranges[component]
+	if not chosen then return nil,"The selected component is not present on this modifier" end
+	local line=mod[chosen.line]
+	local rendered=M.rolledLines(mod,range)[chosen.line]
+	local function escape(text) return (text:gsub("([^%w])","%%%1")) end
+	local pattern,cursor,localIndex,chosenIndex="^",1,0,nil
+	for i,entry in ipairs(ranges) do if entry.line==chosen.line then
+		local prefix=line:sub(cursor,entry.first-1);local sign=prefix:sub(-1)
+		if sign=="+" or sign=="-" then prefix=prefix:sub(1,-2) end
+		pattern=pattern..escape(prefix)..(sign=="+" and "%+?" or "").."(%-?%d+%.?%d*)"
+		cursor=entry.last;localIndex=localIndex+1;if i==component then chosenIndex=localIndex end
+	end end
+	pattern=pattern..escape(line:sub(cursor)).."$"
+	local values={rendered:match(pattern)};local value=tonumber(values[chosenIndex])
+	if value==nil then return nil,"This modifier's displayed base roll cannot be identified" end
+	return value
+end
+function M.singleBaseRoll(mod,range) return M.baseRollValue(mod,range,nil) end
+function M.baseRollReason(mod,component)
+	for _,range in ipairs({0,0.5,1}) do local value,reason=M.baseRollValue(mod,range,component);if value==nil then return reason end end
+end
+function M.entryMod(model,entry)
+	return entry.legacyLightRadius and assert(model.legacyLightRadius[entry.id],"Unknown legacy Light Radius modifier") or entry.description330 and assert(model.descriptions330[entry.id],"Unknown 3.30 modifier description") or entry.corruption330 and assert(model.corruptions330[entry.id],"Unknown 3.30 corruption modifier") or model.byId[entry.id]
+end
+
 function M.toItem(model,state)
 	local item=new("Item"):Item(model.raw)
+	if item.type=="Tincture" and item.tinctureValues=="Final" then
+		item.tinctureBaseExplicit=state.tinctureBaseExplicit or nil;item.tinctureBasePrefix=state.tinctureBasePrefix or nil;item.tinctureBaseSuffix=state.tinctureBaseSuffix or nil;item.tinctureBaseImplicit=state.tinctureBaseImplicit or nil
+	end
+	item.affixes=model.byId
+	for _,entry in ipairs(state.affixes) do if entry.legacyLightRadius or entry.description330 then
+		if item.affixes==model.byId then item.affixes={};for id,mod in pairs(model.byId) do item.affixes[id]=mod end end
+		item.affixes[entry.id]=M.entryMod(model,entry)
+	end end
+	if M.decorateItem then M.decorateItem(model,state,item) end
 	item.rarity=state.rarity; item.title=state.rarity == "RARE" and "Simulated craft" or nil
 	item.name=item.title or item.baseName
 	item.crafted=true; item.prefixes={}; item.suffixes={}; item.explicitModLines={}
-	item.affixLimit=state.rarity == "MAGIC" and 2 or 6
-	item.prefixes.limit=state.rarity == "MAGIC" and 1 or 3
-	item.suffixes.limit=item.prefixes.limit
+	local caps=M.capacities(model,state)
+	item.affixLimit=caps.Prefix+caps.Suffix
+	item.prefixes.limit=caps.Prefix
+	item.suffixes.limit=caps.Suffix
 	for _,entry in ipairs(state.affixes) do
 		local mod=model.byId[entry.id]
+		if entry.crafted then for _,line in ipairs(mod) do if itemLib.isModifierMagnitudeLine(line) then item.preserveAffixSources=true;break end end end
 		if not entry.crafted then
 			local list=mod.type == "Prefix" and item.prefixes or item.suffixes
 			list[#list+1]={modId=entry.id,range=type(entry.range) == "table" and copyTable(entry.range) or {entry.range or 0.5},fractured=entry.fractured}
@@ -75,13 +338,33 @@ function M.toItem(model,state)
 		hasBench=true
 		local mod=model.byId[entry.id]
 		item.requirements.level=math.max(item.requirements.level or 0,math.floor((mod.level or 0)*0.8))
-		for _,line in ipairs(mod) do item.explicitModLines[#item.explicitModLines+1]={line=itemLib.applyRange(line,entry.range or 0.5),crafted=true,prefix=mod.type == "Prefix",suffix=mod.type == "Suffix"} end
+		for _,line in ipairs(M.rolledLines(mod,entry.range)) do item.explicitModLines[#item.explicitModLines+1]={line=line,crafted=true,fractured=entry.fractured,prefix=mod.type == "Prefix",suffix=mod.type == "Suffix"} end
 	end end
 	if hasBench then
 		for _,list in ipairs({item.prefixes,item.suffixes}) do for _,entry in ipairs(list) do if type(entry.range) == "number" then entry.range={entry.range} end end end
 		item:BuildAndParseRaw()
 	end
 	return item
+end
+
+-- Item text has no representation for an unknown socket layout. Keep the
+-- structured state available, but do not export a guessed layout as fact.
+function M.itemText(model,state)
+	if state.destroyed or state.veil or state.socketLayoutUnknown then return nil end
+	return M.toItem(model,state).raw
+end
+local function unknownSocketWarning(warnings)
+	warnings[#warnings+1]={code="socket_layout_unknown",message="The starting item's socket layout is unknown. Set an observed or hypothetical layout before socket actions, socket goals or exporting item text."}
+end
+
+local rollModifierIds=setmetatable({},{__mode="k"})
+local rawRegenCache=setmetatable({},{__mode="k"})
+function M.registerRollModifierIds(model)
+	for id,mod in pairs(model.byId) do
+		local previous=rollModifierIds[mod]
+		if previous==nil then rollModifierIds[mod]=id
+		elseif previous~=id then rollModifierIds[mod]=false;rawRegenCache[mod]=nil end
+	end
 end
 
 function M.model(raw)
@@ -91,60 +374,110 @@ function M.model(raw)
 	assert(not raw:find("\nUnidentified",1,true),"Identify the starting item before importing its modifiers")
 	integer(item.itemLevel,1,100,"item level")
 	assert(item.rarity == "NORMAL" or item.rarity == "MAGIC" or item.rarity == "RARE","Unique and relic crafting is not supported")
-	assert(not item.corrupted and not item.mirrored and not item.foulborn,"Corrupted, mirrored or foulborn items are not supported")
+	assert(not item.foulborn,"Foulborn items need a separate modifier-mutation model")
 	local equipment={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true,Quiver=true,Amulet=true,Ring=true,Belt=true}
-	assert(equipment[item.type] or data.weaponTypeInfo[item.type],"This engine currently supports ordinary equipment; this item type is unsupported")
+	assert(equipment[item.type] or item.type == "Jewel" or item.type == "Flask" or item.type == "Tincture" or data.weaponTypeInfo[item.type],"This engine currently supports ordinary equipment; this item type is unsupported")
 	if item.fractured then for _,info in ipairs(itemLib.influenceInfo.all) do assert(not item[info.key],"Fractured and influenced combinations are unsupported") end end
 	local model={raw=item.raw,item=item,byId={},mods={},bench={},essences={}}
+	model.legacyAbyss=require("Modules.CraftingAbyss330").prepare(item)
+	local extraTags={}
+	if item.clusterJewel and item.clusterJewel.skills[item.clusterJewelSkill] then extraTags[item.clusterJewel.skills[item.clusterJewelSkill].tag]=true end
 	for id,mod in pairs(item.affixes or { }) do model.byId[id]=mod end
-	for id,mod in pairs(data.itemMods.Explicit) do
+	require("Modules.CraftingImport").prepareDropOnly(model)
+	require("Modules.CraftingDescriptions330").prepare(model)
+	require("Modules.CraftingUnveiledJewel330").prepare(model)
+	require("Modules.CraftingUnveiledJewel330").restoreIdentities(model,raw)
+	model.trickery330={}
+	if item.type=="Belt" then
+		local id="PlayerIsDeliriousEssence1"
+		local mod={type="Prefix",affix="Trickster's",level=85,group="PlayerIsDelirious",weightKey={},weightVal={},modTags={},statOrder={100001000},"You are affected by Delirium Fog"}
+		model.byId[id]=mod;model.trickery330[id]=mod
+		require("Modules.CraftingUnveiledJewel330").restoreIdentities(model,raw,model.trickery330)
+	end
+	for id,mod in pairs((item.type == "Jewel" or item.type == "Flask" or item.type == "Tincture") and item.affixes or data.itemMods.Explicit) do
 		if (mod.type == "Prefix" or mod.type == "Suffix") and mod.level <= item.itemLevel and not mod.affix:find("Elevated",1,true) then
-			local weight=item:GetModSpawnWeight(mod)
+			local weight=item:GetModSpawnWeight(mod,extraTags)
 			if weight > 0 then model.mods[#model.mods+1]={id=id,mod=mod,weight=weight} end
 		end
 	end
+	require("Modules.CraftingLightRadius330").prepare(model)
 	table.sort(model.mods,function(a,b) return a.id < b.id end)
-	for index,mod in ipairs(data.masterMods) do
-		if mod.types and mod.types[item.type] and (mod.type == "Prefix" or mod.type == "Suffix") then
-			local id="bench:"..index
-			model.byId[id]=mod; model.bench[#model.bench+1]={id=id,mod=mod}
-		end
+	require("Modules.CraftingBenchMigration").prepare(model,item.type,data.masterMods)
+	-- The 3.30 lock texts and prices are published by GGG; the affix sides
+	-- follow the 3.30 client modifier records. Keep these separate from pinned
+	-- 3.29 master-mod rows so saved IDs do not shift on a data update.
+	for _,side in ipairs({"Prefix","Suffix"}) do
+		local templateText=side=="Prefix" and "Prefixes Cannot Be Changed" or "Suffixes Cannot Be Changed"
+		local template
+		for _,entry in ipairs(model.bench) do if entry.mod[1]==templateText then template=entry.mod;break end end
+		if template then for count=1,2 do
+			local id="bench:partial-"..side:lower().."-"..count;local mod=copyTable(template)
+			mod[1]=count.." "..side.." Modifier"..(count==1 and "" or "s").." cannot be changed"
+			mod.partialLock={side=side,count=count};model.byId[id]=mod;model.bench[#model.bench+1]={id=id,mod=mod}
+		end end
 	end
 	for id,essence in pairs(data.essences) do
 		local modId=essence.mods[item.type]
-		if modId and model.byId[modId] then model.essences[#model.essences+1]={id=id,name=essence.name,modId=modId,tier=essence.tier,type=essence.type} end
+		if modId and model.byId[modId] then model.essences[#model.essences+1]={id=id,name=essence.name,modId=modId,tier=essence.tier,type=essence.type,maxModLevel=({35,45,60,75})[essence.tier]} end
 	end
+	if next(model.trickery330) then model.essences[#model.essences+1]={id="Metadata/Items/Currency/CurrencyEssenceUber1",name="Essence of Trickery",modId="PlayerIsDeliriousEssence1",tier=8,type=24} end
+	local desolation=require("Modules.CraftingDesolation330")[item.type]
+	if desolation and model.byId[desolation] then model.essences[#model.essences+1]={id="Metadata/Items/Currency/CurrencyEssenceFaridun1",name="Essence of Desolation",modId=desolation,tier=0,canReforgeRare=true,maxModLevel=15} end
 	table.sort(model.essences,function(a,b) return a.id < b.id end)
-	local state={rarity=item.rarity,affixes={}}
+	local state={rarity=item.rarity,affixes={},corrupted=item.corrupted or false,tinctureBaseExplicit=item.tinctureBaseExplicit or nil,tinctureBasePrefix=item.tinctureBasePrefix or nil,tinctureBaseSuffix=item.tinctureBaseSuffix or nil,tinctureBaseImplicit=item.tinctureBaseImplicit or nil}
 	for _,list in ipairs({item.prefixes,item.suffixes}) do for _,entry in ipairs(list) do
 		if entry.modId ~= "None" then
 			assert(model.byId[entry.modId],"Starting item has an unknown modifier")
-			state.affixes[#state.affixes+1]={id=entry.modId,range=type(entry.range) == "table" and copyTable(entry.range) or entry.range,fractured=entry.fractured or false}
+			local current=model.descriptions330[entry.modId]
+			state.affixes[#state.affixes+1]={id=entry.modId,range=type(entry.range) == "table" and copyTable(entry.range) or entry.range,fractured=entry.fractured or false,legacyLightRadius=model.legacyLightRadius[entry.modId] and true or nil,description330=current and raw:find(current[1],1,true) and true or nil}
 		end
 	end end
-	-- Resolve bench lines by their native crafted flag and exact rendered values.
-	for _,line in ipairs(item.explicitModLines) do if line.crafted then
-		local matched
-		for _,entry in ipairs(model.bench) do if #entry.mod == 1 and itemLib.applyRange(entry.mod[1],line.range or 0.5) == itemLib.applyRange(line.line,line.range or 0.5) then matched=entry.id; break end end
-		assert(matched,"Import this bench modifier through the native engine; its exact modifier ID is unresolved")
-		state.affixes[#state.affixes+1]={id=matched,range=line.range or 0.5,crafted=true}
-	end end
+	-- A legacy Delve resistance prefix may be converted to its corresponding
+	-- elemental prefix, even though none of these modifiers currently rolls.
+	-- Permit those results only when this exact starting item had one already.
+	model.legacyDelveResistance={}
+	for _,entry in ipairs(state.affixes) do
+		if entry.id=="DelveArmourFireResistance1" or entry.id=="DelveArmourColdResistance1" or entry.id=="DelveArmourLightningResistance1" then
+			for _,element in ipairs({"Fire","Cold","Lightning"}) do
+				local id="DelveArmour"..element.."Resistance1";if model.byId[id] then model.legacyDelveResistance[#model.legacyDelveResistance+1]=id end
+			end
+			break
+		end
+	end
+	local reconstructed=M.toItem(model,state)
+	if renderLines(reconstructed) ~= renderLines(item) then
+		local indices={};for index,entry in ipairs(state.affixes) do if entry.legacyLightRadius then indices[#indices+1]=index end end
+		-- An item can contain more than one affected modifier and each may be
+		-- legacy or current. There are at most six explicit modifiers.
+		for mask=1,2^#indices-1 do
+			local current=copyTable(state)
+			for bit,index in ipairs(indices) do if math.floor(mask/2^(bit-1))%2==1 then current.affixes[index].legacyLightRadius=nil end end
+			local candidate=M.toItem(model,current)
+			if renderLines(candidate)==renderLines(item) then state=current;reconstructed=candidate;break end
+		end
+	end
+	if renderLines(reconstructed) ~= renderLines(item) then
+		state=require("Modules.CraftingImport").resolve(M,model,state)
+		reconstructed=M.toItem(model,state)
+	end
 	local c=counts(model,state)
 	for _,entry in ipairs(state.affixes) do if entry.fractured then for _,info in ipairs(itemLib.influenceInfo.all) do assert(not item[info.key],"Fractured and influenced combinations are unsupported") end end end
-	assert(c.Prefix <= (state.rarity == "MAGIC" and 1 or 3) and c.Suffix <= (state.rarity == "MAGIC" and 1 or 3),"Starting item exceeds affix limits")
-	assert(renderLines(M.toItem(model,state)) == renderLines(item),"Starting modifiers could not be resolved exactly. Use a blank base or advanced item text with recognized modifier IDs.")
+	local caps=M.capacities(model,state)
+	assert(c.Prefix <= caps.Prefix and c.Suffix <= caps.Suffix,"Starting item exceeds affix limits")
+	assert(renderLines(reconstructed) == renderLines(item),"Starting modifiers could not be resolved exactly. Use a blank base or advanced item text with recognized modifier IDs.")
 	model.initial=state
+	M.registerRollModifierIds(model)
 	return model
 end
 
 function M.pool(model,state)
 	local c,f=counts(model,state),flags(model,state)
 	for key,value in pairs(state.rollBlock or { }) do f[key]=value end
-	local cap=state.rarity == "MAGIC" and 1 or 3
+	local caps=M.capacities(model,state)
 	local result,total={},0
 	for _,entry in ipairs(model.mods) do
 		local mod=entry.mod
-		local blocked=c[mod.type] >= cap or c.groups[mod.group]
+		local blocked=c[mod.type] >= caps[mod.type] or c.groups[mod.group] or state.maxEssenceModLevel and mod.level>state.maxEssenceModLevel or model.item.clusterJewel and M.isClusterSpeedMod(model,entry.id) and c.groups[M.clusterSpeedGroup]
 		for _,tag in ipairs(mod.modTags or { }) do if f[tag] then blocked=true end end
 		if not blocked then
 			local weight=next(c.tags) and model.item:GetModSpawnWeight(mod,c.tags) or entry.weight
@@ -153,6 +486,72 @@ function M.pool(model,state)
 	end
 	return result,total
 end
+-- Only use finer ticks when PoB identifies one unambiguous format and every
+-- candidate round-trips through the native renderer. Other formats remain
+-- illustrative normalized draws rather than guessed precision.
+local rollPrecisionCache={}
+local function rollPrecision(line,low,high)
+ local cached=rollPrecisionCache[line];if cached~=nil then return cached or nil end
+ local key,count=line:gsub("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)","#")
+ key=key:gsub("%+#","#");local formats=count==1 and not key:find("%d") and data.modScalability[key]
+ local f=formats and #formats==1 and formats[1].formats
+ local scale=f and #f==1 and ({divide_by_ten=10,divide_by_one_hundred=100})[f[1]]
+ local steps=scale and math.abs(high-low)*scale
+ if not steps or steps<1 or steps>500 or math.abs(steps-math.floor(steps+0.5))>1e-7 then rollPrecisionCache[line]=false;return end
+ steps=math.floor(steps+0.5);local sign=line:match("%-%(%-?%d") and -1 or 1
+ for i=0,steps do
+  local actual=M.baseRollValue({line},i/steps,1);local expected=sign*(low+(high-low)*i/steps)
+  if not actual or math.abs(actual-expected)>1e-7 then rollPrecisionCache[line]=false;return end
+ end
+ rollPrecisionCache[line]=scale;return scale
+end
+-- A displayed regeneration-per-second endpoint can conceal a per-minute integer.
+-- Use pinned raw bounds only when the identity, stat and endpoints agree.
+local function rawRegenSteps(mod,line,low,high)
+ if #mod~=1 or not line:match("^Regenerate %(") then return end
+ local expectedStat=line:match("%% of Life per second$") and "life_regeneration_rate_per_minute_%" or line:match("%% of Energy Shield per second$") and "base_energy_shield_regeneration_rate_per_minute_%" or line:match(" Life per second$") and "base_life_regeneration_rate_per_minute" or line:match(" Mana per second$") and "base_mana_regeneration_rate_per_minute"
+ if not expectedStat then return end
+ local cached=rawRegenCache[mod];if cached~=nil then return cached or nil end
+ local id=rollModifierIds[mod];if not id then return end
+ local metadata=require("Modules.CraftingAdvanced").data().mods[id]
+ local stats=metadata and metadata.stats;local stat=stats and #stats==1 and stats[1]
+ local steps=stat and stat.id==expectedStat and stat.max-stat.min
+ if not steps or steps<1 or steps>100000 or high<=low then rawRegenCache[mod]=false;return end
+ local first,last=(stat.min/60-low)/(high-low),(stat.max/60-low)/(high-low)
+ -- The raw bounds may lie just outside the displayed range after rounding.
+ -- Only affixes can preserve such offsets; implicits still require 0..1.
+ local firstDisplay,lastDisplay=M.baseRollValue(mod,first,1),M.baseRollValue(mod,last,1)
+ local outside=first< -1e-9 or last>1+1e-9
+ if (outside and mod.type~="Prefix" and mod.type~="Suffix") or math.abs(first)>100 or math.abs(last)>100 or firstDisplay==nil or lastDisplay==nil or firstDisplay~=M.baseRollValue(mod,0,1) or lastDisplay~=M.baseRollValue(mod,1,1) then rawRegenCache[mod]=false;return end
+ local bounds={steps=steps,first=first,last=last};rawRegenCache[mod]=bounds;return bounds
+end
+function M.rawRegenPosition(mod,value)
+ local line=#mod==1 and mod[1];if not line then return end
+ local low,high=line:match("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)")
+ local raw=low and rawRegenSteps(mod,line,tonumber(low),tonumber(high));if not raw then return end
+ local step=(value-raw.first)/(raw.last-raw.first)*raw.steps
+ if step>=-1e-7 and step<=raw.steps+1e-7 and math.abs(step-math.floor(step+0.5))<1e-7 then
+  return math.max(0,math.min(1,math.floor(step+0.5)/raw.steps))
+ end
+end
+function M.isRawRegenRange(mod,value)
+ return M.rawRegenPosition(mod,value)~=nil
+end
+function M.rawRegenAtPosition(mod,position)
+ local line=#mod==1 and mod[1];if not line then return end
+ local low,high=line:match("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)")
+ local raw=low and rawRegenSteps(mod,line,tonumber(low),tonumber(high));if not raw then return end
+ local step=math.floor(position*raw.steps+0.5)
+ return raw.first+(step/raw.steps)*(raw.last-raw.first)
+end
+function M.rawRegenRange(mod,random)
+ local line=#mod==1 and mod[1];if not line then return end
+ local low,high=line:match("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)")
+ if not low then return end
+ local raw=rawRegenSteps(mod,line,tonumber(low),tonumber(high));if not raw then return end
+ local step=math.floor(random()*(raw.steps+1))
+ return raw.first+(step/raw.steps)*(raw.last-raw.first)
+end
 local function rollRange(mod,random)
 	local ranges={ }
 	for _,line in ipairs(mod) do for range in line:gmatch("%b()") do
@@ -160,7 +559,10 @@ local function rollRange(mod,random)
 		if low and high then
 			low,high=tonumber(low),tonumber(high)
 			local value=random()
-			if low < high and low == math.floor(low) and high == math.floor(high) then value=math.floor(value*(high-low+1))/(high-low) end
+			local scale=rollPrecision(line,low,high)
+			local raw=rawRegenSteps(mod,line,low,high)
+			local steps=raw and raw.steps or (scale and math.floor(math.abs(high-low)*scale+0.5)) or (low == math.floor(low) and high == math.floor(high) and math.abs(high-low))
+			if steps and steps>0 then value=math.floor(value*(steps+1))/steps;if raw then value=raw.first+value*(raw.last-raw.first) end end
 			ranges[#ranges+1]=value
 		end
 	end end
@@ -172,39 +574,163 @@ local function add(model,state,random)
 	local pick=random()*total
 	for _,entry in ipairs(pool) do
 		pick=pick-entry.weight
-		if pick < 0 then state.affixes[#state.affixes+1]={id=entry.id,range=rollRange(model.byId[entry.id],random)}; return end
+		if pick < 0 then state.affixes[#state.affixes+1]={id=entry.id,range=M.rollRange(model.byId[entry.id],random)}; return end
 	end
 	error("Could not select a modifier")
 end
-local function protected(entry,mod,f) return entry.fractured or mod.type == "Prefix" and f.prefixes or mod.type == "Suffix" and f.suffixes end
+local partialSelected=setmetatable({},{__mode="k"})
+local function protected(entry,mod,f) return entry.fractured or partialSelected[entry] or mod.type == "Prefix" and f.prefixes or mod.type == "Suffix" and f.suffixes end
+function M.hasPartialLock(model,state)
+	local f=flags(model,state);return f.Prefix~=nil or f.Suffix~=nil
+end
+local function selectPartialLocks(model,state,random)
+	local f=flags(model,state)
+	for _,side in ipairs({"Prefix","Suffix"}) do if f[side] then
+		local choices={};for _,entry in ipairs(state.affixes) do if model.byId[entry.id].type==side then choices[#choices+1]=entry end end
+		for _=1,math.min(f[side],#choices) do
+			local index=math.floor(random()*#choices)+1;partialSelected[table.remove(choices,index)]=true
+		end
+	end end
+end
+local function clearPartialLocks(state)
+	for _,entry in ipairs(state.affixes) do partialSelected[entry]=nil end
+end
+function M.annulCandidates(model,state)
+	local f=flags(model,state);local eligible={}
+	for index,entry in ipairs(state.affixes) do if not protected(entry,model.byId[entry.id],f) then eligible[#eligible+1]=index end end
+	return eligible
+end
+-- Visit each possible selection using the same routine as an action. The
+-- protected markers exist only while the callback is running.
+function M.eachPartialSelection(model,state,callback)
+	local f=flags(model,state);local sizes={}
+	for _,side in ipairs({"Prefix","Suffix"}) do if f[side] then
+		local n=0;for _,entry in ipairs(state.affixes) do if model.byId[entry.id].type==side then n=n+1 end end
+		for i=1,math.min(f[side],n) do sizes[#sizes+1]=n-i+1 end
+	end end
+	local draws={}
+	local function visit(depth,probability)
+		if depth<=#sizes then
+			local n=sizes[depth]
+			for i=1,n do draws[depth]=(i-0.5)/n;if visit(depth+1,probability/n) then draws[depth]=nil;return true end end
+			draws[depth]=nil;return
+		end
+		local shadow=copyState(state);local cursor=0
+		selectPartialLocks(model,shadow,function() cursor=cursor+1;return assert(draws[cursor],"Missing partial-lock draw") end)
+		local ok,stop=pcall(callback,shadow,probability,draws)
+		clearPartialLocks(shadow)
+		if not ok then error(stop) end
+		return stop==true
+	end
+	return visit(1,1)
+end
+-- Return nil if any selection leaves no removable modifier: that case needs
+-- transition-error handling rather than a fabricated Annulment outcome.
+function M.partialAnnulBranches(model,state)
+	local result={};local invalid=false
+	M.eachPartialSelection(model,state,function(shadow,probability,draws)
+		local eligible=M.annulCandidates(model,shadow)
+		if #eligible==0 then invalid=true;return true end
+		for i,index in ipairs(eligible) do
+			local branch=result[index]
+			if not branch then branch={index=index,probability=0,draws=copyTable(draws),removalDraw=(i-0.5)/#eligible};result[index]=branch end
+			branch.probability=branch.probability+probability/#eligible
+		end
+	end)
+	if invalid then return nil end
+	local ordered={};for _,branch in pairs(result) do ordered[#ordered+1]=branch end
+	table.sort(ordered,function(a,b) return a.index<b.index end);return ordered
+end
 local function clear(model,state,ignoreMeta)
 	local f=ignoreMeta and {} or flags(model,state)
 	for i=#state.affixes,1,-1 do if not protected(state.affixes[i],model.byId[state.affixes[i].id],f) then table.remove(state.affixes,i) end end
 end
 
+local function benchReason(model,state,id,c,f)
+	local mod=model.byId[id]
+	if not mod then return "Unknown bench modifier" end
+	if not id:match("^bench:") then return "Select a bench modifier" end
+	if mod.benchImportOnly then return "This modifier is available for imported items only" end
+	if mod.legacyBenchUnavailable then return "This saved bench modifier is not available in current data" end
+	if c.crafted >= (f.multipleCrafts and 3 or 1) then return "Crafted modifier limit reached" end
+	if c.groups[mod.group] then return "A modifier from this group is already present" end
+	-- Native drop-only labels can differ from the underlying game groups used
+	-- by an ordinary bench modifier (for example, a resistance hybrid).
+	local metadata=require("Modules.CraftingAdvanced").data().mods
+	for _,entry in ipairs(state.affixes) do
+		local record=metadata[entry.id]
+		for _,group in ipairs(record and record.groups or {}) do if group==mod.group then return "A modifier from this group is already present" end end
+	end
+	if c[mod.type]+(state.veil and state.veil.type==mod.type and 1 or 0) >= M.capacities(model,state)[mod.type] then return "No open affix for this bench craft" end
+end
+function M.benchReason(model,state,id)
+	return benchReason(model,state,id,counts(model,state),flags(model,state))
+end
+function M.benchAvailable(model,state)
+	local c,f=counts(model,state),flags(model,state)
+	if c.crafted >= (f.multipleCrafts and 3 or 1) then return false,"Remove a crafted modifier or allow more crafted modifiers first." end
+	if c.total+(state.veil and 1 or 0) >= M.capacities(model,state).total then return false,"There is no open modifier slot." end
+	for _,entry in ipairs(model.bench) do if not benchReason(model,state,entry.id,c,f) then return true end end
+	return false,"No legal bench modifier is available for this item."
+end
+function M.essenceReason(model,state,id)
+	local selected
+	for _,entry in ipairs(model.essences) do if entry.id==id then selected=entry;break end end
+	if not selected then return "This essence cannot be used on this base" end
+	local f=flags(model,state)
+	if f.prefixes or f.suffixes or f.explicitAttack or f.explicitCaster then return "Remove meta modifiers before applying an essence" end
+	if not (state.rarity=="NORMAL" or state.rarity=="RARE" and (selected.tier>=5 or selected.canReforgeRare)) then return "This essence cannot be used on the current rarity" end
+	local metadata=require("Modules.CraftingAdvanced").data().mods
+	local function groups(modId) local meta=metadata[modId];return meta and meta.groups or {model.byId[modId].group} end
+	for _,entry in ipairs(state.affixes) do if entry.fractured then
+		for _,left in ipairs(groups(selected.modId)) do for _,right in ipairs(groups(entry.id)) do if left==right then return "The essence modifier conflicts with a fractured modifier" end end end
+	end end
+	return nil,selected
+end
+function M.essenceAvailable(model,state)
+	if state.rarity=="MAGIC" then return false,"Essences require a normal or eligible rare item." end
+	for _,entry in ipairs(model.essences) do if not M.essenceReason(model,state,entry.id) then return true end end
+	return false,"No supported Essence can modify this item in its current state."
+end
+
 function M.action(model,input,action,random)
 	local state=copyState(input)
 	local method=action.method
+	if (method=="annul" or method=="chaos" or method=="alteration" or method=="scour" or method=="divine") and M.hasPartialLock(model,state) then selectPartialLocks(model,state,random) end
 	local c,f=counts(model,state),flags(model,state)
 	if method == "transmute" or method == "alteration" or method == "alchemy" or method == "chaos" then
 		local magic=method == "transmute" or method == "alteration"
 		local required=(method == "transmute" or method == "alchemy") and "NORMAL" or magic and "MAGIC" or "RARE"
 		assert(state.rarity == required,"This currency cannot be used on the current rarity")
 		clear(model,state)
+		-- A retained imported affix is still a displayed value. Record which
+		-- sides survived before adding rolls, including partial-lock outcomes.
+		local retained={}
+		if model.item.type=="Tincture" and model.item.tinctureValues=="Final" then
+			for _,entry in ipairs(state.affixes) do retained[model.byId[entry.id].type]=true end
+		end
 		state.rollBlock={attack=f.attack,caster=f.caster}
 		state.rarity=magic and "MAGIC" or "RARE"
 		local value=random()
 		local target=magic and (value < 0.5 and 1 or 2) or (value < 8/12 and 4 or value < 11/12 and 5 or 6)
+		target=math.min(target,M.capacities(model,state).total)
 		while #state.affixes < target do add(model,state,random) end
+		if next(retained) then for _,entry in ipairs(state.affixes) do
+			local side=model.byId[entry.id].type
+			if not retained[side] then state["tinctureBase"..side]=true end
+		end end
 	elseif method == "augmentation" or method == "regal" or method == "exalt" then
 		assert(state.rarity == (method == "exalt" and "RARE" or "MAGIC"),"This currency cannot be used on the current rarity")
-		assert(c.total < (method == "augmentation" and 2 or 6),"The item has no open affix")
+		local capacityState=copyState(state);capacityState.rarity="RARE"
+		assert(c.total < (method == "augmentation" and 2 or M.capacities(model,capacityState).total),"The item has no open affix")
 		if method == "regal" then state.rarity="RARE" end
 		add(model,state,random)
+	elseif method == "mirror" then
+		assert(not state.corrupted and not state.mirrored and not state.destroyed and not state.veil,"Mirror requires an intact, uncorrupted, non-mirrored item without a pending unveil")
+		state.mirrored=true;state.imprint=nil
 	elseif method == "annul" then
 		assert(state.rarity ~= "NORMAL","Annulment requires a magic or rare item")
-		local eligible={ }
-		for index,entry in ipairs(state.affixes) do if not protected(entry,model.byId[entry.id],f) then eligible[#eligible+1]=index end end
+		local eligible=M.annulCandidates(model,state)
 		assert(#eligible > 0,"No modifier can be removed")
 		table.remove(state.affixes,eligible[math.floor(random()*#eligible)+1])
 	elseif method == "scour" then
@@ -214,76 +740,351 @@ function M.action(model,input,action,random)
 		state.rarity=left.total == 0 and "NORMAL" or left.Prefix <= 1 and left.Suffix <= 1 and "MAGIC" or "RARE"
 	elseif method == "divine" then
 		assert(state.rarity ~= "NORMAL","Divine requires a magic or rare item")
-		for _,entry in ipairs(state.affixes) do if not protected(entry,model.byId[entry.id],f) then entry.range=rollRange(model.byId[entry.id],random) end end
+		for _,entry in ipairs(state.affixes) do if not protected(entry,model.byId[entry.id],f) then
+			local mod=model.byId[entry.id];entry.legacyLightRadius=nil;entry.range=M.rollRange(mod,random)
+			if model.item.type=="Tincture" and model.item.tinctureValues=="Final" then state["tinctureBase"..mod.type]=true end
+		end end
 	elseif method == "bench" then
-		local mod=assert(model.byId[action.modId],"Unknown bench modifier")
-		assert(action.modId:match("^bench:"),"Select a bench modifier")
-		assert(c.crafted < (f.multipleCrafts and 3 or 1),"Crafted modifier limit reached")
-		assert(not c.groups[mod.group],"A modifier from this group is already present")
-		assert(c[mod.type] < (state.rarity == "RARE" and 3 or 1),"No open affix for this bench craft")
+		local reason=M.benchReason(model,state,action.modId);assert(not reason,reason)
+		local mod=model.byId[action.modId]
 		if state.rarity == "NORMAL" then state.rarity="MAGIC" end
-		state.affixes[#state.affixes+1]={id=action.modId,range=rollRange(mod,random),crafted=true}
+		state.affixes[#state.affixes+1]={id=action.modId,range=M.rollRange(mod,random),crafted=true}
 	elseif method == "remove_crafted" then
 		assert(c.crafted > 0,"The item has no crafted modifiers")
 		for i=#state.affixes,1,-1 do if state.affixes[i].crafted then table.remove(state.affixes,i) end end
 	elseif method == "essence" then
-		local selected
-		for _,entry in ipairs(model.essences) do if entry.id == action.essenceId then selected=entry; break end end
-		assert(selected,"This essence cannot be used on this base")
-		assert(state.rarity == "NORMAL" or state.rarity == "RARE" and (selected.tier >= 5 or selected.type > 0),"This essence cannot be used on the current rarity")
+		local reason,selected=M.essenceReason(model,state,action.essenceId);assert(not reason,reason)
 		clear(model,state,true); state.rarity="RARE"
 		local mod=model.byId[selected.modId]
-		assert(not counts(model,state).groups[mod.group],"The essence modifier conflicts with a fractured modifier")
-		state.affixes[#state.affixes+1]={id=selected.modId,range=rollRange(mod,random)}
+		state.affixes[#state.affixes+1]={id=selected.modId,range=M.rollRange(mod,random),description330=model.descriptions330[selected.modId] and true or nil}
+		state.maxEssenceModLevel=selected.maxModLevel
 		local value=random(); local target=value < 8/12 and 4 or value < 11/12 and 5 or 6
+		target=math.min(target,M.capacities(model,state).total)
 		while #state.affixes < target do add(model,state,random) end
 	else error("Unsupported crafting action: "..tostring(method)) end
+	clearPartialLocks(state)
 	state.rollBlock=nil
+	state.maxEssenceModLevel=nil
 	return state
 end
 
-function M.matches(state,targets,rarity)
-	if rarity and state.rarity ~= rarity then return false end
-	for _,group in ipairs(targets) do
-		local hit=false
-		for _,entry in ipairs(state.affixes) do for _,id in ipairs(group.anyOf) do if entry.id == id then hit=true end end end
-		if not hit then return false end
-	end
-	return true
+local function gemSocketGroups(sockets)
+ local groups,previous={},nil
+ for _,socket in ipairs(sockets) do
+  if socket.color == "A" then previous=nil
+  else
+   if previous ~= socket.group then groups[#groups+1]={};previous=socket.group end
+   local group=groups[#groups];group[#group+1]=socket
+  end
+ end
+ return groups
+end
+
+function M.matches(state,targets,rarity,model,requirements,requiredGroups)
+ if state.veil or state.destroyed then return false end
+ if requirements and requirements.uniqueName and not state.uniqueTitle then return false end
+ if state.socketLayoutUnknown and requirements and (requirements.sockets~=nil or requirements.exactSockets~=nil or requirements.links~=nil or requirements.minAbyssSockets~=nil or requirements.socketColours~=nil) then error("Set the unknown socket layout before checking socket or link goals.") end
+ if rarity and state.rarity ~= rarity then return false end
+ local matched=0
+ for _,group in ipairs(targets) do
+  local count=0
+  local unknown=false
+  local entries=state.affixes
+  if group.scope == "implicit" then
+   entries={};for _,list in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(list) do entries[#entries+1]=entry end end
+   local active=state.synthRetained
+   if active then assert(model and model.synthesisGroups,"A synthesised item model is required for implicit targets") end
+   if model and model.synthesisGroups and not active and not state.corruptedImplicits and not state.implicits then active={};for index in ipairs(model.synthesisGroups) do active[#active+1]=index end end
+   for _,index in ipairs(active or {}) do local item=model.synthesisGroups[index];local candidates=require("Modules.CraftingSynthesisGroups").candidates(item,state,index);if require("Modules.CraftingSynthesisGroups").targetStatus({candidates=candidates},group) then entries[#entries+1]=candidates[1] end end
+  end
+  if group.scope == "enchant" then
+   assert(model,"A native item model is required for enchantment targets")
+   local ids=state.enchantCleared and {} or state.katakohiEnchants or (not state.harvestEnchant and model.importedSocketEnchants)
+   -- An unrecognized import cannot prove either a positive or negative target.
+   unknown=not ids
+   entries={};for _,id in ipairs(ids or {}) do entries[#entries+1]={id=id,range=1} end
+  end
+  for _,entry in ipairs(entries) do
+   local roll=type(entry.range) == "table" and math.min(unpack(entry.range)) or entry.range or 0.5
+   if (roll<0 or roll>1 or group.minRoll~=nil) and model and (type(entry.range)=="number" or type(entry.range)=="table" and #entry.range==1) then
+    local mod=model.byId and model.byId[entry.id]
+    local position=mod and M.rawRegenPosition(mod,roll)
+    if position then roll=position end
+   end
+   for _,id in ipairs(group.anyOf) do if entry.id == id and roll >= (group.minRoll or 0) and (group.fractured == nil or (entry.fractured or false) == group.fractured) and (group.crafted == nil or (entry.crafted or false) == group.crafted) then
+    local matches=true
+    if group.minBaseValue~=nil or group.maxBaseValue~=nil then
+     assert(model,"A native item model is required for base-roll targets")
+     local mod=M.entryMod(model,entry);local item=model.item
+     if item.type=="Tincture" and item.tinctureValues=="Final" and ((item.tinctureImportedQuality or 0)>0 or (item.tinctureImportedEffect or item.tinctureData and item.tinctureData.effectInc or 0)~=0) then
+      assert(state.tinctureBaseExplicit or state["tinctureBase"..mod.type],"The imported tincture's original base roll is unknown; reroll that side before using a base-value goal")
+     end
+	     local value,why=M.baseRollValue(mod,entry.range,group.baseValueComponent);assert(value~=nil,why)
+     matches=(group.minBaseValue==nil or value>=group.minBaseValue) and (group.maxBaseValue==nil or value<=group.maxBaseValue)
+    end
+    if matches then count=count+1;break end
+   end end
+  end
+  local hit=count >= (group.atLeast or 1)
+  if group.negate and not unknown then hit=not hit end
+  if hit then matched=matched+1 end
+ end
+ if matched < (requiredGroups or #targets) then return false end
+ if requirements then
+  if requirements.uniqueModifier or requirements.uniqueModifiers or requirements.uniqueImplicit then return false end -- Unique text goals require the unique-item engine.
+  assert(model,"A native item model is required for property conditions")
+  local c=counts(model,state); local caps=M.capacities(model,state)
+  local prefix=c.Prefix+(state.veil and state.veil.type == "Prefix" and 1 or 0)
+  local suffix=c.Suffix+(state.veil and state.veil.type == "Suffix" and 1 or 0)
+  if requirements.openPrefixes and caps.Prefix-prefix < requirements.openPrefixes then return false end
+  if requirements.openSuffixes and caps.Suffix-suffix < requirements.openSuffixes then return false end
+  if requirements.minAffixes and c.total < requirements.minAffixes or requirements.maxAffixes and c.total > requirements.maxAffixes then return false end
+  local fractures=0;for _,entry in ipairs(state.affixes) do if entry.fractured then fractures=fractures+1 end end
+  if requirements.minFractured and fractures < requirements.minFractured or requirements.maxFractured and fractures > requirements.maxFractured then return false end
+  if requirements.minIntangibility and (state.intangibility or 0) < requirements.minIntangibility or requirements.maxIntangibility and (state.intangibility or 0) > requirements.maxIntangibility then return false end
+  if requirements.minQuality and (state.quality or model.item.quality or 0) < requirements.minQuality then return false end
+  if requirements.catalyst and state.catalyst~=requirements.catalyst then return false end
+  if requirements.minCatalystQuality and (state.catalystQuality or 0)<requirements.minCatalystQuality then return false end
+  if requirements.minMemoryStrands and (state.memoryStrands or 0) < requirements.minMemoryStrands then return false end
+  if requirements.maxMemoryStrands and (state.memoryStrands or 0) > requirements.maxMemoryStrands then return false end
+  if requirements.mirrored ~= nil and (state.mirrored or false) ~= requirements.mirrored then return false end
+  if requirements.corrupted ~= nil and (state.corrupted or false) ~= requirements.corrupted then return false end
+  if requirements.twiceCorrupted ~= nil and (state.twiceCorrupted or false) ~= requirements.twiceCorrupted then return false end
+  if requirements.foreseeing ~= nil and (state.foreseeing or false) ~= requirements.foreseeing then return false end
+	  if requirements.influence then
+	   local found=false;for _,key in ipairs(state.influences or model.initial.influences or {}) do if key==requirements.influence then found=true;break end end
+	   if not found then return false end
+	  end
+  if requirements.harvestEnchant and state.harvestEnchant~=requirements.harvestEnchant then return false end
+  if requirements.flaskEnchant and (not state.flaskEnchant or state.flaskEnchant.id~=requirements.flaskEnchant) then return false end
+  if requirements.flaskEnchantMin and (not state.flaskEnchant or not state.flaskEnchant.roll or state.flaskEnchant.roll<requirements.flaskEnchantMin) then return false end
+  if requirements.nativeStats and not require("Modules.CraftingItemStats").matches(M,model,state,requirements.nativeStats) then return false end
+  if requirements.sockets and #(state.sockets or model.item.sockets or {}) < requirements.sockets then return false end
+  if requirements.exactSockets and #(state.sockets or model.item.sockets or {}) ~= requirements.exactSockets then return false end
+  if requirements.minAbyssSockets then
+   local count=0;for _,socket in ipairs(state.sockets or model.item.sockets or {}) do if socket.color=="A" then count=count+1 end end
+   if count < requirements.minAbyssSockets then return false end
+  end
+  if requirements.socketColours then
+   local groups={};local needed={}
+   for color in requirements.socketColours:gmatch(".") do needed[color]=(needed[color] or 0)+1 end
+   local sockets=state.sockets or model.item.sockets or {}
+   local segments=requirements.linkedColours and gemSocketGroups(sockets) or {sockets}
+   for _,segment in ipairs(segments) do local colors={};groups[#groups+1]=colors;for _,socket in ipairs(segment) do colors[socket.color]=(colors[socket.color] or 0)+1 end end
+   local matched=false
+   for _,colors in pairs(groups) do local enough=true;for color,count in pairs(needed) do if (colors[color] or 0)<count then enough=false end end;if enough then matched=true;break end end
+   if not matched then return false end
+  end
+  if requirements.links then
+   local best=0
+   for _,group in ipairs(gemSocketGroups(state.sockets or model.item.sockets or {})) do best=math.max(best,#group) end
+   if best < requirements.links then return false end
+  end
+ end
+ return true
+end
+-- Check contradictions separately from structural validation so previously
+-- saved recipes remain loadable and can be repaired.
+function M.requirementsConflict(requirements)
+ if type(requirements)~="table" then return nil end
+ if type(requirements.minFractured)=="number" and type(requirements.maxAffixes)=="number" and requirements.minFractured>requirements.maxAffixes then
+  return "Minimum fractured modifiers exceed the maximum total modifiers."
+ end
+ local exact=type(requirements.exactSockets)=="number" and requirements.exactSockets or nil
+ local limit=exact or 6
+ local abyss=type(requirements.minAbyssSockets)=="number" and requirements.minAbyssSockets or 0
+ if type(requirements.links)=="number" and requirements.links+abyss>limit then
+  return exact and "Minimum linked sockets and Abyss sockets exceed the exact socket count." or "Minimum linked sockets and Abyss sockets exceed the six-socket limit."
+ end
+ if type(requirements.socketColours)=="string" and #requirements.socketColours+abyss>limit then
+  return exact and "Required socket colours and Abyss sockets exceed the exact socket count." or "Required socket colours and Abyss sockets exceed the six-socket limit."
+ end
+ if exact and abyss>exact then return "Minimum Abyss sockets exceed the exact socket count." end
+end
+function M.recipeConflict(recipe)
+ local reason=M.requirementsConflict(recipe.requirements)
+ if reason then return "Item goal: "..reason end
 end
 function M.validateRecipe(recipe)
 	assert(type(recipe) == "table" and type(recipe.steps) == "table" and #recipe.steps >= 1 and #recipe.steps <= 20,"Use one to twenty recipe steps")
-	assert(type(recipe.targets) == "table" and #recipe.targets >= 1 and #recipe.targets <= 6,"Choose one to six target groups")
-	assert(not recipe.rarity or recipe.rarity == "MAGIC" or recipe.rarity == "RARE","Invalid target rarity")
+	assert(type(recipe.targets) == "table" and #recipe.targets <= 6,"Choose up to six target groups")
+	assert(#recipe.targets > 0 or recipe.requirements,"Choose targets or item property conditions")
+	assert(not recipe.rarity or recipe.rarity == "MAGIC" or recipe.rarity == "RARE" or recipe.rarity == "UNIQUE","Invalid target rarity")
 	local methods={ }
 	for _,method in ipairs(M.methods) do methods[method]=true end
+	local function validateRequirements(requirements)
+		if not requirements then return end
+		assert(type(requirements) == "table" and next(requirements),"Choose at least one property condition")
+		local limits={openPrefixes=3,openSuffixes=3,minAffixes=6,maxAffixes=6,minQuality=40,sockets=6,exactSockets=6,links=6,minAbyssSockets=6,minMemoryStrands=100,maxMemoryStrands=100,minFractured=6,maxFractured=6,minIntangibility=100,maxIntangibility=100}
+		for key,value in pairs(requirements) do
+			if key == "uniqueName" then assert(type(value)=="string" and #value<=160 and value:match("%S"),"Enter a unique item name")
+			elseif key == "nativeStats" then require("Modules.CraftingItemStats").validate(value)
+			elseif key == "uniqueImplicit" then
+				assert(recipe.rarity=="UNIQUE" and type(value)=="table" and (value.minValue~=nil)~=(value.maxValue~=nil),"Choose a minimum or maximum unique implicit roll")
+				for field in pairs(value) do assert(field=="minValue" or field=="maxValue","Unknown unique implicit target field") end
+				local target=value.minValue or value.maxValue;integer(target,-100000,100000,"unique implicit roll")
+			elseif key == "uniqueModifier" or key == "uniqueModifiers" then
+				local goals=key=="uniqueModifier" and {value} or value
+				assert((recipe.rarity=="UNIQUE" or requirements.uniqueName) and type(goals)=="table" and #goals>=1 and #goals<=12,"Choose up to twelve unique modifier targets on a unique recipe")
+				local count=0;for index in pairs(goals) do assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#goals,"Invalid unique modifier target list");count=count+1 end
+				assert(count==#goals,"Invalid unique modifier target list")
+				for _,goal in ipairs(goals) do
+					assert(type(goal)=="table" and type(goal.line)=="string" and #goal.line>0 and #goal.line<=1000,"Choose a unique modifier target on a unique recipe")
+					for field in pairs(goal) do assert(field=="line" or field=="component" or field=="minValue" or field=="maxValue","Unknown unique modifier target field") end
+					if goal.component~=nil then integer(goal.component,1,6,"unique modifier component") end
+					assert((goal.minValue~=nil)~=(goal.maxValue~=nil),"Choose either a minimum or maximum unique modifier roll")
+					local target=goal.minValue or goal.maxValue;assert(type(target)=="number" and target==target and target>=-100000 and target<=100000,"Invalid unique modifier target")
+				end
+			elseif key == "catalyst" then integer(value,1,12,"catalyst type")
+			elseif key == "minCatalystQuality" then integer(value,0,20,"minimum catalyst quality")
+			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")
+			elseif key == "flaskEnchant" then assert(type(value)=="string" and require("Modules.CraftingFlaskEnchants").entry(value),"Choose a known flask enchantment")
+			elseif key == "flaskEnchantMin" then
+				integer(value,0,100,"minimum flask enchantment roll");local lo,hi=require("Modules.CraftingFlaskEnchants").bounds(requirements.flaskEnchant)
+				assert(lo and value<=hi,"Choose a rolled flask enchantment and a minimum within its range")
+			elseif key == "corrupted" or key == "twiceCorrupted" or key == "mirrored" or key == "foreseeing" or key == "linkedColours" then assert(type(value) == "boolean","Invalid boolean property condition")
+			elseif key == "influence" then assert(({shaper=true,elder=true,adjudicator=true,basilisk=true,crusader=true,eyrie=true})[value],"Choose a supported influence")
+			elseif key == "socketColours" then assert(type(value)=="string" and #value>=1 and #value<=6 and not value:find("[^RGBW]"),"Use one to six socket colours: R, G, B or W")
+			else integer(value,0,assert(limits[key],"Unknown property condition"),key) end
+		end
+		local bounds={};local goals={};if requirements.uniqueModifier then goals[#goals+1]=requirements.uniqueModifier end;for _,goal in ipairs(requirements.uniqueModifiers or {}) do goals[#goals+1]=goal end
+		for _,goal in ipairs(goals) do
+			local key=goal.line.."\0"..(goal.component or 1);local range=bounds[key] or {};bounds[key]=range
+			if goal.minValue~=nil then range.min=math.max(range.min or goal.minValue,goal.minValue) else range.max=math.min(range.max or goal.maxValue,goal.maxValue) end
+			assert(not range.min or not range.max or range.min<=range.max,"Minimum unique modifier roll exceeds maximum")
+		end
+		assert(not requirements.linkedColours or requirements.socketColours,"Linked colours require a socket colour target")
+		assert(not requirements.minCatalystQuality or requirements.catalyst,"Catalyst quality requires a catalyst type")
+		assert(not requirements.sockets or not requirements.exactSockets or requirements.sockets<=requirements.exactSockets,"Minimum sockets exceed the exact socket count")
+		assert(not (requirements.corrupted==false and requirements.twiceCorrupted==true),"A twice corrupted item cannot be uncorrupted")
+		assert(not (requirements.mirrored==true and requirements.foreseeing==true),"A modeled foreseeing item cannot be mirrored")
+		assert(not (requirements.foreseeing==true and (requirements.corrupted==true or requirements.twiceCorrupted==true)),"A modeled foreseeing item cannot be corrupted")
+		for _,pair in ipairs({{"minAffixes","maxAffixes"},{"minMemoryStrands","maxMemoryStrands"},{"minFractured","maxFractured"},{"minIntangibility","maxIntangibility"}}) do
+			assert(not requirements[pair[1]] or not requirements[pair[2]] or requirements[pair[1]] <= requirements[pair[2]],"Minimum property condition exceeds maximum")
+		end
+	end
+	validateRequirements(recipe.requirements)
+	if recipe.requiredGroups then integer(recipe.requiredGroups,0,#recipe.targets,"required target groups") end
 	local function validateTargets(targets)
 	assert(type(targets) == "table" and #targets >= 1 and #targets <= 6,"Choose one to six target groups")
 	for _,group in ipairs(targets) do
 		assert(type(group.anyOf) == "table" and #group.anyOf >= 1 and #group.anyOf <= 30,"Use one to thirty modifier IDs per target group")
 		for _,id in ipairs(group.anyOf) do assert(type(id) == "string" and #id <= 160,"Invalid target modifier ID") end
+		if group.atLeast then integer(group.atLeast,1,6,"matching modifiers") end
+		if group.minRoll then assert(type(group.minRoll) == "number" and group.minRoll >= 0 and group.minRoll <= 1,"Invalid minimum roll") end
+		for _,key in ipairs({"minBaseValue","maxBaseValue"}) do local value=group[key];if value~=nil then assert(type(value)=="number" and value==value and math.abs(value)<=10000000,"Invalid base-roll value") end end
+		if group.baseValueComponent~=nil then integer(group.baseValueComponent,1,20,"base-roll component");assert(group.minBaseValue~=nil or group.maxBaseValue~=nil,"A base-roll component needs a minimum or maximum value") end
+		assert(group.minBaseValue==nil or group.maxBaseValue==nil or group.minBaseValue<=group.maxBaseValue,"Minimum base roll exceeds maximum")
+		assert((group.minBaseValue==nil and group.maxBaseValue==nil) or not group.scope or group.scope=="explicit","Base-roll values currently require explicit modifier targets")
+		assert(not group.scope or group.scope == "explicit" or group.scope == "implicit" or group.scope == "enchant","Invalid target scope")
+		for _,key in ipairs({"fractured","crafted"}) do assert(group[key] == nil or type(group[key]) == "boolean","Invalid modifier condition") end
+		assert(group.negate == nil or type(group.negate) == "boolean","Invalid exclusion condition")
 	end
 	end
-	validateTargets(recipe.targets)
+	if #recipe.targets > 0 then validateTargets(recipe.targets) end
 	for _,step in ipairs(recipe.steps) do
 		assert(methods[step.method],"Unsupported crafting action: "..tostring(step.method))
-		integer(step.maxAttempts or 1,1,200,"step attempt limit")
-		if (step.maxAttempts or 1) > 1 then assert(step.untilTargets,"Repeated steps need target conditions") end
+		if step.beastLevel~=nil then assert(step.method=="beast_prefix_suffix" or step.method=="beast_suffix_prefix","Beast level only applies to Bestiary modifier swaps");integer(step.beastLevel,1,100,"beast level") end
+		assert(step.onFailureAction==nil or ({route=true,stop=true,restart=true,salvage=true})[step.onFailureAction],"Unknown failure recovery action")
+		assert(step.recoveryNotes==nil or type(step.recoveryNotes)=="string" and #step.recoveryNotes<=1000,"Recovery notes are too long")
+		integer(step.maxAttempts or 1,1,2000,"step attempt limit")
+		if (step.maxAttempts or 1) > 1 then assert(step.untilTargets or step.untilRequirements,"Repeated steps need target or property conditions") end
 		if step.untilTargets then validateTargets(step.untilTargets) end
+		if step.untilRequiredGroups~=nil then assert(step.untilTargets,"Step target count requires target groups");integer(step.untilRequiredGroups,0,#step.untilTargets,"step required target groups") end
+		validateRequirements(step.untilRequirements)
 		for _,key in ipairs({"onSuccess","onFailure"}) do if step[key] then integer(step[key],1,#recipe.steps+1,"recipe route") end end
 	end
 	return copyTable(recipe)
 end
+local function socketGoal(requirements)
+	return requirements and (requirements.sockets~=nil or requirements.exactSockets~=nil or requirements.links~=nil or requirements.minAbyssSockets~=nil or requirements.socketColours~=nil)
+end
+local function validateCorruptionSocketGoals(model,recipe)
+	if M.socketLimit(model,model.initial)==0 then return end
+	local socketTarget=socketGoal(recipe.requirements)
+	for _,step in ipairs(recipe.steps) do socketTarget=socketTarget or socketGoal(step.untilRequirements) end
+	if not socketTarget then return end
+	assert(not model.initial.socketLayoutUnknown,"Set the unknown socket layout before checking socket or link goals.")
+	for _,step in ipairs(recipe.steps) do
+		assert(step.method~="vaal" and not (step.method=="gwennen" and (step.firstOutcome==1012 or step.secondOutcome==1012)),
+			"Cannot calculate socket or link goals with Vaal corruption: rare-reroll socket changes are not modeled.")
+	end
+end
 local function priceKey(action) return action.method == "bench" and action.modId or action.method == "essence" and action.essenceId or action.method end
 
+-- Out-of-range values are legitimate only when retained from an item that
+-- already carried that exact modifier and roll. Recombination may attach the
+-- originating item text when its chosen base came from the other input.
+function M.rollOutsideTier(entry)
+	local ranges=type(entry.range)=="table" and entry.range or {entry.range or 0.5}
+	for _,value in ipairs(ranges) do if type(value)=="number" and (value<0 or value>1) then return true end end
+	return false
+end
+function M.requiresRollSource(entry,model)
+	if entry.legacyLightRadius then return true end
+	if not M.rollOutsideTier(entry) then return false end
+	local ranges=type(entry.range)=="table" and entry.range or {entry.range or 0.5}
+	local mod=model and model.byId and model.byId[entry.id]
+	if #ranges==1 and mod and M.isRawRegenRange(mod,ranges[1]) then return false end
+	return true
+end
+local function sameAffixRoll(left,right,leftModel,rightModel)
+	if left.id~=right.id or not not left.legacyLightRadius~=not not right.legacyLightRadius or not not left.description330~=not not right.description330 then return false end
+	if M.rollOutsideTier(left)~=M.rollOutsideTier(right) then return false end
+	local a=type(left.range)=="table" and left.range or {left.range or 0.5}
+	local b=type(right.range)=="table" and right.range or {right.range or 0.5}
+	if #a~=#b then return false end
+	for i,value in ipairs(a) do
+		local other=b[i]
+		if type(value)~="number" or type(other)~="number" or (value<0)~=(other<0) or (value>1)~=(other>1) or math.abs(value-other)>0.00051 then return false end
+	end
+	local leftLines=M.rolledLines(M.entryMod(leftModel,left),left.range)
+	local rightLines=M.rolledLines(M.entryMod(rightModel,right),right.range)
+	return tableDeepEquals(leftLines,rightLines)
+end
+function M.validateLegacyRolls(model,state)
+	for _,entry in ipairs(state.affixes or {}) do
+		assert(entry.legacySource==nil or type(entry.legacySource)=="string" and #entry.legacySource<=24000,"Invalid legacy roll source")
+		if M.requiresRollSource(entry,model) then
+			local found=false
+			for _,original in ipairs(model.initial.affixes or {}) do if sameAffixRoll(entry,original,model,model) then found=true;break end end
+			if not found and entry.legacySource then
+				model.legacyRollModels=model.legacyRollModels or {}
+				local source=model.legacyRollModels[entry.legacySource]
+				if not source then
+					local ok,value=pcall(M.model,entry.legacySource)
+					assert(ok,"Could not read the legacy roll source")
+					local count=0;for _ in pairs(model.legacyRollModels) do count=count+1 end
+					if count>=40 then model.legacyRollModels={} end
+					source=value;model.legacyRollModels[entry.legacySource]=source
+				end
+				assert(model.item.type==source.item.type,"Legacy roll source must use the same item class")
+				for _,original in ipairs(source.initial.affixes or {}) do if sameAffixRoll(entry,original,model,source) then found=true;break end end
+			end
+			assert(found,"A legacy or out-of-range roll must be retained from a matching source item")
+		end
+	end
+	if state.imprint~=nil then
+		assert(type(state.imprint)=="table" and state.imprint.imprint==nil,"Invalid nested imprint")
+		M.validateLegacyRolls(model,state.imprint)
+	end
+end
 function M.validateState(model,state)
 	assert(type(state) == "table" and type(state.affixes) == "table" and #state.affixes <= 6,"Invalid crafting state")
+	assert(state.socketLayoutUnknown==nil or type(state.socketLayoutUnknown)=="boolean","Invalid unknown socket layout marker")
+	assert(state.foreseeing==nil or type(state.foreseeing)=="boolean" and (not state.foreseeing or not state.destroyed and not state.mirrored and not state.corrupted and not state.veil),"Invalid foreseeing marker")
+	assert(not state.imprint or not state.imprint.foreseeing,"An imprint cannot retain modeled foreseeing")
+	for _,key in ipairs({"tinctureBaseExplicit","tinctureBasePrefix","tinctureBaseSuffix","tinctureBaseImplicit"}) do
+		assert(state[key]==nil or state[key]==true and model.item.type=="Tincture" and model.item.tinctureValues=="Final","Invalid tincture value provenance")
+	end
 	assert(state.rarity == "NORMAL" or state.rarity == "MAGIC" or state.rarity == "RARE","Invalid state rarity")
-	local groups,allowed,fractured={},{},{}
+	local groups,allowed,fractured,legacy={},{},{},{}
 	for _,entry in ipairs(model.mods) do allowed[entry.id]=true end
 	for _,entry in ipairs(model.bench) do allowed[entry.id]=true end
 	for _,entry in ipairs(model.essences) do allowed[entry.modId]=true end
-	for _,entry in ipairs(model.initial.affixes) do allowed[entry.id]=true; if entry.fractured then fractured[entry.id]=true end end
+	for _,id in ipairs(model.dropOnlyIds) do allowed[id]=true end
+	for _,id in ipairs(model.legacyDelveResistance or {}) do allowed[id]=true end
+	for _,entry in ipairs(model.initial.affixes) do allowed[entry.id]=true; if entry.fractured then fractured[entry.id]=true end;if entry.legacyLightRadius then legacy[entry.id]=entry end end
 	for _,entry in ipairs(state.affixes) do
 		local mod=assert(model.byId[entry.id],"Unknown state modifier")
 		assert(allowed[entry.id],"State modifier is unavailable on this base")
@@ -291,6 +1092,15 @@ function M.validateState(model,state)
 		assert((entry.id:match("^bench:") ~= nil) == (entry.crafted == true),"State crafted flag does not match its modifier")
 		assert(entry.crafted == nil or type(entry.crafted) == "boolean","Invalid crafted flag")
 		assert(entry.fractured == nil or type(entry.fractured) == "boolean","Invalid fractured flag")
+		assert(entry.legacyLightRadius == nil or type(entry.legacyLightRadius) == "boolean","Invalid legacy modifier flag")
+		assert(entry.description330 == nil or type(entry.description330) == "boolean" and model.descriptions330[entry.id],"Invalid 3.30 modifier description")
+		assert(not entry.legacyLightRadius or legacy[entry.id] and model.legacyLightRadius[entry.id],"Legacy Light Radius values must come from the starting item")
+		if entry.legacyLightRadius then
+			local initial=legacy[entry.id];local current=type(entry.range)=="table" and entry.range or {entry.range or 0.5}
+			local original=type(initial.range)=="table" and initial.range or {initial.range or 0.5}
+			assert(#current==#original,"Legacy Light Radius rolls cannot be changed without rerolling")
+			for index,value in ipairs(current) do assert(value==original[index],"Legacy Light Radius rolls cannot be changed without rerolling") end
+		end
 		assert(mod.type == "Prefix" or mod.type == "Suffix","Unsupported state modifier type")
 		assert(not groups[mod.group],"State has conflicting modifier groups"); groups[mod.group]=true
 		local ranges=type(entry.range) == "table" and entry.range or {entry.range or 0.5}
@@ -298,81 +1108,630 @@ function M.validateState(model,state)
 		for _,value in ipairs(ranges) do assert(type(value) == "number" and value == value and math.abs(value) <= 100,"Invalid modifier roll range") end
 	end
 	local c=counts(model,state)
-	local cap=state.rarity == "MAGIC" and 1 or 3
-	assert(c.Prefix <= cap and c.Suffix <= cap and (state.rarity ~= "NORMAL" or c.total == 0),"State exceeds rarity affix limits")
+	local caps=M.capacities(model,state)
+	assert(c.Prefix <= caps.Prefix and c.Suffix <= caps.Suffix and (state.rarity ~= "NORMAL" or c.total == 0),"State exceeds rarity affix limits")
 	return copyState(state)
 end
 
-function M.simulate(raw,recipe,options)
-	options=options or { }
-	recipe=M.validateRecipe(recipe)
-	local trials=integer(options.trials or 200,1,2000,"trial count")
-	local maxActions=integer(options.maxActions or 100,1,2000,"action budget")
-	assert(trials*maxActions <= 20000,"Use at most 20000 total budgeted actions per simulation")
-	local seed=integer(options.seed or 104729,1,2147483646,"seed")
-	if options.prices then assert(type(options.currency) == "string" and options.currency:match("%S"),"Specify a common currency for supplied prices") end
-	for key,value in pairs(options.prices or { }) do assert(type(key) == "string" and type(value) == "number" and value == value and value >= 0 and value <= 1e12,"Invalid currency price") end
-	local model=M.model(raw)
-	if options.initialState or recipe.initialState then model.initial=M.validateState(model,options.initialState or recipe.initialState) end
-	local available={ }
+function M.validateTargetAvailability(model,targets,steps)
+	local available,donorMods={},{}
 	for _,entry in ipairs(model.mods) do available[entry.id]=true end
 	for _,entry in ipairs(model.bench) do available[entry.id]=true end
 	for _,entry in ipairs(model.essences) do available[entry.modId]=true end
 	for _,entry in ipairs(model.initial.affixes) do available[entry.id]=true end
-	local function checkTargets(targets) for _,group in ipairs(targets) do for _,id in ipairs(group.anyOf) do assert(available[id],"Target modifier ID is unavailable for this base: "..id) end end end
-	checkTargets(recipe.targets)
-	for _,step in ipairs(recipe.steps) do if step.untilTargets then checkTargets(step.untilTargets) end end
-	local successes,totalCost,totalActions=0,0,0
+	for _,id in ipairs(model.dropOnlyIds or {}) do available[id]=true end
+	for _,id in ipairs(model.legacyDelveResistance or {}) do available[id]=true end
+	for id in pairs(model.special or {}) do available[id]=true end
+	for _,step in ipairs(steps or {}) do if step.beastLevel and (step.method=="beast_prefix_suffix" or step.method=="beast_suffix_prefix") then
+		local side=step.method=="beast_prefix_suffix" and "Suffix" or "Prefix"
+		for _,state in ipairs({model.initial,{influences={"shaper"}}}) do for _,entry in ipairs(M.beastSource(model,state,step.beastLevel)) do if entry.mod.type==side then available[entry.id]=true end end end
+	end end
+	for _,step in ipairs(steps or {}) do if (step.method=="recombine" or step.method=="recombine_predictable") and step.donorItem then
+		local donor=M.model(step.donorItem)
+		for _,entries in ipairs({donor.mods,donor.initial.affixes}) do for _,entry in ipairs(entries) do
+			available[entry.id]=true
+			if not model.byId[entry.id] then donorMods[entry.id]=donorMods[entry.id] or donor.byId[entry.id] end
+		end end
+	end end
+	local function check(groups) for _,group in ipairs(groups) do for _,id in ipairs(group.anyOf) do
+		assert(available[id],"Target modifier ID is unavailable for this base: "..id)
+		local modifier=model.byId[id] or donorMods[id]
+		if modifier then assert(require("Modules.CraftingModifiers").scope(modifier)==(group.scope or "explicit"),"Target modifier scope does not match its group: "..id) end
+		if group.minBaseValue~=nil or group.maxBaseValue~=nil then
+			local mod=model.byId[id];assert(mod,"This modifier needs its own base-roll model")
+			local why=M.baseRollReason(mod,group.baseValueComponent);assert(not why,(why or "Unsupported base roll")..": "..id)
+		end
+	end end end
+	check(targets)
+	for _,step in ipairs(steps or {}) do if step.untilTargets then check(step.untilTargets) end end
+end
+
+function M.simulate(raw,recipe,options)
+	options=options or { }
+	for _,key in ipairs({"prices","actionPrices"}) do if options[key]~=nil then assert(type(options[key])=="table","Invalid supplied prices") end end
+	local suppliedPrices=options.prices and next(options.prices)~=nil or false
+	local suppliedActions=options.actionPrices and next(options.actionPrices)~=nil or false
+	if options.priceBook or options.prices or options.actionPrices then options=copyTable(options) end
+	if options.priceBook then
+		options.priceBook=require("Modules.CraftingPrices").validate(options.priceBook)
+		options.currency=options.currency or options.priceBook.currency
+	end
+	recipe=M.validateRecipe(recipe)
+	local conflict=M.recipeConflict(recipe);assert(not conflict,conflict)
+	local observationReason=M.predictableRecipeObservationReason(recipe)
+	assert(not observationReason,observationReason)
+	local trials=integer(options.trials or 200,1,2000,"trial count")
+	local baseCost=options.baseCost or 0
+	assert(type(baseCost) == "number" and baseCost == baseCost and baseCost >= 0 and baseCost <= 1e12,"Invalid starting item cost")
+	assert(baseCost == 0 or type(options.currency) == "string" and #options.currency > 0,"Name the currency for the starting item cost")
+	local retain=integer(options.retainSuccesses or 0,0,100,"retained successful items")
+	local maxActions=integer(options.maxActions or 100,1,2000,"action budget")
+	assert(trials*maxActions <= 20000,"Use at most 20000 total budgeted actions per simulation")
+	local seed=integer(options.seed or 104729,1,2147483646,"seed")
+	if suppliedPrices or suppliedActions then assert(type(options.currency) == "string" and options.currency:match("%S"),"Specify a common currency for supplied prices") end
+	for key,value in pairs(options.prices or { }) do assert(type(key) == "string" and type(value) == "number" and value == value and value >= 0 and value <= 1e12,"Invalid currency price") end
+	local actionPriceCount=0
+	for key,value in pairs(options.actionPrices or {}) do
+		assert(type(key)=="string" and #key>0 and #key<=1024 and not key:find("[%c]") and type(value)=="number" and value==value and value>=0 and value<=1e12,"Invalid action price")
+		actionPriceCount=actionPriceCount+1
+	end
+	assert(actionPriceCount<=100,"Use at most 100 action price overrides")
+	local model=M.model(raw)
+	if options.initialState or recipe.initialState then model.initial=M.validateState(model,options.initialState or recipe.initialState) end
+	local mayTransform=false
+	if #require("Modules.CraftingJewelCorruption").candidates(model.item.baseName)>0 then
+		for _,step in ipairs(recipe.steps) do if step.method=="vaal" then mayTransform=true;break end end
+	end
+	if mayTransform then
+		local function checkUniqueRequirements(requirements)
+			requirements=requirements or {}
+			for key in pairs(requirements) do assert(key=="corrupted" or key=="twiceCorrupted" or key=="mirrored" or key=="uniqueName" or key=="uniqueModifier" or key=="uniqueModifiers","This property target cannot yet be checked for a transformed unique jewel: "..key) end
+			if requirements.uniqueModifier or requirements.uniqueModifiers then
+				assert(requirements.uniqueName,"Choose a specific unique jewel before setting its roll target")
+				local jewel=require("Modules.CraftingJewelCorruption");local item=jewel.item(model.item.baseName,requirements.uniqueName,model.item.itemLevel,104729)
+				jewel.matchesRolls(item,requirements)
+			end
+		end
+		if recipe.rarity~="RARE" and recipe.rarity~="MAGIC" then checkUniqueRequirements(recipe.requirements) end
+		for _,step in ipairs(recipe.steps) do checkUniqueRequirements(step.untilRequirements) end
+	end
+	validateCorruptionSocketGoals(model,recipe)
+	if options.priceBook or options.prices then
+		options.prices=require("Modules.CraftingPrices").forSimulation(options.priceBook,options.currency,M.context(model,model.initial),options.prices)
+	end
+	M.validateTargetAvailability(model,recipe.targets,recipe.steps)
+	for _,step in ipairs(recipe.steps) do
+		if (step.method == "ducat_kishara" or step.method == "ducat_katakohi") and not step.allflame then step.allflame={auto=true,upgradeTier=2} end
+		if step.allflame and not step.allflame.preferredTargets and #recipe.targets > 0 then step.allflame.preferredTargets=copyTable(step.untilTargets or recipe.targets) end
+	end
+	local successes,totalCost,totalActions,totalExecuted,failedTransitionTrials=0,0,0,0,0
 	local spent,missing,errors,times={},{},{},{}
+	local resourceUsage={}
+	local pricing=require("Modules.CraftingPrices")
+	local actionPriceUses=0
+	local actionHistogram,executedHistogram,costHistogram,costSamples,successfulCosts,routes={},{},{},{},{},{}
+	local budgetExhausted,destroyedTrials,uniqueTrials=0,0,0
+	local uniqueOutcomes={}
+	local recovery={restarts=0,stopped=0,salvaged=0}
 	local sample,sampleSuccess
+	local retained,affixDistribution,propertyDistribution={},{},{affixes={},fractured={},intangibility={},memoryStrands={}}
 	for trial=1,trials do
+		if options.checkpoint then options.checkpoint({trial=trial,trials=trials,successes=successes}) end
 		local state=copyState(model.initial)
 		local random=rng(encounter.seed(seed,trial,31))
-		local at,actions,cost=1,0,0
-		while at <= #recipe.steps and actions < maxActions and not M.matches(state,recipe.targets,recipe.rarity) do
+		local at,actions,cost,trialExecuted=1,0,baseCost,0
+		local trialUnpriced,trialRejected=false,false
+		while at <= #recipe.steps and actions < maxActions and not state.destroyed and not state.uniqueTitle and (options.forceFirstAction and actions == 0 or not M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups)) do
 			local step=recipe.steps[at]
-			local success=false
+			local route=routes[at] or {visits=0,success=0,failure=0,executed=0,pricedCost=0,unpricedComponents=0};routes[at]=route;route.visits=route.visits+1
+			local success,interrupted=false,false
 			for _=1,(step.maxAttempts or 1) do
-				if actions >= maxActions then break end
+				if actions >= maxActions then interrupted=true;break end
+				if options.checkpoint then options.checkpoint({trial=trial,trials=trials,actions=actions,successes=successes}) end
 				actions=actions+1
+				local before=state
 				local ok,nextState=pcall(M.action,model,state,step,random)
-				if not ok then local message=tostring(nextState):match("[^:]+$") or tostring(nextState); errors[message]=(errors[message] or 0)+1; break end
+				if not ok then local message=tostring(nextState):match("[^:]+$") or tostring(nextState); errors[message]=(errors[message] or 0)+1;trialRejected=true; break end
 				state=nextState
-				local key=priceKey(step); spent[key]=(spent[key] or 0)+1
-			local price=options.prices and options.prices[key]
-				if price then assert(type(price) == "number" and price >= 0 and price < math.huge,"Invalid currency price"); cost=cost+price else missing[key]=true end
-				if not step.untilTargets or M.matches(state,step.untilTargets) then success=true; break end
+				trialExecuted=trialExecuted+1
+				route.executed=route.executed+1
+				totalExecuted=totalExecuted+1
+				local setupKey=(M.priceKey or priceKey)(step)
+				-- Prefer a specific quote while retaining older generic service prices.
+				local legacyKey=M.genericPriceKey(step)
+				local actionKey=setupKey
+				local actionPrice=options.actionPrices and options.actionPrices[setupKey]
+				if actionPrice==nil and legacyKey and options.actionPrices then actionPrice=options.actionPrices[legacyKey];if actionPrice~=nil then actionKey=legacyKey end end
+				local serviceKey=options.prices and options.prices[setupKey]~=nil and setupKey or legacyKey and options.prices and options.prices[legacyKey]~=nil and legacyKey or nil
+				if actionPrice~=nil then actionPriceUses=actionPriceUses+1 end
+				local ingredients=M.components and M.components(step,before,model) or {[setupKey]=1}
+				local context=M.context(model,before)
+				for key,amount in pairs(ingredients) do
+					local canonical=pricing.key(key,context)
+					local entry=resourceUsage[canonical]
+					if not entry then
+						local name,_,kind=pricing.describe(canonical,context,step)
+						entry={key=canonical,name=name,kind=kind=="Whole action" and "service" or "resource",amount=0};resourceUsage[canonical]=entry
+					end
+					entry.amount=entry.amount+amount
+				end
+				local components=(actionPrice~=nil or serviceKey) and {[actionPrice~=nil and actionKey or serviceKey]=1} or ingredients
+				-- Resource quotes for the service or currency do not include the
+				-- consumed donor. Only an explicit whole-action price includes it.
+				if actionPrice==nil and components~=ingredients then for key,amount in pairs(ingredients) do if key:match("^donor:") then components[key]=amount end end end
+				for key,amount in pairs(components) do
+					spent[key]=(spent[key] or 0)+amount
+					local price=actionPrice~=nil and actionPrice or options.prices and options.prices[key]
+					if price then local value=price*amount;cost=cost+value;route.pricedCost=route.pricedCost+value else missing[key]=true;trialUnpriced=true;route.unpricedComponents=route.unpricedComponents+1 end
+				end
+				if state.destroyed then break end
+				if state.uniqueTitle then
+					success=M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups) or not (step.untilTargets or step.untilRequirements) or M.matches(state,step.untilTargets or {},nil,model,step.untilRequirements,step.untilRequiredGroups)
+					break
+				end
+				if M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups) then success=true;break end
+				if not (step.untilTargets or step.untilRequirements) or M.matches(state,step.untilTargets or {},nil,model,step.untilRequirements,step.untilRequiredGroups) then success=true; break end
 			end
-			at=success and (step.onSuccess or at+1) or (step.onFailure or at+1)
+			if interrupted then break end
+			route[success and "success" or "failure"]=route[success and "success" or "failure"]+1
+			if not success and step.onFailureAction=="restart" then
+				if actions<maxActions then recovery.restarts=recovery.restarts+1;state=copyState(model.initial);cost=cost+baseCost end;at=1
+			elseif not success and (step.onFailureAction=="stop" or step.onFailureAction=="salvage") then
+				local key=step.onFailureAction=="stop" and "stopped" or "salvaged";recovery[key]=recovery[key]+1;at=#recipe.steps+1
+			else at=success and (step.onSuccess or at+1) or (step.onFailure or at+1) end
 		end
-		local hit=M.matches(state,recipe.targets,recipe.rarity)
+		if trialRejected then failedTransitionTrials=failedTransitionTrials+1 end
+		local hit=(not options.forceFirstAction or trialExecuted>0) and M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups)
 		if hit then successes=successes+1; times[#times+1]=actions end
+		if hit and #retained < retain then retained[#retained+1]={trial=trial,actions=actions,cost=not trialUnpriced and cost or nil,state=copyTable(state),itemText=M.itemText(model,state)} end
+		local fractures=0
+		for _,entry in ipairs(state.affixes) do
+			local bucket=affixDistribution[entry.id] or {trials=0,successes=0,fractured=0,crafted=0};affixDistribution[entry.id]=bucket
+			bucket.trials=bucket.trials+1;if hit then bucket.successes=bucket.successes+1 end
+			if entry.fractured then bucket.fractured=bucket.fractured+1;fractures=fractures+1 end
+			if entry.crafted then bucket.crafted=bucket.crafted+1 end
+		end
+		if not state.destroyed and not state.uniqueTitle then
+			for key,value in pairs({affixes=#state.affixes,fractured=fractures,intangibility=state.intangibility or 0,memoryStrands=state.memoryStrands or 0}) do
+				local histogram=propertyDistribution[key];histogram[value]=(histogram[value] or 0)+1
+			end
+		end
+		if state.destroyed then destroyedTrials=destroyedTrials+1 end
+		if state.uniqueTitle then
+			uniqueTrials=uniqueTrials+1
+			local bucket=uniqueOutcomes[state.uniqueTitle] or {name=state.uniqueTitle,trials=0,successes=0};uniqueOutcomes[state.uniqueTitle]=bucket
+			bucket.trials=bucket.trials+1;if hit then bucket.successes=bucket.successes+1 end
+		end
+		if not hit and not state.destroyed and not state.uniqueTitle and at <= #recipe.steps and actions >= maxActions then budgetExhausted=budgetExhausted+1 end
+		local bucket=actionHistogram[actions] or {actions=actions,trials=0,successes=0};actionHistogram[actions]=bucket;bucket.trials=bucket.trials+1;if hit then bucket.successes=bucket.successes+1 end
+		local executed=executedHistogram[trialExecuted] or {actions=trialExecuted,trials=0,successes=0};executedHistogram[trialExecuted]=executed;executed.trials=executed.trials+1;if hit then executed.successes=executed.successes+1 end
+		costSamples[#costSamples+1]=cost;if hit then successfulCosts[#successfulCosts+1]=cost end
+		local costBucket=costHistogram[cost] or {cost=cost,trials=0,successes=0};costHistogram[cost]=costBucket;costBucket.trials=costBucket.trials+1;if hit then costBucket.successes=costBucket.successes+1 end
 		if not sample or hit and not sampleSuccess then sample,sampleSuccess=state,hit end
 		totalActions=totalActions+actions; totalCost=totalCost+cost
 	end
 	local low,high=encounter.wilson(successes,trials)
-	assert(next(spent) or successes > 0,"Recipe could not execute a supported action; inspect its starting rarity and open affixes")
+	local function quantiles(values)
+		if #values == 0 then return nil end
+		table.sort(values)
+		local result={};for _,percent in ipairs({10,25,50,75,90,95,99}) do result["p"..percent]=values[math.max(1,math.ceil(#values*percent/100))] end
+		return result
+	end
+	local distribution={};for _,bucket in pairs(actionHistogram) do distribution[#distribution+1]=bucket end;table.sort(distribution,function(a,b) return a.actions < b.actions end)
+	local executedDistribution={};for _,bucket in pairs(executedHistogram) do executedDistribution[#executedDistribution+1]=bucket end;table.sort(executedDistribution,function(a,b) return a.actions < b.actions end)
+	local uniqueDistribution={};for _,bucket in pairs(uniqueOutcomes) do uniqueDistribution[#uniqueDistribution+1]=bucket end;table.sort(uniqueDistribution,function(a,b) return a.name<b.name end)
+	local usage={};for _,entry in pairs(resourceUsage) do entry.meanPerTrial=entry.amount/trials;usage[#usage+1]=entry end;table.sort(usage,function(a,b) return a.key<b.key end)
+	assert(totalExecuted > 0 or successes > 0,next(errors) or "Recipe could not execute a supported action; inspect its starting rarity and open affixes")
 	local result={trials=trials,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,seed=seed,maxActions=maxActions,
-		meanActions=totalActions/trials,currencySpent=spent,unpriced=missing,transitionErrors=errors,limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=M.toItem(model,sample).raw,sampleState=sample,
-		engineVersion=1,sourceVersion=launch.versionNumber,treeVersion=latestTreeVersion,costCurrency=options.currency or "supplied price units"}
-	if not next(missing) then result.meanCost=totalCost/trials; result.costPerSuccess=successes > 0 and totalCost/successes or nil end
-	return result
+		meanActions=totalActions/trials,meanExecutedActions=totalExecuted/trials,failedAttempts=totalActions-totalExecuted,failedTransitionTrials=failedTransitionTrials,executedActionDistribution=executedDistribution,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe,model)) or M.recipeWarnings(recipe,model),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=M.itemText(model,sample),sampleState=sample,
+		engineVersion=2,dataPatch=M.dataPatch,sourceVersion=launch.versionNumber,costCurrency=options.currency or "supplied price units",
+		baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,affixDistribution=affixDistribution,propertyDistribution=propertyDistribution,actionDistribution=distribution,successfulActionQuantiles=quantiles(times),routeCounts=routes,budgetExhausted=budgetExhausted,destroyedTrials=destroyedTrials,uniqueTrials=uniqueTrials,uniqueDistribution=uniqueDistribution}
+	if model.initial.socketLayoutUnknown then unknownSocketWarning(result.warnings) end
+	if failedTransitionTrials>0 then result.warnings[#result.warnings+1]={code="rejected_model_actions",message=string.format("%d of %d trials included a model-rejected action. Rejected attempts count toward the action budget and follow failure routes, but are not charged resources. Check the failure reasons; actual game behavior may differ.",failedTransitionTrials,trials)} end
+	if not next(missing) then
+		result.meanCost=totalCost/trials;result.costPerSuccess=successes>0 and totalCost/successes or nil;result.spendingQuantiles=quantiles(costSamples);result.successfulSpendingQuantiles=quantiles(successfulCosts)
+		result.costDistribution={};for _,bucket in pairs(costHistogram) do result.costDistribution[#result.costDistribution+1]=bucket end;table.sort(result.costDistribution,function(a,b) return a.cost<b.cost end)
+	end
+	if options.priceBook then result.priceSource=options.priceBook.source;result.priceQuotedAt=options.priceBook.quotedAt end
+	result.stepPriceKeys={}
+	for i,step in ipairs(recipe.steps) do result.stepPriceKeys[#result.stepPriceKeys+1]={step=i,method=step.method,priceKey=(M.priceKey or priceKey)(step)} end
+	result.priceOverridesSupplied=suppliedPrices or suppliedActions
+	result.resourcePriceOverridesSupplied=suppliedPrices
+	result.actionPriceOverridesSupplied=suppliedActions;result.actionPriceOverridesApplied=actionPriceUses
+	result.recovery=recovery
+	return M.withTreeContext(result,options.treeVersion)
 end
 
-function M.perform(raw,action,seed,initialState)
+function M.perform(raw,action,seed,initialState,treeVersion)
 	local model=M.model(raw)
 	if initialState then model.initial=M.validateState(model,initialState) end
-	local state=M.action(model,model.initial,action,rng(encounter.seed(integer(seed or 104729,1,2147483646,"seed"),1,31)))
-	return {itemText=M.toItem(model,state).raw,state=state,limitations=copyTable(M.limits)}
+	local state,details=M.action(model,model.initial,action,rng(encounter.seed(integer(seed or 104729,1,2147483646,"seed"),1,31)))
+	local warnings=M.actionWarnings(action,model)
+	if state.foreseeing or model.initial.foreseeing then warnings[#warnings+1]={code="foreseeing_sample",message="Foreseeing is modeled as a marker. Previewed outcomes are seeded examples, not the actual game's hidden future. A successful modeled craft consumes the marker; no-change and special interactions are unverified."} end
+	if model.initial.veil and (action.method=="bench" or action.method=="remove_crafted") then veilBenchWarning(warnings) end
+	if state.socketLayoutUnknown then unknownSocketWarning(warnings) end
+	if M.hasPartialLock(M.context(model,model.initial),model.initial) then partialWarning(warnings) end
+	return M.withTreeContext({priceKey=(M.priceKey or priceKey)(action),itemText=M.itemText(model,state),state=state,originalItemText=action.method=="mirror" and M.itemText(model,model.initial) or nil,originalState=action.method=="mirror" and copyTable(model.initial) or nil,choices=details and details.choices,allflame=details and details.allflame,gwennen=details and details.gwennen,dataPatch=M.dataPatch,warnings=warnings,limitations=copyTable(M.limits)},treeVersion)
 end
 
 function M.catalog(raw,query,limit)
 	local model=M.model(raw)
 	query=(query or ""):lower(); limit=limit or 50
-	local result={methods=copyTable(M.methods),modifiers={},bench={},essences={},limitations=copyTable(M.limits)}
+	local result={methods=copyTable(M.methods),methodWarnings={},modifiers={},bench={},essences={},limitations=copyTable(M.limits)}
+	local uniqueCandidates=require("Modules.CraftingJewelCorruption").candidates(model.item.baseName)
+	if #uniqueCandidates>0 then
+		result.uniqueCorruption={names={},note="Bundled modeled candidates; actual eligibility and selection weights are unverified."}
+		for _,candidate in ipairs(uniqueCandidates) do
+			result.uniqueCorruption.names[#result.uniqueCorruption.names+1]=candidate.title
+			if query==candidate.title:lower() then
+				local jewel=require("Modules.CraftingJewelCorruption");local item=jewel.item(model.item.baseName,candidate.title,model.item.itemLevel,104729)
+				result.uniqueCorruption.rollTargets=jewel.rollOptions(item)
+			end
+		end
+	end
+	for _,method in ipairs(M.methods) do local warnings=M.actionWarnings({method=method},model);if #warnings>0 then result.methodWarnings[method]=warnings end end
 	for _,entry in ipairs(model.mods) do if #result.modifiers < limit and (entry.id.." "..table.concat(entry.mod," / ")):lower():find(query,1,true) then result.modifiers[#result.modifiers+1]={id=entry.id,text=table.concat(entry.mod," / "),level=entry.mod.level,type=entry.mod.type,weight=entry.weight,group=entry.mod.group} end end
 	for _,entry in ipairs(model.bench) do if #result.bench < limit and (entry.id.." "..table.concat(entry.mod," / ")):lower():find(query,1,true) then result.bench[#result.bench+1]={id=entry.id,text=table.concat(entry.mod," / "),type=entry.mod.type} end end
 	for _,entry in ipairs(model.essences) do if #result.essences < limit and entry.name:lower():find(query,1,true) then result.essences[#result.essences+1]=copyTable(entry) end end
 	return result
+end
+M.rollRange=rollRange
+function M.capacities(model,state)
+ local prefix,suffix=3,3
+ if model.item.type == "Jewel" then prefix,suffix=2,2 end
+ if model.item.type == "Jewel" and model.item.base.subType == "Abyss" and state.corrupted then prefix,suffix=3,3 end
+ if model.item.type == "Flask" or model.item.type == "Tincture" then prefix,suffix=1,1 end
+ if state.rarity == "MAGIC" then prefix,suffix=1,1 end
+ local active={}
+ if state.corruptedImplicits or state.implicits then
+  for _,line in ipairs(retainedBaseLines(model,state)) do active[#active+1]=line end
+  for _,index in ipairs(state.synthRetained or {}) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do active[#active+1]=line end end
+  for _,list in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(list) do
+   for _,line in ipairs(M.rolledLines(M.entryMod(model,entry),entry.range)) do active[#active+1]={line=line} end
+  end end
+ elseif state.synthRolls then for index in ipairs(model.synthesisGroups) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do active[#active+1]=line end end
+ else active=model.item.implicitModLines or {} end
+ for _,line in ipairs(active) do
+  local value=tonumber(line.line:match("(%d+) additional Prefix"));if value then prefix=prefix+value end
+  value=tonumber(line.line:match("(%d+) fewer Prefix"));if value then prefix=prefix-value end
+  value=tonumber(line.line:match("(%d+) additional Suffix"));if value then suffix=suffix+value end
+  value=tonumber(line.line:match("(%d+) fewer Suffix"));if value then suffix=suffix-value end
+ end
+ prefix,suffix=math.max(0,prefix),math.max(0,suffix)
+ return {Prefix=prefix,Suffix=suffix,total=prefix+suffix}
+end
+require("Modules.CraftingAdvanced").extend(M,{counts=counts,flags=flags,clear=clear,protected=protected,selectPartialLocks=selectPartialLocks,clearPartialLocks=clearPartialLocks,add=add,integer=integer,priceKey=priceKey})
+local allflameConfigurationReason=M.configurationReason
+local cachedDonorText,cachedDonorModel
+function M.configurationReason(model,state,craft)
+	if craft.method=="rog_reroll" then
+		local rog=require("Modules.CraftingRog")
+		if not pcall(rog.validate,craft) then return "Configure an observed Rog offer and valid artifact cost in Craft settings." end
+		local reason=rog.readiness(M,M.context(model,state),state,craft);if reason then return reason end
+	end
+	if craft.method=="bench_flask_enchant" and not require("Modules.CraftingFlaskEnchants").benchCost(craft.enchantId) then return "Choose an available flask bench enchantment." end
+	if craft.method=="gwennen" then
+		local valid=pcall(require("Modules.CraftingGwennen").validate,craft)
+		if not valid then return "Configure a supported Gwennen pair and valid artifact cost in Craft settings." end
+	end
+	if craft.method=="awakener" or craft.method=="recombine" or craft.method=="recombine_predictable" then
+		if type(craft.donorItem)~="string" or not craft.donorItem:match("%S") then return "Configure a donor item in Craft settings." end
+		if cachedDonorText~=craft.donorItem then
+			cachedDonorText=craft.donorItem;local ok,donor=pcall(M.model,craft.donorItem);cachedDonorModel=ok and donor or nil
+		end
+		if not cachedDonorModel then return "The donor item could not be read. Choose a valid donor in Craft settings." end
+		if craft.method=="awakener" then
+			local reason=M.awakenerDonorReason(M.context(model,state),state,cachedDonorModel)
+			if reason then return reason..". Update the donor in Craft settings." end
+		else
+			local donor=cachedDonorModel
+			if not M.sameRecombinationClass(M.context(model,state).item,donor.item) then return "Recombination requires the same item class. Update the donor in Craft settings." end
+			if donor.initial.corrupted or donor.initial.mirrored or donor.item.synthesised then return "Donor must be uncorrupted, non-mirrored and non-synthesised. Update the donor in Craft settings." end
+			if craft.method=="recombine_predictable" then
+				if donor.initial.destroyed or donor.initial.veil then return "Use a donor without a pending unveil. Update the donor in Craft settings." end
+				if M.hasPartialLock(donor,donor.initial) then return "Predictable recombination with a partial affix lock on the donor is not yet modeled. Update the donor in Craft settings." end
+			end
+		end
+	end
+	return allflameConfigurationReason(model,state,craft)
+end
+require("Modules.CraftingCalculator").extend(M)
+do
+	local calculate=M.calculate
+	function M.calculate(raw,craft,targets,initialState,options)
+		if socketGoal(options and options.requirements) and (craft.method=="vaal" or craft.method=="gwennen" and (craft.firstOutcome==1012 or craft.secondOutcome==1012)) then
+			local checkedModel=M.model(raw);if initialState then checkedModel.initial=M.validateState(checkedModel,initialState) end
+			validateCorruptionSocketGoals(checkedModel,{steps={craft},requirements=options.requirements})
+		end
+		local result=calculate(raw,craft,targets,initialState,options)
+		if not result.warnings or not result.sampled and targets and #targets>0 then
+			local model=M.model(raw);if initialState then model.initial=M.validateState(model,initialState) end
+			if not result.sampled and targets and #targets>0 then M.validateTargetAvailability(model,targets,{craft}) end
+			if not result.warnings then result.warnings=M.actionWarnings(craft,model) end
+		end
+		if initialState then for _,entry in ipairs(initialState.affixes or {}) do if entry.id:match("^bench:partial%-") then partialWarning(result.warnings);break end end end
+		if initialState and initialState.socketLayoutUnknown then unknownSocketWarning(result.warnings) end
+		if raw:find("Modifier cannot be changed",1,true) or raw:find("Modifiers cannot be changed",1,true) then partialWarning(result.warnings) end
+		return M.withTreeContext(result,options and options.treeVersion)
+	end
+	local catalog=M.catalog
+	function M.catalog(raw,query,limit,initialState,treeVersion)
+		local result=catalog(raw,query,limit,initialState)
+		result.gwennenReference=require("Modules.CraftingGwennenReference").search(query,limit)
+		return M.withTreeContext(result,treeVersion)
+	end
+	local optimize=M.optimizeFossils
+	function M.optimizeFossils(raw,targets,options)
+		return M.withTreeContext(optimize(raw,targets,options),options and options.treeVersion)
+	end
+end
+-- Extensions register state prerequisites once for both execution and browsing.
+local partialLockActions={hinekora_lock=true,mirror=true,veiled_chaos=true,recombine=true,bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true,beast_imprint=true,beast_talisman_imprint=true,
+	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,beast_max_sockets=true,ducat_ukatoa=true,ducat_katakohi=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
+	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,bench_remove_enchant=true,bench_flask_enchant=true,eldritch_implicit=true,conflict=true}
+local socketDependent={socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,beast_max_sockets=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,vaal=true,locus=true,binding=true,gwennen=true,fossil=true,ducat_katakohi=true,recombine=true,recombine_predictable=true}
+function M.methodReason(model,state,method)
+	if state.uniqueTitle then return "Further crafting of transformed unique jewels is not yet modeled. Undo or reset to continue." end
+	if method=="vaal" and M.unrecognizedGildedBaseReason then local reason=M.unrecognizedGildedBaseReason(M.context(model,state),state);if reason then return reason end end
+	if state.socketLayoutUnknown and socketDependent[method] then return "Set the unknown socket layout before using this action." end
+	if M.hasPartialLock(M.context(model,state),state) and not partialLockActions[method] then
+		return "This action is not yet modeled with partial affix locks."
+	end
+	local check=M.methodChecks[method]
+	if check then return check(M.context(model,state),state) end
+end
+local transition=M.action
+local function abyssModifier(state)
+	for _,entry in ipairs(state.affixes or {}) do if entry.id=="DelveAbyssJewelSocket1" then return true end end
+	return false
+end
+-- Socket placement and restoration are explicit assumptions; keep the actual
+-- simulated socket layout consistent with the modifier instead of retaining a
+-- false full link. Existing unusual layouts are not rewritten on import.
+function M.syncAbyssSocket(before,after)
+	if after.destroyed or abyssModifier(before)==abyssModifier(after) then return end
+	local sockets=after.sockets or {};after.sockets=sockets
+	local group=0;for _,socket in ipairs(sockets) do group=math.max(group,socket.group+1) end
+	if abyssModifier(after) then
+		for _,socket in ipairs(sockets) do if socket.color=="A" then return end end
+		if #sockets==0 then sockets[1]={color="A",group=group}
+		else sockets[#sockets]={color="A",group=group} end
+	else
+		local replaced=false
+		for i=#sockets,1,-1 do if sockets[i].color=="A" then sockets[i]={color="W",group=group};replaced=true;break end end
+		if not replaced then return end
+	end
+	local previous,normalized=nil,-1
+	for _,socket in ipairs(sockets) do local old=socket.group;if old~=previous then normalized=normalized+1;previous=old end;socket.group=normalized end
+	return true
+end
+function M.action(model,state,craft,random)
+	if type(state)=="table" and type(craft)=="table" then local reason=M.methodReason(model,state,craft.method);assert(not reason,reason) end
+	local result,details=transition(model,state,craft,random)
+	-- A successful modeled action consumes an existing Lock. A Gwennen Lock
+	-- outcome applies a fresh marker; the game seed is never inferred here.
+	if state.foreseeing and craft.method~="hinekora_lock" and not (details and details.gwennen and details.gwennen.outcome==1002) then
+		result.foreseeing=nil
+		if result.imprint then result.imprint.foreseeing=nil end
+		if details and details.choices then for _,choice in ipairs(details.choices) do if choice.state then choice.state.foreseeing=nil;if choice.state.imprint then choice.state.imprint.foreseeing=nil end;choice.itemText=M.itemText(model,choice.state) end end end
+	end
+	-- Mark each outcome before exposing it: Allflame can return several
+	-- alternatives, including the selected state and its serialized item text.
+	local function markTincture(candidate)
+		if not candidate or model.item.type~="Tincture" or model.item.tinctureValues~="Final" then return false end
+		local changed=false
+		local function mark(key) if not candidate[key] then candidate[key]=true;changed=true end end
+		if craft.method=="alteration" or craft.method=="transmute" then
+			local f=flags(model,state);local locked=f.prefixes or f.suffixes or M.hasPartialLock(model,state)
+			for _,entry in ipairs(state.affixes or {}) do if entry.fractured then locked=true end end
+			if not locked then mark("tinctureBaseExplicit") end
+		elseif craft.method=="augmentation" then
+			local existing={};for _,entry in ipairs(state.affixes or {}) do existing[entry.id]=true end
+			for _,entry in ipairs(candidate.affixes or {}) do if not existing[entry.id] then
+				local side=model.byId[entry.id].type
+				if side=="Prefix" then mark("tinctureBasePrefix") elseif side=="Suffix" then mark("tinctureBaseSuffix") end
+			end end
+		elseif craft.method=="blessed" and candidate.baseImplicitRanges and not candidate.implicits and not model.item.synthesised then
+			mark("tinctureBaseImplicit")
+		elseif craft.method=="divine" and not M.hasPartialLock(model,state) then
+			local f=flags(model,state)
+			for _,entry in ipairs(state.affixes or {}) do local mod=model.byId[entry.id];if not protected(entry,mod,f) then
+				if mod.type=="Prefix" then mark("tinctureBasePrefix") elseif mod.type=="Suffix" then mark("tinctureBaseSuffix") end
+			end end
+		end
+		return changed
+	end
+	local resultMarked=markTincture(result)
+	local function startingState(candidate)
+		if not candidate.destroyed and candidate.baseItem and (craft.method=="recombine" or craft.method=="recombine_predictable") then return M.context(model,candidate).initial end
+		return state
+	end
+	local updated=M.syncAbyssSocket(startingState(result),result)
+	if details and details.choices then for _,choice in ipairs(details.choices) do
+		local marked=choice.state and markTincture(choice.state)
+		local synced=choice.state and M.syncAbyssSocket(startingState(choice.state),choice.state)
+		if choice.state and (marked or resultMarked and choice.state==result or synced or updated and choice.state==result) then choice.itemText=M.itemText(model,choice.state) end
+	end end
+	return result,details
+end
+
+-- Unique corruption outcomes have their own identity and rolls; ordinary
+-- jewel modifier IDs cannot be used to reconstruct them.
+local validateOrdinaryState,toOrdinaryItem,ordinaryMatches=M.validateState,M.toItem,M.matches
+function M.validateState(model,state)
+	if type(state)=="table" and state.uniqueTitle then return require("Modules.CraftingJewelCorruption").validateState(model,state) end
+	local inheritEldritch=type(state)=="table" and not state.destroyed and state.implicits==nil and not state.corruptedImplicits
+		and not state.vendorImplicit and not state.baseImplicitRanges and model.initial.implicits~=nil
+	-- Omitted properties inherit the starting item; explicit empty sockets,
+	-- zero quality and false mirrored state remain deliberate overrides.
+	-- Never infer a layout after an outcome that marked it unknown.
+	if type(state)=="table" and (state.tinctureBaseExplicit==nil and model.initial.tinctureBaseExplicit or state.tinctureBasePrefix==nil and model.initial.tinctureBasePrefix or state.tinctureBaseSuffix==nil and model.initial.tinctureBaseSuffix or state.tinctureBaseImplicit==nil and model.initial.tinctureBaseImplicit or state.sockets==nil and not state.socketLayoutUnknown or state.quality==nil or state.mirrored==nil and model.initial.mirrored
+		or state.influences==nil and #(model.initial.influences or {})>0 or state.memoryStrands==nil and (model.initial.memoryStrands or 0)>0
+		or state.catalyst==nil and state.catalystQuality==nil and model.initial.catalyst or inheritEldritch) then
+		state=copyTable(state)
+		if state.tinctureBaseExplicit==nil and model.initial.tinctureBaseExplicit then state.tinctureBaseExplicit=true end
+		if state.tinctureBasePrefix==nil and model.initial.tinctureBasePrefix then state.tinctureBasePrefix=true end
+		if state.tinctureBaseSuffix==nil and model.initial.tinctureBaseSuffix then state.tinctureBaseSuffix=true end
+		if state.tinctureBaseImplicit==nil and model.initial.tinctureBaseImplicit then state.tinctureBaseImplicit=true end
+		if state.sockets==nil and not state.socketLayoutUnknown then state.sockets=copyTable(model.initial.sockets or {}) end
+		if state.quality==nil then state.quality=model.initial.quality end
+		if state.mirrored==nil and model.initial.mirrored then state.mirrored=true end
+		if state.influences==nil and #(model.initial.influences or {})>0 then state.influences=copyTable(model.initial.influences) end
+		if state.memoryStrands==nil and (model.initial.memoryStrands or 0)>0 then state.memoryStrands=model.initial.memoryStrands end
+		if state.catalyst==nil and state.catalystQuality==nil and model.initial.catalyst then state.catalyst=model.initial.catalyst;state.catalystQuality=model.initial.catalystQuality end
+		if inheritEldritch then
+			state.implicits=copyTable(model.initial.implicits)
+			if state.corrupted~=false and model.initial.corrupted and model.initial.corruptedImplicits then state.corruptedImplicits=copyTable(model.initial.corruptedImplicits) end
+		end
+	end
+	return validateOrdinaryState(model,state)
+end
+function M.toItem(model,state)
+	if state.uniqueTitle then
+		local valid=require("Modules.CraftingJewelCorruption").validateState(model,state)
+		return require("Modules.CraftingJewelCorruption").item(model.item.baseName,valid.uniqueTitle,model.item.itemLevel,valid.uniqueSeed)
+	end
+	return toOrdinaryItem(model,state)
+end
+function M.matches(state,targets,rarity,model,requirements,requiredGroups)
+	if not state.uniqueTitle then return ordinaryMatches(state,targets,rarity,model,requirements,requiredGroups) end
+	if rarity and rarity~="UNIQUE" then return false end
+	local matched=0;for _,group in ipairs(targets or {}) do if group.negate then matched=matched+1 end end
+	if matched<(requiredGroups or #(targets or {})) then return false end
+	if requirements then
+		for key,value in pairs(requirements) do
+			if key=="uniqueName" then if value~=state.uniqueTitle then return false end
+			elseif key=="uniqueModifier" or key=="uniqueModifiers" then
+				-- Evaluated together after the name, independent of table iteration order.
+			elseif key=="corrupted" then if value~=true then return false end
+			elseif key=="twiceCorrupted" then if value~=false then return false end
+			elseif key=="mirrored" then if value~=false then return false end
+			else error("This property target cannot yet be checked for a transformed unique jewel: "..key) end
+		end
+		if requirements.uniqueName and requirements.uniqueName~=state.uniqueTitle then return false end
+		if requirements.uniqueModifier or requirements.uniqueModifiers then
+			local jewel=require("Modules.CraftingJewelCorruption");local item=jewel.item(model.item.baseName,state.uniqueTitle,model.item.itemLevel,state.uniqueSeed)
+			if not jewel.matchesRolls(item,requirements) then return false end
+		end
+	end
+	return true
+end
+-- Unique quality uses a separate item-preserving path; ordinary affix states
+-- cannot represent unique modifiers. Continue by passing the returned text.
+do
+	local ordinaryPerform=M.perform
+	local ordinaryCatalog=M.catalog
+	local ordinaryCalculate=M.calculate
+	local ordinarySimulate=M.simulate
+	function M.catalog(raw,query,limit,initialState,treeVersion)
+		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
+		if rarity and rarity:upper()=="UNIQUE" then
+			assert(initialState==nil,"Inspect unique crafts using the item text, not an ordinary crafting state")
+			local result=require("Modules.CraftingUniqueQuality").catalog(raw,query,limit);result.dataPatch=M.dataPatch
+			return M.withTreeContext(result,treeVersion)
+		end
+		return ordinaryCatalog(raw,query,limit,initialState,treeVersion)
+	end
+	function M.simulate(raw,recipe,options)
+		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
+		if rarity and rarity:upper()=="UNIQUE" then return require("Modules.CraftingUniqueSimulation").simulate(M,raw,recipe,options) end
+		return ordinarySimulate(raw,recipe,options)
+	end
+	function M.calculate(raw,action,targets,initialState,options)
+		local conflict=M.requirementsConflict(options and options.requirements);assert(not conflict,conflict)
+		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
+		if rarity and rarity:upper()=="UNIQUE" then
+			options=options or {};assert(initialState==nil,"Calculate unique crafts using the item text, not an ordinary crafting state")
+			assert(type(targets)=="table" and #targets==0,"Ordinary affix targets are not supported for unique items. Use unique modifier roll goals instead.")
+			M.validateRecipe({rarity="UNIQUE",steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
+			if action.method=="sacred" then
+				local initial=M.perform(raw,action,options.seed,nil,options.treeVersion);local unique=require("Modules.CraftingUniqueQuality")
+				local outcomes,byItem,hits={},{},0
+				for position=0,31 do
+					local result=unique.sacred(raw,options.seed or 104729,position)
+					local hit=unique.matches(result.itemText,options.requirements);if hit then hits=hits+1 end
+					local entry=byItem[result.itemText]
+					if entry then
+						assert(entry.matches==hit,"Identical Sacred outcomes disagree on the target")
+						entry.weight=entry.weight+1/32;entry.chance=entry.weight*100
+					else
+						local stats=require("Modules.CraftingItemStats").itemValues(unique.inspect(result.itemText))
+						entry={id=tostring(position),text=require("Modules.CraftingSacred").describe(stats),chance=100/32,weight=1/32,matches=hit,itemText=result.itemText}
+						outcomes[#outcomes+1]=entry;byItem[result.itemText]=entry
+					end
+				end
+				local sample=initial.itemText;local nativeStats=require("Modules.CraftingItemStats").itemValues(unique.inspect(sample))
+				return M.withTreeContext({uniqueCrafting=true,exactFor="32 shared-roll positions; game odds unverified.",sampled=false,successChance=100*hits/32,
+					totalWeight=1,matchingWeight=hits/32,outcomes=outcomes,sampleSuccess=unique.matches(sample,options.requirements),sampleItem=sample,nativeStats=nativeStats,components=initial.components,warnings=initial.warnings,limitations=initial.limitations},options.treeVersion)
+			end
+			if action.method=="instilling" or action.method=="enkindling" or action.method=="divine" or action.method=="blessed" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_colour_bench" then
+				local sampledOptions=copyTable(options);sampledOptions.maxActions=1;sampledOptions.forceFirstAction=true
+				local sampled=M.simulate(raw,{rarity="UNIQUE",steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups},sampledOptions)
+				sampled.outcomes={};sampled.components=M.components(action,action.method=="socket_colour_bench" and {corrupted=require("Modules.CraftingUniqueQuality").inspect(raw).corrupted} or nil)
+				local unique=require("Modules.CraftingUniqueQuality");sampled.nativeStats=require("Modules.CraftingItemStats").itemValues(unique.inspect(sampled.sampleItem))
+				if action.method~="instilling" and action.method~="enkindling" and action.method~="divine" and action.method~="blessed" and action.method~="tainted_quality" and action.method~="jeweller" and action.method~="tainted_jeweller" and action.method~="fusing" and action.method~="tainted_fusing" and options.requirements and options.requirements.socketColours then
+					local why=unique.colourTargetReason(unique.inspect(raw),action.method,options.requirements.socketColours,options.requirements.linkedColours,true,action.count)
+					if why then sampled.warnings[#sampled.warnings+1]={code="unique_socket_target_unreachable",message="No roll reaches this target in the current model: "..why} end
+				end
+				return sampled
+			end
+			local result=M.perform(raw,action,options.seed,nil,options.treeVersion)
+			local unique=require("Modules.CraftingUniqueQuality");local hit=unique.matches(result.itemText,options.requirements)
+			local item=unique.inspect(result.itemText);local nativeStats=require("Modules.CraftingItemStats").itemValues(item)
+			return M.withTreeContext({uniqueCrafting=true,exactFor=action.method=="beast_max_sockets" and "One maximum-socket craft under the assumed socket layout model" or "One deterministic supported unique craft",sampled=false,successChance=hit and 100 or 0,
+				totalWeight=1,matchingWeight=hit and 1 or 0,sampleItem=result.itemText,nativeStats=nativeStats,components=result.components,
+				outcomes={{chance=100,weight=1,matches=hit,itemText=result.itemText}},warnings=result.warnings,limitations=result.limitations},options.treeVersion)
+		end
+		return ordinaryCalculate(raw,action,targets,initialState,options)
+	end
+	function M.perform(raw,action,seed,initialState,treeVersion)
+		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
+		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="catalyst" or action.method=="instilling" or action.method=="enkindling" or action.method=="bench_flask_enchant" or action.method=="divine" or action.method=="blessed" or action.method=="sacred" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="quality" or action.method=="beast_max_links" or action.method=="beast_max_sockets" or action.method=="omen_connections" or action.method=="omen_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_colour_bench" or action.method=="socket_white_bench" or action.method=="socket_bench") then
+			assert(initialState==nil,"Continue unique crafting using the returned item text, not an ordinary crafting state")
+			for key in pairs(action) do assert(key=="method" or action.method=="catalyst" and key=="catalyst" or action.method=="socket_bench" and (key=="count" or key=="linked") or action.method=="socket_colour_bench" and key=="count" or action.method=="bench_flask_enchant" and key=="enchantId","This unique action does not accept additional options") end
+			if action.method=="socket_bench" then
+				local item=require("Modules.CraftingUniqueQuality").inspect(raw)
+				assert(action.linked==nil or type(action.linked)=="boolean","Invalid bench link option")
+				if action.linked then assert(action.count==#item.sockets,"Unique bench linking requires the current socket count") end
+			end
+			if seed~=nil then integer(seed,1,2147483646,"seed") end
+			if action.method~="quality" then
+				local unique=require("Modules.CraftingUniqueQuality")
+				local linkRoll=action.method=="fusing" or action.method=="tainted_fusing"
+				local socketRoll=action.method=="jeweller" or action.method=="tainted_jeweller"
+				local qualityRoll=action.method=="tainted_quality"
+				local divineRoll=action.method=="divine"
+				local blessedRoll=action.method=="blessed"
+				local sacredRoll=action.method=="sacred"
+				local flaskRoll=action.method=="instilling" or action.method=="enkindling"
+				local stochastic=flaskRoll or divineRoll or blessedRoll or sacredRoll or qualityRoll or socketRoll or linkRoll or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_colour_bench"
+				local catalystTarget;if action.method=="catalyst" then local current,currentInfo=unique.inspect(raw);catalystTarget=current.catalyst==action.catalyst and currentInfo.quality+1 or 1 end
+				local result=action.method=="catalyst" and unique.catalystPreview(raw,action.catalyst,catalystTarget) or (flaskRoll or action.method=="bench_flask_enchant") and unique.flaskEnchant(raw,action.method,seed or 104729,action.enchantId) or divineRoll and unique.divine(raw,seed or 104729) or blessedRoll and require("Modules.CraftingUniqueBlessed").roll(raw,seed or 104729) or sacredRoll and unique.sacred(raw,seed or 104729) or qualityRoll and unique.taintedQuality(raw,seed or 104729) or socketRoll and unique.randomSockets(raw,action.method,seed or 104729) or linkRoll and unique.randomLinks(raw,action.method,seed or 104729) or stochastic and unique.colour(raw,action.method,seed or 104729,action.count) or (action.method=="omen_jeweller" or action.method=="beast_max_sockets") and unique.socketCount(raw,unique.omenCount(unique.inspect(raw)),action.method) or action.method=="socket_white_bench" and unique.white(raw) or action.method=="socket_bench" and not action.linked and unique.socketCount(raw,action.count) or unique.link(raw,action.method)
+				local warnings={{code="unique_crafting_scope",message="Only listed unique crafting actions are modeled. Continue using the returned item text."}}
+				if flaskRoll then warnings[#warnings+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."}
+				elseif action.method=="bench_flask_enchant" then warnings[#warnings+1]={code="flask_bench_assumptions",message="Flask enchantment bench costs use pinned client data; eligibility, recipe availability and replacement behavior are unverified in game."}
+				elseif divineRoll then
+					warnings[#warnings+1]={code="unique_divine_estimate",message="Supported modifier values are sampled independently and uniformly at their modeled precision; actual roll correlations and distributions are unverified."}
+					local inspected=unique.inspect(raw)
+					if inspected.title=="Watcher's Eye" and not inspected.variantList then warnings[#warnings+1]={code="unique_copied_modifiers",message="Copied modifier identification assumes the item text is complete; a missing third aura modifier cannot be detected."} end
+				elseif blessedRoll then warnings[#warnings+1]={code="unique_blessed_estimate",message="A recognized ordinary base implicit is sampled uniformly with possible repeats. Current-game repeat behavior and roll distribution are unverified.",source="https://www.poewiki.net/wiki/Blessed_Orb"}
+				elseif sacredRoll then warnings[#warnings+1]={code="unique_sacred_estimate",message="Assumes 32 equally likely shared rolls; game odds are unverified.",source="https://github.com/LocalExile/LocalExile/blob/95835dc3809ad10e4681a4af9fdde10becd983d8/Agents/docs/protocol/13-items.md"}
+				elseif qualityRoll then warnings[#warnings+1]={code="tainted_quality_estimate",message="Tainted armour and weapon quality uses an assumed uniform 1-20% range; the minimum and distribution are unverified."}
+				elseif socketRoll then warnings[#warnings+1]={code="unique_socket_count_estimate",message="Sampled socket counts and tainted outcomes use estimated probabilities; server odds are unverified."}
+				elseif linkRoll then warnings[#warnings+1]={code="unique_socket_link_assumptions",message="Sampled socket links use estimated link and selection probabilities; server odds are unverified."}
+				elseif stochastic then warnings[#warnings+1]={code="unique_socket_colour_assumptions",message="Sampled socket colours use estimated colour and position probabilities; server odds are unverified."} end
+				if action.method=="beast_max_sockets" then for _,warning in ipairs(M.actionWarnings(action)) do warnings[#warnings+1]=warning end end
+				if result.catalystModeled or action.method=="catalyst" then warnings[#warnings+1]={code="unique_catalyst_tags",message="Catalyst eligibility and scaling use bundled modifier tags and PoB rounding; tag completeness and current game behavior are unverified."} end
+				if socketRoll or action.method=="omen_jeweller" or action.method=="beast_max_sockets" or action.method=="socket_bench" and not action.linked then warnings[#warnings+1]={code="unique_socket_count_assumptions",message="Socket-count previews retain existing groups, remove sockets from the end and add white unlinked sockets; position and link behavior are unverified."} end
+				return M.withTreeContext({priceKey=M.priceKey(action),itemText=result.itemText,flaskEnchant=result.flaskEnchant,components=result.components,dataPatch=M.dataPatch,
+					warnings=warnings,limitations=copyTable(M.limits)},treeVersion)
+			end
+			local result=require("Modules.CraftingUniqueQuality").apply(raw)
+			local output=result.itemText;result.itemText=nil
+			return M.withTreeContext({priceKey="quality",itemText=output,uniqueQuality=result,components={[result.resourceKey]=1},dataPatch=M.dataPatch,
+				warnings={{code="unique_quality_scope",message="Only listed unique crafting actions are modeled. Continue using the returned item text."}},limitations=copyTable(M.limits)},treeVersion)
+		end
+		return ordinaryPerform(raw,action,seed,initialState,treeVersion)
+	end
 end
 return M

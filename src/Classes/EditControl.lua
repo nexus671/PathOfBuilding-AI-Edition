@@ -211,7 +211,7 @@ end
 
 function EditClass:UpdateScrollBars()
 	local width, height = self:GetSize()
-	local textHeight = self.lineHeight or (height - 4)
+	local textHeight = self.lineHeight or self.planningTextSize or (height - 4)
 	if self.lineHeight then
 		self.controls.scrollBarH:SetContentDimension(DrawStringWidth(textHeight, self.font, self.buf) + 2, width - 18)
 		self.controls.scrollBarV:SetContentDimension(newlineCount(self.buf.."\n") * textHeight, height - (self.controls.scrollBarH.enabled and 18 or 4))
@@ -222,7 +222,7 @@ end
 
 function EditClass:ScrollCaretIntoView()
 	local width, height = self:GetSize()
-	local textHeight = self.lineHeight or (height - 4)
+	local textHeight = self.lineHeight or self.planningTextSize or (height - 4)
 	local pre = self.buf:sub(1, self.caret - 1)
 	local caretX = DrawStringWidth(textHeight, self.font, lastLine(pre))
 	self:UpdateScrollBars()
@@ -272,8 +272,8 @@ function EditClass:Draw(viewPort, noTooltip)
 	end
 	DrawImage(nil, x + 1, y + 1, width - 2, height - 2)
 	local textX = x + 2
-	local textY = y + 2
-	local textHeight = self.lineHeight or (height - 4)
+	local textHeight = self.lineHeight or self.planningTextSize or (height - 4)
+	local textY = y + (self.lineHeight and 2 or m_floor((height-textHeight)/2))
 	if self.prompt then
 		if not enabled then
 			DrawString(textX, textY, "LEFT", textHeight, self.font, self.disableCol..self.prompt)
@@ -283,12 +283,18 @@ function EditClass:Draw(viewPort, noTooltip)
 		textX = textX + DrawStringWidth(textHeight, self.font, self.prompt) + textHeight/2
 	end
 	if not enabled then
+		if self.showDisabledValue then
+			SetViewport(x + 2, y + 2, width - 4, height - 4)
+			SetDrawColor(self.textCol)
+			DrawString(textX - x - 2, textY - y - 2, "LEFT", textHeight, self.font, self.buf)
+			SetViewport()
+		end
 		return
 	end
 	if mOver and not noTooltip then
 		SetDrawLayer(nil, 100)
 		self:DrawTooltip(x, y, width, height, viewPort)
-		SetDrawLayer(nil, 0)
+		SetDrawLayer(nil, self.planningDrawSubLayer or 0)
 	end
 	self:UpdateScrollBars()
 	local marginL = textX - x - 2
@@ -497,7 +503,7 @@ function EditClass:OnKeyDown(key, doubleClick)
 			local width, height = self:GetSize()
 			local textX = x + 2
 			local textY = y + 2
-			local textHeight = self.lineHeight or (height - 4)
+			local textHeight = self.lineHeight or self.planningTextSize or (height - 4)
 			if self.prompt then
 				textX = textX + DrawStringWidth(textHeight, self.font, self.prompt) + textHeight/2
 			end

@@ -7,6 +7,102 @@ describe("TestOffence", function()
 		-- newBuild() takes care of resetting everything in setup()
 	end)
 
+	it("skips the Full DPS environment only while no skill group is selected", function()
+		build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
+		runCallback("OnFrame")
+		local calcs = require("Modules.Calcs")
+		local initEnv = calcs.initEnv
+		local calls = 0
+		calcs.initEnv = function(...)
+			calls = calls + 1
+			return initEnv(...)
+		end
+		local ok, err = pcall(function()
+			local empty = calcs.calcFullDPS(build, "CALCULATOR", {})
+			assert.are.equal(0, calls)
+			assert.are.equal(0, empty.combinedDPS)
+			assert.are.equal(0, empty.TotalDotDPS)
+			assert.are.equal(0, #empty.skills)
+			build.skillsTab.socketGroupList[1].includeInFullDPS = true
+			local selected = calcs.calcFullDPS(build, "CALCULATOR", {})
+			assert.is_true(calls > 0)
+			assert.is_true(selected.combinedDPS > 0)
+			assert.is_true(#selected.skills > 0)
+		end)
+		calcs.initEnv = initEnv
+		assert.is_true(ok, tostring(err))
+	end)
+
+	it("honours a request to skip Full DPS on the passive tree", function()
+		build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
+		build.skillsTab.socketGroupList[1].includeInFullDPS = true
+		runCallback("OnFrame")
+		build.viewMode = "TREE"
+		local calcs = require("Modules.Calcs")
+		local calculator, base = calcs.getMiscCalculator(build)
+		local omitted = calculator({}, false)
+		local full = calculator({}, true)
+		local default = calculator({})
+		assert.is_nil(omitted.FullDPS)
+		assert.is_true(full.FullDPS > 0)
+		assert.are.equal(full.FullDPS, default.FullDPS)
+		for _, key in ipairs({"Life", "EnergyShield", "CombinedDPS", "TotalDPS"}) do
+			assert.are.equal(full[key], omitted[key], key)
+		end
+		for _, selection in ipairs(data.powerStatList) do
+			if selection.stat and selection.stat ~= "FullDPS" and not selection.ignoreForNodes then
+				local a=build.calcsTab:CalculatePowerStat(selection,omitted,base)
+				local b=build.calcsTab:CalculatePowerStat(selection,full,base)
+				assert.is_true(a==b or (a~=a and b~=b),selection.stat)
+			end
+		end
+		local a,b=build.calcsTab:CalculateCombinedOffDefStat(omitted,base)
+		local c,d=build.calcsTab:CalculateCombinedOffDefStat(full,base)
+		assert.are.equal(a,c);assert.are.equal(b,d)
+	end)
+
+	it("keeps Full DPS calculations sensitive to the detailed buff mode", function()
+		build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
+		build.skillsTab:PasteSocketGroup("Anger 20/0  1")
+		build.skillsTab.socketGroupList[1].includeInFullDPS = true
+		build.configTab.input.customMods = "Inflict Fire Exposure on Hit, applying -15% to Fire Resistance"
+		build.configTab:BuildModList()
+		local calcs = require("Modules.Calcs")
+		wipeGlobalCache()
+		local main = calcs.buildOutput(build, "MAIN")
+		build.calcsTab.input.misc_buffMode = "EFFECTIVE"
+		local effective = calcs.buildOutput(build, "CALCS")
+		assert.are.equal(main.player.output.FullDPS, effective.player.output.FullDPS)
+		assert.same(main.player.output.SkillDPS, effective.player.output.SkillDPS)
+		build.calcsTab.input.misc_buffMode = "COMBAT"
+		local combat = calcs.buildOutput(build, "CALCS")
+		assert.is_true(main.player.output.FullDPS > combat.player.output.FullDPS)
+	end)
+
+	it("requests Full DPS only for its node-power metric", function()
+		runCallback("OnFrame")
+		local tab = build.calcsTab
+		local original = tab.GetMiscCalculator
+		local ok, err = pcall(function()
+			for _, case in ipairs({{stat=false, expected=false},{stat="Life",expected=false},{stat="FullDPS",expected=true}}) do
+				tab.powerStat = case.stat and {stat=case.stat} or nil
+				local captured
+				tab.GetMiscCalculator = function(self)
+					local _,base = original(self)
+					return function(_, fullDPS) captured=fullDPS;error("captured node power request") end,base
+				end
+				local worker=coroutine.create(tab.PowerBuilder)
+				assert.is_true(coroutine.resume(worker,tab))
+				local finished, reason=coroutine.resume(worker,tab)
+				assert.is_false(finished)
+				assert.is_true(tostring(reason):find("captured node power request",1,true)~=nil)
+				assert.are.equal(case.expected,captured)
+			end
+		end)
+		tab.GetMiscCalculator = original
+		assert.is_true(ok, tostring(err))
+	end)
+
 	-- Asserts actual is within a relative tolerance of expected, e.g. 0.005 = 0.5%
 	local function assertNearRelative(expected, actual, tolerance, msg)
 		assert.is_true(math.abs(expected - actual) / expected <= tolerance,
@@ -427,5 +523,22 @@ describe("TestOffence", function()
 		-- 1 base totem + 6 maximum power charges, so 70% more area of effect.
 		assert.are.equals(7, build.calcsTab.mainOutput.ActiveTotemLimit)
 		assert.are.equals(1.7, build.calcsTab.mainOutput.AreaOfEffectMod)
+	end)
+	it("applies Energy Blade's quality attack speed as increased, not more", function()
+		local function attackSpeed(quality)
+			newBuild()
+			build.itemsTab:CreateDisplayItemFromRaw("Rarity: NORMAL\nCorsair Sword")
+			build.itemsTab:AddDisplayItem()
+			build.skillsTab:PasteSocketGroup("Energy Blade 20/" .. quality .. "  1")
+			build.skillsTab:PasteSocketGroup("Slot: Weapon 1\nCleave 20/0  1")
+			build.mainSocketGroup = 2
+			build.configTab.input.customMods = "100% increased Attack Speed"
+			build.configTab:BuildModList()
+			runCallback("OnFrame")
+			return build.calcsTab.mainOutput.Speed
+		end
+
+		-- "Buff grants 10% increased Attack Speed" at 20% quality: (1 + 1 + 0.1) / (1 + 1)
+		assertNearRelative(1.05, attackSpeed(20) / attackSpeed(0), 0.0001)
 	end)
 end)

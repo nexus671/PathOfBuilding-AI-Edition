@@ -1,0 +1,84 @@
+describe("Crafting action simulation budget", function()
+	local simulator = require("Modules.CraftingSimulator")
+	local tasks = require("Modules.CraftingTasks")
+	local raw = "Rarity: NORMAL\nPlate Vest\nItem Level: 86"
+	before_each(function() newBuild() end)
+	after_each(function() tasks.cancel(); main.popups = {} end)
+	it("loads a sampled outcome as a new hypothetical starting item", function()
+		local project = { id = "sample-ui", title = "Sample", slot = "Body Armour", startingItem = raw, goals = {}, steps = {}, preferredMethod = "alchemy", nativeRecipe = { steps = { { method = "alchemy" } }, targets = {}, requirements = { minAffixes = 1 } } }
+		local layout = { mount = function() end }
+		local controls = require("Classes.CraftingSimulatorControl").Open(build, project, layout)
+		controls.page:SelByValue("Simulate recipe"); controls.page.selFunc()
+		controls.trials:SetText("3"); controls.budget:SetText("1"); controls.simulate:Click()
+		for i = 1, 10000 do if not tasks.job then break end; tasks.tick(build) end
+		local result = build.craftingAnalyses[project.id].results.simulation.result
+		assert.is_true(result.sampleSuccess)
+		assert.is_false(tableDeepEquals(result.sampleState, result.retainedSuccesses[2].state))
+		controls.distribution:Click(); main.popups[1].controls.item:SelByValue(2, "val")
+		assert.are.equal("Inspect selected item", main.popups[1].controls.sample:GetProperty("label"))
+		local selectedState = result.retainedSuccesses[2].state
+		result.retainedSuccesses[2].state = nil
+		main.popups[1].controls.sample:Click()
+		assert.is_false(main.popups[1].controls.load:IsEnabled())
+		main:ClosePopup(); result.retainedSuccesses[2].state = selectedState
+		main.popups[1].controls.sample:Click()
+		assert.is_true(main.popups[1].controls.load:IsEnabled())
+		main.popups[1].controls.load:Click()
+		assert.are.equal("Load sampled outcome", main.popups[1].title)
+		local before = layout.snapshot()
+		main:ClosePopup()
+		assert.are.same(before.state, layout.snapshot().state)
+		main.popups[1].controls.load:Click()
+		main.popups[1].controls.confirm:Click()
+		local snapshot = layout.snapshot()
+		assert.are.same(result.retainedSuccesses[2].state, snapshot.state)
+		assert.are.same(result.retainedSuccesses[2].state, snapshot.initial)
+		assert.are.equal(0, #snapshot.history); assert.are.equal(0, #snapshot.actions)
+		assert.is_nil(build.craftingAnalyses[project.id].results.simulation)
+		assert.are.same(project.nativeRecipe, snapshot.project.nativeRecipe)
+		assert.are.equal("Emulate item", snapshot.page)
+		controls.keepWorking:Click()
+		local saved = build.savers.CraftingProjects.projects[1]
+		assert.are.same(result.retainedSuccesses[2].state, saved.run.state)
+		assert.are.same(project.nativeRecipe, saved.nativeRecipe)
+	end)
+	it("can continue from an unsuccessful sample when no successes were retained", function()
+		local project = { id = "failed-sample-ui", title = "Sample", slot = "Body Armour", startingItem = raw, goals = {}, steps = {}, preferredMethod = "alchemy", nativeRecipe = { steps = { { method = "alchemy" } }, targets = {}, requirements = { minQuality = 20 } } }
+		local layout = { mount = function() end }
+		local controls = require("Classes.CraftingSimulatorControl").Open(build, project, layout)
+		controls.page:SelByValue("Simulate recipe"); controls.page.selFunc()
+		controls.trials:SetText("1"); controls.budget:SetText("1"); controls.simulate:Click()
+		for i = 1, 10000 do if not tasks.job then break end; tasks.tick(build) end
+		local result = build.craftingAnalyses[project.id].results.simulation.result
+		assert.is_false(result.sampleSuccess); assert.are.equal(0, #result.retainedSuccesses)
+		controls.distribution:Click(); assert.are.equal("Inspect sampled outcome", main.popups[1].controls.sample:GetProperty("label")); main.popups[1].controls.sample:Click()
+		assert.is_true(main.popups[1].controls.load:IsEnabled())
+		main.popups[1].controls.load:Click(); main.popups[1].controls.confirm:Click()
+		assert.are.same(result.sampleState, layout.snapshot().state)
+	end)
+	it("explains why empty crafting actions are unavailable", function()
+		local project = { id = "empty-ui", title = "Empty", slot = "Body Armour", startingItem = raw, goals = {}, steps = {} }
+		local controls = require("Classes.CraftingSimulatorControl").Open(build, project)
+		assert.is_false(controls.keepRecipe:IsEnabled())
+		assert.is_truthy(controls.keepRecipe.tooltipText():find("Apply an action first", 1, true))
+		assert.is_false(controls.history:IsEnabled())
+		assert.is_truthy(controls.history.tooltipText():find("Apply an action first", 1, true))
+		assert.is_false(controls.distribution:IsEnabled())
+		assert.is_truthy(controls.distribution.tooltipText():find("Run a simulation first", 1, true))
+	end)
+	it("uses the full selected budget when repeating an action", function()
+		local rare = simulator.perform(raw, { method = "alchemy" }, 1).state
+		local project = { id = "budget-ui", title = "Budget", slot = "Body Armour", startingItem = raw, goals = {}, steps = {}, preferredMethod = "chaos", nativeRecipe = { initialState = rare, steps = {}, targets = {}, requirements = { minQuality = 20 } } }
+		local controls = require("Classes.CraftingSimulatorControl").Open(build, project)
+		controls.page:SelByValue("Simulate recipe"); controls.page.selFunc()
+		controls.trials:SetText("1"); controls.budget:SetText("250")
+		controls.simulate:Click()
+		for i = 1, 10000 do if not tasks.job then break end; tasks.tick(build) end
+		assert.is_nil(tasks.job)
+		local result = build.craftingAnalyses[project.id].results.simulation
+		assert.is_truthy(result)
+		assert.are.equal(250, result.context.recipe.steps[1].maxAttempts)
+		assert.are.equal(250, result.context.options.maxActions)
+		assert.are.equal(250, result.result.meanExecutedActions)
+	end)
+end)

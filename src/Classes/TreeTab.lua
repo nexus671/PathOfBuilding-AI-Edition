@@ -10,6 +10,7 @@ local t_insert = table.insert
 local t_remove = table.remove
 local t_sort = table.sort
 local t_concat = table.concat
+local t_maxn = table.maxn
 local m_max = math.max
 local m_min = math.min
 local m_floor = math.floor
@@ -173,9 +174,9 @@ function TreeTabClass:TreeTab(build)
 	end)
 	self.controls.versionSelect.maxDroppedWidth = 1000
 	self.controls.versionSelect.enableDroppedWidth = true
-	self.controls.versionSelect.enableChangeBoxWidth = true
+	self.controls.versionSelect.enableChangeBoxWidth = false
 	self.controls.versionSelect:CheckDroppedWidth(true)
-	self.controls.versionSelect.selIndex = #self.treeVersions
+	self.controls.versionSelect:SelByValue(latestTreeVersion,"value")
 
 	-- Tree Search Textbox
 	self.controls.treeSearch = new("EditControl"):EditControl({ "LEFT", self.controls.versionSelect, "RIGHT" }, { 8, 0, main.portraitMode and 200 or 300, 20 }, "", "Search", "%c", 100, function(buf)
@@ -198,6 +199,9 @@ function TreeTabClass:TreeTab(build)
 	self.controls.treeHeatMap = new("CheckBoxControl"):CheckBoxControl({ "LEFT", self.controls.findTimelessJewel, "RIGHT" }, { 130, 0, 20 }, "Show Node Power:", function(state)
 		self.viewer.showHeatMap = state
 		self.controls.treeHeatMapStatSelect.shown = state
+		if state and self.powerCalculationFailed then
+			self:SetPowerCalc(self.build.calcsTab.powerStat or data.powerStatList[1])
+		end
 
 		if state == false and ToastNotification:Exists(self.powerBuilderToastId) then
 			self.controls.powerReportList.shown = false 
@@ -310,21 +314,34 @@ function TreeTabClass:TreeTab(build)
 		end
 	end
 	-- Completion callback from the CalcsTab power builder coroutine
-	self.build.powerBuilderCallback = function()
+	self.build.powerBuilderCallback = function(failure)
 		local powerStat = self.build.calcsTab.powerStat or data.powerStatList[1]
-		local report = self:BuildPowerReportList(powerStat)
-		self.controls.powerReportList:SetReport(powerStat, report)
+		if failure then
+			self.powerCalculationFailed = true
+			self.viewer.showHeatMap = false
+			self.controls.powerReportList:SetReport(powerStat, nil)
+			self.controls.powerReportList.label = "^1Power failed. Re-enable to retry."
+			ConPrintf("Node power calculation failed: "..tostring(failure))
+		else
+			self.powerCalculationFailed = false
+			local report = self:BuildPowerReportList(powerStat)
+			self.controls.powerReportList:SetReport(powerStat, report)
+		end
 
 		if self.powerBuilderToastId then
 			ToastNotification:ClearDismissed(self.powerBuilderToastId)
 			ToastNotification:Remove(self.powerBuilderToastId)
 			self.powerBuilderToastId = nil
 		end
+		if failure then ToastNotification:Add("Power report failed. Re-enable Node Power to retry.") end
 	end
 
 	self.controls.specConvertText = new("LabelControl"):LabelControl({ "BOTTOMLEFT", self.controls.specSelect, "TOPLEFT" }, { 0, -14, 0, 16 }, "^7This is an older tree version, which may not be fully compatible with the current game version.")
 	self.controls.specConvertText.shown = function()
 		return self.showConvert
+	end
+	self.controls.specConvertText.label=function()
+		return treeVersions[self.build.spec.treeVersion].preview and "^7Preview tree: some 3.30 mechanics are not yet modeled." or "^7This is an older tree version, which may not be fully compatible with the current game version."
 	end
 	local function getLatestTreeVersion()
 		return latestTreeVersion .. (self.specList[self.activeSpec].treeVersion:match("^" .. latestTreeVersion .. "(.*)") or "")
@@ -358,6 +375,8 @@ end
 function TreeTabClass:Draw(viewPort, inputEvents)
 	self.anchorControls.x = viewPort.x + 4
 	self.anchorControls.y = viewPort.y + viewPort.height - 24
+	local versionX=self.controls.versionSelect:GetPos()
+	self.controls.versionSelect.width=m_max(100,m_min(self.controls.versionSelect.droppedWidth,viewPort.x+viewPort.width-versionX-8))
 
 	for id, event in ipairs(inputEvents) do
 		if event.type == "KeyDown" then
@@ -545,7 +564,7 @@ function TreeTabClass:Save(xml)
 	end
 end
 
-function TreeTabClass:SetActiveSpec(specId)
+function TreeTabClass:SetActiveSpec(specId, deferSync)
 	local prevSpec = self.build.spec
 	self.activeSpec = m_min(specId, #self.specList)
 	local curSpec = self.specList[self.activeSpec]
@@ -580,7 +599,9 @@ function TreeTabClass:SetActiveSpec(specId)
 	if self.controls.versionSelect then
 		self.controls.versionSelect:SelByValue(curSpec.treeVersion, 'value')
 	end
-	self.build:SyncLoadouts()
+	if not deferSync then
+		self.build:SyncLoadouts()
+	end
 end
 
 function TreeTabClass:SetCompareSpec(specId)
@@ -649,6 +670,18 @@ function TreeTabClass:OpenSpecManagePopup()
 			main:ClosePopup()
 		end),
 	})
+end
+
+function TreeTabClass:CopyTree(sourceSpecId, newSpecName)
+	local newSpec = new("PassiveSpec"):PassiveSpec(self.build, self.specList[sourceSpecId].treeVersion)
+	local defaultTitle = (self.specList[sourceSpecId].title or "Default") .. " (Copy)"
+	newSpec.title = newSpecName or defaultTitle
+	newSpec.jewels = copyTable(self.specList[sourceSpecId].jewels)
+	newSpec:RestoreUndoState(self.specList[sourceSpecId]:CreateUndoState())
+	newSpec:BuildClusterJewelGraphs()
+	newSpec.id = #self.specList + 1
+	t_insert(self.specList, newSpec)
+	return newSpec
 end
 
 function TreeTabClass:OpenVersionConvertPopup(version, ignoreTreeSubType)
@@ -1044,6 +1077,7 @@ function TreeTabClass:OpenMasteryPopup(node, viewPort)
 end
 
 function TreeTabClass:SetPowerCalc(powerStat)
+	self.powerCalculationFailed = false
 	self.viewer.showHeatMap = true
 	self.build.buildFlag = true
 	self.build.calcsTab.powerBuildFlag = true
@@ -1167,11 +1201,18 @@ function TreeTabClass:BuildPowerReportList(currentStat)
 end
 
 function TreeTabClass:FindTimelessJewel()
+	local screenWidth = GetVirtualScreenSize()
+	local edgePadding = 12
+	local listWidth = m_min(500, m_floor((screenWidth - 2 * edgePadding - 3 * edgePadding) / 2))
+	local panelWidth = edgePadding * 3 + listWidth * 2
 	local socketViewer = new("PassiveTreeView"):PassiveTreeView()
 	local treeData = self.build.spec.tree
 	local legionNodes = treeData.legion.nodes
 	local legionAdditions = treeData.legion.additions
 	local timelessData = self.build.timelessData
+	-- Only the selected jewel's lists are saved with the build. Keep the
+	-- other drafts available while this dialog remains open.
+	local jewelDrafts = { }
 	local controls = { }
 	local modData = { }
 	local ignoredMods = { "Might of the Vaal", "Legacy of the Vaal", "Strength", "Add Strength", "Dex", "Add Dexterity", "Devotion", "Price of Glory", "Ward" }
@@ -1221,7 +1262,7 @@ function TreeTabClass:FindTimelessJewel()
 			{ label = "Any", id = 1 },
 			{ label = "Doryani (Corrupted Soul)", id = 2 },
 			{ label = "Xibaqua (Divine Flesh)", id = 3 },
-			{ label = "Ahuana (Immortal Ambition)", id = 4 }
+			{ label = "Mazcotl (Immortal Ambition)", id = 4 }
 		},
 		[2] = {
 			{ label = "Any", id = 1 },
@@ -1513,7 +1554,7 @@ function TreeTabClass:FindTimelessJewel()
 		self.build.modFlag = true
 	end
 
-	controls.devotionSelectLabel = new("LabelControl"):LabelControl({"TOPRIGHT", nil, "TOPLEFT"}, {920, 25, 0, 16}, "^7Devotion modifiers:")
+	controls.devotionSelectLabel = new("LabelControl"):LabelControl({"TOPRIGHT", nil, "TOPLEFT"}, {panelWidth - 96, 25, 0, 16}, "^7Devotion modifiers:")
 	controls.devotionSelectLabel.shown = timelessData.jewelType.id == 4
 	controls.devotionSelect1 = new("DropDownControl"):DropDownControl({"TOP", controls.devotionSelectLabel, "BOTTOM"}, {0, 8, 200, 18}, devotionVariants, function(index, value)
 		timelessData.devotionVariant1 = index
@@ -1562,7 +1603,11 @@ function TreeTabClass:FindTimelessJewel()
 		end
 	end
 
-	controls.jewelSelect = new("DropDownControl"):DropDownControl({ "TOPLEFT", nil, "TOPLEFT" }, { 520, 25, 200, rowHeight }, jewelTypes, function(index, value)
+	controls.jewelSelect = new("DropDownControl"):DropDownControl({ "TOPLEFT", nil, "TOPLEFT" }, { panelWidth / 2 + 2, 25, 200, rowHeight }, jewelTypes, function(index, value)
+		local previousId = timelessData.jewelType.id
+		if previousId then
+			jewelDrafts[previousId] = { desired = timelessData.searchList or "", fallback = timelessData.searchListFallback or "" }
+		end
 		timelessData.jewelType = value
 		controls.devotionSelectLabel.shown = value.id == 4 -- Militant Faith
 		controls.abyssAscendancyLabel.shown = value.id == 11
@@ -1572,13 +1617,19 @@ function TreeTabClass:FindTimelessJewel()
 		timelessData.conquerorType = conquerorTypes[timelessData.jewelType.id][1]
 		controls.nodeSelect.selIndex = 1
 		buildMods()
-		updateSearchList("", false)
-		updateSearchList("", true)
+		local draft = jewelDrafts[value.id] or { desired = "", fallback = "" }
+		updateSearchList(draft.desired, false)
+		updateSearchList(draft.fallback, true)
 		if controls.socketFilter.state then
 			setAllocatedNodes()
 		end
 	end)
 	controls.jewelSelect.selIndex = timelessData.jewelType.id
+	controls.jewelSelect.tooltipFunc = function(tooltip)
+		tooltip:Clear()
+		tooltip:AddLine(16, "^7Each jewel type keeps its lists while this dialog is open.")
+		tooltip:AddLine(16, "^7Save the build to retain the selected type and its lists.")
+	end
 	controls.jewelSelectLabel = new("LabelControl"):LabelControl({"RIGHT", controls.jewelSelect, "LEFT"}, {-labelSpacing, 0, 0, labelHeight}, "^7Jewel Type:")
 	
 
@@ -1950,6 +2001,7 @@ function TreeTabClass:FindTimelessJewel()
 
 	local function generateFallbackWeights(nodes, powerStat)
 		local calcFunc, calcBase = self.build.calcsTab:GetMiscCalculator(self.build)
+		local useFullDPS = powerStat.stat == "FullDPS"
 		local newList = { }
 		local basePower = data.powerStatList.GetFromOutput(calcBase, powerStat)
 		for _, newNode in ipairs(nodes) do
@@ -1958,7 +2010,7 @@ function TreeTabClass:FindTimelessJewel()
 			local nodeLines = newNode.node or { newNode }
 			for i = 1, #nodeLines do
 				local node = nodeLines[i]
-				local nodeOutput = calcFunc({ addNodes = { [node] = true } })
+				local nodeOutput = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
 				local nodePower = data.powerStatList.GetFromOutput(nodeOutput, powerStat)
 				-- avoid infinity
 				if basePower == 0 then
@@ -2074,10 +2126,8 @@ function TreeTabClass:FindTimelessJewel()
 								end
 							elseif legionAddition.modList then
 								newNode.modList = legionAddition.modList
-							elseif legionAddition.modListGenerated then
-								newNode.modList = legionAddition.modListGenerated
 							else
-								-- generate modList
+								-- Recompute the divisor even when reusing the parsed mod list.
 								local originalLine = legionAddition.sd[1]
 								local line = originalLine
 								if usesVariableRolls then
@@ -2085,9 +2135,10 @@ function TreeTabClass:FindTimelessJewel()
 										line = replaceHelperFunc(line, key, stat, 100)
 									end
 								end
-								local modList, extra = modLib.parseMod(line)
-								legionAddition.modListGenerated = modList
-								newNode.modList = modList
+								if not legionAddition.modListGenerated then
+									legionAddition.modListGenerated = modLib.parseMod(line)
+								end
+								newNode.modList = legionAddition.modListGenerated
 								newNode.divisor = line ~= originalLine and 100 or 1
 							end
 							if not usesVariableRolls and modNode.totalMod then
@@ -2131,13 +2182,40 @@ function TreeTabClass:FindTimelessJewel()
 	end)
 	controls.fallbackWeightsLabel = new("LabelControl"):LabelControl({"RIGHT", controls.fallbackWeightsList, "LEFT"}, {-labelSpacing, 0, 0, labelHeight}, "^7Fallback Weight Mode:")
 	controls.fallbackWeightsList.selIndex = timelessData.fallbackWeightMode.idx or 1
+	local fallbackHistory = { }
 	controls.fallbackWeightsButton = new("ButtonControl"):ButtonControl({"LEFT", controls.fallbackWeightsList, "RIGHT"}, {5, 0, 66, 18}, "Generate", function()
+		local previous = timelessData.searchListFallback or ""
 		setupFallbackWeights()
+		if previous ~= (timelessData.searchListFallback or "") then
+			fallbackHistory[timelessData.jewelType.id] = { previous = previous, redo = false }
+		end
 		controls.searchListFallbackButton.label = "^4Fallback Nodes"
 	end)
 	controls.fallbackWeightsButton.tooltipFunc = function(tooltip, mode, index, value)
 		tooltip:Clear()
 		tooltip:AddLine(16, "^7Click this button to generate new fallback node weights, replacing your old ones.")
+	end
+	controls.fallbackWeightsUndo = new("ButtonControl"):ButtonControl({"LEFT", controls.fallbackWeightsButton, "RIGHT"}, {5, 0, 52, 18}, function()
+		local history = fallbackHistory[timelessData.jewelType.id]
+		return history and history.redo and "Redo" or "Undo"
+	end, function()
+		local history = fallbackHistory[timelessData.jewelType.id]
+		if not history then return end
+		local current = timelessData.searchListFallback or ""
+		if history.desired ~= nil then
+			local desired = timelessData.searchList or ""
+			updateSearchList(history.desired, false)
+			history.desired = desired
+		end
+		updateSearchList(history.previous, true)
+		history.previous, history.redo = current, not history.redo
+		controls.searchListFallbackButton.label = "^4Fallback Nodes"
+	end)
+	controls.fallbackWeightsUndo.enabled = function() return fallbackHistory[timelessData.jewelType.id] ~= nil end
+	controls.fallbackWeightsUndo.tooltipFunc = function(tooltip)
+		tooltip:Clear()
+		tooltip:AddLine(16, "^7Restore lists changed by Generate or Reset, or switch them back.")
+		tooltip:AddLine(16, "^7This history lasts until the dialog closes.")
 	end
 	controls.totalMinimumWeight = new("EditControl"):EditControl({"TOPLEFT", controls.fallbackWeightsList, "BOTTOMLEFT"}, {0, rowSpacing, 200, rowHeight}, "", nil, "%D", nil, function(val)
 		local num = tonumber(val)
@@ -2150,10 +2228,8 @@ function TreeTabClass:FindTimelessJewel()
 		tooltip:AddLine(16, "^7Optional: Only show results where total weight meets or exceeds this value.")
 	end
 	
-	local listWidth = 500
 	local listHeight = 200
 	local buttonHeight = 20
-	local edgePadding = 12
 	local listYOffset = -(buttonHeight + edgePadding * 2)
 	controls.searchList = new("EditControl"):EditControl({ "BOTTOMLEFT", nil, "BOTTOMLEFT" },
 		{ edgePadding, listYOffset, listWidth, listHeight }, timelessData.searchList, nil,
@@ -2189,10 +2265,8 @@ function TreeTabClass:FindTimelessJewel()
 	end)
 	controls.searchListButton.tooltipFunc = function(tooltip, mode, index, value)
 		tooltip:Clear()
-		tooltip:AddLine(16,
-			"^7This contains a list of your desired nodes along with their primary, secondary, and minimum weights.")
-		tooltip:AddLine(16,
-			"^7This list can be updated manually or by selecting the node you want to update via the search dropdown list and then moving the node weight sliders.")
+		tooltip:AddLine(16, "^7Desired nodes have primary, secondary and minimum weights.")
+		tooltip:AddLine(16, "^7Edit the list directly, or select a node and adjust its weight sliders.")
 	end
 	controls.searchListButton.locked = function() return controls.searchList.shown end
 
@@ -2205,11 +2279,11 @@ function TreeTabClass:FindTimelessJewel()
 	end)
 	controls.searchListFallbackButton.tooltipFunc = function(tooltip, mode, index, value)
 		tooltip:Clear()
-		tooltip:AddLine(16, "^7This contains a list of your fallback nodes along with their primary, secondary, and minimum weights.")
-		tooltip:AddLine(16, "^7This list can be updated manually or by selecting the node you want to update via the search dropdown list and then moving the node weight sliders.")
-		tooltip:AddLine(16, "^7Fallback node weights are only used when no matching entry exists in the desired nodes list, allowing you to override or disable specific automatic weights.")
-		tooltip:AddLine(16, "^7Fallback node weights typically contain automatically generated stat weights based on your current build.")
-		tooltip:AddLine(16, "^7Any manual changes made to your fallback nodes are lost when you click the generate button, as it completely replaces them.")
+		tooltip:AddLine(16, "^7Fallback nodes have primary, secondary and minimum weights.")
+		tooltip:AddLine(16, "^7Edit the list directly, or select a node and adjust its weight sliders.")
+		tooltip:AddLine(16, "^7Fallback weights apply when a node has no desired-node entry.")
+		tooltip:AddLine(16, "^7Generate uses your build to calculate weights and replaces this list,")
+		tooltip:AddLine(16, "^7including manual edits. Undo restores the previous list while open.")
 	end
 	controls.searchListFallbackButton.locked = function() return controls.searchListFallback.shown end
 
@@ -2787,11 +2861,14 @@ function TreeTabClass:FindTimelessJewel()
 		return results
 	end
 
-	local panelWidth = edgePadding * 3 + listWidth * 2
 	local buttonDivider = 10
 	local buttonWidth = 80
 	-- reset button anchored to middle of panel and other buttons anchored to it
 	controls.resetButton = new("ButtonControl"):ButtonControl({"BOTTOMLEFT", nil, "BOTTOMLEFT"}, {panelWidth / 2 - buttonWidth/2, -edgePadding, buttonWidth, buttonHeight}, "Reset", function()
+		local desired, fallback = timelessData.searchList or "", timelessData.searchListFallback or ""
+		if desired ~= "" or fallback ~= "" then
+			fallbackHistory[timelessData.jewelType.id] = { previous = fallback, desired = desired, redo = false }
+		end
 		updateSearchList("", true)
 		updateSearchList("", false)
 		controls.abyssAscendancySelect.selIndex = 1

@@ -1,0 +1,175 @@
+describe("Local filter editing",function()
+	local filters=require("Modules.LootFilters")
+	local editing=require("Modules.LootFilterEditing")
+	local parser=require("Modules.LootFilterParser")
+	local function profile()
+		local p=filters.profile("test","Test");p.template='Show\n BaseType == "Chaos Orb"\n SetFontSize 20\nShow\n BaseType == "Divine Orb"\n SetFontSize 45'
+		return p
+	end
+	before_each(function() newBuild();main.popups={} end)
+	after_each(function() main.popups={} end)
+	it("previews and edits the game's default background opacity without changing untouched rules",function()
+		local appearance=require("Modules.LootFilterAppearanceSettings")
+		assert.same({10,20,30,240},appearance.rgba("SetBackgroundColor",{"10","20","30"}))
+		assert.same({10,20,30,255},appearance.rgba("SetBorderColor",{"10","20","30"}))
+		assert.same({10,20,30,0},appearance.rgba("SetBackgroundColor",{"10","20","30","0"}))
+		local rule={id="alpha",title="Alpha",text='Show\n BaseType == "Iron Hat"\n SetBackgroundColor 10 20 30'}
+		local saved;require("Classes.LootFilterAppearance").Open(rule,function(value) saved=value end,function() end)
+		local controls=main.popups[1].controls;assert.equal("0A141EF0",controls.backgroundHex.buf)
+		controls.keepRule:Click();assert.same({"10","20","30"},parser.parse(saved.text).rules[1].styles.SetBackgroundColor)
+		require("Classes.LootFilterAppearance").Open(rule,function(value) saved=value end,function() end)
+		main.popups[1].controls.backgroundHexPick:Click();assert.equal("0A141EF0",main.popups[1].controls.hex.buf)
+		main.popups[1].controls.keep:Click();main.popups[1].controls.keepRule:Click()
+		assert.matches("SetBackgroundColor 10 20 30 240",saved.text)
+	end)
+	it("shows Minimal defaults in the appearance editor without adding style commands",function()
+		local rule={id="minimal",title="Minimal",text='Minimal\n BaseType == "Iron Hat"'};local saved
+		require("Classes.LootFilterAppearance").Open(rule,function(value) saved=value end,function() end)
+		local c=main.popups[1].controls
+		assert.equal("080C0E00",c.backgroundHex.buf);assert.equal("788C9600",c.borderHex.buf);assert.matches("minimum",c.sizeLabel.label());assert.equal(0,c.size.val)
+		c.action:SelByValue("Show");c.action.selFunc();assert.equal("080C0EFF",c.backgroundHex.buf);assert.is_truthy(c.size.val>0)
+		c.action:SelByValue("Minimal");c.action.selFunc();assert.equal("080C0E00",c.backgroundHex.buf);c.keepRule:Click()
+		local block=parser.parse(saved.text).rules[1];assert.equal("Minimal",block.action);assert.is_nil(next(block.styles));assert.equal("Iron Hat",block.conditions[1].values[1])
+		local explicit={id="explicit",title="Explicit",text='Minimal\n BaseType == "Iron Hat"\n SetBackgroundColor 10 20 30 200\n SetFontSize 40'}
+		require("Classes.LootFilterAppearance").Open(explicit,function(value) saved=value end,function() end);c=main.popups[1].controls
+		assert.equal("0A141EC8",c.backgroundHex.buf);assert.matches("40",c.sizeLabel.label());c.keepRule:Click()
+		block=parser.parse(saved.text).rules[1];assert.same({"10","20","30","200"},block.styles.SetBackgroundColor);assert.same({"40"},block.styles.SetFontSize)
+	end)
+	it("offers mode-valid actions and keeps incompatible existing rules repairable",function()
+		local editor=require("Classes.LootFilterControl");local saved
+		local minimal={id="minimal",title="Minimal",text='Minimal\n BaseType == "Iron Hat"'}
+		editor.EditRule(minimal,function(value) saved=value end,"Normal")
+		local c=main.popups[1].controls;assert.equal("Minimal",c.action:GetSelValue());assert.is_false(c.keepRule:IsEnabled());assert.matches("only in Ruthless",c.modeNotice.label())
+		c.conditions:Click();c=main.popups[1].controls;assert.equal("Minimal",c.action:GetSelValue());assert.is_false(c.keepRule:IsEnabled());assert.matches("only in Ruthless",c.modeNotice.label())
+		c.action:SelByValue("Show");assert.is_true(c.keepRule:IsEnabled());assert.equal("",c.modeNotice.label());c.keepRule:Click();assert.equal("Show",parser.parse(saved.text).rules[1].action)
+		local hidden={id="hidden",title="Hidden",text='Hide\n BaseType == "Iron Hat"'}
+		editor.EditRule(hidden,function(value) saved=value end,"Ruthless");c=main.popups[1].controls
+		assert.equal("Hide",c.action:GetSelValue());assert.is_false(c.keepRule:IsEnabled());assert.matches("cannot hide",c.modeNotice.label())
+		c.action:SelByValue("Minimal");c.action.selFunc();assert.is_true(c.keepRule:IsEnabled());c.keepRule:Click();assert.equal("Minimal",parser.parse(saved.text).rules[1].action)
+	end)
+	it("moves exact items between tiers while retaining conditions and pinned source",function()
+		local p=profile();p.tiers={editing.newTier("low","Low",'Show\n Class == "Stackable Currency"\n BaseType == "Chaos Orb"\n StackSize >= 2\n SetFontSize 30\n Continue'),editing.newTier("high","High",'Show\n BaseType == "Divine Orb"\n SetFontSize 45')}
+		local source=p.template;local next=editing.assign(p,"low","Chaos Orb");assert.equal(0,#p.tiers[1].items)
+		next=editing.assign(next,"high","Chaos Orb");assert.equal(0,#next.tiers[1].items);assert.same({"Chaos Orb"},next.tiers[2].items);assert.equal(source,next.template)
+		assert.same({"45"},filters.simulate(next,{BaseType="Chaos Orb"}).styles.SetFontSize)
+		local rule=editing.rule(editing.assign(p,"low","Chaos Orb").tiers[1]);local block=parser.parse(rule.text).rules[1]
+		assert.equal("StackSize",block.conditions[3].keyword);assert.is_true(block.continue)
+	end)
+	it("preserves personal priority and permits empty or disabled tiers",function()
+		local p=profile();p.tiers={editing.newTier("high","High")};local before=filters.compile(p)
+		p.tiers[1].enabled=false;p.tiers[1].items={"Chaos Orb"};assert.equal(before,filters.compile(p))
+		p.tiers[1].enabled=true;p.rules={filters.rule("personal","Personal",{'BaseType == "Chaos Orb"'})}
+		assert.is_truthy(filters.simulate(p,{BaseType="Chaos Orb"}).ruleTitle:find("Personal",1,true))
+	end)
+	it("rejects ambiguous tier lists and invalid module payloads",function()
+		for _,text in ipairs({'Show\n BaseType "Orb"','Show\n Class == "Currency"','Show\n BaseType == "A"\n BaseType == "B"'}) do assert.is_false(pcall(editing.items,text)) end
+		local tier=editing.newTier("tier","Tier");tier.items={"Chaos Orb","Chaos Orb"};assert.is_false(pcall(editing.validateTiers,{tier}))
+		assert.is_false(pcall(editing.import,'{"schemaVersion":2}'));assert.is_false(pcall(editing.validateModules,{{id="bad",title="Bad",rules={{id="x",title="X",text="Import bad.filter"}}}}))
+	end)
+	it("explains incompatible exact item classes before moving or removing an item",function()
+		local p=profile();p.tiers={editing.newTier("currency","Currency"),editing.newTier("equipment","Equipment",'Show\n Class == "Helmets"\n BaseType == "Iron Hat"')};p.tiers[1].items={"Chaos Orb"}
+		assert.is_truthy(editing.assignmentIssue(p,"equipment","Chaos Orb"));assert.has_error(function() editing.assign(p,"equipment","Chaos Orb") end);assert.same({"Chaos Orb"},p.tiers[1].items)
+		assert.is_nil(editing.assignmentIssue(p,"currency","Chaos Orb"));assert.equal(1,#editing.assign(p,"currency","Chaos Orb").tiers[1].items)
+	end)
+	it("checks a moved item's known class against all destination class conditions",function()
+		local p=profile();p.tiers={
+			editing.newTier("source","Source",'Show\n Class == "Stackable Currency" "Helmets"\n BaseType == "Chaos Orb"'),
+			editing.newTier("target","Target",'Show\n Class == "Helmets" "Body Armours"\n BaseType == "Iron Hat"'),
+			editing.newTier("excluded","Excluded",'Show\n Class != "Currency"\n BaseType == "Iron Hat"'),
+			editing.newTier("compatible","Compatible",'Show\n Class "Currency"\n BaseType == "Divine Orb"')}
+		p.tiers[1].items={"Chaos Orb"}
+		assert.matches("Stackable Currency",editing.assignmentIssue(p,"target","Chaos Orb"))
+		assert.is_truthy(editing.assignmentIssue(p,"excluded","Chaos Orb"))
+		assert.has_error(function() editing.assign(p,"target","Chaos Orb") end)
+		assert.same({"Chaos Orb"},p.tiers[1].items)
+		assert.is_nil(editing.assignmentIssue(p,"compatible","Chaos Orb"))
+		assert.is_nil(editing.assignmentIssue(p,"target","Unknown custom item",'Show\n BaseType == "Unknown custom item"'))
+		assert.same({"Chaos Orb"},editing.assign(p,"compatible","Chaos Orb").tiers[4].items)
+		-- A previously misclassified item must be movable into a compatible tier.
+		p.tiers[1].text='Show\n Class == "Stackable Currency"\n BaseType == "Chaos Orb"'
+		p.tiers[2].text='Show\n Class == "Helmets"\n BaseType == "Iron Hat"'
+		p.tiers[1].items={};p.tiers[2].items={"Chaos Orb"}
+		assert.is_nil(editing.assignmentIssue(p,"source","Chaos Orb"))
+		assert.same({"Chaos Orb"},editing.assign(p,"source","Chaos Orb").tiers[1].items)
+	end)
+	it("only enables adding an item when the selected tier can accept it",function()
+		local p=profile();p.tiers={editing.newTier("helmets","Helmets",'Show\n Class == "Helmets"\n BaseType == "Iron Hat"')}
+		local controls={};local changed
+		require("Classes.LootFilterTierControl").Mount(controls,p,940,650,{}, {change=function(value) changed=value end})
+		assert.is_false(controls.tierAddItem.enabled())
+		controls.tierName:SetText('Mystery "Orb"');assert.is_false(controls.tierAddItem.enabled())
+		controls.tierName:SetText("Chaos Orb");assert.is_false(controls.tierAddItem.enabled())
+		controls.tierName:SetText("Iron Hat");assert.is_true(controls.tierAddItem.enabled());controls.tierAddItem:Click()
+		assert.same({"Iron Hat"},changed.tiers[1].items)
+	end)
+	it("decorates declared styles without adding inherited styles or changing conditions",function()
+		local raw='Show\n BaseType == "Iron Hat"\n SetTextColor 100 120 140\n CustomAlertSoundOptional "folder/my tone.wav"\n MinimapIcon 1 Cyan Diamond\n PlayEffect Green Temp\n Continue\nShow\n Rarity Rare'
+		local transformed=require("Modules.LootFilterDecorators").apply(raw,{textColor={255,210,120,200},alertId=6,alertVolume=0,effectColor="Purple",disableIcons=true})
+		local p=parser.parse(transformed);assert.same({"255","210","120","200"},p.rules[1].styles.SetTextColor);assert.same({"6","0"},p.rules[1].styles.PlayAlertSound)
+		assert.same({"Purple","Temp"},p.rules[1].styles.PlayEffect);assert.same({"-1"},p.rules[1].styles.MinimapIcon);assert.is_true(p.rules[1].continue);assert.is_nil(p.rules[2].styles.SetTextColor);assert.equal("BaseType",p.rules[1].conditions[1].keyword)
+		local settings=require("Modules.LootFilterAppearanceSettings");assert.same({255,0,128,255},settings.fromHex("#FF0080"));assert.is_nil(settings.fromHex("GG0080"));assert.has_error(function() settings.validate({textColor={255,0,128}}) end)
+	end)
+	it("previews distinct supported minimap geometry without substituting unknown shapes",function()
+		local visual=require("Modules.LootFilterVisuals");for _,shape in ipairs(require("Modules.LootFilterAppearanceSettings").shapes) do assert.is_true(visual.icon(shape,20,20,6),shape) end;assert.is_false(visual.icon("Unknown",20,20,6))
+	end)
+	it("reports only provable shadowing and validates supported effect syntax",function()
+		local diagnostic=require("Modules.LootFilterDiagnostics")
+		local raw='Show\n Class == "Helmets"\n BaseType == "Iron Hat"\nHide\n BaseType == "Iron Hat"\n Class == "Helmets"'
+		local warnings=diagnostic.shadowing(parser.parse(raw));assert.equal(1,#warnings);assert.equal(1,warnings[1].shadowedBy)
+		assert.equal(0,#diagnostic.shadowing(parser.parse(raw:gsub("\nHide","\n Continue\nHide"))))
+		assert.equal(0,#diagnostic.shadowing(parser.parse('Show\n BaseType == "Iron Hat"\nHide\n BaseType == "Wool Shoes"')))
+		assert.equal(1,#diagnostic.shadowing(parser.parse('Show\nHide\n BaseType == "Iron Hat"')))
+		assert.equal(0,#diagnostic.shadowing(parser.parse('Show\n HasExplicitMod >=2 "1"\nHide\n HasExplicitMod >=1 "2"')))
+		assert.equal(0,#diagnostic.shadowing(parser.parse('Show\n HasExplicitMod "1" "foo"\nHide\n HasExplicitMod 1 "foo"')))
+		assert.equal(0,#diagnostic.shadowing(parser.parse('Show\n HasEnchantment >=2 "1"\nHide\n HasEnchantment >=1 "2"')))
+		assert.equal(1,#diagnostic.shadowing(parser.parse('Show\n HasExplicitMod >=2 "Haast" "Ephij"\nHide\n HasExplicitMod >=2 "Ephij" "Haast"')))
+		for _,text in ipairs({'Show\n MinimapIcon 3 Cyan Diamond','Show\n MinimapIcon 0 Cyan Unknown','Show\n PlayEffect Cyan Forever'}) do assert.is_truthy(parser.parse(text).diagnostics[1].error) end
+		assert.equal(0,#parser.parse('Show\n MinimapIcon -1\n PlayEffect Purple Temp').diagnostics)
+	end)
+	it("preserves conflict diagnostics for all bundled strictness levels",function()
+		local stable=require("Modules.PlanningData");local diagnostic=require("Modules.LootFilterDiagnostics")
+		local function reference(parsed)
+			local seen,result={},{};local terminal
+			for _,rule in ipairs(parsed.rules) do
+				local conditions={}
+				for _,condition in ipairs(rule.conditions) do
+					local count=(condition.keyword=="HasExplicitMod" or condition.keyword=="HasEnchantment") and not (condition.quoted and condition.quoted[1]) and tonumber(condition.values[1])
+					local values={};for i=count and 2 or 1,#condition.values do values[#values+1]=stable.encode({value=condition.values[i],quoted=condition.quoted and condition.quoted[i] or false}) end
+					table.sort(values);conditions[#conditions+1]=stable.encode({keyword=condition.keyword,operator=condition.operator,count=count,values=values})
+				end
+				table.sort(conditions);local key=table.concat(conditions,"\n");local prior=terminal or seen[key]
+				if prior then result[#result+1]={line=rule.line,shadowedBy=prior.line,warning="This block cannot be reached: a preceding terminating block at line "..prior.line.." matches the same conditions"..(terminal and " or every item." or ".")}
+				elseif not rule.continue then seen[key]=rule;if #conditions==0 then terminal=rule end end
+			end
+			return result
+		end
+		local function retainsExisting(parsed)
+			local actual={};for _,entry in ipairs(diagnostic.shadowing(parsed)) do actual[entry.line]=entry end
+			for _,entry in ipairs(reference(parsed)) do assert.is_truthy(actual[entry.line],"Missing previously detected conflict at line "..entry.line) end
+		end
+		for strictness=0,6 do
+			local p=filters.profile("comparison","Comparison");p.strictness=strictness
+			local parsed=parser.parse(filters.migratedBase(p));retainsExisting(parsed)
+		end
+		local parsed=parser.parse('Show\n BaseType == "a:1" "b"\nHide\n BaseType == "b" "a:1"\nShow\n BaseType == "a" "1:b"\nShow\nHide\n BaseType == "x"')
+		assert.same(reference(parsed),diagnostic.shadowing(parsed))
+	end)
+	it("shares frozen modules between profiles and updates snapshots explicitly",function()
+		local source=profile();source.rules={filters.rule("hat","Crafting base",{'BaseType == "Iron Hat"'},"craft:test")}
+		local module=editing.module(source,"bases","Bases");assert.is_nil(module.rules[1].origin)
+		local imported=editing.import(editing.share(module));local target=editing.install(profile(),imported)
+		assert.equal("Show",filters.simulate(target,{BaseType="Iron Hat"}).action)
+		module.title="Updated";assert.equal("Bases",target.modules[1].title)
+		target=editing.install(target,module);assert.equal(1,#target.modules);assert.equal("Updated",target.modules[1].title)
+		local checked=filters.validate({schemaVersion=1,activeId=target.id,profiles={target}});assert.same(target.modules,checked.profiles[1].modules)
+	end)
+	it("records stable history, restores redo, and invalidates redo after a fresh edit",function()
+		local history=require("Modules.PlanningHistory").new({a=1,b=2});assert.is_false(history:record({b=2,a=1}))
+		history:record({a=3,b=2});assert.same({a=1,b=2},history:step(true));assert.same({a=3,b=2},history:step(false))
+		history:step(true);history:record({a=4,b=2});assert.equal(0,#history.redo);assert.is_false(pcall(history.step,history,false))
+	end)
+	it("reports changes against kept profiles without mutating them",function()
+		local before={schemaVersion=1,activeId="test",profiles={profile()}};local after=copyTable(before);after.profiles[1].tiers={editing.newTier("tier","Tier")}
+		local changes=editing.review(before,after);assert.equal(1,#changes);assert.is_truthy(table.concat(changes[1].details,"\n"):find("Added tiers",1,true));assert.is_nil(before.profiles[1].tiers)
+	end)
+end)

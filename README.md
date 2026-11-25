@@ -18,8 +18,19 @@ A Path of Exile build planner with encounter timelines and improved survival cal
 - Plan upgrades and leveling around goals, budgets, dependency checks and candidate comparisons.
 - Emulate items and test crafting recipes with a built-in crafting engine.
 - Plan your Atlas with searchable nodes, connecting paths and saved farming strategies.
+- Connect milestones, gear goals, crafting, leveling and a shared resource budget in Journey.
 
-The encounter tools are experimental. See the [guide](docs/recovery-simulation.md), [crafting guide](docs/crafting.md), or [Atlas guide](docs/atlas.md) to get started.
+Encounter simulations are experimental. Crafting odds and costs can be estimates, and some mechanics are not supported; check the [crafting coverage guide](docs/crafting-coverage.md) before spending currency. The Atlas and experimental Genesis planners use published data, but have not been fully checked against the live game.
+
+See the [encounter guide](docs/recovery-simulation.md), [crafting guide](docs/crafting.md), [Atlas guide](docs/atlas.md), or [Journey guide](docs/journey.md) to get started.
+
+The [planning UI guide](docs/ui-polish.md) covers navigation, project creation, comparisons, checklists and chart controls.
+
+See [connected planning tools](docs/planning-workflows.md) for background upgrades, performance diagnostics, crafting recovery, Atlas stages and portable bundles.
+
+[Covens of Umbra trees](docs/covens-preview.md) are the default for new builds and their Atlas plans, with the current engine's calculation limits clearly marked.
+
+[Loot filters](docs/loot-filters.md) connect build targets, crafting bases and Atlas plans to a visual rule editor, drop previews, NeverSink presets and `.filter` export.
 
 ## Links
 

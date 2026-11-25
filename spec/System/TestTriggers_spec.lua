@@ -1429,6 +1429,43 @@ describe("TestTriggers", function()
 		assert.True(build.calcsTab.mainOutput.SkillTriggerRate ~= nil)
 	end)
 	
+	it("uses the current totem life for Flamewood Full DPS and passive comparisons", function()
+		build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
+		build.skillsTab:PasteSocketGroup("Decoy Totem 20/0  1\nFlamewood 20/0  1")
+		local group=build.skillsTab.socketGroupList[2];group.includeInFullDPS=true;group.mainActiveSkill=2
+		build.buildFlag=true;runCallback("OnFrame")
+		assert.is_true(build.calcsTab.mainOutput.FullDPS > 0)
+		assert.near(build.calcsTab.mainOutput.FullDPS,build.calcsTab.calcsOutput.FullDPS,0.000001)
+		local calculator,base=build.calcsTab:GetMiscCalculator()
+		local node
+		for _,candidate in pairsSortByKey(build.spec.nodes) do
+			if not candidate.alloc then for _,line in ipairs(candidate.sd or {}) do
+				if line:find("Totem Life",1,true) then node=candidate;break end
+			end end
+			if node then break end
+		end
+		assert.is_not_nil(node)
+		local changed=calculator({addNodes={[node]=true}},true)
+		assert.is_true(changed.FullDPS > base.FullDPS)
+		local restored=calculator({},true)
+		assert.near(base.FullDPS,restored.FullDPS,0.000001)
+	end)
+
+	it("does not use an old Flamewood source after a rejected cost probe", function()
+		local uuid="flamewood-rejected-test"
+		local cache=GlobalCache.cachedData.CALCULATOR;local previous=cache[uuid]
+		local ok,err=pcall(function()
+			cache[uuid]={Env={player={output={TotemLife=1000}}}}
+			local active={skillData={triggerSourceUUID=uuid,lifeDealtAsFire=10}}
+			data.skills.AvengingFlame.preDamageFunc(active,{},nil,{mode="CALCULATOR",triggerSourceCache={[uuid]={rejectedOutput={ManaCost=0}}}})
+			assert.are.equal(0,active.skillData.FireMin);assert.are.equal(0,active.skillData.FireMax)
+			local current={skillData={triggerSourceUUID=uuid,lifeDealtAsFire=10}}
+			data.skills.AvengingFlame.preDamageFunc(current,{},nil,{mode="CALCULATOR",triggerSourceCache={}})
+			assert.are.equal(100,current.skillData.FireMin);assert.are.equal(100,current.skillData.FireMax)
+		end)
+		cache[uuid]=previous;assert.is_true(ok,tostring(err))
+	end)
+
 	it("Trigger Automation", function()
 		build.skillsTab:PasteSocketGroup("Steelskin 20/0  1\nAutomation 20/0  1\n")
 		runCallback("OnFrame")
@@ -1572,6 +1609,20 @@ describe("TestTriggers", function()
 		assert.is_true(build.calcsTab.mainOutput.EffectiveSourceRate < baseRate)
 		assert.is_true(build.calcsTab.mainEnv.player.mainSkill.skillFlags.weapon1Attack)
 		assert.is_falsy(build.calcsTab.mainEnv.player.mainSkill.skillFlags.weapon2Attack)
+	end)
+
+	it("Do not count repeats as separate uses for per-use triggers", function()
+		equipDreadCaptainsCutlass()
+		build.skillsTab:PasteSocketGroup("Smite 20/0  1\n")
+		runCallback("OnFrame")
+		local baseRate = build.calcsTab.mainOutput.EffectiveSourceRate
+
+		newBuild()
+		equipDreadCaptainsCutlass()
+		build.skillsTab:PasteSocketGroup("Smite 20/0  1\nMultistrike 20/0  1\n")
+		runCallback("OnFrame")
+
+		assert.is_true(build.calcsTab.mainOutput.EffectiveSourceRate < baseRate)
 	end)
 
 	it("Use the equipped bow for Void Shot granted by Voidfletcher", function()

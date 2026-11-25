@@ -101,13 +101,15 @@ end
 
 -- Charge state is shared by use policies and incoming/outgoing event callbacks.
 function M.charges(config, random)
-	local bank = { charges=config.charges, uses=0, generated=0, last=0, lastUse=-math.huge }
+	local bank = { charges=config.charges, uses=0, generated=0, last=0, lastUse=-math.huge, noGainUntil=-math.huge }
 	function bank:advance(t)
-		self.charges = min(config.charges, self.charges + max(0,t - self.last) * (config.generation or 0))
+		local gainingFrom = max(self.last, self.noGainUntil)
+		self.charges = min(config.charges, self.charges + max(0,t - gainingFrom) * (config.generation or 0))
 		self.last = t
 	end
 	function bank:gain(t, amount)
 		self:advance(t)
+		if t < self.noGainUntil - 1e-9 then return end
 		local gain = max(0,amount) * (config.gain or 1)
 		self.generated = self.generated + min(gain, config.charges - self.charges)
 		self.charges = min(config.charges, self.charges + gain)
@@ -122,6 +124,7 @@ function M.charges(config, random)
 		if t <= self.lastUse + 1e-9 or config.used <= 0 or self.charges + 1e-9 < config.used then return false end
 		if (config.freeChance or 0) <= 0 or random() * 100 >= config.freeChance then self.charges = max(0,self.charges - config.used) end
 		self.uses, self.lastUse = self.uses + 1, t
+		if config.noGainDuringEffect then self.noGainUntil = t + max(0,config.duration or 0) end
 		return true
 	end
 	function bank:ready(t)
@@ -130,7 +133,7 @@ function M.charges(config, random)
 	end
 	function bank:next(t)
 		if self:ready(t) or not config.generation or config.generation <= 0 then return math.huge end
-		return t + max(0,config.used - self.charges) / config.generation
+		return max(t,self.noGainUntil) + max(0,config.used - self.charges) / config.generation
 	end
 	return bank
 end
@@ -190,6 +193,10 @@ M.presets = {
 	{ name="Rapid spells", category="Spell", speed=250, scale=1 },
 	{ name="Mixed pressure", category="Average", speed=700, scale=1 },
 	{ name="Sustained damage over time", category="DamageOverTime", speed=700, scale=1 },
+	{ name="Mapping pack stress", category="Melee", speed=300, scale=0.6, window=30, attacking=true, description="Repeated melee hits every 300ms at 60% of your current raw hit damage. Main-skill costs and recovery are active." },
+	{ name="Repeated boss hits", category="Spell", speed=1500, scale=1.8, window=30, attacking=true, description="Spell hits every 1.5s at 180% of current raw hit damage. This is a stress test, not a named boss model." },
+	{ name="Hits plus continuous damage", category="Average", speed=900, scale=1, window=30, dotScale=0.2, description="Average hits every 900ms, plus raw continuous damage per second equal to 20% of each current hit component." },
+	{ name="Resource pressure", category="Average", speed=700, scale=0.5, window=60, attacking=true, description="Attack continuously for 60s under hits at 50% of current damage. Uses the build's main-skill costs, recovery, flask and tincture policies." },
 }
 
 function M.preset(input, placeholder, preset)
@@ -198,11 +205,22 @@ function M.preset(input, placeholder, preset)
 	changed.simulateRecovery, changed.recoverySimulationSingleHit = true, preset.single or false
 	changed.recoverySimulationCompareSet = nil
 	changed.enemyDamageType, changed.enemySpeed = preset.category, preset.speed
+	changed.enemyIsBoss="None"
+	if preset.window then changed.recoverySimulationWindow=preset.window end
+	if preset.attacking~=nil then changed.recoverySimulationAttacking=preset.attacking end
+	changed.recoverySimulationTimedEffects=true
 	for _,kind in ipairs({ "Physical", "Fire", "Cold", "Lightning", "Chaos" }) do
-		changed["recoverySimulation"..kind.."Dot"] = 0
+		changed["recoverySimulation"..kind.."Dot"] = (tonumber(input["enemy"..kind.."Damage"]) or tonumber(placeholder["enemy"..kind.."Damage"]) or 0)*(preset.dotScale or 0)
 		changed["enemy"..kind.."Damage"] = tostring((tonumber(input["enemy"..kind.."Damage"]) or tonumber(placeholder["enemy"..kind.."Damage"]) or 0) * preset.scale)
 	end
 	return changed
+end
+
+function M.presetLines(preset)
+	return {preset.description or ("Uses "..preset.category.." damage at "..preset.speed.."ms intervals, scaled by "..preset.scale.." from the current hit inputs."),
+		"Creates a separate configuration set. Review raw damage values, enemy level, penetration and conditional buffs before running.",
+		"Damage scales from the active configuration; it is not a current monster database or a readiness guarantee.",
+		"Flasks, barriers, leech, recharge and continuous damage use the existing encounter settings and supported mechanics."}
 end
 
 function M.audit(input, context)

@@ -1,0 +1,133 @@
+describe("Crafting result model notes",function()
+	local sim=require("Modules.CraftingSimulator")
+	local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
+	local donor="Rarity: NORMAL\nCone Helmet\nItem Level: 70"
+	it("reports Bloodstained implicit uncertainty once per recipe",function()
+		local blood="Metadata/Items/Currency/CurrencyDelveCraftingVaal";local gilded="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice";local action={method="fossil",fossils={blood,gilded}}
+		local notes=sim.actionWarnings(action);assert.equal("bloodstained_implicit_assumptions",notes[1].code);assert.matches("replaces the existing implicit set",notes[1].message)
+		for _,note in ipairs(sim.actionWarnings({method="fossil",fossils={blood}})) do assert.not_equal("bloodstained_implicit_assumptions",note.code) end
+		local recipe=sim.recipeWarnings({steps={action,action}});local count=0;for _,note in ipairs(recipe) do if note.code==notes[1].code then count=count+1 end end;assert.equal(1,count)
+		local performed=sim.perform(raw,action,17);local found=false;for _,note in ipairs(performed.warnings) do if note.code==notes[1].code then found=true end end;assert.is_true(found)
+	end)
+	it("discloses the incomplete Gilded corruption interaction",function()
+		local gilded="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice";local blood="Metadata/Items/Currency/CurrencyDelveCraftingVaal"
+		local function has(notes) local count=0;for _,note in ipairs(notes) do if note.code=="gilded_corruption_incomplete" then count=count+1;assert.matches("equal chances of replacing the base or vendor implicit",note.message);assert.matches("Other Gilded corruption combinations remain incomplete",note.message) end end;return count end
+		local model=sim.model(raw);local state=sim.perform(raw,{method="fossil",fossils={gilded}},12).state
+		assert.equal(1,has(sim.actionWarnings({method="vaal"},{item=model.item,initial=state})))
+		assert.equal(1,has(sim.actionWarnings({method="fossil",fossils={gilded,blood}},model)))
+		assert.equal(1,has(sim.recipeWarnings({steps={{method="vaal"},{method="fossil",fossils={gilded}},{method="gwennen",firstOutcome=1012,secondOutcome=1000}}},model)))
+		assert.equal(0,has(sim.recipeWarnings({steps={{method="vaal"}}},model)))
+		local result=sim.simulate(raw,{initialState=state,steps={{method="vaal"}},targets={},requirements={corrupted=true}},{trials=2,maxActions=1})
+		assert.equal(1,has(result.warnings))
+	end)
+	it("discloses the beast-level limitation for both Bestiary swaps",function()
+		local model=sim.model(raw);local availability=require("Modules.CraftingAvailability").check
+		for _,method in ipairs({"beast_prefix_suffix","beast_suffix_prefix"}) do
+			local notes=sim.actionWarnings({method=method});assert.equal("beast_level_pool",notes[1].code);assert.matches("beast's level",notes[1].message)
+			assert.equal("beast_level_pool",sim.catalog(raw,"",5).methodWarnings[method][1].code)
+			local recipeNotes=sim.recipeWarnings({steps={{method=method},{method=method}}});assert.equal(1,#recipeNotes);assert.equal("beast_level_pool",recipeNotes[1].code)
+			local starting;for seed=1,100 do local candidate=sim.perform(raw,{method="alchemy"},seed).state;if availability(method,candidate,model) then starting=candidate;break end end
+			assert.is_truthy(starting);assert.matches("beast's level",require("Modules.CraftingWorkbench").hint(method,starting,model))
+			local result=sim.perform(raw,{method=method},1,starting);assert.equal("beast_level_pool",result.warnings[1].code)
+			local simulated=sim.simulate(raw,{initialState=starting,steps={{method=method}},targets={},requirements={minAffixes=1}},{trials=1,maxActions=1,forceFirstAction=true});assert.equal("beast_level_pool",simulated.warnings[1].code)
+		end
+	end)
+	it("shows the 3.30 Light Radius range in modifier inspection",function()
+		local model=sim.model(raw);local details=require("Modules.CraftingInspection").modDetails(model,"LightRadiusAndAccuracy3")
+		local joined=table.concat(details,"\n")
+		assert.matches("%(21%-30%)%% increased Light Radius",joined)
+		assert.matches("3%.30 Light Radius range: 21%-30%%",joined)
+		assert.matches("Light Radius",table.concat(sim.limits,"\n"))
+	end)
+	it("uses the 3.30 client ingredients for every resistance conversion",function()
+		local cases={fire={cold={wild_lifeforce=300,primal_lifeforce=300},lightning={wild_lifeforce=300,vivid_lifeforce=300}},
+			cold={fire={primal_lifeforce=300,wild_lifeforce=300},lightning={primal_lifeforce=300,vivid_lifeforce=300}},
+			lightning={fire={vivid_lifeforce=300,wild_lifeforce=300},cold={vivid_lifeforce=300,primal_lifeforce=300}}}
+		for from,choices in pairs(cases) do for to,cost in pairs(choices) do
+			local action={method="harvest_resistance",from=from,to=to}
+			assert.same(cost,sim.components(action));local warnings=sim.actionWarnings(action)
+			assert.equal(1,#warnings);assert.equal("harvest_resistance_assumptions",warnings[1].code)
+			assert.matches("not verified",warnings[1].message)
+		end end
+		assert.has_error(function() sim.components({method="harvest_resistance",from="fire",to="fire"}) end)
+	end)
+	it("prices all supported tagged Harvest reforges and augments",function()
+		local expected={fire={"wild_lifeforce",50,15000},cold={"vivid_lifeforce",50,15000},lightning={"primal_lifeforce",50,15000},
+			physical={"vivid_lifeforce",50,15000},life={"wild_lifeforce",75,17500},defences={"primal_lifeforce",75,17500},
+			chaos={"vivid_lifeforce",100,17500},attack={"wild_lifeforce",75,17500},caster={"primal_lifeforce",75,17500},
+			speed={"vivid_lifeforce",150,20000},critical={"primal_lifeforce",150,20000}}
+		for tag,cost in pairs(expected) do
+			assert.same({[cost[1]]=cost[2]},sim.components({method="harvest_reforge",tag=tag}))
+			assert.same({[cost[1]]=cost[3],sacred_lifeforce=1},sim.components({method="harvest_augment",tag=tag}))
+		end
+		assert.same({primal_lifeforce=5000,sacred_lifeforce=1},sim.components({method="harvest_reforge",tag="influence"}))
+		assert.has_error(function() sim.components({method="harvest_augment",tag="influence"}) end)
+	end)
+	it("deduplicates contextual notes and leaves ordinary actions clear",function()
+		assert.are.equal(0,#sim.actionWarnings({method="alchemy"}))
+		local notes=sim.recipeWarnings({steps={{method="recombine",donorItem=donor},{method="recombine",donorItem=donor},{method="alchemy",allflame={auto=true}}}})
+		assert.are.equal(2,#notes);assert.are.equal("recombination_count_odds",notes[1].code);assert.are.equal("allflame_historical",notes[2].code)
+		assert.are.equal("allflame_historical",sim.actionWarnings({method="ducat_kishara"})[1].code)
+		local locus=sim.recipeWarnings({steps={{method="locus"},{method="locus"}}})
+		assert.equal(1,#locus);assert.equal("locus_assumptions",locus[1].code);assert.matches("not verified 3.30 odds",locus[1].message)
+		assert.equal("locus_assumptions",sim.catalog(raw,"",10).methodWarnings.locus[1].code)
+		local corrupted=raw.."\nCorrupted";local model=sim.model(corrupted)
+		assert.matches("50%% destruction; not verified",require("Modules.CraftingWorkbench").hint("locus",model.initial,model))
+		assert.equal("locus_assumptions",sim.perform(corrupted,{method="locus"},1).warnings[1].code)
+		assert.equal("locus_assumptions",sim.simulate(corrupted,{steps={{method="locus"}},targets={},requirements={minQuality=30}},{trials=1,maxActions=1}).warnings[1].code)
+	end)
+	it("attaches notes to action, simulation and sampled odds results",function()
+		local action={method="recombine",donorItem=donor}
+		local performed=sim.perform(raw,action,1);assert.are.equal("recombination_count_odds",performed.warnings[1].code)
+		local simulated=sim.simulate(raw,{steps={action},targets={},requirements={minAffixes=1}},{trials=2,maxActions=1})
+		assert.are.equal("recombination_count_odds",simulated.warnings[1].code)
+		local odds=sim.calculate(raw,action,{},nil,{requirements={minAffixes=1},trials=2})
+		assert.are.equal("recombination_count_odds",odds.warnings[1].code)
+		local historical=sim.perform(raw,{method="alchemy",allflame={auto=true}},1)
+		assert.are.equal("allflame_historical",historical.warnings[1].code)
+	end)
+	it("retains Abyss socket assumptions for exact odds and recombination donors",function()
+		local fossil={method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingAbyss"}}
+		local source=raw.."\nSockets: W-W-W";local abyss=sim.perform(source,fossil,7)
+		local function hasWarning(result,code) for _,warning in ipairs(result.warnings or {}) do if warning.code==code then return true end end;return false end
+		local odds=sim.calculate(source,{method="annul"},{{anyOf={"DelveAbyssJewelSocket1"}}},abyss.state,{})
+		assert.is_false(odds.sampled);assert.is_true(hasWarning(odds,"abyss_socket_layout"))
+		local recombine={method="recombine",donorItem=abyss.itemText}
+		assert.is_true(hasWarning(sim.perform(source,recombine,1),"abyss_socket_layout"))
+		assert.is_true(hasWarning(sim.simulate(source,{steps={recombine},targets={},requirements={minAffixes=1}},{trials=2,maxActions=1}),"abyss_socket_layout"))
+		assert.is_true(hasWarning(sim.calculate(source,recombine,{},nil,{requirements={minAffixes=1},trials=2}),"abyss_socket_layout"))
+	end)
+	it("marks Binding as legacy supply without disabling the craft",function()
+		local action={method="binding"};local notes=sim.recipeWarnings({steps={action,action}})
+		assert.equal(1,#notes);assert.equal("binding_legacy",notes[1].code);assert.equal("3.30",notes[1].asOfPatch)
+		assert.equal("binding_legacy",sim.catalog(raw,"",10).methodWarnings.binding[1].code)
+		local performed=sim.perform(raw,action,1);assert.equal("RARE",performed.state.rarity);assert.equal("binding_legacy",performed.warnings[1].code)
+		local simulated=sim.simulate(raw,{steps={action},targets={},requirements={minAffixes=1}},{trials=1,maxActions=1});assert.equal("binding_legacy",simulated.warnings[1].code)
+		local odds=sim.calculate(raw,action,{},nil,{requirements={minAffixes=1},trials=2});assert.equal("binding_legacy",odds.warnings[1].code)
+	end)
+	it("warns when predictable recombination can remove a donor's Abyss socket",function()
+		local source=raw.."\nSockets: W-W-W";local model=sim.model(source);local input=copyTable(model.initial)
+		input.rarity="MAGIC";input.affixes={{id="IncreasedLife1",range=0.5}}
+		local fossil={method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingAbyss"}}
+		local donor=sim.perform(source,fossil,7).state;local hollow
+		for _,entry in ipairs(donor.affixes) do if entry.id=="DelveAbyssJewelSocket1" then hollow=entry end end
+		assert.is_truthy(hollow);donor.rarity="RARE";donor.affixes={hollow,{id="FireResist1",range=0.5}}
+		local craft={method="recombine_predictable",donorItem=sim.toItem(model,donor).raw,selectedMods={left={"IncreasedLife1"},right={"FireResist1"}},reportedSuccessChance=40,observedRecipientState=copyTable(input)}
+		craft.observedInputs=sim.predictableObservation(craft)
+		local targets={{anyOf={"IncreasedLife1"}},{anyOf={"FireResist1"}}}
+		local odds=sim.calculate(source,craft,targets,input);assert.is_true(odds.outcomes[2].chance>0)
+		local warned=false;for _,warning in ipairs(odds.warnings) do if warning.code=="abyss_socket_layout" then warned=true end end;assert.is_true(warned)
+		local draw=(odds.outcomes[1].chance+odds.outcomes[2].chance/2)/100
+		local result=sim.action(model,input,craft,function() return draw end)
+		for _,socket in ipairs(result.sockets) do assert.are_not.equal("A",socket.color) end
+		assert.is_true(sim.perform(source,craft,1,input).warnings[1].code=="abyss_socket_layout")
+		local simulated=sim.simulate(source,{initialState=input,steps={craft},targets=targets},{trials=4,maxActions=1,forceFirstAction=true})
+		assert.equal("abyss_socket_layout",simulated.warnings[1].code)
+	end)
+	it("keeps notes with chart routes even when prices are missing",function()
+		local charts=require("Modules.CraftingChartData")
+		local route={label="Historical route",result={trials=1,actionDistribution={{actions=1,trials=1,successes=0}},warnings={{code="allflame_historical",message="Allflame is historical."}}}}
+		local data=charts.series({route},charts.modes[3]);assert.are.equal(0,#data.series)
+		assert.are.equal("Historical route: Allflame is historical.",data.warnings[1])
+	end)
+end)

@@ -22,12 +22,13 @@ local ItemDBClass = newClass("ItemDBControl", "ListControl")
 ---@param rect Rect?
 ---@param itemsTab ItemsTab
 ---@param db ItemDBData
----@param dbType "RARE"|"UNIQUE"
+---@param dbType "RARE"|"UNIQUE"|"VISCERA"
 function ItemDBClass:ItemDBControl(anchor, rect, itemsTab, db, dbType)
 	self:ListControl(anchor, rect, 16, "VERTICAL", false)
 	self.itemsTab = itemsTab
 	self.db = db
 	self.dbType = dbType
+	self.reserveIconSpace = true
 	self.dragTargetList = { }
 	self.sortControl = { 
 		NAME = { key = "name", dir = "ASCEND", func = function(a,b) return a:gsub("^The ","") < b:gsub("^The ","") end },
@@ -39,18 +40,23 @@ function ItemDBClass:ItemDBControl(anchor, rect, itemsTab, db, dbType)
 	self.leaguesAndTypesLoaded = false
 	self.leagueList = { "Any league", "No league" }
 	self.typeList = { "Any type", "Armour", "Jewellery", "One Handed Melee", "Two Handed Melee" }
-	self.slotList = { "Any slot", "Weapon 1", "Weapon 2", "Helmet", "Body Armour", "Gloves", "Boots", "Amulet", "Ring", "Belt", "Jewel", "Flask", "Graft 1", "Graft 2" }
-	local baseY = dbType == "RARE" and -22 or -62
+	self.slotList = { "Any slot", "Weapon 1", "Weapon 2", "Helmet", "Body Armour", "Gloves", "Boots", "Amulet", "Ring", "Belt", "Jewel", "Flask", "Graft 1", "Graft 2",
+		-- Wickerman (3.30)
+		"Head", "Body", "Arm", "Leg"
+	}
+	local baseY = ({ RARE = -22, VISCERA = -42, UNIQUE = -62 })[dbType]
 	self.controls.slot = new("DropDownControl"):DropDownControl({"BOTTOMLEFT",self,"TOPLEFT"}, {0, baseY, 179, 18}, self.slotList, function(index, value)
 		self.listBuildFlag = true
 	end)
 	self.controls.type = new("DropDownControl"):DropDownControl({"LEFT",self.controls.slot,"RIGHT"}, {2, 0, 179, 18}, self.typeList, function(index, value)
 		self.listBuildFlag = true
 	end)
-	if dbType == "UNIQUE" then
+	if dbType == "UNIQUE" or dbType == "VISCERA" then
 		self.controls.sort = new("DropDownControl"):DropDownControl({"BOTTOMLEFT",self,"TOPLEFT"}, {0, baseY + 20, 179, 18}, self.sortDropList, function(index, value)
 			self:SetSortMode(value.sortMode)
 		end)
+	end
+	if dbType == "UNIQUE" then
 		self.controls.league = new("DropDownControl"):DropDownControl({"LEFT",self.controls.sort,"RIGHT"}, {2, 0, 179, 18}, self.leagueList, function(index, value)
 			self.listBuildFlag = true
 		end)
@@ -95,6 +101,7 @@ end
 function ItemDBClass:DoesItemMatchFilters(item)
 	if self.controls.slot.selIndex > 1 then
 		local primarySlot = item:GetPrimarySlot()
+		primarySlot = ({ ["Wickerman Head"] = "Head", ["Wickerman Torso"] = "Body", ["Wickerman Upper Limb"] = "Arm", ["Wickerman Lower Limb"] = "Leg" })[primarySlot] or primarySlot
 		if primarySlot ~= self.slotList[self.controls.slot.selIndex] and primarySlot:gsub(" %d","") ~= self.slotList[self.controls.slot.selIndex] then
 			return false
 		end
@@ -331,6 +338,10 @@ function ItemDBClass:GetRowValue(column, index, item)
 	if item and column == 1 then
 		return colorCodes[item.rarity] .. item.name
 	end
+end
+
+function ItemDBClass:GetRowIcon(column, index, item)
+	return item and self.itemsTab:GetItemIcon(item)
 end
 
 function ItemDBClass:AddValueTooltip(tooltip, index, item)

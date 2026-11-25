@@ -1,0 +1,1029 @@
+-- cspell:ignore Breachless
+describe("Linked planning tools",function()
+	local filters=require("Modules.LootFilters")
+	local dependencies=require("Modules.LootFilterDependencies")
+	local function craft() return {id="helmet",title="Helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}} end
+	before_each(function() newBuild();main.popups={} end)
+	after_each(function() main.popups={} end)
+	it("clears pending AI handoff drafts when opening another build",function()
+		build.planningAtlasDrafts={stale={}};build.planningFilterDraft={plan={dirty=true}}
+		newBuild();assert.is_nil(build.planningAtlasDrafts);assert.is_nil(build.planningFilterDraft)
+	end)
+	it("explains when the selected crafting slot has no equipped item",function()
+		require("Classes.CraftingProjectWizard").Open(build,nil,nil,"Helmet",nil,function() end,function() end)
+		local wizard=main.popups[1].controls
+		assert.is_false(wizard.useEquipped:IsEnabled())
+		assert.matches("Equip an item in the selected slot",wizard.useEquipped.tooltipText(),1,true)
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
+		build.itemsTab.items[9001]=new("Item"):Item(raw);build.itemsTab.slots.Helmet.selItemId=9001
+		assert.is_true(wizard.useEquipped:IsEnabled());wizard.useEquipped:Click();assert.equal(raw,wizard.starting.buf)
+		wizard.slot:SelByValue("Gloves");assert.is_false(wizard.useEquipped:IsEnabled())
+	end)
+	it("keeps Atlas drafts attached to their own linked plans",function()
+		local first={id="first",title="First plan",version="3.30.0-preview",budget=100,nodes={},notes="First notes"}
+		local second={id="second",title="Second plan",version="3.30.0-preview",budget=120,nodes={},notes="Second notes"}
+		build.savers.AtlasPlans:Upsert(first);build.savers.AtlasPlans:Upsert(second)
+		local workspace=require("Modules.PlanningWorkspace").new(build);workspace:Show("atlas",first)
+		workspace.controls.title:SetText("Unfinished first",true);workspace.controls.notes:SetText("Unfinished notes",true)
+		workspace.controls.progression:Click();local stage=main.popups[1].controls;stage.requirements:SetText("First-only stage",true)
+		-- Simulate leaving the editor to inspect a route while keeping its form.
+		main:ClosePopup();workspace:Show("journey")
+		local layout={navigate=function(page,plan) workspace:Show(page,plan) end}
+		assert.is_true(dependencies.open(build,layout,"atlas:second"))
+		assert.equal("Second plan",workspace.controls.title.buf);assert.equal("Second notes",workspace.controls.notes.buf)
+		assert.equal("Stages & strategy",workspace.controls.progression.label())
+		assert.is_true(dependencies.open(build,layout,"atlas:first"))
+		assert.equal("Unfinished first",workspace.controls.title.buf);assert.equal("Unfinished notes",workspace.controls.notes.buf)
+		assert.equal("Resume stages",workspace.controls.progression.label());workspace.controls.progression:Click()
+		assert.equal("First-only stage",main.popups[1].controls.requirements.buf);main.popups[1].controls.close:Click()
+	end)
+	it("keeps library and new Atlas plans separate from unfinished drafts",function()
+		local first={id="first",title="First",version="3.30.0-preview",budget=100,nodes={},notes="First notes"}
+		local second={id="second",title="Second",version="3.30.0-preview",budget=120,nodes={},notes="Second notes"}
+		build.savers.AtlasPlans:Upsert(first);build.savers.AtlasPlans:Upsert(second)
+		local workspace=require("Modules.PlanningWorkspace").new(build);workspace:Show("atlas",first)
+		workspace.controls.title:SetText("First unfinished",true);workspace.controls.notes:SetText("Private draft",true)
+		local function open(id)
+			workspace.controls.library:Click();local dialog=main.popups[1].controls
+			dialog.plans:SelByValue(id,"val");dialog.open:Click()
+		end
+		open("second");assert.equal("Second",workspace.controls.title.buf);assert.equal("Second notes",workspace.controls.notes.buf)
+		open("first");assert.equal("First unfinished",workspace.controls.title.buf);assert.equal("Private draft",workspace.controls.notes.buf)
+		workspace.controls.new:Click();assert.equal("New Atlas plan",workspace.controls.title.buf);assert.equal("",workspace.controls.notes.buf)
+		local draftId=workspace.cache.atlas.layout.snapshot().id;workspace.controls.title:SetText("Unkept mapping",true);workspace.controls.notes:SetText("Draft notes",true)
+		open("first");assert.equal("First unfinished",workspace.controls.title.buf);assert.equal("Private draft",workspace.controls.notes.buf)
+		workspace.controls.library:Click();local library=main.popups[1].controls;library.plans:SelByValue(draftId,"val")
+		assert.matches("Unkept mapping.*Session draft",library.plans:GetSelValue().label);assert.equal("Discard draft",library.delete.label());library.open:Click()
+		assert.equal("Unkept mapping",workspace.controls.title.buf);assert.equal("Draft notes",workspace.controls.notes.buf)
+		open("first");assert.equal("First unfinished",workspace.controls.title.buf)
+		local version;for _,id in ipairs(require("Modules.AtlasPlanner").versions) do if id~=first.version then version=id;break end end;assert.is_truthy(version)
+		workspace.controls.version.selFunc(nil,{val=version});main.popups[1].controls.confirm:Click()
+		assert.equal(version,workspace.cache.atlas.layout.snapshot().version);assert.equal("First unfinished",workspace.controls.title.buf)
+		assert.equal(first.version,build.savers.AtlasPlans.plans[1].version)
+		local newId=workspace.cache.atlas.layout.snapshot().id;assert.is_not.equal(first.id,newId)
+		local uiState=require("Modules.PlanningUI");assert.is_true(uiState.hasDraft(build,"atlas",first.id));assert.is_true(uiState.hasDraft(build,"atlas",newId))
+		workspace.controls.keep:Click();assert.equal(3,#build.savers.AtlasPlans.plans)
+		assert.is_true(uiState.hasDraft(build,"atlas",first.id));assert.is_false(uiState.hasDraft(build,"atlas",newId))
+		assert.matches("Working draft",uiState.saveStatus(build),1,true)
+		assert.equal(first.version,build.savers.AtlasPlans.plans[1].version);assert.equal(version,build.savers.AtlasPlans.plans[3].version)
+		open("first");assert.equal("First unfinished",workspace.controls.title.buf);assert.equal("Private draft",workspace.controls.notes.buf)
+		assert.equal(first.version,workspace.cache.atlas.layout.snapshot().version)
+		workspace.controls.keep:Click();assert.is_false(uiState.hasDraft(build,"atlas",first.id))
+		local xml=build:SaveDB("Atlas versions");loadBuildFromXML(xml,"Atlas versions")
+		assert.equal(3,#build.savers.AtlasPlans.plans);assert.equal(first.version,build.savers.AtlasPlans.plans[1].version);assert.equal(version,build.savers.AtlasPlans.plans[3].version)
+	end)
+	it("discards an Atlas session draft without deleting a saved plan",function()
+		local saved={id="saved",title="Saved",version="3.30.0-preview",budget=150,nodes={}}
+		build.savers.AtlasPlans:Upsert(saved);local workspace=require("Modules.PlanningWorkspace").new(build);workspace:Show("atlas",saved)
+		workspace.controls.new:Click();local id=workspace.cache.atlas.layout.snapshot().id;workspace.controls.title:SetText("Temporary",true)
+		assert.is_true(require("Modules.PlanningUI").hasDraft(build,"atlas",id))
+		workspace.controls.library:Click();local library=main.popups[1].controls;library.plans:SelByValue("saved","val");library.open:Click()
+		workspace.controls.library:Click();library=main.popups[1].controls;library.plans:SelByValue(id,"val");library.delete:Click()
+		assert.equal("Discard session draft",main.popups[1].title);main.popups[1].controls.confirm:Click()
+		assert.is_false(require("Modules.PlanningUI").hasDraft(build,"atlas",id))
+		library=main.popups[1].controls;for _,entry in ipairs(library.plans.list) do assert.is_not.equal(id,entry.val) end
+		assert.equal("Saved",build.savers.AtlasPlans.plans[1].title);assert.is_nil(workspace.atlasDrafts[id])
+		library.close:Click();workspace.controls.new:Click();local activeId=workspace.cache.atlas.layout.snapshot().id
+		workspace.controls.library:Click();library=main.popups[1].controls;library.plans:SelByValue("saved","val");library.open:Click()
+		workspace.controls.library:Click();library=main.popups[1].controls;library.plans:SelByValue(activeId,"val");library.open:Click()
+		workspace.controls.library:Click();library=main.popups[1].controls;library.plans:SelByValue(activeId,"val");library.delete:Click();main.popups[1].controls.confirm:Click()
+		assert.equal("saved",workspace.cache.atlas.layout.snapshot().id);assert.is_nil(workspace.atlasDrafts[activeId]);assert.equal(1,#build.savers.AtlasPlans.plans)
+	end)
+	it("keeps identical pickups linked to each crafting and gear source",function()
+		local first=craft();build.savers.CraftingProjects:Upsert(first)
+		local profile=filters.profile("shared","Shared pickups");profile.rules=filters.generate(build,profile)
+		local second=copyTable(first);second.id="second";second.title="Second helmet";build.savers.CraftingProjects:Upsert(second)
+		local function statuses()
+			local report=dependencies.report(build,profile);local result={}
+			for _,entry in ipairs(report.entries) do result[entry.origin]=entry.status end
+			return result,report.stale
+		end
+		local state,stale=statuses();assert.is_true(stale);assert.equal("Current",state["craft:helmet"]);assert.equal("New target",state["craft:second"])
+		profile.rules=filters.generate(build,profile);state,stale=statuses();assert.is_false(stale);assert.equal("Current",state["craft:second"])
+		local journey=require("Modules.BuildJourney").empty();journey.wishlist={{id="gear-hat",title="Helmet goal",slot="Helmet",route="craft",targetItem=first.startingItem}};build.savers.BuildJourney:Replace(journey)
+		state,stale=statuses();assert.is_true(stale);assert.equal("New target",state["gear:gear-hat"])
+		profile.rules=filters.generate(build,profile);local ids={};for _,rule in ipairs(profile.rules) do if rule.origin then ids[rule.origin]=rule.id end end
+		assert.is_truthy(ids["craft:helmet"]);assert.is_truthy(ids["craft:second"]);assert.is_truthy(ids["gear:gear-hat"])
+		local opened;local layout={openWorkbench=function(project) opened=project.id end,navigate=function(_,entry) opened=entry.selected end}
+		assert.is_true(dependencies.open(build,layout,"craft:helmet"));assert.equal("helmet",opened)
+		assert.is_true(dependencies.open(build,layout,"craft:second"));assert.equal("second",opened)
+		assert.is_true(dependencies.open(build,layout,"gear:gear-hat"));assert.equal("gear-hat",opened)
+		second.startingItem=second.startingItem:gsub("86","84");build.savers.CraftingProjects:Upsert(second)
+		state,stale=statuses();assert.is_true(stale);assert.equal("Current",state["craft:helmet"]);assert.equal("Changed",state["craft:second"]);assert.equal("Current",state["gear:gear-hat"])
+		profile.rules=filters.generate(build,profile);build.savers.CraftingProjects:Remove("helmet")
+		state,stale=statuses();assert.is_true(stale);assert.equal("Source removed / no longer needed",state["craft:helmet"]);assert.equal("Current",state["craft:second"]);assert.equal("Current",state["gear:gear-hat"])
+		profile.rules=filters.generate(build,profile);local retained={};for _,rule in ipairs(profile.rules) do if rule.origin then retained[rule.origin]=rule.id end end
+		assert.equal(ids["craft:second"],retained["craft:second"]);assert.equal(ids["gear:gear-hat"],retained["gear:gear-hat"])
+		profile.template="Hide";assert.equal("Show",filters.simulate(profile,{BaseType="Iron Hat",Rarity="Rare",ItemLevel=86}).action)
+	end)
+	it("shows unique wishlist items without requiring the copied item's level",function()
+		local journey=require("Modules.BuildJourney").empty()
+		journey.wishlist={{id="surrender",title="The Surrender",slot="Weapon 2",route="farm",targetItem="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86"}}
+		build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("unique-target","Unique target");profile.template="Hide";profile.rules=filters.generate(build,profile)
+		local pickup;for _,rule in ipairs(profile.rules) do if rule.origin=="gear:surrender" then pickup=rule end end
+		assert.is_truthy(pickup);assert.is_truthy(pickup.text:find('BaseType == "Ezomyte Tower Shield"',1,true))
+		assert.is_truthy(pickup.text:find("Rarity == Unique",1,true));assert.is_nil(pickup.text:find("ItemLevel",1,true))
+		assert.equal("Show",filters.simulate(profile,{BaseType="Ezomyte Tower Shield",Rarity="Unique",ItemLevel=70}).action)
+		assert.equal("Hide",filters.simulate(profile,{BaseType="Ezomyte Tower Shield",Rarity="Rare",ItemLevel=86}).action)
+	end)
+	it("tracks Atlas pickup changes through deletion, refresh and undo",function()
+		local store=build.savers.AtlasPlans
+		local plan={id="farm",title="Farm supplies",version="3.30.0c",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
+		store:Upsert(plan);build.savers.CraftingProjects:Upsert(craft())
+		local profile=filters.profile("atlas-recovery","Atlas recovery");profile.rules=filters.generate(build,profile)
+		local function sourceStatus()
+			local report=dependencies.report(build,profile);local statuses={}
+			for _,entry in ipairs(report.entries) do statuses[entry.origin]=entry.status end
+			return report.stale,statuses
+		end
+		local stale,statuses=sourceStatus();assert.is_false(stale);assert.equal("Current",statuses["atlas:farm"])
+		store:Remove("farm");stale,statuses=sourceStatus();assert.is_true(stale);assert.equal("Source removed / no longer needed",statuses["atlas:farm"])
+		store:UndoRemove();stale,statuses=sourceStatus();assert.is_false(stale);assert.equal("Current",statuses["atlas:farm"])
+		store:Remove("farm");profile.rules=filters.generate(build,profile);store:UndoRemove()
+		stale,statuses=sourceStatus();assert.is_true(stale);assert.equal("New target",statuses["atlas:farm"]);assert.equal("Current",statuses["craft:helmet"])
+		profile.rules=filters.generate(build,profile);stale,statuses=sourceStatus();assert.is_false(stale);assert.equal("Current",statuses["atlas:farm"])
+	end)
+	it("retains changed Atlas pickup warnings across save and reopen",function()
+		local store=build.savers.AtlasPlans
+		local plan={id="farm",title="Farm",version="3.30.0c",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
+		store:Upsert(plan);local profile=filters.profile("linked","Linked");profile.trackBuildPickups=true
+		profile.rules=filters.generate(build,profile);build.savers.LootFilters:Upsert(profile)
+		assert.is_false(dependencies.report(build,profile).stale)
+		plan.strategy.scarabs="Orb of Scouring";store:Upsert(plan)
+		local report=dependencies.report(build,profile);assert.is_true(report.stale)
+		local status;for _,entry in ipairs(report.entries) do if entry.origin=="atlas:farm" then status=entry.status end end
+		assert.equal("Changed",status)
+		local xml=build:SaveDB("Linked plans");loadBuildFromXML(xml,"Linked plans")
+		profile=build.savers.LootFilters.data.profiles[1];assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);assert.is_false(dependencies.report(build,profile).stale)
+	end)
+	it("keeps original Atlas filter links when a popup creates another version",function()
+		local store=build.savers.AtlasPlans
+		local plan={id="farm",title="Farm",version="3.30.0-preview",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
+		store:Upsert(plan);local profile=filters.profile("linked","Linked");profile.trackBuildPickups=true;profile.rules=filters.generate(build,profile)
+		assert.is_false(dependencies.report(build,profile).stale)
+		local controls=require("Classes.AtlasPlannerControl").Open(build,plan)
+		controls.version.selFunc(nil,{val="3.30.0c"});main.popups[1].controls.confirm:Click();main.popups[1].controls.keep:Click()
+		assert.equal(2,#store.plans);assert.equal(plan.version,store.plans[1].version);assert.equal("3.30.0c",store.plans[2].version)
+		assert.is_not.equal(store.plans[1].id,store.plans[2].id)
+		local report=dependencies.report(build,profile);assert.is_false(report.stale)
+		local status;for _,entry in ipairs(report.entries) do if entry.origin=="atlas:farm" then status=entry.status end end
+		assert.equal("Current",status)
+	end)
+	it("remembers tracked build pickups after the last linked rule disappears",function()
+		local store=build.savers.AtlasPlans
+		local plan={id="only-farm",title="Only farm",version="3.30.0c",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
+		store:Upsert(plan);local profile=filters.profile("tracked","Tracked");profile.trackBuildPickups=true;profile.rules=filters.generate(build,profile)
+		store:Remove(plan.id);profile.rules=filters.generate(build,profile);assert.equal(0,#profile.rules)
+		local saved=filters.validate({schemaVersion=1,activeId=profile.id,profiles={profile}}).profiles[1];assert.is_true(saved.trackBuildPickups)
+		store:UndoRemove();local report=dependencies.report(build,saved);assert.is_true(report.stale);assert.is_true(report.tracking);assert.equal("New target",report.entries[1].status)
+		saved.trackBuildPickups=false;report=dependencies.report(build,saved);assert.is_false(report.stale);assert.is_false(report.tracking)
+		local manual=filters.profile("manual","Manual");assert.is_false(dependencies.report(build,manual).stale)
+	end)
+	it("keeps shared recipe currencies linked to each guide",function()
+		local first=craft();first.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
+		local second=copyTable(first);second.id="second";second.title="Second helmet"
+		build.savers.CraftingProjects:Upsert(first);build.savers.CraftingProjects:Upsert(second)
+		local profile=filters.profile("shared-currency","Shared currency");profile.rules=filters.generate(build,profile)
+		local sources={};for _,rule in ipairs(profile.rules) do if rule.title=="Omen of Connections" then sources[rule.origin]=true end end
+		assert.is_true(sources["craft:helmet"]);assert.is_true(sources["craft:second"])
+		first.nativeRecipe.steps={{method="socket_white_bench"}};build.savers.CraftingProjects:Upsert(first)
+		profile.rules=filters.generate(build,profile);sources={};for _,rule in ipairs(profile.rules) do if rule.title=="Omen of Connections" then sources[rule.origin]=true end end
+		assert.is_nil(sources["craft:helmet"]);assert.is_true(sources["craft:second"])
+	end)
+	it("adds linked loot targets for every mechanic on a multi-mechanic Atlas node",function()
+		local atlas=require("Modules.AtlasPlanner");local tree=atlas.tree("3.30.0-preview")
+		local plan=atlas.connect({id="multi",title="Multi mechanic",version="3.30.0-preview",budget=150,nodes={}}, {4908})
+		build.savers.AtlasPlans:Upsert(plan)
+		local node=tree.nodes[4908];local original=node.stats;node.stats=copyTable(original)
+		node.stats[#node.stats+1]="Your Maps contain a Blight Encounter and an Incursion"
+		local ok,rules=pcall(filters.generate,build,filters.profile("multi-filter","Multi mechanic"));node.stats=original
+		assert.is_true(ok,tostring(rules));local names={};for _,rule in ipairs(rules) do names[rule.title]=true end
+		assert.is_true(names["Blight Thread"]);assert.is_true(names["Incursion Thread"])
+	end)
+	it("uses only the selected Atlas effect for linked thread suggestions",function()
+		local atlas=require("Modules.AtlasPlanner");local node=atlas.tree("3.30.0-preview").nodes[54685]
+		local plan={id="choice",title="Choice",version="3.30.0-preview",budget=150,nodes={node.id},choices={{node=node.id,effect=node.variantEffects[1].effect}}}
+		local strategy=require("Modules.AtlasStrategy")
+		assert.equal("Threads",strategy.mechanic(strategy.selectedNode(plan,node)))
+		-- Isolate the chosen node so intermediate path nodes cannot add other mechanics.
+		build.savers.AtlasPlans.plans={plan}
+		local profile=filters.profile("choice-filter","Choice filter");local names={}
+		for _,rule in ipairs(filters.generate(build,profile)) do if rule.origin=="atlas:choice" then names[rule.title]=true end end
+		assert.is_true(names["Breach Thread"]);assert.is_nil(names["Ritual Thread"]);assert.is_nil(names["Ultimatum Thread"])
+		plan.choices[1].effect=node.variantEffects[2].effect;names={}
+		for _,rule in ipairs(filters.generate(build,profile)) do if rule.origin=="atlas:choice" then names[rule.title]=true end end
+		assert.is_nil(names["Breach Thread"]);assert.is_true(names["Ritual Thread"])
+	end)
+	it("does not suggest a thread excluded by an Atlas effect",function()
+		local atlas=require("Modules.AtlasPlanner");local tree=atlas.tree("3.30.0-preview")
+		local positive,negative=tree.nodes[54685],tree.nodes[64980]
+		local plan={id="exclusion",title="Exclusion",version=tree.version,budget=150,nodes={positive.id,negative.id},choices={{node=positive.id,effect=positive.variantEffects[1].effect},{node=negative.id,effect=negative.variantEffects[1].effect}}}
+		build.savers.AtlasPlans.plans={plan};local profile=filters.profile("exclusion-filter","Exclusion filter")
+		local function names() local result={};for _,rule in ipairs(filters.generate(build,profile)) do if rule.origin=="atlas:exclusion" then result[rule.title]=true end end;return result end
+		assert.is_nil(names()["Breach Thread"])
+		plan.choices[2].effect=negative.variantEffects[2].effect;assert.is_true(names()["Breach Thread"])
+		plan.choices[2].effect=negative.variantEffects[1].effect;plan.strategy={scarabs="Breach Thread"};assert.is_true(names()["Breach Thread"])
+		positive,negative=tree.nodes[61484],tree.nodes[61620];plan.strategy=nil;plan.nodes={positive.id,negative.id};plan.choices={{node=positive.id,effect=positive.variantEffects[1].effect},{node=negative.id,effect=negative.variantEffects[1].effect}}
+		assert.is_nil(names()["Abyss Thread"]);plan.choices[2].effect=negative.variantEffects[2].effect;assert.is_true(names()["Abyss Thread"])
+	end)
+	it("links explicit map item tiers and flags changed Atlas layouts",function()
+		local plan={id="farming",title="Farming",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Map (Tier 16), Nightmare Map",scarabs="Use Omen of Connections"}}
+		build.savers.AtlasPlans:Upsert(plan)
+		local profile=filters.profile("map-filter","Map filter");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do if rule.origin=="atlas:farming" then found[rule.title]=rule end end
+		assert.is_truthy(found["Map (Tier 16)"]);assert.is_truthy(found["Nightmare Map"]);assert.is_truthy(found["Omen of Connections"])
+		local oldId=found["Map (Tier 16)"].id
+		plan.strategy.maps="Nightmare Map, Map (Tier 16)";build.savers.AtlasPlans:Upsert(plan)
+		assert.is_false(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);found={};for _,rule in ipairs(profile.rules) do found[rule.title]=rule end
+		assert.equal(oldId,found["Map (Tier 16)"].id)
+		plan.strategy.maps="Map (Tier 5), Beach Map";build.savers.AtlasPlans:Upsert(plan)
+		local report=dependencies.report(build,profile);assert.is_true(report.stale);assert.is_true(report.needsReview)
+	end)
+	it("uses shared Nightmare Map pickups for destinations and explains exclusions",function()
+		local plan={id="nightmare",title="Nightmare",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Abomination Map, Fortress Map"}}
+		build.savers.AtlasPlans:Upsert(plan)
+		local journey=require("Modules.BuildJourney").empty();journey.resources={{id="destination",title="Ziggurat Map"}};build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("nightmare-filter","Nightmare");local rules,warnings=filters.generate(build,profile);local found={}
+		for _,rule in ipairs(rules) do found[(rule.origin or "")..":"..rule.title]=rule end
+		assert.is_truthy(found["atlas:nightmare:Nightmare Map"]);assert.is_truthy(found["budget:destination:Nightmare Map"])
+		assert.is_nil(found["atlas:nightmare:Abomination Map"]);assert.equal(2,#warnings)
+		for _,warning in ipairs(warnings) do assert.matches("share the Nightmare Map item",warning.message,1,true) end
+		plan.strategy.avoid="Fortress Map";build.savers.AtlasPlans:Upsert(plan);rules=filters.generate(build,profile)
+		for _,rule in ipairs(rules) do assert.is_false(rule.origin=="atlas:nightmare" and rule.title=="Nightmare Map") end
+	end)
+	it("links current special map items from Atlas plans and budgets",function()
+		local plan={id="special-maps",title="Special maps",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Nightmare Map, Shaper Guardian Map, Valdo Map",avoid="Valdo Map"}}
+		build.savers.AtlasPlans:Upsert(plan)
+		local journey=require("Modules.BuildJourney").empty();journey.resources={{id="valdo",title="Valdo Map"}};build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("special-map-filter","Special map filter");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do found[rule.origin..":"..rule.title]=true end
+		assert.is_true(found["atlas:special-maps:Nightmare Map"]);assert.is_true(found["atlas:special-maps:Shaper Guardian Map"])
+		assert.is_nil(found["atlas:special-maps:Valdo Map"]);assert.is_true(found["budget:valdo:Valdo Map"])
+		for _,name in ipairs({"Nightmare Map","Shaper Guardian Map","Valdo Map"}) do assert.equal("Show",filters.simulate(profile,{BaseType=name}).action) end
+	end)
+	it("links blighted map variants by their filter properties",function()
+		local plan={id="blight-maps",title="Blight maps",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Blighted Map, Blight-ravaged Map",avoid="Blight-ravaged Map"}}
+		build.savers.AtlasPlans:Upsert(plan)
+		local journey=require("Modules.BuildJourney").empty();journey.resources={{id="ravaged",title="Blight-ravaged Maps"}};build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("blight-map-filter","Blight map filter");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do found[rule.origin..":"..rule.title]=rule end
+		assert.is_truthy(found["atlas:blight-maps:Blighted Map"]);assert.is_nil(found["atlas:blight-maps:Blight-ravaged Map"])
+		assert.is_truthy(found["budget:ravaged:Blight-ravaged Map"])
+		assert.is_truthy(found["atlas:blight-maps:Blighted Map"].text:find("BlightedMap True",1,true))
+		assert.is_truthy(found["atlas:blight-maps:Blighted Map"].text:find("UberBlightedMap False",1,true))
+		local copied="Item Class: Maps\nRarity: Rare\nBlighted Example\nBlighted Map (Tier 16)\n--------\nItem Level: 83\n--------\nArea is infested with Fungal Growths (implicit)"
+		local preview=filters.simulate(profile,require("Modules.LootFilterClipboard").parse(copied));assert.equal("Show",preview.action);assert.matches("Blighted Map",preview.ruleTitle,1,true)
+		assert.is_truthy(found["budget:ravaged:Blight-ravaged Map"].text:find("UberBlightedMap True",1,true))
+		local parser=require("Modules.LootFilterParser")
+		for _,case in ipairs({{"atlas:blight-maps:Blighted Map","BlightedMap"},{"budget:ravaged:Blight-ravaged Map","UberBlightedMap"}}) do
+			local conditions=parser.parse(found[case[1]].text).rules[1].conditions
+			assert.is_true(parser.condition(conditions[1],{Class="Maps"}));assert.is_false(parser.condition(conditions[1],{Class="Currency"}))
+			assert.is_true(parser.condition(conditions[2],{[case[2]]=true}));assert.is_false(parser.condition(conditions[2],{[case[2]]=false}))
+		end
+	end)
+	it("respects map tier and Thread exclusions without suppressing separate budget pickups",function()
+		local atlas=require("Modules.AtlasPlanner")
+		local plan=atlas.connect({id="avoid",title="Avoided maps",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Map (Tier 5), Map (Tier 16), Beach Map",scarabs="Breach Thread",avoid="Map (Tier 5) and Breach Thread"}}, {4908})
+		build.savers.AtlasPlans:Upsert(plan)
+		local data=copyTable(build.savers.BuildJourney.data);data.resources={{id="budget-thread",title="Breach Thread"}};build.savers.BuildJourney.data=data
+		local profile=filters.profile("avoid-filter","Avoid filter");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do found[rule.title]=rule end
+		assert.is_truthy(found["Map (Tier 16)"]);assert.is_nil(found["Map (Tier 5)"]);assert.is_nil(found["Beach Map"])
+		assert.equal("budget:budget-thread",found["Breach Thread"].origin)
+	end)
+	it("treats avoided mechanic names as Thread exclusions for that Atlas plan",function()
+		local atlas=require("Modules.AtlasPlanner");local node=atlas.tree("3.30.0-preview").nodes[54685]
+		local plan=atlas.connect({id="mechanics",title="Mechanics",version="3.30.0-preview",budget=150,nodes={},strategy={scarabs="Breach Thread, Ritual Thread and Expedition Thread",avoid="breach and RITUAL"}},{node.id})
+		plan=atlas.chooseEffect(plan,node.id,node.variantEffects[1].effect);build.savers.AtlasPlans:Upsert(plan)
+		local journey=require("Modules.BuildJourney").empty();journey.resources={{id="breach",title="Breach Thread"}};build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("mechanic-avoid","Mechanic avoidance");local rules,warnings=filters.generate(build,profile)
+		local names={};for _,rule in ipairs(rules) do names[rule.origin..":"..rule.title]=true end
+		assert.is_nil(names["atlas:mechanics:Breach Thread"]);assert.is_nil(names["atlas:mechanics:Ritual Thread"])
+		assert.is_true(names["atlas:mechanics:Expedition Thread"]);assert.is_true(names["budget:breach:Breach Thread"]);assert.equal(0,#warnings)
+		local bridge=require("Modules.DesktopBuildBridge")
+		local reopened=bridge.prepare(build,{mode="edit",title="Reopen strategy",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}}).candidate
+		for _,rule in ipairs(filters.generate(reopened,profile)) do assert.is_false(rule.origin=="atlas:mechanics" and rule.title=="Breach Thread") end
+		plan=build.savers.AtlasPlans.plans[1]
+		plan.strategy.avoid="Breachless";names={}
+		for _,rule in ipairs(filters.generate(build,profile)) do names[rule.origin..":"..rule.title]=true end
+		assert.is_true(names["atlas:mechanics:Breach Thread"])
+	end)
+	it("describes linked sources by name and handles removed sources",function()
+		build.savers.CraftingProjects:Upsert(craft())
+		build.savers.AtlasPlans:Upsert({id="maps",title="My maps",version="3.30.0-preview",budget=150,nodes={}})
+		local data=copyTable(build.savers.BuildJourney.data);data.resources={{id="fossil",title="Fossils"}};data.wishlist={{id="hat",title="Life helmet",slot="Helmet",route="craft"}};build.savers.BuildJourney.data=data
+		for origin,label in pairs({["craft:helmet"]="Crafting: Helmet",["atlas:maps"]="Atlas: My maps",["budget:fossil"]="Budget: Fossils",["gear:hat"]="Gear: Life helmet",gems="Active skill gems",["atlas:missing"]="Source no longer available"}) do
+			assert.equal(label,dependencies.sourceLabel(build,origin))
+		end
+	end)
+	it("lets an older saved filter review and keep the new base",function()
+		local profile=filters.profile("old-base","Old base");profile.baseCommit="3ab00dd016b00c6be7acfa989baf498842973d54"
+		profile.rules={{id="personal",title="My thread",text='Hide\n BaseType == "Frayed Thread"',enabled=true}}
+		local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Overview"})
+		workspace.controls.manage:Click();main.popups[1].controls.search:SetText("Audit and update",true);main.popups[1].controls.choose:Click()
+		assert.equal("Filter audit",main.popups[1].title)
+		local download=launch.DownloadPage
+		launch.DownloadPage=function(_,url,callback)
+			assert.is_truthy(url:find(profile.baseCommit,1,true))
+			callback({body=filters.base(filters.profile("current","Current"))})
+		end
+		local ok, failure=pcall(function()
+			main.popups[1].controls.choose:Click()
+			assert.equal("NeverSink base review",main.popups[1].title)
+			main.popups[1].controls.choose:Click()
+		end)
+		launch.DownloadPage=download
+		assert(ok,failure)
+		local updated=workspace.cache.filters.layout.snapshot().data.profiles[1]
+		assert.equal(filters.source().commit,updated.baseCommit);assert.same(profile.rules,updated.rules)
+		assert.is_truthy(filters.compile(updated));workspace.controls.keep:Click()
+		local xml=build:SaveDB("Filter update");loadBuildFromXML(xml,"Filter update")
+		local saved=build.savers.LootFilters.data.profiles[1];assert.equal(filters.source().commit,saved.baseCommit);assert.same(profile.rules,saved.rules)
+	end)
+	it("selects and deduplicates examples when switching filter scenes",function()
+		local profile=filters.profile("scene-switch","Scene switch");local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate"})
+		workspace.controls.sceneKind.selFunc(nil,"Divination cards")
+		assert.equal("Divination Cards",workspace.cache.filters.layout.snapshot().sample.Class)
+		workspace.controls.sceneStats:Click();assert.matches("12 results",main.popups[1].controls.count.label);main:ClosePopup()
+		workspace.controls.sceneKind.selFunc(nil,"Essences")
+		assert.matches("Essence",workspace.cache.filters.layout.snapshot().sample.BaseType)
+		for _,row in ipairs(workspace.controls.selection.list) do assert.is_nil(row[1]:find("Unidentified item tier",1,true)) end
+		workspace.controls.sceneStats:Click();assert.matches("12 results",main.popups[1].controls.count.label)
+		for _,row in ipairs(main.popups[1].controls.results.list) do assert.is_nil(row[1]:find("(no tier)",1,true)) end;main:ClosePopup()
+		local draft=workspace.cache.filters.layout.snapshot();draft.sample=require("Modules.LootFilterLibrary").sample();draft.sample.BaseType="Divine Orb"
+		workspace:Show("filters",draft);workspace.controls.sceneStats:Click()
+		assert.matches("13 results",main.popups[1].controls.count.label);main:ClosePopup()
+		workspace.controls.sceneKind.selFunc(nil,"Tiered gear");local details={}
+		for _,row in ipairs(workspace.controls.selection.list) do details[#details+1]=row[1] end
+		assert.matches("Unidentified item tier: 0",table.concat(details," "))
+	end)
+	it("shows unknown tier on generated rare examples and explains Ruthless comparisons",function()
+		local library=require("Modules.LootFilterLibrary");local profile=filters.profile("tier-preview","Tier preview")
+		local sample;for _,item in ipairs(library.scene(profile,build,"Mixed drops",0,83,86)) do if item.BaseType=="Iron Hat" then sample=item end end
+		local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sample=sample})
+		local details={};for _,row in ipairs(workspace.controls.selection.list) do details[#details+1]=row[1] end
+		assert.matches("Unidentified item tier: unknown",table.concat(details," "))
+		workspace.controls.sceneStats:Click();main.popups[1].controls.search:SetText("Iron Hat",true)
+		local rows={};for _,row in ipairs(main.popups[1].controls.results.list) do rows[#rows+1]=row[1] end
+		assert.matches("tier unknown",table.concat(rows," "));main:ClosePopup()
+		profile.mode="Ruthless";workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sceneKind="Tiered gear"})
+		assert.equal(0,workspace.cache.filters.layout.snapshot().sample.UnidentifiedItemTier)
+	end)
+	it("distinguishes quoted numeric modifier names from counts when checking linked targets",function()
+		build.savers.CraftingProjects:Upsert(craft());local profile=filters.profile("filter","Filter");profile.rules=filters.generate(build,profile)
+		profile.rules[1].text='Show\n HasExplicitMod "1" "foo"'
+		local current=copyTable(profile.rules);current[1].text='Show\n HasExplicitMod 1 "foo"'
+		local generate=filters.generate;filters.generate=function() return current end
+		local ok,report=pcall(dependencies.report,build,profile);filters.generate=generate
+		assert.is_true(ok);assert.is_true(report.stale);assert.equal("Changed",report.entries[1].status)
+	end)
+	it("does not mark linked targets stale for harmless string quoting",function()
+		build.savers.CraftingProjects:Upsert(craft());local profile=filters.profile("filter","Filter");profile.rules=filters.generate(build,profile)
+		profile.rules[1].text='Show\n BaseType "IronHat"'
+		local current=copyTable(profile.rules);current[1].text='Show\n BaseType IronHat'
+		local generate=filters.generate;filters.generate=function() return current end
+		local ok,report=pcall(dependencies.report,build,profile);filters.generate=generate
+		assert.is_true(ok);assert.is_false(report.stale)
+	end)
+	it("detects changed or removed generated targets without treating styles or inventory as dependencies",function()
+		local project=craft();build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("filter","Filter");profile.rules=filters.generate(build,profile)
+		assert.is_false(dependencies.report(build,profile).stale)
+		profile.rules[1].enabled=false;profile.rules[1].text=profile.rules[1].text.."\n SetFontSize 20";assert.is_false(dependencies.report(build,profile).stale)
+		project.inventory={require("Modules.CraftingInventory").capture(project,require("Modules.CraftingSimulator").model(project.startingItem).initial)};build.savers.CraftingProjects:Upsert(project);assert.is_false(dependencies.report(build,profile).stale)
+		project.startingItem=project.startingItem:gsub("86","87");build.savers.CraftingProjects:Upsert(project);local report=dependencies.report(build,profile);assert.is_true(report.stale);assert.equal("Changed",report.entries[1].status)
+		profile.rules=filters.generate(build,profile);assert.is_false(dependencies.report(build,profile).stale)
+		build.savers.CraftingProjects.projects={};assert.is_true(dependencies.report(build,profile).stale)
+	end)
+	it("links modeled recipe currencies to the filter and marks changed recipes stale",function()
+		local project=craft();project.nativeRecipe={steps={{method="omen_connections"},{method="beast_max_links"}},targets={},requirements={links=4}}
+		build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("craft-resources","Craft resources");profile.rules=filters.generate(build,profile)
+		local names={};for _,rule in ipairs(profile.rules) do names[rule.title]=true end
+		assert.is_true(names["Omen of Connections"]);assert.is_true(names["Orb of Fusing"]);assert.is_nil(names["The Black Morrigan"])
+		assert.equal("Show",filters.simulate(profile,{BaseType="Omen of Connections"}).action)
+		assert.is_false(dependencies.report(build,profile).stale)
+		project.nativeRecipe.steps={{method="socket_white_bench"}};build.savers.CraftingProjects:Upsert(project)
+		assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);names={};for _,rule in ipairs(profile.rules) do names[rule.title]=true end
+		assert.is_nil(names["Omen of Connections"]);assert.is_true(names["Orb of Scouring"])
+	end)
+	it("links only tracked alternative recipe resources and donor bases",function()
+		local project=craft();project.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		local derived="Rarity: NORMAL\nLeather Cap\nItem Level: 86";local donor="Rarity: NORMAL\nHubris Circlet\nItem Level: 86"
+		project.recipeAlternatives={
+			{name="Quality",trackPickups=false,recipe={steps={{method="quality"}},targets={},requirements={minQuality=1}}},
+			{name="Donor",trackPickups=false,recipe={steps={{method="recombine",donorItem=donor}},targets={},requirements={minAffixes=1},initialState={rarity="RARE",affixes={},baseItem=derived}}},
+			{name="Ignored",recipe={steps={{method="chaos"}},targets={},requirements={minAffixes=1}}},
+			{name="Duplicate",trackPickups=true,recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}},
+		}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("alternative-pickups","Alternatives");profile.template="Hide";profile.rules=filters.generate(build,profile)
+		local function names(rules) local result={};for _,rule in ipairs(rules) do if rule.origin=="craft:helmet" then result[rule.title]=(result[rule.title] or 0)+1 end end;return result end
+		local found=names(profile.rules);assert.equal(1,found["Orb of Alchemy"]);assert.is_nil(found["Armourer's Scrap"]);assert.is_nil(found["Chaos Orb"])
+		assert.is_nil(found["Donor base: Hubris Circlet"]);assert.is_false(dependencies.report(build,profile).stale)
+		project.recipeAlternatives[1].trackPickups=true;build.savers.CraftingProjects:Upsert(project);assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);found=names(profile.rules);assert.equal(1,found["Armourer's Scrap"]);assert.is_nil(found["Chaos Orb"])
+		project.recipeAlternatives[2].trackPickups=true;build.savers.CraftingProjects:Upsert(project);assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);found=names(profile.rules);assert.is_true(found["Donor base: Hubris Circlet"]~=nil);assert.equal("Show",filters.simulate(profile,{BaseType="Leather Cap",Rarity="Rare",ItemLevel=86}).action)
+		local existing=build.savers.CraftingProjects.projects[1].recipeAlternatives[2];existing.name="Renamed donor";existing.recipe.initialState.baseItem="Not an item"
+		local preserved,warnings=filters.generate(build,profile);local foundBase=false;for _,rule in ipairs(preserved) do if rule.origin=="craft:helmet" and rule.title=="Helmet alternative starting base" then foundBase=true end end
+		assert.is_true(foundBase);assert.is_true(#warnings>0);build.savers.CraftingProjects:Upsert(project)
+		project.recipeAlternatives[2].trackPickups=false;build.savers.CraftingProjects:Upsert(project);assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);found=names(profile.rules);assert.is_nil(found["Donor base: Hubris Circlet"]);assert.is_true(found["Armourer's Scrap"]~=nil)
+	end)
+	it("does not duplicate a preserved working base when another tracked route uses it",function()
+		local project=craft();local derived="Rarity: NORMAL\nLeather Cap\nItem Level: 86"
+		local recipe={steps={{method="quality"}},targets={},requirements={minQuality=1},initialState={rarity="RARE",affixes={},baseItem=derived}}
+		project.recipeAlternatives={{name="First",trackPickups=true,recipe=copyTable(recipe)},{name="Second",trackPickups=true,recipe=copyTable(recipe)}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("working-base-unique","Working bases");profile.rules=filters.generate(build,profile)
+		local saved=build.savers.CraftingProjects.projects[1].recipeAlternatives[1];saved.name="Renamed";saved.recipe.initialState.baseItem="Not an item"
+		local rules,warnings=filters.generate(build,profile);local count=0
+		for _,rule in ipairs(rules) do if rule.origin=="craft:helmet" and rule.text:find('BaseType == "Leather Cap"',1,true) then count=count+1 end end
+		assert.equal(1,count);assert.is_true(#warnings>0)
+	end)
+	it("does not duplicate a known alternative resource when another recipe needs review",function()
+		local project=craft();project.nativeRecipe={steps={{method="recombine",donorItem="Rarity: NORMAL\nHubris Circlet\nItem Level: 86"}},targets={},requirements={minAffixes=1}}
+		project.recipeAlternatives={{name="Quality",trackPickups=true,recipe={steps={{method="quality"}},targets={},requirements={minQuality=1}}}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("deduplicate-alternatives","Deduplicate");profile.rules=filters.generate(build,profile)
+		for _=1,2 do
+			profile.rules=filters.generate(build,profile);local count=0
+			for _,rule in ipairs(profile.rules) do if rule.origin=="craft:helmet" and rule.title=="Armourer's Scrap" then count=count+1 end end
+			assert.equal(1,count)
+		end
+	end)
+	it("links saved unique guide currencies to filters without guessing edited text",function()
+		local project={id="unique-filter",title="Goldrim",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.apply:Click();control.omen:Click();control.guide:Click()
+		local saved=build.savers.CraftingProjects.projects[1];assert.equal("quality",saved.steps[1].uniqueCraft.method);assert.equal("omen_connections",saved.steps[2].uniqueCraft.method)
+		local xml=build:SaveDB("Unique filter");loadBuildFromXML(xml,"Unique filter");main.popups={}
+		saved=build.savers.CraftingProjects.projects[1];assert.equal("quality",saved.steps[1].uniqueCraft.method)
+		local profile=filters.profile("unique-filter-profile","Unique filter");profile.rules=filters.generate(build,profile)
+		local names={};for _,rule in ipairs(profile.rules) do names[rule.title]=true end
+		assert.is_true(names["Armourer's Scrap"]);assert.is_true(names["Omen of Connections"]);assert.is_true(names["Orb of Fusing"])
+		assert.equal("Show",filters.simulate(profile,{BaseType="Omen of Connections"}).action)
+		require("Classes.CraftingProjectWizard").Open(build,saved,nil,nil,nil,function() end,function() end)
+		local wizard=main.popups[1].controls;wizard.steps:SetText("Acquire the item\n"..saved.steps[1].action.."\n"..saved.steps[2].action)
+		wizard.wizardPage:SelByValue("Review");wizard.save:Click();saved=build.savers.CraftingProjects.projects[1]
+		assert.equal("quality",saved.steps[2].uniqueCraft.method);assert.equal("omen_connections",saved.steps[3].uniqueCraft.method)
+		local review=dependencies.report(build,profile);assert.is_true(review.needsReview)
+		local notice;for _,entry in ipairs(review.entries) do if entry.origin=="craft:unique-filter" then notice=entry end end
+		assert.is_true(notice.openGuide);assert.matches("Written guide steps",table.concat(notice.details," "),1,true)
+		require("Classes.CraftingProjectWizard").Open(build,saved,nil,nil,nil,function() end,function() end)
+		wizard=main.popups[1].controls;wizard.steps:SetText("Acquire the item\nUse a different quality method\n"..saved.steps[3].action)
+		wizard.wizardPage:SelByValue("Method & budget");wizard.next:Click()
+		assert.equal("Planning tool",main.popups[1].title);assert.equal("quality",build.savers.CraftingProjects.projects[1].steps[2].uniqueCraft.method)
+		main.popups={}
+		local browser=require("Classes.CraftingGuideStepsControl").Open(build,saved.id);browser.results.planningSelect(browser.results.list[2]);browser.edit:Click()
+		local edit=main.popups[1].controls;edit.action:SetText("Use a different quality method");edit.saveStep:Click()
+		assert.equal("Change modeled step",main.popups[1].title);main.popups[1].controls.confirm:Click()
+		assert.is_nil(build.savers.CraftingProjects.projects[1].steps[2].uniqueCraft);assert.is_true(dependencies.report(build,profile).stale)
+		assert.equal("omen_connections",build.savers.CraftingProjects.projects[1].steps[3].uniqueCraft.method)
+		local regenerated=filters.generate(build,profile);names={};for _,rule in ipairs(regenerated) do names[rule.title]=true end
+		assert.is_nil(names["Armourer's Scrap"]);assert.is_true(names["Omen of Connections"])
+	end)
+	it("preserves unique guide pickups while its starting item needs correction",function()
+		local project={id="guide-invalid",title="Skin",slot="Body Armour",startingItem="Rarity: UNIQUE\nSkin of the Loyal\nSimple Robe\nItem Level: 86\nSockets: R-G-B-R-G-B",goals={},steps={{action="Use 1 Armourer's Scrap",uniqueCraft={method="quality",count=1}}}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("guide-invalid","Guide");profile.rules=filters.generate(build,profile)
+		local function hasScrap(rules) for _,rule in ipairs(rules) do if rule.origin=="craft:guide-invalid" and rule.title=="Armourer's Scrap" then return true end end return false end
+		assert.is_true(hasScrap(profile.rules));project.startingItem=project.startingItem:gsub("R%-G%-B%-R%-G%-B","R G B");build.savers.CraftingProjects:Upsert(project)
+		local rules,warnings=filters.generate(build,profile);assert.is_true(hasScrap(rules));local found=false
+		for _,warning in ipairs(warnings) do if warning.origin=="craft:guide-invalid" and warning.message:find("six linked sockets",1,true) and warning.retry then found=true end end;assert.is_true(found)
+		assert.equal("quality",build.savers.CraftingProjects.projects[1].steps[1].uniqueCraft.method)
+		local xml=build:SaveDB("Invalid guide");loadBuildFromXML(xml,"Invalid guide");project=build.savers.CraftingProjects.projects[1];assert.equal("quality",project.steps[1].uniqueCraft.method)
+		project.startingItem=project.startingItem:gsub("R G B","R-G-B-R-G-B");build.savers.CraftingProjects:Upsert(project);rules,warnings=filters.generate(build,profile);assert.is_true(hasScrap(rules))
+		for _,warning in ipairs(warnings) do assert.not_equal("craft:guide-invalid",warning.origin) end
+	end)
+	it("links unique flask quality guides to bauble pickups",function()
+		local project={id="unique-flask",title="Taste of Hate",slot="Flask 1",startingItem="Rarity: UNIQUE\nTaste of Hate\nSapphire Flask\nItem Level: 86\nQuality: 18",goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);assert.is_true(control.apply:IsEnabled());control.apply:Click();control.guide:Click()
+		local saved=build.savers.CraftingProjects.projects[1];assert.matches("Glassblower's Bauble",saved.steps[1].action,1,true)
+		local profile=filters.profile("flask-guide","Flask guide");local rules=filters.generate(build,profile);local found=false
+		for _,rule in ipairs(rules) do if rule.origin=="craft:unique-flask" and rule.title=="Glassblower's Bauble" then found=true end end;assert.is_true(found);main.popups={}
+	end)
+	it("includes both currencies for a corrupted unique white-socket guide",function()
+		local project={id="corrupted-white-filter",title="Corrupted Goldrim",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.white:Click();control.guide:Click()
+		local profile=filters.profile("corrupted-white","Corrupted white sockets");profile.rules=filters.generate(build,profile)
+		local names={};for _,rule in ipairs(profile.rules) do names[rule.title]=true end
+		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"]);main.popups={}
+	end)
+	it("links unique native recipe ingredients to filter pickups",function()
+		local project={id="unique-native-filter",title="Unique recipe",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={socketColours="WWW"}}}
+		build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("unique-native","Unique recipe");local rules,warnings=filters.generate(build,profile)
+		local names={};for _,rule in ipairs(rules) do names[rule.title]=true end
+		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"])
+		for _,warning in ipairs(warnings) do assert.not_equal("craft:"..project.id,warning.origin) end
+	end)
+	it("does not duplicate pickups when a unique preview is saved as both guide and recipe",function()
+		local project={id="unique-preview-linked",title="Unique preview",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.apply:Click();control.omen:Click();control.guide:Click();control.recipe:Click()
+		assert.is_truthy(build.savers.CraftingProjects.projects[1].nativeRecipe)
+		local profile=filters.profile("unique-preview-filter","Unique preview");local rules,warnings=filters.generate(build,profile);local counts={}
+		for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id then counts[rule.title]=(counts[rule.title] or 0)+1 end end
+		assert.equal(1,counts["Armourer's Scrap"]);assert.equal(1,counts["Omen of Connections"]);assert.equal(1,counts["Orb of Fusing"])
+		for _,warning in ipairs(warnings) do assert.not_equal("craft:"..project.id,warning.origin) end;main.popups={}
+	end)
+	it("finds resources for socket-count and linking steps without a written guide",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted"
+		local project={id="unique-recipe-only",title="Socket recipe",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe={steps={{method="socket_bench",count=4},{method="socket_bench",count=4,linked=true}},targets={},requirements={exactSockets=4,links=4}}}
+		build.savers.CraftingProjects:Upsert(project);local rules,warnings=filters.generate(build,filters.profile("recipe-only","Recipe only"));local names={}
+		for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id then names[rule.title]=true end end
+		assert.is_true(names["Jeweller's Orb"]);assert.is_true(names["Orb of Fusing"]);assert.is_true(names["Vaal Orb"])
+		for _,warning in ipairs(warnings) do assert.not_equal("craft:"..project.id,warning.origin) end
+		project.startingItem=raw:gsub("\nSockets: R%-G B","");build.savers.CraftingProjects:Upsert(project)
+		local _,unknown=filters.generate(build,filters.profile("recipe-unknown","Unknown sockets"));local found=false
+		for _,warning in ipairs(unknown) do if warning.origin=="craft:"..project.id and warning.message:find("Starting socket layout is not explicit",1,true) then found=true end end;assert.is_true(found)
+	end)
+	it("checks socket counts along recipe routes, including loops",function()
+		local project={id="socket-routes",title="Socket routes",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={},nativeRecipe={steps={},targets={},requirements={links=4}}}
+		local function warning(steps)
+			project.nativeRecipe.steps=steps;build.savers.CraftingProjects:Upsert(project)
+			local _,warnings=filters.generate(build,filters.profile("socket-routes","Socket routes"))
+			for _,entry in ipairs(warnings) do if entry.origin=="craft:"..project.id and entry.message:find("No modeled route sets 4 sockets",1,true) then return true end end
+			return false
+		end
+		assert.is_true(warning({{method="socket_bench",count=4,linked=true},{method="socket_bench",count=4}}))
+		assert.is_false(warning({{method="socket_bench",count=4},{method="socket_bench",count=4,linked=true}}))
+		assert.is_false(warning({{method="quality",onSuccess=3,onFailureAction="stop"},{method="socket_bench",count=4,linked=true},{method="socket_bench",count=4,onSuccess=2}}))
+		assert.is_false(warning({{method="omen_jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}}))
+		assert.is_false(warning({{method="jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}}))
+		local _,warnings=filters.generate(build,filters.profile("random-route","Random route"));local random=false
+		for _,entry in ipairs(warnings) do if entry.origin=="craft:"..project.id and entry.message:find("Random socket count before linking needs review",1,true) then random=true end end
+		assert.is_true(random)
+		assert.is_true(warning({{method="quality",onSuccess=3,onFailureAction="stop"},{method="omen_jeweller"},{method="socket_bench",count=4,linked=true}}))
+		project.startingItem=project.startingItem.."\nCorrupted"
+		assert.is_false(warning({{method="tainted_jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}}))
+		assert.is_false(warning({{method="omen_jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}}))
+		local _,blocked=filters.generate(build,filters.profile("blocked-omen","Blocked Omen"));local corrupt=false
+		for _,entry in ipairs(blocked) do if entry.origin=="craft:"..project.id and entry.message:find("Use the bench or tainted currency on corrupted items",1,true) then corrupt=true end end
+		assert.is_true(corrupt)
+	end)
+	it("keeps the currencies for unique socket routes in linked filter pickups",function()
+		local project={id="route-pickups",title="Socket routes",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={},nativeRecipe={steps={},targets={},requirements={links=4}}}
+		local function pickups(steps)
+			project.nativeRecipe.steps=steps;build.savers.CraftingProjects:Upsert(project)
+			local rules=filters.generate(build,filters.profile("route-pickups","Socket routes"));local names={}
+			for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id then names[rule.title]=true end end
+			return names
+		end
+		local names=pickups({{method="omen_jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}})
+		for _,name in ipairs({"Omen of the Jeweller","Jeweller's Orb","Orb of Fusing"}) do assert.is_true(names[name],name) end
+		names=pickups({{method="jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}})
+		for _,name in ipairs({"Jeweller's Orb","Orb of Fusing"}) do assert.is_true(names[name],name) end
+		project.startingItem=project.startingItem.."\nCorrupted"
+		names=pickups({{method="tainted_jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}})
+		for _,name in ipairs({"Tainted Jeweller's Orb","Orb of Fusing","Vaal Orb"}) do assert.is_true(names[name],name) end
+	end)
+	it("warns when unique recipe actions cannot modify a corrupted item",function()
+		local project={id="corrupted-unique",title="Corrupted unique",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="quality"},{method="omen_connections"}},targets={},requirements={links=3}}}
+		build.savers.CraftingProjects:Upsert(project);local rules,warnings=filters.generate(build,filters.profile("corrupted-unique","Corrupted unique"));local message=""
+		for _,warning in ipairs(warnings) do if warning.origin=="craft:corrupted-unique" then message=message..warning.message end end
+		assert.is_truthy(message:find("Ordinary quality currency cannot modify a corrupted item",1,true));assert.is_truthy(message:find("Use the bench or tainted currency",1,true))
+		local names={};for _,rule in ipairs(rules) do if rule.origin=="craft:corrupted-unique" then names[rule.title]=true end end
+		assert.is_true(names["Armourer's Scrap"]);assert.is_true(names["Omen of Connections"])
+		project.startingItem=project.startingItem:gsub("\nCorrupted","").."\nQuality: 20";project.nativeRecipe.steps={{method="quality"}};build.savers.CraftingProjects:Upsert(project)
+		local _,fullWarnings=filters.generate(build,filters.profile("quality-full","Quality full"));message=""
+		for _,warning in ipairs(fullWarnings) do if warning.origin=="craft:corrupted-unique" then message=message..warning.message end end
+		assert.is_truthy(message:find("Ordinary quality currency cannot exceed 20%",1,true))
+	end)
+	it("explains impossible fixed unique layouts in linked filter plans",function()
+		for _,item in ipairs({{"Tabula Rasa","Simple Robe","R-W-W-W-W-W","Body Armour","six linked white sockets"},{"Oni-Goroshi","Charan's Sword","R G B","Weapon 1","six linked sockets"}}) do
+			local project={id="fixed-invalid",title=item[1],slot=item[4],startingItem="Rarity: UNIQUE\n"..item[1].."\n"..item[2].."\nItem Level: 86\nSockets: "..item[3],goals={},steps={},nativeRecipe={steps={{method="quality"}},targets={},requirements={minQuality=20}}}
+			build.savers.CraftingProjects:Upsert(project);local _,warnings=filters.generate(build,filters.profile("fixed-invalid","Fixed"));local found=false
+			for _,warning in ipairs(warnings) do if warning.origin=="craft:fixed-invalid" and warning.message:find(item[5],1,true) then found=true end end;assert.is_true(found)
+		end
+	end)
+	it("explains impossible Skin socket layouts in linked filter plans",function()
+		local project={id="bad-skin",title="Skin",slot="Body Armour",startingItem="Rarity: UNIQUE\nSkin of the Loyal\nSimple Robe\nItem Level: 86\nSockets: R G B",goals={},steps={},nativeRecipe={steps={{method="quality"}},targets={},requirements={minQuality=20}}}
+		build.savers.CraftingProjects:Upsert(project);local _,warnings=filters.generate(build,filters.profile("bad-skin","Bad Skin"));local found=false
+		for _,warning in ipairs(warnings) do if warning.origin=="craft:bad-skin" and warning.message:find("six linked sockets",1,true) then found=true end end;assert.is_true(found)
+	end)
+	it("explains missing corruption on an always-corrupted unique",function()
+		local project={id="missing-corruption",title="Skin",slot="Body Armour",startingItem="Rarity: UNIQUE\nSkin of the Lords\nSimple Robe\nItem Level: 86\nSockets: R-G-B-R-G-B",goals={},steps={},nativeRecipe={steps={{method="quality"}},targets={},requirements={minQuality=20}}}
+		build.savers.CraftingProjects:Upsert(project);local _,warnings=filters.generate(build,filters.profile("missing-corruption","Missing corruption"));local found=false
+		for _,warning in ipairs(warnings) do if warning.origin=="craft:missing-corruption" and warning.message:find("always corrupted; include its Corrupted line",1,true) then found=true end end;assert.is_true(found)
+	end)
+	it("warns about immutable unique sockets even when item text is partial",function()
+		local project={id="immutable-unique",title="Immutable sockets",slot="Body Armour",startingItem="Rarity: UNIQUE\nSkin of the Loyal\nSimple Robe\nItem Level: 86\nSockets: R-G-B-R-G-B",goals={},steps={},nativeRecipe={steps={{method="socket_white_bench"},{method="socket_bench",count=6,linked=true}},targets={},requirements={links=6}}}
+		build.savers.CraftingProjects:Upsert(project);local _,warnings=filters.generate(build,filters.profile("immutable-sockets","Immutable sockets"));local found=false
+		for _,warning in ipairs(warnings) do if warning.origin=="craft:immutable-unique" and warning.message:find("sockets cannot be modified",1,true) then found=true end end;assert.is_true(found)
+	end)
+	it("warns when a unique recipe cannot change a fixed socket count",function()
+		local project={id="fixed-unique",title="Fixed sockets",slot="Body Armour",startingItem="Rarity: UNIQUE\nTabula Rasa\nSimple Robe\nItem Level: 86\nSockets: W-W-W-W-W-W",goals={},steps={},nativeRecipe={steps={{method="socket_bench",count=4},{method="socket_bench",count=4,linked=true}},targets={},requirements={links=4}}}
+		build.savers.CraftingProjects:Upsert(project);local rules,warnings=filters.generate(build,filters.profile("fixed-sockets","Fixed sockets"));local found=false
+		for _,warning in ipairs(warnings) do if warning.origin=="craft:fixed-unique" and warning.message:find("fixes its socket count",1,true) then found=true end end;assert.is_true(found)
+		local names={};for _,rule in ipairs(rules) do if rule.origin=="craft:fixed-unique" then names[rule.title]=true end end
+		assert.is_true(names["Jeweller's Orb"]);assert.is_true(names["Orb of Fusing"])
+	end)
+	it("warns and preserves recipe pickups when a unique action has an unsupported option",function()
+		local project={id="unique-unsupported-filter",title="Unique recipe",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={socketColours="WWW"}}}
+		build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("unique-unsupported","Unique recipe");profile.rules=filters.generate(build,profile)
+		project.nativeRecipe.steps={{method="omen_connections",allflame={auto=true}}};build.savers.CraftingProjects:Upsert(project)
+		local rules,warnings=filters.generate(build,profile);local names={};for _,rule in ipairs(rules) do names[rule.title]=true end
+		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"]);assert.is_true(names["Omen of Connections"])
+		local found=false;for _,warning in ipairs(warnings) do if warning.origin=="craft:"..project.id and warning.message:find("allflame",1,true) then found=true end end
+		assert.is_true(found)
+		project.nativeRecipe.steps={{method="socket_bench",count=2,allflame={auto=true}}};build.savers.CraftingProjects:Upsert(project)
+		rules,warnings=filters.generate(build,profile);names={};for _,rule in ipairs(rules) do names[rule.title]=true end
+		assert.is_true(names["Jeweller's Orb"]);assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"])
+		found=false;for _,warning in ipairs(warnings) do if warning.origin=="craft:"..project.id and warning.message:find("allflame",1,true) then found=true end end;assert.is_true(found)
+		project.nativeRecipe.steps={{method="socket_bench",count=4,linked=true}};build.savers.CraftingProjects:Upsert(project)
+		rules,warnings=filters.generate(build,profile);names={};for _,rule in ipairs(rules) do names[rule.title]=true end
+		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"])
+		found=false;for _,warning in ipairs(warnings) do if warning.origin=="craft:"..project.id and warning.message:find("No modeled route sets 4 sockets",1,true) then found=true end end;assert.is_true(found)
+	end)
+	it("generates concrete fossil and corrupted socket recipe pickups",function()
+		local project=craft();project.nativeRecipe={steps={
+			{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingLife"}},
+			{method="vaal"},{method="socket_bench",count=4,linked=true},{method="beast_max_links"}},targets={},requirements={links=4}}
+		build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("recipe-resources","Recipe resources");profile.template="Hide";profile.rules=filters.generate(build,profile)
+		local names={};for _,rule in ipairs(profile.rules) do if rule.origin=="craft:helmet" then names[rule.title]=true end end
+		for _,name in ipairs({"Pristine Fossil","Primitive Chaotic Resonator","Vaal Orb","Jeweller's Orb","Orb of Fusing"}) do
+			assert.is_true(names[name],name);assert.equal("Show",filters.simulate(profile,{BaseType=name}).action,name)
+		end
+		assert.is_nil(names["The Black Morrigan"]);assert.is_nil(names["Craicic Sand Spitter"])
+	end)
+	it("links exact saved crafting-resource budgets and refreshes them when the budget changes",function()
+		local data=copyTable(build.savers.BuildJourney.data)
+		data.resources={{id="fossil",title="pristine fossils"},{id="ichor",title="Greater Eldritch Ichor"},{id="omen",title="Omen of Connections"},
+			{id="service",title="The Black Morrigan"},{id="unknown",title="Pristine Fossil service"},{id="removed",title="Perfect Fossil"}}
+		build.savers.BuildJourney.data=data
+		local profile=filters.profile("budget-items","Budget items");profile.rules=filters.generate(build,profile)
+		local rules={};for _,rule in ipairs(profile.rules) do rules[rule.title]=rule end
+		for _,name in ipairs({"Pristine Fossil","Greater Eldritch Ichor","Omen of Connections"}) do
+			assert.is_truthy(rules[name],name);assert.matches('BaseType == "'..name..'"',rules[name].text)
+			assert.equal("Show",require("Modules.LootFilterParser").simulate(require("Modules.LootFilterParser").parse(rules[name].text.."\nHide"),{BaseType=name}).action)
+		end
+		assert.is_nil(rules["The Black Morrigan"]);assert.is_nil(rules["Pristine Fossil service"]);assert.is_nil(rules["Perfect Fossil"])
+		assert.is_false(dependencies.report(build,profile).stale)
+		data=copyTable(data);data.resources[1].title="Dense Fossil";build.savers.BuildJourney.data=data
+		assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);rules={};for _,rule in ipairs(profile.rules) do rules[rule.title]=true end
+		assert.is_true(rules["Dense Fossil"]);assert.is_nil(rules["Pristine Fossil"])
+	end)
+	it("recognizes additional exact currency budgets without guessing service names",function()
+		local data=copyTable(build.savers.BuildJourney.data)
+		data.resources={{id="oil",title="golden oils"},{id="tattoo",title="Tattoo of the Ramako Archer"},
+			{id="shard",title="Chaos Shard"},{id="gem",title="Gemcutter's Prism"},
+			{id="service",title="Golden Oil service"}}
+		build.savers.BuildJourney:Replace(data)
+		local profile=filters.profile("more-budget","More budget items");profile.rules=filters.generate(build,profile)
+		local origins={};for _,rule in ipairs(profile.rules) do origins[rule.origin]=rule end
+		for origin,name in pairs({["budget:oil"]="Golden Oil",["budget:tattoo"]="Tattoo of the Ramako Archer",["budget:shard"]="Chaos Shard",["budget:gem"]="Gemcutter's Prism"}) do
+			assert.is_truthy(origins[origin]);assert.is_truthy(origins[origin].text:find('BaseType == "'..name..'"',1,true))
+			assert.equal("Show",filters.simulate(profile,{BaseType=name}).action)
+		end
+		assert.is_nil(origins["budget:service"])
+	end)
+	it("recognizes old budget names regardless of case and simple plurals",function()
+		local data=require("Modules.BuildJourney").empty()
+		data.resources={{id="orb",title="skittering delirium orbs"},{id="chisel",title="MAVEN'S CHISEL OF SCARABS"},
+			{id="coin",title="coin of knowledge"},{id="service",title="skittering delirium orb service"}}
+		build.savers.BuildJourney:Replace(data)
+		local profile=filters.profile("renamed-budget","Renamed budget");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do found[rule.origin]=rule.title end
+		assert.equal("Threaded Delirium Orb",found["budget:orb"])
+		assert.equal("Maven's Chisel of Threads",found["budget:chisel"])
+		assert.equal("Soul Core of Intellect",found["budget:coin"])
+		assert.is_nil(found["budget:service"])
+	end)
+	it("preserves recipe pickups and reports inspection failures",function()
+		local project=craft();project.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("review-craft","Review craft");profile.rules=filters.generate(build,profile)
+		project.nativeRecipe.steps={{method="omen_connections"},{method="scour"}};build.savers.CraftingProjects:Upsert(project)
+		local sim=require("Modules.CraftingSimulator");local original=sim.model;sim.model=function() error("fixture failure") end
+		local ok,rules,warnings=pcall(filters.generate,build,profile)
+		local reportOk,report=pcall(dependencies.report,build,profile);sim.model=original
+		assert.is_true(ok);assert.equal(1,#warnings);assert.equal("craft:helmet",warnings[1].origin)
+		assert.is_true(reportOk,report);assert.is_true(report.stale);assert.equal("Needs review",report.entries[1].status)
+		local found=false;for _,rule in ipairs(rules) do if rule.title=="Omen of Connections" then found=true end end;assert.is_true(found)
+		report=dependencies.report(build,profile);assert.equal("Changed",report.entries[1].status)
+	end)
+	it("retains unreadable base pickups and reports their sources for review",function()
+		local project=craft();build.savers.CraftingProjects:Upsert(project)
+		local journey=require("Modules.BuildJourney").empty()
+		journey.wishlist={{id="hat",title="Hat target",slot="Helmet",route="farm",targetItem=project.startingItem}}
+		build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("base-review","Base review");profile.rules=filters.generate(build,profile)
+		local originalRules=copyTable(profile.rules)
+		local projects=require("Modules.CraftingProjects");local original=projects.item
+		projects.item=function(raw) if raw==project.startingItem then error("fixture item unavailable") end;return original(raw) end
+		local ok,rules,warnings=pcall(filters.generate,build,profile)
+		local reportOk,report=pcall(dependencies.report,build,profile)
+		projects.item=original
+		assert.is_true(ok);assert.is_true(reportOk,report);assert.equal(2,#warnings)
+		local retained={};for _,rule in ipairs(rules) do retained[rule.id]=rule end
+		for _,rule in ipairs(originalRules) do assert.same(rule,retained[rule.id]) end
+		local statuses={};for _,entry in ipairs(report.entries) do statuses[entry.origin]=entry.status end
+		assert.equal("Needs review",statuses["craft:helmet"]);assert.equal("Needs review",statuses["gear:hat"])
+		journey.wishlist[1].targetItem=nil;build.savers.BuildJourney:Replace(journey)
+		rules,warnings=filters.generate(build,profile);assert.equal(0,#warnings)
+		for _,rule in ipairs(rules) do assert.not_equal("gear:hat",rule.origin) end
+	end)
+	it("generates and refreshes broad donor-base pickups for crafting guides",function()
+		local project=craft();local donor="Rarity: NORMAL\nCone Helmet\nItem Level: 80"
+		project.nativeRecipe={steps={{method="recombine",donorItem=donor},{method="recombine",donorItem=donor}},targets={},requirements={minAffixes=1}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("donors","Donor bases");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do if rule.id:match("^craft%-donor%-") then found[#found+1]=rule end end
+		assert.equal(1,#found);assert.equal("Donor base: Cone Helmet",found[1].title);assert.matches('BaseType == "Cone Helmet"',found[1].text);assert.matches("ItemLevel >= 80",found[1].text)
+		assert.equal("Show",filters.simulate(profile,{BaseType="Cone Helmet",Rarity="Normal",ItemLevel=80}).action)
+		project.nativeRecipe.steps={{method="recombine",donorItem="Not a recognized item"}};build.savers.CraftingProjects:Upsert(project)
+		local preserved,warnings=filters.generate(build,profile);local kept=false
+		for _,rule in ipairs(preserved) do if rule.id==found[1].id then kept=true end end
+		assert.is_true(kept);assert.is_true(#warnings>0);assert.matches("donor base",warnings[1].message)
+		project.nativeRecipe.steps={{method="recombine",donorItem="Rarity: NORMAL\nIron Hat\nItem Level: 86"}};build.savers.CraftingProjects:Upsert(project)
+		assert.is_true(dependencies.report(build,profile).stale);profile.rules=filters.generate(build,profile)
+		for _,rule in ipairs(profile.rules) do assert.is_nil(rule.id:match("^craft%-donor%-")) end -- starting-base rule already covers this donor
+	end)
+	it("reports partial ingredient coverage while retaining known pickups",function()
+		local project=craft();project.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("partial-craft","Partial craft");profile.rules=filters.generate(build,profile)
+		project.nativeRecipe.steps={{method="omen_connections"},{method="locus"}};build.savers.CraftingProjects:Upsert(project)
+		local rules,warnings=filters.generate(build,profile);assert.equal(1,#warnings);assert.matches("recipe steps need review",warnings[1].message);assert.matches("Locus of Corruption",warnings[1].message,1,true)
+		local names={};for _,rule in ipairs(rules) do names[rule.title]=true end;assert.is_true(names["Omen of Connections"]);assert.is_true(names["Orb of Fusing"])
+		assert.is_true(dependencies.report(build,profile).stale)
+	end)
+	it("shows every warning for a crafting guide in linked targets",function()
+		local project=craft();project.nativeRecipe={steps={{method="recombine",donorItem="Not a recognized item"},{method="locus"}},targets={},requirements={minAffixes=1}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("multiple-warnings","Multiple warnings");profile.rules=filters.generate(build,profile)
+		local report=dependencies.report(build,profile);local entry
+		for _,value in ipairs(report.entries) do if value.origin=="craft:helmet" then entry=value end end
+		assert.is_truthy(entry);assert.equal("Needs review",entry.status)
+		local details=table.concat(entry.details,"\n");assert.matches("configured donor base",details);assert.matches("recipe steps need review",details);assert.matches("Locus of Corruption",details,1,true)
+	end)
+	it("reuses incomplete recipe checks until the retained draft changes",function()
+		local project=craft();project.nativeRecipe={steps={{method="omen_connections"},{method="locus"}},targets={},requirements={links=4}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("partial-cache","Partial cache");profile.rules=filters.generate(build,profile)
+		local original=filters.generate;local calls=0;filters.generate=function(...) calls=calls+1;return original(...) end
+		local ok,err=pcall(function()
+			local first=dependencies.report(build,profile);assert.equal("Needs review",first.entries[1].status)
+			assert.same(first,dependencies.report(build,profile));assert.equal(1,calls)
+			profile.rules[1].title="Edited pickup";dependencies.report(build,profile);assert.equal(2,calls)
+		end)
+		filters.generate=original;assert.is_true(ok,err)
+	end)
+	it("shows recipe inspection warnings when refreshing pickups in the workspace",function()
+		local project=craft();project.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("review-ui","Review UI");profile.rules=filters.generate(build,profile)
+		local workspace=require("Modules.PlanningWorkspace").new(build);workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}})
+		project.nativeRecipe.steps={{method="omen_connections"},{method="chaos"}};build.savers.CraftingProjects:Upsert(project)
+		local sim=require("Modules.CraftingSimulator");local original=sim.model;sim.model=function() error("fixture failure") end
+		local ok,err=pcall(function()
+			workspace.controls.generate:Click()
+			for _=1,10 do if main.popups[1] then break end;workspace.cache.filters.layout.tick() end
+			assert.is_truthy(main.popups[1].controls.results)
+		end)
+		sim.model=original;assert.is_true(ok,err)
+	end)
+	it("leaves entirely manual filters untracked and preserves personal overrides on refresh",function()
+		build.savers.CraftingProjects:Upsert(craft());local profile=filters.profile("filter","Filter");profile.rules={filters.rule("mine","Personal",{'BaseType == "Chaos Orb"'})}
+		assert.is_false(dependencies.report(build,profile).stale);local original=copyTable(profile.rules[1]);profile.rules=filters.generate(build,profile);assert.same(original,profile.rules[1])
+		local opened;assert.is_true(dependencies.open(build,{openWorkbench=function(project) opened=project.id end},"craft:helmet"));assert.equal("helmet",opened)
+		for _,origin in ipairs({"craft:missing","atlas:missing","gear:missing","budget:missing","invalid"}) do
+			local ok,reason=dependencies.open(build,{},origin);assert.is_false(ok);assert.matches("Refresh build pickups",reason)
+		end
+	end)
+	it("reuses generated dependencies until native source state changes",function()
+		local project=craft();build.savers.CraftingProjects:Upsert(project);local p=filters.profile("filter","Filter");local original=filters.generate;local calls=0
+		filters.generate=function(...) calls=calls+1;return original(...) end
+		local ok,err=pcall(function()
+			dependencies.report(build,p);dependencies.report(build,p);assert.equal(1,calls)
+			project.startingItem=project.startingItem:gsub("86","87");build.savers.CraftingProjects:Upsert(project);dependencies.report(build,p);assert.equal(2,calls)
+		end)
+		filters.generate=original;assert.is_true(ok,err)
+	end)
+	it("detects skill and active weapon changes before recalculation",function()
+		local original=build.skillsTab.socketGroupList
+		build.skillsTab.socketGroupList={{enabled=true,slot="Weapon 1",gemList={{enabled=true,nameSpec="Fireball"}}},{enabled=true,slot="Weapon 1 Swap",gemList={{enabled=true,nameSpec="Arc"}}}}
+		local profile=filters.profile("skills","Skills");profile.rules=filters.generate(build,profile)
+		local revision=build.outputRevision;assert.is_false(dependencies.report(build,profile).stale)
+		build.itemsTab.activeItemSet.useSecondWeaponSet=true
+		assert.equal(revision,build.outputRevision);assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);assert.is_false(dependencies.report(build,profile).stale)
+		build.skillsTab.socketGroupList[2].enabled=false
+		assert.equal(revision,build.outputRevision);assert.is_true(dependencies.report(build,profile).stale)
+		build.itemsTab.activeItemSet.useSecondWeaponSet=false;build.skillsTab.socketGroupList=original
+	end)
+	it("checks recipe dependencies in bounded steps and discards changed sources",function()
+		for i=1,3 do
+			local project=craft();project.id="step"..i;project.startingItem=project.startingItem:gsub("86",tostring(70+i))
+			project.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}};build.savers.CraftingProjects:Upsert(project)
+		end
+		local profile=filters.profile("async-check","Async check");local job=dependencies.begin(build,profile)
+		local done,result,err=dependencies.poll(job);assert.is_false(done)
+		local changed=copyTable(build.savers.CraftingProjects.projects[1]);changed.title="Changed during check";build.savers.CraftingProjects:Upsert(changed)
+		done,result,err=dependencies.poll(job);assert.is_true(done);assert.is_nil(result);assert.equal("changed",err)
+		job=dependencies.begin(build,profile);local slices=0
+		repeat slices=slices+1;done,result,err=dependencies.poll(job);assert.is_nil(err) until done or slices>10
+		assert.is_true(done);assert.is_true(slices>1);assert.same(dependencies.report(build,profile),result)
+	end)
+	it("generates pickups in steps and rejects an edited filter",function()
+		for i=1,3 do
+			local project=craft();project.id="generation"..i;project.startingItem=project.startingItem:gsub("86",tostring(30+i))
+			project.nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={sockets=1}};build.savers.CraftingProjects:Upsert(project)
+		end
+		local profile=filters.profile("generation","Generation");local job=dependencies.beginGenerate(build,profile)
+		local done,result,err=dependencies.poll(job);assert.is_false(done)
+		profile.rules[1]=filters.rule("manual","Manual",{'BaseType == "Chaos Orb"'})
+		done,result,err=dependencies.poll(job);assert.is_true(done);assert.is_nil(result);assert.equal("changed",err)
+		job=dependencies.beginGenerate(build,profile);local slices=0
+		repeat slices=slices+1;done,result,err=dependencies.poll(job);assert.is_nil(err) until done or slices>10
+		local rules,warnings=filters.generate(build,profile);assert.is_true(done);assert.is_true(slices>1);assert.same(rules,result.rules);assert.same(warnings,result.warnings)
+	end)
+	it("keeps the filter workspace usable while linked recipes are checked",function()
+		for i=1,3 do
+			local project=craft();project.id="ui-step"..i;project.startingItem=project.startingItem:gsub("86",tostring(60+i))
+			project.nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={sockets=1}};build.savers.CraftingProjects:Upsert(project)
+		end
+		local profile=filters.profile("async-ui","Async UI");local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}})
+		assert.is_false(workspace.controls.generate:IsEnabled())
+		assert.equal("Checking build pickups...",workspace.controls.generate.label())
+		for _=1,10 do if workspace.controls.generate:IsEnabled() then break end;workspace.cache.filters.layout.tick() end
+		assert.is_true(workspace.controls.generate:IsEnabled())
+	end)
+	it("shows target review warnings even before any pickup has been generated",function()
+		local project=craft();build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("unreadable-ui","Unreadable target")
+		local projects=require("Modules.CraftingProjects");local original=projects.item
+		projects.item=function(raw) if raw==project.startingItem then error("fixture item unavailable") end;return original(raw) end
+		local ok,err=pcall(function()
+			local report=dependencies.report(build,profile)
+			assert.equal(0,report.linked);assert.is_false(report.stale);assert.is_true(report.needsReview)
+			local workspace=require("Modules.PlanningWorkspace").new(build)
+			workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}})
+			for _=1,10 do if workspace.controls.generate:IsEnabled() then break end;workspace.cache.filters.layout.tick() end
+			assert.equal("Build pickups need review *",workspace.controls.generate.label())
+			workspace.controls.generate:Click()
+			for _=1,10 do if main.popups[1] then break end;workspace.cache.filters.layout.tick() end
+			assert.is_truthy(main.popups[1].controls.results)
+		end)
+		projects.item=original;assert.is_true(ok,err)
+	end)
+	it("does not apply a pending pickup update after the build changes",function()
+		local profile=filters.profile("generation-ui","Generation UI");local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}})
+		local project=craft();project.startingItem=project.startingItem:gsub("86","37")
+		project.nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={sockets=1}};build.savers.CraftingProjects:Upsert(project)
+		workspace.controls.generate:Click();assert.is_false(workspace.controls.generate:IsEnabled());assert.equal("Updating build pickups...",workspace.controls.generate.label())
+		project.title="Changed during update";build.savers.CraftingProjects:Upsert(project);workspace.cache.filters.layout.tick()
+		assert.equal(0,#workspace.cache.filters.layout.snapshot().data.profiles[1].rules);assert.is_truthy(main.popups[1])
+	end)
+	it("applies generated pickups after the staged update completes",function()
+		local profile=filters.profile("generation-complete","Generation complete");local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}})
+		for i=1,2 do
+			local project=craft();project.id="ui-generate"..i;project.startingItem=project.startingItem:gsub("86",tostring(40+i))
+			project.nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={sockets=1}};build.savers.CraftingProjects:Upsert(project)
+		end
+		local previous=workspace.cache.filters.layout;workspace.controls.generate:Click()
+		assert.equal(0,#previous.snapshot().data.profiles[1].rules)
+		for _=1,10 do if workspace.cache.filters.layout~=previous then break end;previous.tick() end
+		assert.is_not.equal(previous,workspace.cache.filters.layout)
+		assert.is_true(#workspace.cache.filters.layout.snapshot().data.profiles[1].rules>0)
+	end)
+	it("shows unmatched Atlas strategy fields in the pickup review",function()
+		build.savers.AtlasPlans:Upsert({id="notes",title="Atlas notes",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Fast layouts"}})
+		local profile=filters.profile("warnings","Warnings");local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}})
+		local browser=require("Classes.PlanningBrowserControl");local original=browser.Open;local captured
+		browser.Open=function(title,entries) captured={title=title,entries=entries} end
+		workspace.controls.generate:Click()
+		for _=1,20 do if not workspace.transient.filterGeneration then break end;workspace.cache.filters.layout.tick() end
+		browser.Open=original
+		assert.is_truthy(captured);assert.equal("Review build pickups",captured.title)
+		assert.equal("Atlas notes",captured.entries[1].label);assert.matches("maps",captured.entries[1].details[1],1,true)
+	end)
+	it("continues a pickup update after changing filter screens",function()
+		local profile=filters.profile("generation-nav","Generation navigation");local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}})
+		for i=1,2 do
+			local project=craft();project.id="nav-generate"..i;project.startingItem=project.startingItem:gsub("86",tostring(20+i))
+			project.nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={sockets=1}};build.savers.CraftingProjects:Upsert(project)
+		end
+		workspace.controls.generate:Click();assert.is_truthy(workspace.transient.filterGeneration)
+		assert.is_nil(workspace.cache.filters.layout.snapshot().filterGeneration)
+		workspace.controls.customize:Click()
+		assert.is_truthy(workspace.transient.filterGeneration)
+		workspace:Remember("filters");workspace.cache.filters=nil;workspace:Show("filters");local current=workspace.cache.filters.layout
+		assert.is_truthy(workspace.transient.filterGeneration)
+		for _=1,10 do if not workspace.transient.filterGeneration then break end;workspace.cache.filters.layout.tick() end
+		assert.is_nil(workspace.transient.filterGeneration);assert.is_not.equal(current,workspace.cache.filters.layout)
+		assert.is_true(#workspace.cache.filters.layout.snapshot().data.profiles[1].rules>0)
+	end)
+	it("does not apply an update to a different filter profile",function()
+		local first=filters.profile("generation-first","First");local second=filters.profile("generation-second","Second")
+		local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=first.id,profiles={first,second}}})
+		local project=craft();project.startingItem=project.startingItem:gsub("86","19")
+		project.nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={sockets=1}};build.savers.CraftingProjects:Upsert(project)
+		workspace.controls.generate:Click();assert.is_truthy(workspace.transient.filterGeneration)
+		local state=workspace.cache.filters.layout.snapshot();state.selected=second.id;workspace:Show("filters",state)
+		workspace.cache.filters.layout.tick();assert.is_nil(workspace.transient.filterGeneration);assert.is_truthy(main.popups[1])
+		local profiles=workspace.cache.filters.layout.snapshot().data.profiles;assert.equal(0,#profiles[1].rules);assert.equal(0,#profiles[2].rules)
+	end)
+	it("prepares build-target simulator examples in stages and refreshes changed sources",function()
+		for i=1,3 do
+			local project=craft();project.id="scene"..i;project.startingItem=project.startingItem:gsub("86",tostring(10+i))
+			project.nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={sockets=1}};build.savers.CraftingProjects:Upsert(project)
+		end
+		local profile=filters.profile("target-scene","Target scene");local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sceneKind="Build targets"})
+		local first=workspace.transient.filterSceneTargets;assert.is_truthy(first);assert.is_nil(first.rules)
+		local changed=copyTable(build.savers.CraftingProjects.projects[1]);changed.title="Updated target";build.savers.CraftingProjects:Upsert(changed)
+		for _=1,20 do if workspace.transient.filterSceneTargets.rules then break end;workspace.cache.filters.layout.tick() end
+		local ready=workspace.transient.filterSceneTargets;assert.is_not.equal(first,ready);assert.is_truthy(ready.rules)
+		local found=false;for _,rule in ipairs(ready.rules) do if rule.title=="Updated target base" then found=true end end;assert.is_true(found)
+		assert.equal(0,#workspace.cache.filters.layout.snapshot().data.profiles[1].rules)
+	end)
+	it("clears pending simulator targets if the last profile is removed",function()
+		local profile=filters.profile("target-remove","Target removal");local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sceneKind="Build targets"})
+		assert.is_truthy(workspace.transient.filterSceneTargets)
+		workspace:Show("filters",{data={schemaVersion=1,profiles={}},page="Simulate",sceneKind="Build targets"})
+		assert.is_nil(workspace.transient.filterSceneTargets);assert.has_no.errors(function() workspace.cache.filters.layout.tick() end)
+	end)
+	it("reuses a compiled filter across navigation but recompiles after an edit",function()
+		local profile=filters.profile("compile-cache","Compile cache");local workspace=require("Modules.PlanningWorkspace").new(build)
+		local original=filters.compile;local calls=0;filters.compile=function(...) calls=calls+1;return original(...) end
+		local ok,err=pcall(function()
+			workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}});local first=calls
+			workspace.controls.viewSimulate:Click();assert.equal(first,calls)
+			local state=workspace.cache.filters.layout.snapshot();state.data.profiles[1].title="Edited filter";workspace:Show("filters",state);assert.is_true(calls>first)
+		end)
+		filters.compile=original;assert.is_true(ok,err)
+	end)
+	it("reuses example evaluations while paging and invalidates them after a filter edit",function()
+		local parser=require("Modules.LootFilterParser");local original=parser.simulate;local calls=0
+		parser.simulate=function(...) calls=calls+1;return original(...) end
+		local ok,err=pcall(function()
+			local profile=filters.profile("scene-cache","Scene cache");local samples={}
+			for i=1,30 do samples[i]={BaseType="Example "..i,Rarity="Normal",ItemLevel=86} end
+			profile.sampleSets={{id="many",title="Many",samples=samples}}
+			profile.rules={{id="hide",title="Hide first",text='Hide\n BaseType == "Example 1"',enabled=true}}
+			local workspace=require("Modules.PlanningWorkspace").new(build)
+			workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sceneKind="Saved examples",sampleSetId="many",showHidden=false})
+			local first=calls;assert.is_true(first>=30)
+			local state=workspace.cache.filters.layout.snapshot();state.scenePage=2;workspace:Show("filters",state)
+			assert.is_true(calls-first<5,"Paging reevaluated cached examples")
+			local beforeReview=calls;workspace.controls.sceneStats:Click();assert.is_true(calls-beforeReview<5,"Review reevaluated cached examples");main:ClosePopup()
+			state=workspace.cache.filters.layout.snapshot();state.data.profiles[1].rules[1].text='Show\n BaseType == "Example 1"';local beforeEdit=calls;workspace:Show("filters",state)
+			assert.is_true(calls-beforeEdit>=30,"Changed filter reused old outcomes")
+		end)
+		parser.simulate=original;assert.is_true(ok,err)
+	end)
+	it("keeps nearby numeric sample values distinct in cached filter results",function()
+		local profile=filters.profile("precise-scene","Precise scene")
+		profile.template="Show"
+		profile.rules={{id="threshold",title="Threshold",text="Hide\n Quality > 1.0000000000000002",enabled=true}}
+		profile.sampleSets={{id="values",title="Values",samples={{BaseType="Iron Hat",Rarity="Normal",Quality=1},{BaseType="Iron Hat",Rarity="Normal",Quality=1.0000000000000004}}}}
+		local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sceneKind="Saved examples",sampleSetId="values",showHidden=false})
+		workspace.controls.sceneStats:Click();local seen={}
+		for _,row in ipairs(main.popups[1].controls.results.list) do if row.entry and row.entry.sample and row.entry.sample.BaseType=="Iron Hat" then seen[row.entry.sample.Quality]=row.entry.category end end
+		assert.equal("Show",seen[1]);assert.equal("Hide",seen[1.0000000000000004])
+	end)
+	it("retains bounded cache hits for example sets larger than the cache",function()
+		local parser=require("Modules.LootFilterParser");local original=parser.simulate;local calls=0
+		parser.simulate=function(...) calls=calls+1;return original(...) end
+		local ok,err=pcall(function()
+			local profile=filters.profile("large-scene","Large scene");profile.template="Show";local samples={}
+			for i=1,1100 do samples[i]={BaseType="Example "..i,Rarity="Normal",ItemLevel=86} end
+			profile.sampleSets={{id="many",title="Many",samples=samples}}
+			local workspace=require("Modules.PlanningWorkspace").new(build)
+			workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sceneKind="Saved examples",sampleSetId="many",showHidden=false})
+			local first=calls;local state=workspace.cache.filters.layout.snapshot();state.scenePage=2;workspace:Show("filters",state)
+			assert.is_true(calls-first<100,"Large example sets evicted their reusable results")
+			assert.equal(1024,workspace.transient.filterEvaluations.count)
+		end)
+		parser.simulate=original;assert.is_true(ok,err)
+	end)
+	it("keeps the source filter draft and previous working craft when following a link",function()
+		local project=craft();build.savers.CraftingProjects:Upsert(project);local workspace=require("Modules.PlanningWorkspace").new(build)
+		local profile=filters.profile("filter","Unsaved filter name");workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},dirty=true})
+		workspace.cache.filters.layout.openWorkbench(project);assert.equal("crafting",workspace.page);assert.is_truthy(workspace.drafts.filters.plan.dirty)
+		workspace.controls.currency_alchemy:Click();workspace.controls.apply:Click();local previous=workspace.cache.crafting.layout.snapshot();assert.equal(1,#previous.actions)
+		local item=require("Modules.CraftingInventory").capture(project,previous.state);workspace.cache.crafting.layout.openWorkbench(require("Modules.CraftingInventory").project(item))
+		assert.equal(1,#workspace.craftDrafts[project.id].actions)
+		workspace:Show("filters");assert.equal("Unsaved filter name",workspace.cache.filters.layout.snapshot().data.profiles[1].title)
+		local unique={id="unique-linked",title="Unique guide",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86",goals={},steps={{action="Acquire the unique"}}}
+		build.savers.CraftingProjects:Upsert(unique);workspace.cache.filters.layout.openWorkbench(unique)
+		assert.equal("crafting",workspace.page);assert.equal("Plan",workspace.controls.libraryPage:GetSelValue());assert.equal("unique-linked",workspace.cache.crafting.layout.selectedProject)
+		assert.equal(1,#workspace.craftDrafts[project.id].actions)
+		workspace:Show("filters");assert.equal("Unsaved filter name",workspace.cache.filters.layout.snapshot().data.profiles[1].title)
+		local changed=copyTable(unique);changed.startingItem=changed.startingItem.."\n+40% to Fire Resistance"
+		assert.has_error(function() workspace.cache.filters.layout.openWorkbench(changed) end);assert.equal("filters",workspace.page)
+	end)
+end)

@@ -1,0 +1,221 @@
+local ui=require("Modules.PlanningUI")
+local M={}
+local function button(c,key,x,y,w,label,run) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,w,28},label,run) end
+function M.Performance(build)
+	local perf=require("Modules.PlanningPerformance");local c={};local w,h=math.min(920,main.screenW-40),math.min(620,main.screenH-48)
+	ui.description(c,"help",16,28,w-32,70,{"Observed processing time in this session, ordered by worst slice. Long slices identify work that can still pause input; background work is cooperative, not a separate CPU thread."},16)
+	c.entries=new("TextListControl"):TextListControl(ui.anchor,{16,112,w-32,h-200},{{x=8},{x=w*0.48},{x=w*0.64},{x=w*0.80}},{})
+	local function refresh()
+		local rows={{height=30,textSize=16,"^7Work","^7Last / ms","^7Mean / ms","^7Worst / ms"}}
+		for _,row in ipairs(perf.rows(build)) do rows[#rows+1]={height=30,textSize=15,"^7"..ui.fit(row.name,w*0.46-24,15),"^7"..string.format("%.1f",row.last),"^7"..string.format("%.1f",row.mean),"^7"..string.format("%.1f",row.worst)} end
+		if #rows==1 then rows[#rows+1]={height=28,"^7Recalculate the build or measure an upgrade to collect timings."} end
+		c.entries.list=rows
+	end
+	button(c,"refresh",16,h-48,140,"Refresh timings",refresh)
+	button(c,"copy",172,h-48,140,"Copy timings",function() local lines={};for _,row in ipairs(perf.rows(build)) do lines[#lines+1]=string.format("%s: %d samples; last %.2fms, mean %.2fms, worst %.2fms",row.name,row.count,row.last,row.mean,row.worst) end;Copy(table.concat(lines,"\n")) end)
+	button(c,"reset",328,h-48,140,"Reset timings",function() perf.clear(build);refresh() end)
+	button(c,"close",w-156,h-48,140,"Close",function() main:ClosePopup() end)
+	refresh();ui.style(c);main:OpenPopup(w,h,"Performance diagnostics",c,nil,nil,"close")
+end
+function M.Bundle(build)
+	local bundles=require("Modules.PlanningBundle");local c={};local w,h=math.min(900,main.screenW-40),math.min(620,main.screenH-48);local imported,contents,reviewedText
+	local function action(run) return function() local ok,err=pcall(run);if not ok then ui.errorPopup("Planning bundle",err) end end end
+	ui.description(c,"help",16,28,w-32,88,{"Copy a complete planning bundle, or paste one to review it as a new build. The bundle carries saved crafting guides, checkpoints, Atlas strategies and Journey plans with the character."},16)
+	c.text=new("EditControl"):EditControl(ui.anchor,{16,124,w-32,112},"",nil,"^%C\t\n",bundles.limit,nil,14)
+	c.text.shown=false
+	local cardWidth=math.floor((w-64)/3)
+	for i,entry in ipairs({{"crafts","CRAFTING GUIDES"},{"checkpoints","WORKING CHECKPOINTS"},{"atlas","ATLAS PLANS"}}) do
+		local key,label=unpack(entry);ui.card(c,key,16+(i-1)*(cardWidth+16),124,cardWidth,label,function() return contents and bundles.count(contents,key) or "-" end,"Kept planning data")
+	end
+	c.details=new("TextListControl"):TextListControl(ui.anchor,{16,252,w-32,h-330},nil,ui.rows({"Keep working crafts and Atlas drafts before exporting. Importing goes through native proposal review; it does not overwrite a saved build."},w-56))
+	local available=w-32-36
+	local exportWidth,pasteWidth,reviewWidth=math.floor(available*0.27),math.floor(available*0.21),math.floor(available*0.30)
+	local pasteX=16+exportWidth+12;local reviewX=pasteX+pasteWidth+12;local closeX=reviewX+reviewWidth+12
+	button(c,"export",16,h-48,exportWidth,"Copy complete bundle",action(function() local raw,exported=bundles.export(build);Copy(raw);imported=nil;reviewedText=nil;contents=exported;local lines=bundles.lines(contents);table.insert(lines,1,"Complete bundle copied to clipboard.");c.details.list=ui.rows(lines,w-56) end))
+	button(c,"paste",pasteX,h-48,pasteWidth,"Paste / inspect",action(function() c.text:SetText(Paste());imported=nil;contents=nil;reviewedText=nil;c.details.list=ui.rows({"Paste a valid planning bundle to inspect it."},w-56);imported=bundles.import(c.text.buf);reviewedText=c.text.buf;contents=imported.contents;local lines=bundles.lines(contents);table.insert(lines,1,"Ready to review: "..imported.buildName);c.details.list=ui.rows(lines,w-56) end))
+	button(c,"review",reviewX,h-48,reviewWidth,"Review as new build",action(function()
+		imported=bundles.import(c.text.buf);local bridge=require("Modules.DesktopBuildBridge");local prepared=bridge.prepareBundle(build,imported);prepared.id=require("Modules.PlanningData").newId("bundle-",bridge.history,16)
+		bridge.remember(prepared);bridge.prepared=prepared;bridge.status=bridge.summary(prepared);bridge.status.status="review";main:ClosePopup();require("Classes.BuildProposalControl").Review()
+	end))
+	c.review.enabled=function() return imported~=nil and reviewedText==c.text.buf end
+	button(c,"close",closeX,h-48,w-16-closeX,"Close",function() main:ClosePopup() end)
+	ui.style(c,{review=true});main:OpenPopup(w,h,"Portable planning bundle",c,nil,"export","close")
+end
+function M.Recovery(build)
+	local recovery=require("Modules.PlanningRecovery");local entries={}
+	local function add(kind,record,perProject)
+		if record and not recovery.isCurrent(build,kind,record.entry) then
+			local details={"Saved locally: "..os.date("%Y-%m-%d %H:%M",record.at),"Restore opens a working draft. Review it, then Keep and Save.","An earlier-session draft is preserved until you restore or discard it."}
+			if kind=="atlas" and record.entry.view and record.entry.view.stageResume then details[#details+1]="Choose Resume stages to recover unfinished stage inputs." end
+			local projectId=(kind=="uniqueQuality" or kind=="crafting" and perProject) and record.entry.plan.project.id or nil
+			if kind=="uniqueQuality" then
+				local item,info=require("Modules.CraftingUniqueQuality").inspect(record.entry.plan.itemText)
+				table.insert(details,1,(item.title or item.baseName).." | "..record.entry.plan.project.slot.." | "..info.quality.."% quality")
+				if #item.sockets>0 then
+					local sockets={}
+					for i,socket in ipairs(item.sockets) do
+						if i>1 then sockets[#sockets+1]=socket.group==item.sockets[i-1].group and "-" or " " end
+						sockets[#sockets+1]=socket.color
+					end
+					table.insert(details,2,"Sockets: "..table.concat(sockets))
+				end
+				details[#details+1]="Up to 64 undo and redo steps are retained."
+			end
+			local label=kind=="uniqueQuality" and ("Unique crafting: "..record.entry.plan.project.title) or kind=="crafting" and ("Working craft: "..record.entry.plan.project.title) or ({filters="Loot-filter draft",atlas="Atlas draft"})[kind]
+			entries[#entries+1]={id=projectId and kind..":"..projectId or kind,kind=kind,projectId=projectId,label=label,details=details,record=record}
+		end
+	end
+	for _,kind in ipairs({"filters","atlas","crafting"}) do add(kind,recovery.load(build,kind)) end
+	for _,record in ipairs(recovery.listCrafting(build)) do add("crafting",record,true) end
+	for _,record in ipairs(recovery.listUnique(build)) do add("uniqueQuality",record) end
+	if recovery.lastError then entries[#entries+1]={id="error",label="Draft recovery needs attention",details={recovery.lastError,"Keep your working project and save the build."}} end
+	require("Classes.PlanningBrowserControl").Open("Recover local drafts",entries,{action="Restore draft",closeOnChoose=false,choose=function(entry)
+		assert(entry.record,"Choose a valid draft");local clean=recovery.clean(entry.kind,entry.record.entry)
+		local page=entry.kind=="uniqueQuality" and "crafting" or entry.kind
+		if entry.kind=="uniqueQuality" then
+			local match
+			for _,project in ipairs(build.savers.CraftingProjects.projects) do
+				if project.id==clean.plan.project.id then
+					assert(project.startingItem==clean.plan.project.startingItem and project.slot==clean.plan.project.slot,"A different project uses this ID; restore the matching project before recovering this preview")
+					match=project;break
+				end
+			end
+			local project=match or clean.plan.project;local item=require("Modules.CraftingUniqueQuality").inspect(project.startingItem)
+			assert(build.itemsTab.slots[project.slot] and build.itemsTab:IsItemValidForSlot(item,project.slot),"Recovered project does not fit its equipment slot")
+			clean.plan.project=copyTable(project)
+		end
+		main:ClosePopup();recovery.acknowledge(build,entry.kind,entry.projectId);build.planningWorkspace.cache[page]=nil;build.planningWorkspace.drafts[page]=clean;build.planningWorkspace:Show(page,clean.plan)
+	end,secondary={label="Discard draft",run=function(entry) if entry and entry.record then recovery.clear(build,entry.kind,entry.projectId);main:ClosePopup();M.Recovery(build) end end}})
+end
+local function openFilter(build,filterId,ruleId,scope)
+	local workspace=build.planningWorkspace
+	if workspace.cache.filters then workspace:Remember("filters") end
+	local saved=workspace.drafts.filters and workspace.drafts.filters.plan
+	local state=copyTable(saved or {data=build.savers.LootFilters.data})
+	local profile=require("Modules.LootFilters").find(state.data,filterId);if not profile then return end
+	state.selected=filterId
+	if ruleId then state.page="Customize";state.scope=scope or "My rules";state.category="All items";state.query="";state.rule=ruleId else state.page="Overview" end
+	workspace:Show("filters",state)
+	if ruleId then
+		local list=workspace.controls.rules;local offset=0
+		for _,row in ipairs(list.list) do if row.entry and row.entry.rule.id==ruleId then list.controls.scrollBar.offset=offset;break end;offset=offset+row.height end
+	end
+end
+local function searchPreset(build,profile)
+	local entries={};local ok,catalog=pcall(require("Modules.LootFilterLibrary").catalog,profile)
+	if not ok then require("Modules.PlanningUI").errorPopup("Search base filter rules",catalog);return end
+	for _,item in ipairs(catalog) do
+		entries[#entries+1]={id=item.rule.id,label=item.rule.title,search=item.rule.text,category=item.category,details={item.tier,"Open this base filter rule in the editor.","Editing creates a personal override."}}
+	end
+	require("Classes.PlanningBrowserControl").Open("Search base filter rules",entries,{action="Open rule",closeOnChoose=false,choose=function(entry) main:ClosePopup();openFilter(build,profile.id,entry.id,"Base filter") end})
+end
+-- Search saved descriptions as well as titles. Atlas nodes are read from their
+-- pinned tree, including selected choice effects; no allocations are changed.
+function M.atlasSearchTerms(plan)
+	local terms={"atlas strategy tree"};local segments={};local function add(label,value) if value and value~="" then terms[#terms+1]=value;segments[#segments+1]={label=label,text=value} end end
+	add("Plan notes",plan.notes);local strategy=plan.strategy or {}
+	for _,key in ipairs({"maps","scarabs","requirements","avoid","notes"}) do add("Strategy "..key,strategy[key]) end
+	for _,map in ipairs(plan.mapDrafts or {}) do add("Map draft",map.title.." "..map.baseId) end
+	local atlas=require("Modules.AtlasPlanner");local ok,tree=pcall(atlas.tree,plan.version)
+	if not ok then return table.concat(terms," "),false,segments end
+	local seen={};for _,group in ipairs({{"Allocated node",plan.nodes or {}},{"Desired node",plan.desired or {}},{"Avoided node",plan.avoided or {}}}) do for _,id in ipairs(group[2]) do
+		local node=tree.nodes[id];if node and not seen[id] then seen[id]=true;local text={node.name};for _,stat in ipairs(atlas.nodeStats(plan,node)) do text[#text+1]=stat end;add(group[1],table.concat(text," | ")) end
+	end end
+	return table.concat(terms," "),true,segments
+end
+function M.craftingSearchTerms(project)
+	local terms={"crafting project"};local segments={};local function add(label,value) if value and value~="" then terms[#terms+1]=value;segments[#segments+1]={label=label,text=value} end end
+	add("Slot",project.slot);add("Starting item",project.startingItem);add("Target item",project.targetItem);add("Notes",project.notes);add("Source",project.originNote)
+	for _,goal in ipairs(project.goals or {}) do add("Goal",goal) end
+	for _,step in ipairs(project.steps or {}) do for _,key in ipairs({"action","stopWhen","onFailure"}) do add("Guide "..key,step[key]) end end
+	for _,recipe in ipairs(project.recipeAlternatives or {}) do add("Alternative recipe",recipe.name) end
+	return table.concat(terms," "),segments
+end
+function M.searchDetails(header,segments,query,footer)
+	local lines={header};local terms={};local phrase=query:lower():match("^%s*(.-)%s*$");for term in phrase:gmatch("%S+") do terms[#terms+1]=term end
+	local matches={}
+	if #terms>0 then for _,segment in ipairs(segments) do
+		local text=StripEscapes(segment.text);local found,best,position=nil,0,nil
+		for line in (text.."\n"):gmatch("([^\n]*)\n") do
+			local lower=line:lower();local pos=lower:find(phrase,1,true);local score=pos and 100 or 0
+			for _,term in ipairs(terms) do local index=lower:find(term,1,true);if index then score=score+1;pos=pos or index end end
+			if score>best then found=line;best=score;position=pos end
+		end
+		if found then matches[#matches+1]={score=best,index=#matches+1,text=segment.label..": "..found:sub(math.max(1,position-60),math.min(#found,position+150))} end
+	end end
+	table.sort(matches,function(a,b) if a.score~=b.score then return a.score>b.score end;return a.index<b.index end)
+	local bestCount=0;for _,match in ipairs(matches) do if match.score==matches[1].score then bestCount=bestCount+1;if bestCount<=5 then lines[#lines+1]=match.text end end end
+	if bestCount>5 then lines[#lines+1]="More matching details are available in the plan." end
+	for _,line in ipairs(footer or {}) do lines[#lines+1]=line end;return lines
+end
+function M.Open(build)
+	local entries={
+		{id="performance",label="Performance diagnostics",details={"See observed calculation and background-slice times. Refresh, copy or reset the session measurements."}},
+		{id="baseSets",label="Same-base vendor review",details={"Group copied normal, magic, rare and unique items by base for possible Chance Orbs.","Each paste represents one item; check the vendor offer in game."}},
+		{id="vendor",label="Same-name rare review",details={"Paste identified rares to find possible Chaos and Exalted Orb vendor offers.","Each paste represents one item; review the vendor offer in game."}},
+		{id="rareSets",label="Rare equipment sets",details={"Group copied rares into possible Alchemy, Chaos or Regal vendor sets.","Check item eligibility and the actual vendor offer in game."}},
+		{id="gemQuality",label="Gem quality planner",details={"Plan Gemcutter's Prism use for a copied active or support gem.","Quality above 20% and corruption outcomes need other methods."}},
+		{id="qualityVendor",label="Quality and Vaal vendor review",details={"Group copied quality items and Vaal skill gems for possible vendor currency.","Groups can overlap; review the offer in game."}},
+		{id="bundle",label="Export / import complete bundle",details={"Carry the character, crafting guides, working checkpoints, Atlas stages and Journey plans together.","Imports open through native review as a new build."}},
+		{id="recovery",label="Recover local drafts",details={"Resume an interrupted filter, Atlas or crafting draft.","Earlier-session drafts are preserved until reviewed."}},
+	}
+	for _,page in ipairs({{"ai","AI builds"},{"atlas","Atlas planner"},{"crafting","Crafting projects"},{"journey","Journey"},{"filters","Loot filter"}}) do
+		entries[#entries+1]={id="page:"..page[1],label=page[2],category="Pages",page=page[1],details={"Open this planning page.","In-progress page drafts remain available."}}
+	end
+	for _,plan in ipairs(build.savers.AtlasPlans.plans) do
+		local terms,complete,segments=M.atlasSearchTerms(plan)
+		entries[#entries+1]={id="atlas:"..plan.id,label=plan.title,search=terms,category="Atlas plans",atlasId=plan.id,queryDetails=function(query) return M.searchDetails("Open saved Atlas plan: "..plan.title,segments,query,{"Search includes allocated, desired and avoided nodes.",complete and "An existing session draft takes precedence." or "The tree could not be read; node search is incomplete."}) end}
+	end
+	for _,project in ipairs(build.savers.CraftingProjects.projects) do
+		local terms,segments=M.craftingSearchTerms(project)
+		entries[#entries+1]={id="craft:"..project.id,label=project.title,search=terms,category="Crafting projects",projectId=project.id,queryDetails=function(query) return M.searchDetails("Open crafting project: "..project.title,segments,query,{"Search covers saved items, goals, guide and notes.","A working craft for this project remains available."}) end}
+		for _,item in ipairs(project.inventory or {}) do
+			entries[#entries+1]={id="craft-item:"..project.id..":"..item.id,label=item.title,search="saved crafting item "..project.title.." "..item.slot.." "..(item.originNote or ""),category="Saved crafting items",projectId=project.id,itemId=item.id,details={"Open saved item in "..project.title,"Equipment slot: "..item.slot,"Search its modifiers in the item inventory."}}
+		end
+	end
+	entries[#entries+1]={id="craftInventorySearch",label="Search saved crafting item modifiers",search="crafting inventory item snapshot modifiers",category="Saved crafting items",details={"Search modifiers across saved crafting snapshots.","The inventory indexes item states in background slices."}}
+	for _,group in ipairs({{"milestones","Roadmap","Journey milestones"},{"wishlist","Gear","Journey gear goals"},{"resources","Budget","Journey resources"},{"stages","Leveling","Journey leveling stages"}}) do
+		for _,item in ipairs(build.savers.BuildJourney.data[group[1]]) do
+			local terms={"journey",group[2]};for _,key in ipairs({"notes","slot","gems","passives","gear","ascendancy","quests","transition","targetItem"}) do if item[key] then terms[#terms+1]=item[key] end end
+			entries[#entries+1]={id="journey:"..group[1]..":"..item.id,label=item.title,search=table.concat(terms," "),category=group[3],journeyGroup=group[1],journeyPage=group[2],journeyId=item.id,details={"Open "..group[2]..": "..item.title,"Changes to the Journey are saved with the build."}}
+		end
+	end
+	local workspace=build.planningWorkspace
+	local filterState=workspace.cache.filters and workspace.cache.filters.layout.snapshot() or workspace.drafts.filters and workspace.drafts.filters.plan
+	local filterData=filterState and filterState.data or build.savers.LootFilters.data
+	local activeProfile=require("Modules.LootFilters").find(filterData,filterState and filterState.selected or filterData.activeId) or filterData.profiles[1]
+	entries[#entries+1]={id="presetSearch",label="Search base filter rules",category="Loot filters",details={activeProfile and ("Search the base filter for "..activeProfile.title..".") or "Create a filter profile before searching its base filter.","The base catalogue loads only when opened."}}
+	for _,profile in ipairs(filterData.profiles) do
+		entries[#entries+1]={id="filter:"..profile.id,label=profile.title,search="loot filter profile",category="Loot filters",filterId=profile.id,details={"Open filter profile: "..profile.title,"The current filter draft is preserved."}}
+		for _,rule in ipairs(profile.rules) do
+			entries[#entries+1]={id="filter-rule:"..profile.id..":"..rule.id,label=rule.title,search="loot filter "..profile.title.." "..rule.text,category="Filter rules",filterId=profile.id,ruleId=rule.id,details={"Open rule in "..profile.title,rule.enabled==false and "This rule is disabled." or "This rule is enabled.","The current filter draft is preserved."}}
+		end
+	end
+	require("Classes.PlanningBrowserControl").Open("Planning tools",entries,{action="Open",closeOnChoose=false,canChoose=function(entry) return entry.id~="presetSearch" or activeProfile~=nil end,choose=function(entry)
+		main:ClosePopup();local workspace=build.planningWorkspace
+		if entry.page then workspace:Show(entry.page)
+		elseif entry.id=="craftInventorySearch" then
+			workspace:Show("crafting");require("Classes.CraftingInventoryControl").Open(build,{resume=function(project) workspace.cache.crafting.layout.openWorkbench(project) end})
+		elseif entry.journeyId then
+			local found=false;for _,item in ipairs(build.savers.BuildJourney.data[entry.journeyGroup]) do if item.id==entry.journeyId then found=true;break end end
+			if not found then return end
+			local current=workspace.cache.journey and workspace.cache.journey.layout.snapshot() or workspace.drafts.journey and workspace.drafts.journey.plan
+			local view=copyTable(current or {});view.page=entry.journeyPage;view.selected=entry.journeyId
+			workspace:Show("journey",view)
+			local list=workspace.controls.entries;local offset=0
+			for _,row in ipairs(list.list) do if row.line==list.selectedKey then list.controls.scrollBar.offset=offset;break end;offset=offset+row.height end
+		elseif entry.id=="presetSearch" then searchPreset(build,activeProfile)
+		elseif entry.filterId then openFilter(build,entry.filterId,entry.ruleId)
+		elseif entry.atlasId then
+			for _,plan in ipairs(build.savers.AtlasPlans.plans) do if plan.id==entry.atlasId then workspace:Show("atlas",plan);return end end
+		elseif entry.projectId and entry.itemId then
+			local found=false;for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==entry.projectId then for _,item in ipairs(project.inventory or {}) do if item.id==entry.itemId then found=true;break end end;break end end
+			if not found then return end
+			workspace:Show("crafting")
+			require("Classes.CraftingInventoryControl").Open(build,{selectProjectId=entry.projectId,selectItemId=entry.itemId,resume=function(project) workspace.cache.crafting.layout.openWorkbench(project) end})
+		elseif entry.projectId then
+			for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==entry.projectId then workspace:Show("crafting");workspace.cache.crafting.layout.openWorkbench(project);return end end
+		elseif entry.id=="baseSets" then require("Classes.VendorBaseSetsControl").Open(build) elseif entry.id=="vendor" then require("Classes.VendorRarePairsControl").Open(build) elseif entry.id=="rareSets" then require("Classes.VendorRareSetsControl").Open(build) elseif entry.id=="gemQuality" then require("Classes.GemQualityPlanControl").Open(build) elseif entry.id=="qualityVendor" then require("Classes.VendorQualitySetsControl").Open(build) elseif entry.id=="performance" then M.Performance(build) elseif entry.id=="recovery" then M.Recovery(build) else M.Bundle(build) end
+	end})
+end
+return M

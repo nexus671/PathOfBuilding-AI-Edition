@@ -32,6 +32,9 @@ src/Export/ggpk/art/
 src/Export/ggpk/*.exe
 src/Export/ggpk/*.dll
 
+# Update testing
+src/Update/
+
 # PoB Trader
 *_currency_values.json
 
@@ -47,3 +50,9 @@ runtime/SimpleGraphic/Screenshots
 
 .emmyrc.json
 .luarc.json
+
+# Headless UI render evidence
+/artifacts/headless-ui/
+
+# Python test bytecode
+__pycache__/

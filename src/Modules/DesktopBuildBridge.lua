@@ -3,34 +3,57 @@ local json = require("dkjson")
 local sha1 = require("sha1")
 local insights = require("Modules.BuildInsights")
 local M = { enabled=false, history={}, undo={}, plan={goal="balanced"} }
+local function readableError(value) return require("Modules.PlanningUI").errorDetails(value) end
 local metrics = { "LifeUnreserved", "EnergyShield", "ManaUnreserved", "CombinedDPS", "FullDPS", "TotalEHP", "PhysicalMaximumHitTaken", "ChaosMaximumHitTaken", "RecoverySimulationSurvivalChance", "RecoverySimulationDamageDPS", "RecoverySimulationAttackUptime", "ManaRegen", "Speed", "EffectiveMovementSpeedMod", "FireResist", "ColdResist", "LightningResist", "ChaosResist", "Str", "Dex", "Int" }
 
-local function serialize(build)
+local function capture(build,treeOnly)
 	-- The native Notes saver temporarily hides color codes. Preserve the editor.
 	local notes = build.notesTab
 	local edit = notes.controls.edit
 	local buf, colors, caret, selection = edit.buf,notes.showColorCodes,edit.caret,edit.sel
-	local ok, result = pcall(build.SaveDB,build,"AI build context")
+	local ok, result, tree = pcall(build.SaveDB,build,"AI build context",{snapshot=true,treeOnly=treeOnly})
 	edit.buf, notes.showColorCodes, edit.caret, edit.sel = buf,colors,caret,selection
 	notes.controls.toggleColorCodes.label = colors and "Hide Color Codes" or "Show Color Codes"
-	assert(ok and result,ok and "Could not serialize build" or result)
-	return result
+	assert(ok and (treeOnly and (tree or result) or result),ok and "Could not serialize build" or result)
+	return result, tree
 end
 
-function M.revision(build)
-	local xml = assert(common.xml.ParseXML(serialize(build)))
-	local root = xml[1]
+local function serialize(build) local raw=capture(build);return raw end
+
+-- Match ComposeXML/ParseXML text normalization without reparsing the snapshot.
+local function canonicalTree(node,level)
+	local result={elem=node.elem,attrib=node.attrib and copyTable(node.attrib)}
+	local pending={}
+	local function flush()
+		if #pending>0 then
+			local text=table.concat(pending,"\n"..string.rep("\t",level+1)):match("^%s*(.-)%s*$")
+			if text:find("%S") then result[#result+1]=text end
+			pending={}
+		end
+	end
+	for _,child in ipairs(node) do
+		if type(child)=="table" then flush();result[#result+1]=canonicalTree(child,level+1) else pending[#pending+1]=child end
+	end
+	flush();return result
+end
+
+local function revisionXML(build,raw,tree)
+	local root = tree and canonicalTree(tree,0) or assert(common.xml.ParseXML(raw))[1]
 	for index=#root,1,-1 do
 		local node = root[index]
 		if type(node) == "table" then
 			if node.elem == "TreeView" then table.remove(root,index)
 			elseif node.elem == "Build" then
 				node.attrib.viewMode = nil
-				for i=#node,1,-1 do if type(node[i]) == "table" and (node[i].elem == "PlayerStat" or node[i].elem == "MinionStat") then table.remove(node,i) end end
+				for i=#node,1,-1 do if type(node[i]) == "table" and (node[i].elem == "PlayerStat" or node[i].elem == "MinionStat" or node[i].elem == "FullDPSSkill") then table.remove(node,i) end end
 			end
 		end
 	end
 	return sha1((build.buildName or "")..assert(common.xml.ComposeXML(root)))
+end
+function M.revision(build) local raw,tree=capture(build,true);return revisionXML(build,raw,tree) end
+function M.freeze(build)
+	local raw,tree=capture(build);return {build=build,xml=raw,revision=revisionXML(build,raw,tree)}
 end
 
 local function stats(build)
@@ -160,31 +183,68 @@ local function applyOperation(build, op)
 		end
 	elseif op.type == "set_notes" then
 		build.notesTab.controls.edit:SetText(text(op.text,64000,"notes"))
+	elseif op.type == "set_build_journey" then
+		build.savers.BuildJourney:Replace(op.journey)
+	elseif op.type == "set_loot_filters" then
+		build.savers.LootFilters:Replace(op.filters)
 	elseif op.type == "set_crafting_project" then
-		build.savers.CraftingProjects:Upsert(op.project)
+		local store=build.savers.CraftingProjects;local previous
+		if type(op.project)=="table" then for _,entry in ipairs(store.projects) do if entry.id==op.project.id then previous=entry;break end end end
+		local project=store:Upsert(op.project)
+		require("Modules.CraftingProjects").checkProposedRecipeStates(previous,project)
+	elseif op.type == "patch_crafting_guide" then
+		local store=build.savers.CraftingProjects;local previous
+		assert(type(op.projectId)=="string" and type(op.patch)=="table","Invalid crafting guide edit")
+		for _,entry in ipairs(store.projects) do if entry.id==op.projectId then previous=entry;break end end
+		assert(previous,"Unknown crafting project")
+		local updated=copyTable(previous);local count=0
+		for key,value in pairs(op.patch) do
+			assert(key=="title" or key=="notes" or key=="goals" or key=="steps","Invalid crafting guide field")
+			updated[key]=type(value)=="table" and copyTable(value) or value;count=count+1
+		end
+		assert(count>0,"Choose at least one crafting guide field")
+		store:Upsert(updated)
+	elseif op.type == "remove_crafting_project" then
+		build.savers.CraftingProjects:Remove(text(op.projectId,64,"project ID"))
 	elseif op.type == "set_atlas_plan" then
 		build.savers.AtlasPlans:Upsert(op.plan)
 	else error("Unknown operation: "..tostring(op.type)) end
 end
 
-function M.prepare(build, proposal)
+function M.prepare(build, proposal, checkpoint, sourceXML, frozen)
+	local yieldingCheckpoint=checkpoint
+	checkpoint=checkpoint or function() end
 	assert(type(proposal) == "table" and (proposal.mode == "edit" or proposal.mode == "new"),"Choose edit or new build")
 	assert(type(proposal.operations) == "table" and #proposal.operations > 0 and #proposal.operations <= 100,"Use 1 to 100 operations")
-	assert(proposal.baseRevision == M.revision(build),"Build changed. Refresh context and submit a new proposal.")
+	assert(not frozen or frozen.build==build,"Snapshot belongs to a different build")
+	assert(proposal.baseRevision == (frozen and frozen.revision or M.revision(build)),"Build changed. Refresh context and submit a new proposal.")
 	local title = text(proposal.title,120,"proposal title")
 	assert(title:match("%S") and not title:find("[%c]"),"Title must be a nonempty single line")
-	local source = proposal.mode == "edit" and serialize(build) or nil
+	local source = sourceXML or proposal.mode == "edit" and (frozen and frozen.xml or serialize(build)) or nil
+	checkpoint("Load candidate")
 	local computed = sandbox(function(proxy)
 		local candidate = LoadModule("Modules/Build")
 		proxy.modes.BUILD = candidate
+		candidate.planningCheckpoint=yieldingCheckpoint
+		candidate.planningDeferInitialRecovery=true
 		candidate:Init(nil,proposal.mode == "new" and title or build.buildName,source)
+		candidate.planningDeferInitialRecovery=nil
 		assert(candidate.abortSave == false,"Unable to initialize proposed build")
+		candidate.planningCheckpoint=yieldingCheckpoint
+		local originalProjects={};for _,project in ipairs(candidate.savers.CraftingProjects.projects) do originalProjects[project.id]=project end
+		checkpoint("Apply candidate changes")
 		for _,operation in ipairs(proposal.operations) do applyOperation(candidate,operation) end
+		-- Removing and recreating an ID must not bypass the starting-item guard.
+		for _,project in ipairs(candidate.savers.CraftingProjects.projects) do
+			local original=originalProjects[project.id]
+			if original then require("Modules.CraftingProjects").checkStartingStateChange(original,project) end
+		end
 		candidate.configTab:BuildModList()
 		candidate.configTab:UpdateControls()
 		candidate:UpdateClassDropdowns()
 		candidate.skillsTab:UpdateSocketGroups()
 		wipeGlobalCache()
+		checkpoint("Calculate candidate")
 		candidate.calcsTab:BuildOutput()
 		candidate:RefreshStatList()
 		local calculatedLevel = candidate.characterLevel
@@ -192,9 +252,11 @@ function M.prepare(build, proposal)
 		if candidate.characterLevel ~= calculatedLevel then candidate.calcsTab:BuildOutput(); candidate:RefreshStatList() end
 		candidate.controls.characterLevel:SetText(tostring(candidate.characterLevel))
 		candidate.buildFlag = false
+		candidate.planningCheckpoint=nil
 		return {candidate=candidate,cache=GlobalCache}
 	end)
 	local candidate = computed.candidate
+	checkpoint("Review requirements")
 	local after = stats(candidate)
 	local before = stats(build)
 	local delta = { }
@@ -220,9 +282,52 @@ function M.prepare(build, proposal)
 		evaluation=evaluation}
 end
 
+function M.prepareBundle(build,bundle)
+	assert(not M.prepared,"Review or reject the pending proposal first")
+	return M.prepare(build,{mode="new",title=bundle.buildName,baseRevision=M.revision(build),operations={{type="set_character"}}},nil,bundle.xml)
+end
+
+M.serialize=serialize
+
 function M.apply(prepared)
 	assert(main.modes.BUILD == prepared.base and M.revision(prepared.base) == prepared.baseRevision,"Build changed since preview. Submit a fresh proposal.")
 	local candidate = prepared.candidate
+	if prepared.mode=="edit" then
+		local previous={};for _,project in ipairs(prepared.base.savers.CraftingProjects.projects) do previous[project.id]=project end
+		local ui=require("Modules.PlanningUI");local remaining={}
+		for _,project in ipairs(candidate.savers.CraftingProjects.projects) do
+			remaining[project.id]=true
+			local old=previous[project.id]
+			if old and (old.startingItem~=project.startingItem or old.slot~=project.slot) then
+				assert(not ui.hasDraft(prepared.base,"workingCraft",project.id) and not ui.hasDraft(prepared.base,"uniqueQuality",project.id),"The crafting guide '"..old.title.."' has an unkept working draft for its previous item. Keep that work, then submit a fresh proposal.")
+			end
+		end
+		local lastRemoved=candidate.savers.CraftingProjects.lastRemoved
+		for id,old in pairs(previous) do
+			if not remaining[id] and (ui.hasDraft(prepared.base,"workingCraft",id) or ui.hasDraft(prepared.base,"uniqueQuality",id)) then
+				assert(lastRemoved and lastRemoved.project.id==id,"The crafting guide '"..old.title.."' has unkept work that cannot be recovered after this batch removal. Keep it first, or remove guides one at a time.")
+			end
+		end
+		local carriedRemoval=false
+		local previousRemoval=prepared.base.savers.CraftingProjects.lastRemoved
+		if not candidate.savers.CraftingProjects.lastRemoved and previousRemoval then
+			local copy=copyTable(previousRemoval);copy.project=require("Modules.CraftingProjects").copy({previousRemoval.project})[1]
+			candidate.savers.CraftingProjects.lastRemoved=copy;carriedRemoval=true
+		end
+		local workspace=prepared.base.planningWorkspace or require("Modules.PlanningWorkspace").pendingHandoff(prepared.base)
+		if workspace then workspace:CopyCraftingDrafts(candidate);workspace:CopyAtlasDrafts(candidate);workspace:CopyFilterDraft(candidate) end
+		local removed=candidate.savers.CraftingProjects.lastRemoved
+		if removed and not carriedRemoval then
+			local qualityDraft=workspace and workspace:UniqueQualityDraft(removed.project.id) or prepared.base.planningUniqueQualityDrafts and prepared.base.planningUniqueQualityDrafts[removed.project.id]
+			removed.qualityDraft=qualityDraft and copyTable(qualityDraft)
+			removed.qualityPending=require("Modules.PlanningUI").hasDraft(prepared.base,"uniqueQuality",removed.project.id)
+			removed.draft=workspace and workspace:CraftingDraft(removed.project.id) or prepared.base.planningCraftDrafts and prepared.base.planningCraftDrafts[removed.project.id]
+			removed.pending=require("Modules.PlanningUI").hasDraft(prepared.base,"workingCraft",removed.project.id)
+			if not removed.draft and not removed.pending then local recovery=require("Modules.PlanningRecovery").forCraftingProject(prepared.base,removed.project.id);if recovery then removed.draft=recovery.draft;removed.pending=recovery.pending end end
+			assert(not removed.pending or removed.draft,"Could not preserve the unkept working craft. Keep it before removing its guide.")
+			assert(not removed.qualityPending or removed.qualityDraft,"Could not preserve the unkept unique preview. Keep it before removing its guide.")
+		end
+	end
 	if prepared.mode == "edit" then candidate.dbFileName,candidate.dbFileSubPath = prepared.base.dbFileName,prepared.base.dbFileSubPath end
 	candidate.modFlag,candidate.unsaved = true,true
 	M.undo[#M.undo+1] = {build=prepared.base,cache=GlobalCache}
@@ -249,7 +354,10 @@ function M.capture(build)
 	local context = {revision=M.revision(build),name=build.buildName,level=build.characterLevel,className=build.spec.curClassName,ascendancy=build.spec.curAscendClassName,
 		stats=stats(build),items={},skills={},passives={},masteries=copyTable(build.spec.masterySelections),config=copyTable(build.configTab.input),
 		warnings=copyTable(build.controls.warnings.lines),slots={},plan=M.plan,audit=insights.audit(build),encounter=insights.diagnose(build),
-		craftingProjects=copyTable(build.savers.CraftingProjects.projects),craftingWarning=build.savers.CraftingProjects.warning,
+		craftingProjects=require("Modules.CraftingProjects").copy(build.savers.CraftingProjects.projects),craftingWarning=build.savers.CraftingProjects.warning,
+		lootFilters=copyTable(build.savers.LootFilters.data),lootFilterWarning=build.savers.LootFilters.warning,
+		journey=copyTable(build.savers.BuildJourney.data),journeyWarning=build.savers.BuildJourney.warning,
+		journeyBudget=require("Modules.BuildJourney").budget(build.savers.BuildJourney.data),nextActions=require("Modules.BuildJourney").next(build.savers.BuildJourney.data,build),
 		atlasPlans=copyTable(build.savers.AtlasPlans.plans),atlasWarning=build.savers.AtlasPlans.warning,atlasVersions=copyTable(require("Modules.AtlasPlanner").versions)}
 	local catalog = {gems={},passives={},config={},classes={}}
 	for name,slot in pairs(build.itemsTab.slots) do
@@ -286,18 +394,22 @@ function M.capture(build)
 end
 
 function M.publishState()
-	writeFile(path("state"),{schemaVersion=1,session=M.session,enabled=M.enabled,heartbeat=os.time(),revision=M.contextRevision,proposal=M.status,history=M.historySummary(),plan=M.plan,diagnostics={lastPoll=M.lastPoll,lastContext=M.lastContext,lastRequest=M.lastRequest,lastError=M.lastError,undoDepth=#M.undo}})
+	local now = os.time()
+	local lootSync = M.enabled and require("Modules.LootFilterDailySync")
+	writeFile(path("state"),{schemaVersion=1,session=M.session,enabled=M.enabled,heartbeat=now,revision=M.contextRevision,connectionTest=M.connectionTest,proposal=M.status,history=M.historySummary(),plan=M.plan,lootSyncStatus=lootSync and lootSync.publicStatus(now) or nil,lootSyncDiff=lootSync and lootSync.publicDiff(now) or nil,diagnostics={lastPoll=M.lastPoll,lastContext=M.lastContext,lastRequest=M.lastRequest,lastError=M.lastError,undoDepth=#M.undo}})
 end
 
 function M.refresh(build)
 	local captured = M.capture(build)
 	M.contextRevision = captured.context.revision
+	M.contextStamp=require("Modules.PlanningRevision").stamp(build)
 	M.lastContext = os.time()
 	writeFile(path("context"),captured)
 	M.publishState()
 end
 
 function M.enable(build)
+	M.client=nil;M.connectionTest=nil
 	M.enabled,M.build,M.prepared,M.status,M.contextRevision = true,build,nil,nil,nil
 	if M.owner ~= build then M.history,M.undo,M.previous,M.previousCache,M.comparison = {},{},nil,nil,nil end
 	M.owner = build
@@ -308,12 +420,16 @@ end
 
 function M.disable(build)
 	if not M.enabled or M.build ~= build then return end
+	local tasks=require("Modules.CraftingTasks")
+	if tasks.job and tasks.job.requestId then tasks.cancel("Desktop connection closed") end
 	M.enabled,M.prepared = false,nil
 	M.publishState()
 end
 
 function M.close(build)
 	if M.owner ~= build and M.build ~= build then return end
+	local tasks=require("Modules.CraftingTasks")
+	if tasks.job and tasks.job.requestId then tasks.cancel("Desktop connection closed") end
 	M.enabled,M.prepared,M.status,M.build,M.owner = false,nil,nil,nil,nil
 	M.history,M.undo,M.previous,M.previousCache,M.comparison = {},{},nil,nil,nil
 	pcall(M.publishState)
@@ -399,7 +515,7 @@ function M.calculateBatch(build, request)
 			summary.status="calculated"; summary.level=prepared.candidate.characterLevel
 			results[#results+1] = summary
 		else
-			results[#results+1] = {title=entry.title,status="failed",error=tostring(prepared):match("^[^\n]+")}
+			results[#results+1] = {title=entry.title,status="failed",error=readableError(prepared)}
 		end
 	end
 	local ranking = { }
@@ -411,44 +527,401 @@ function M.calculateBatch(build, request)
 end
 
 function M.poll(build, force)
+	require("Modules.CraftingTasks").tick(build)
+	require("Modules.JourneyUpgrades").tick(build)
 	if not M.enabled then return end
+	local upgrades=require("Modules.JourneyUpgrades")
+	if upgrades.job and upgrades.job.build==build and M.status and M.status.kind=="journeyUpgrades" then local result=upgrades.current(build);M.status.progress={completed=result.completed,total=result.total,phase=upgrades.job.phase} end
 	if M.build ~= build then M.close(M.build); return end
 	if not force and GetTime() < (M.nextPoll or 0) then return end
 	M.nextPoll = GetTime()+1000
+	local clientFile=io.open(path("client"),"rb")
+	if clientFile then
+		local raw=clientFile:read(8193);clientFile:close()
+		local ok,client=pcall(json.decode,raw)
+		if ok and type(client)=="table" and client.session==M.session and type(client.seenAt)=="number" and client.seenAt<=os.time()+5 and client.seenAt>=os.time()-180 and type(client.name)=="string" and #client.name<=80 then
+			M.client=client
+			if M.connectionTest and client.testNonce==M.connectionTest.nonce then M.connectionTest.passed=true end
+		end
+	end
 	M.lastPoll = os.time()
+	local requestId
 	local ok,err = pcall(function()
 		if build.buildFlag then return end
-		if M.contextRevision ~= M.revision(build) then M.refresh(build) else M.publishState() end
+		local revisions=require("Modules.PlanningRevision")
+		if not M.contextRevision or not revisions.same(M.contextStamp,revisions.stamp(build)) then M.refresh(build) else M.publishState() end
 		local file = io.open(path("request"),"rb")
 		if not file then return end
-		local requestText = file:read(262145); file:close()
+		local requestText = file:read(1024*1024+1); file:close()
 		os.remove(path("request"))
-		assert(#requestText <= 262144,"Proposal exceeds the supported size")
+		assert(#requestText <= 1024*1024,"Request exceeds the supported size")
 		local request = assert(json.decode(requestText),"Invalid proposal JSON")
 		assert(request.session == M.session,"Proposal belongs to another desktop session")
 		assert(type(request.id) == "string" and request.id:match("^[%w%-]+$") and #request.id <= 80,"Invalid proposal ID")
+		requestId=request.id
 		if M.prepared then return end
 		M.lastRequest,M.lastError = os.time(),nil
-		if request.kind == "atlasSearch" or request.kind == "atlasConnect" then
+		if request.kind == "craftCancel" then
+			local tasks=require("Modules.CraftingTasks")
+			assert(tasks.job and tasks.job.requestId == request.requestId,"No matching active crafting request")
+			tasks.cancel("Cancelled from the MCP client")
+			M.status={id=request.id,status="cancelled",cancelledId=request.requestId};M.publishState();return
+		end
+		assert(not require("Modules.CraftingTasks").job,"Finish or cancel the active crafting job first")
+		assert(not require("Modules.JourneyUpgrades").job,"Finish or cancel upgrade measurements first")
+		if request.kind=="list_loot_sync_decisions" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local result=require("Modules.LootFilterDailySync").publicDecisionPage(request.reviewRevision,request.offset,request.limit,request.kindFilter)
+			M.status={id=request.id,status="lootDecisions",lootDecisions=result};M.publishState();return
+		end
+		if request.kind=="review_loot_sync_examples" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local result=require("Modules.LootFilterDailySync").publicDecisionExamples(request.reviewRevision,request.decisionIndex,request.offset,request.limit)
+			M.status={id=request.id,status="lootReview",lootReview=result};M.publishState();return
+		end
+		if request.kind=="compare_gear_listings" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local hasSlot, hasItem, hasSocket = request.slot~=nil, request.itemText~=nil, request.jewelSocketId~=nil
+			assert((hasSlot and 1 or 0)+(hasItem and 1 or 0)+(hasSocket and 1 or 0)==1,
+				"Provide exactly one slot, jewelSocketId or itemText")
+			if hasSlot then
+				local slots = {["Ring 1"]=true,["Ring 2"]=true,["Ring 3"]=true,Amulet=true,Belt=true,["Weapon 1"]=true,["Weapon 2"]=true,
+					Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true}
+				assert(slots[request.slot],"Choose an equipped gear slot")
+			end
+			if hasSocket then
+				local socket = request.jewelSocketId
+				assert(type(socket)=="number" and socket>=1 and socket<=2147483647 and socket==math.floor(socket),
+					"Choose an allocated jewel socket ID")
+			end
+			if hasItem then assert(type(request.itemText)=="string" and #request.itemText<=24000 and request.itemText:match("%S"),"Provide a copied item") end
+			local path=request.snapshotPath
+			assert(type(path)=="string" and #path<=1024 and not path:find("[%c]") and path:lower():match("%.json$")
+				and (path:match("^[A-Za-z]:[\\/]") or path:sub(1,1)=="/" and path:sub(1,2)~="//"),"Supply an absolute local JSON snapshot path")
+			local target, reason
+			local browse=require("Modules.LootFilterMarketBrowse")
+			if hasItem then target,reason=browse.listingTargetForItem(new("Item"):Item(request.itemText))
+			else
+				for _, entry in ipairs(browse.buildTargets(build)) do
+					if hasSlot and entry.listingSlot==request.slot or hasSocket and entry.listingSocket==request.jewelSocketId then
+						target=entry.listingItem
+						break
+					end
+				end
+			end
+			assert(target,reason or "The supplied item or selected slot does not contain supported comparable gear")
+			local selection=request.modifierFilters
+			assert(not (selection and target.blightcore),"Putrid Seed requires an exact ordered comparison")
+			local matchesRolls=selection~=nil and browse.listingRollSelection(target,selection) or nil
+			assert(request.recentOnly==nil or type(request.recentOnly)=="boolean","Use true or false for recentOnly")
+			assert(request.itemFilters==nil or type(request.itemFilters)=="table","Supply item filters as an object")
+			local result=require("Modules.LootFilterGearListings").compareFile(path,target,request.league,matchesRolls,nil,
+				request.recentOnly,request.itemFilters)
+			M.status={id=request.id,status="gearListings",gearListings={slot=request.slot,jewelSocketId=request.jewelSocketId,source=hasItem and "copied item" or "equipped item",league=request.league,comparison=result,
+				mode=(matchesRolls or result.propertyFilters) and "filtered" or "exact",modifierFilters=selection,
+				captureMode=request.recentOnly and "recent" or "recorded",
+				equipment=target.equipment,cluster=target.cluster,blightcore=target.blightcore,
+				note=request.recentOnly and "Asking prices from recent stash observations. Live availability and completed sales are not established."
+					or "Asking prices from the supplied snapshot only; freshness, availability and completed sales are not established."}}
+			M.publishState();return
+		end
+		if request.kind=="review_same_base_vendor_items" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local result=require("Modules.VendorBaseSets").review(request.items)
+			M.status={id=request.id,status="baseSetVendorReview",baseSetVendorReview=result};M.publishState();return
+		end
+		if request.kind=="review_same_name_rares" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local result=require("Modules.VendorRarePairs").review(request.items,request.preference)
+			M.status={id=request.id,status="vendorReview",vendorReview=result};M.publishState();return
+		end
+		if request.kind=="review_rare_vendor_sets" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local result=require("Modules.VendorRarePairs").reviewSets(request.items,request.preference)
+			M.status={id=request.id,status="rareSetVendorReview",rareSetVendorReview=result};M.publishState();return
+		end
+		if request.kind=="plan_gem_quality" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local result=require("Modules.GemQualityPlan").inspect(request.item,request.target)
+			M.status={id=request.id,status="gemQualityPlan",gemQualityPlan=result};M.publishState();return
+		end
+		if request.kind=="review_quality_vendor_items" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local result=require("Modules.VendorQualitySets").review(request.items)
+			M.status={id=request.id,status="qualityVendorReview",qualityVendorReview=result};M.publishState();return
+		end
+		if request.kind=="journeyUpgrades" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh Journey context.")
+			local session=M.session
+			require("Modules.JourneyUpgrades").start(build,function(result)
+				if not M.enabled or M.session~=session then return end
+				M.status={id=request.id,status=result.cancelled and "cancelled" or "measured",upgrades=result};M.publishState()
+			end)
+			M.status={id=request.id,status="calculating",kind="journeyUpgrades"};M.publishState();return
+		end
+		if request.kind=="compare_loot_filters" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh loot-filter context.")
+			assert(type(request.samples)=="table" and #request.samples>=1 and #request.samples<=50,"Use 1 to 50 examples")
+			local filters=require("Modules.LootFilters");local function checked(profile)
+				assert(type(profile)=="table","Supply both filter profiles")
+				return filters.validate({schemaVersion=1,activeId=profile.id,profiles={profile}}).profiles[1]
+			end
+			local before,after=checked(request.before),checked(request.after);local session=M.session
+			local function publish(status,values)
+				if not M.enabled or M.session~=session then return end
+				M.status={id=request.id,status=status,baseRevision=request.baseRevision};for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+			end
+			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				local impact=require("Modules.LootFilterImpact");return impact.page(impact.prepare(before,after),request.samples,0,50,checkpoint)
+			end,function(result)
+				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh loot-filter context."}) else publish("tested",{comparison=result}) end
+			end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end,"Filter comparison slice")
+			job.requestId=request.id;publish("calculating",{});return
+		end
+		if request.kind=="generate_loot_filter" or request.kind=="test_loot_filter" or request.kind=="test_loot_filter_examples" or request.kind=="test_loot_filter_scene" or request.kind=="export_loot_filter" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh loot-filter context.")
+			local filters=require("Modules.LootFilters")
+			local profile=request.profile or filters.find(build.savers.LootFilters.data,request.profileId)
+			assert(profile,"Choose a loot-filter profile")
+			profile=filters.validate({schemaVersion=1,activeId=profile.id,profiles={profile}}).profiles[1]
+			if request.kind=="test_loot_filter_examples" or request.kind=="test_loot_filter_scene" then
+				local session=M.session
+				local function publish(status,values)
+					if not M.enabled or M.session~=session then return end
+					M.status={id=request.id,status=status,baseRevision=request.baseRevision}
+					for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+				end
+				local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+					if request.kind=="test_loot_filter_scene" then return filters.simulateScene(profile,request.scene,request.seed,request.areaLevel,request.itemLevel,request.offset,request.limit,checkpoint,build) end
+					return filters.simulateExamples(profile,request.sampleSetId,request.offset,request.limit,checkpoint)
+				end,function(result)
+					if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh loot-filter context."}) else publish("tested",{examples=result}) end
+				end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end,"Filter example evaluation slice")
+				job.requestId=request.id;publish("calculating",{});return
+			elseif request.kind=="generate_loot_filter" then
+				local rules,warnings=filters.generate(build,profile);profile.rules=rules;profile.trackBuildPickups=true;M.status={id=request.id,status="generated",profile=profile,warnings=warnings}
+			elseif request.kind=="test_loot_filter" then
+				assert((type(request.sample)=="table" and request.itemText==nil) or (request.sample==nil and type(request.itemText)=="string" and request.itemText:match("%S")),"Supply exactly one sample or copied item")
+				assert(request.areaLevel==nil or request.itemText and type(request.areaLevel)=="number" and request.areaLevel%1==0 and request.areaLevel>=1 and request.areaLevel<=100,"Invalid area level")
+				local sample=request.itemText and require("Modules.LootFilterClipboard").parse(request.itemText,request.areaLevel) or request.sample
+				M.status={id=request.id,status="tested",sample=sample,result=filters.simulate(profile,sample)}
+			else local raw,report=filters.compile(profile);for _,diagnostic in ipairs(report.diagnostics) do if diagnostic.error then error("Line "..diagnostic.line..": "..tostring(diagnostic.error),0) end end;M.status={id=request.id,status="exported",filter=raw,report=report} end
+			M.publishState();return
+		end
+		if request.kind == "search_map_bases" or request.kind == "list_map_allflame" or request.kind == "inspect_map_modifiers" or request.kind == "inspect_copied_map" or request.kind == "project_map_delirium" or request.kind == "simulate_map_currency" or request.kind == "estimate_map_rerolls" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh map context.")
+			local session=M.session
+			local function publish(status,values)
+				if not M.enabled or M.session~=session then return end
+				M.status={id=request.id,status=status,baseRevision=request.baseRevision}
+				for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+			end
+			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				if request.kind=="list_map_allflame" then return require("Modules.MapAllflame").reference() end
+				if request.kind=="project_map_delirium" then return require("Modules.MapObservedEffects").projectDelirium(request.currentPercent,request.currentType,request.nextType,request.gain,request.targetPercent) end
+				if request.kind=="inspect_copied_map" then return require("Modules.MapClipboard").parse(request.itemText,checkpoint) end
+				if request.kind=="estimate_map_rerolls" then return require("Modules.MapCraftEstimate").run(request.state,request.options,checkpoint) end
+				if request.kind=="simulate_map_currency" then return require("Modules.MapCurrency").perform(request.state,request.action,request.seed,checkpoint,nil,nil,request.allflameId) end
+				local map=require("Modules.MapCraftingData")
+				if request.kind=="search_map_bases" then return map.searchBases(request.query,request.offset,request.limit,checkpoint) end
+				assert(not request.unidentified or request.rarity~="normal","Normal maps cannot be unidentified")
+				assert(not request.unidentified or not request.selected or #request.selected==0,"Unidentified map modifiers are unknown")
+				local plannedAllflame=require("Modules.MapAllflame").validate(request.plannedAllflame)
+				assert(request.plannedDeified==nil or type(request.plannedDeified)=="boolean","Invalid planned Deified marker")
+				assert(not request.vaalPreview or request.corrupted,"A conditional Vaal preview requires a corrupted map")
+				assert(request.templePreview==nil or type(request.templePreview)=="boolean","Invalid Temple preview marker")
+				assert(not request.templePreview or request.twiceCorrupted and request.vaalPreview,"A Temple preview requires a twice-corrupted conditional preview")
+				assert(request.vaalTierUpPreview==nil or type(request.vaalTierUpPreview)=="boolean","Invalid tier-up preview marker")
+				assert(not request.vaalTierUpPreview or request.vaalPreview,"A tier-up preview requires a conditional Vaal preview")
+				assert(not request.twiceCorrupted or request.corrupted,"A twice-corrupted map must be corrupted")
+				local result=map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint,request.rarity,request.rolls,request.corrupted,request.implicit,request.quality,request.observedEffects,request.relatedTo and map.isNightmare(request.baseId),nil,request.relatedTo)
+				result.mirrored=request.mirrored or nil;result.unidentified=request.unidentified or nil;result.vaalPreview=request.vaalPreview or nil;result.vaalTierUpPreview=request.vaalTierUpPreview or nil;result.templePreview=request.templePreview or nil;result.twiceCorrupted=request.twiceCorrupted or nil
+				if request.unidentified then result.summary=nil;result.counts=nil;result.candidates={};result.total=nil;result.nextOffset=nil;result.note="Unidentified map: explicit modifiers and their totals are unknown.";result.unidentifiedOpeningBonus={atlasDrops=30,condition="When opened unidentified"} end
+				if request.vaalPreview then result.note=result.note.." Based on a conditional Vaal preview; outcome odds are not modeled." end
+				if request.templePreview then result.note=result.note.." Hypothetical Temple outcome: availability, implicit retention and odds are unverified." end
+				if request.vaalTierUpPreview then result.note=result.note.." Tier-up preview: item-level and quality retention are unverified assumptions." end
+				if request.vaalPreview and request.baseId=="Metadata/Items/Maps/MapWorldsVaalTemple" then result.note=result.note.." Vaal Temple preview: item-level and quality retention are unverified assumptions." end
+				if plannedAllflame then result.plannedAllflame=plannedAllflame;result.allflame=require("Modules.MapAllflame").describe(plannedAllflame);result.note=result.note.." Allflame is a conditional plan; eligibility and enchantment interactions are unverified." end
+				if request.plannedDelirium then result.plannedDelirium=require("Modules.MapObservedEffects").validateDeliriumPlan(request.plannedDelirium);result.note=result.note.." Delirium target is a hypothetical plan; the map is unchanged." end
+				if request.plannedDeified then result.plannedDeified=true;result.deified=result.deified or require("Modules.MapObservedEffects").deified(nil,true);result.note=result.note.." Deified is a conditional plan; eligibility and enchantment interactions are unverified." end
+				local state={baseId=request.baseId,tier=request.tier,itemLevel=request.itemLevel,rarity=request.rarity or "rare",selected=request.selected or {},rolls=request.rolls,corrupted=request.corrupted,twiceCorrupted=request.twiceCorrupted,mirrored=request.mirrored,unidentified=request.unidentified,vaalPreview=request.vaalPreview,vaalTierUpPreview=request.vaalTierUpPreview,templePreview=request.templePreview,implicit=request.implicit,quality=request.quality,observedEffects=request.observedEffects,plannedDeified=request.plannedDeified,plannedAllflame=plannedAllflame,plannedDelirium=request.plannedDelirium}
+				local planOk,plans=pcall(require("Modules.MapCurrency").planningOptions,state)
+				if planOk then result.planningOptions=plans else result.planningOptionsWarning=readableError(plans) end
+				local ok,options=pcall(require("Modules.MapCurrency").options,state,checkpoint)
+				if ok then result.currencyOptions=options else result.currencyOptionsWarning=readableError(options) end
+				return result
+			end,function(result)
+				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh map context."}) else publish("mapData",{mapData=result}) end
+			end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end,"Map modifier inspection slice")
+			job.requestId=request.id;publish("calculating",{});return
+		end
+		if request.kind == "atlasSearch" or request.kind == "atlasConnect" or request.kind == "atlasTransition" or request.kind == "atlasThreads" or request.kind == "atlasRegionRun" then
 			assert(request.baseRevision == M.revision(build),"Build changed. Refresh Atlas context.")
 			local planner=require("Modules.AtlasPlanner")
 			local result
 			if request.kind == "atlasSearch" then result=planner.search(request.version,request.query,request.limit)
+			elseif request.kind == "atlasThreads" then result=require("Modules.AtlasStrategy").threadRestrictions(request.areaLevel,request.threads,request.spentAbyssThreads,request.spentThreads)
+			elseif request.kind == "atlasRegionRun" then
+				local plan=planner.validate(request.plan);assert(plan.shapedRegions,"This Atlas plan has no recorded Shaped Regions")
+				local regions=require("Modules.AtlasRegions");plan.shapedRegions=regions.complete(plan.shapedRegions,request.map,request.completed)
+				result={plan=planner.validate(plan),maps=regions.overview(plan.shapedRegions),note="Manual observations only; no game or saved build changes. Unrecorded regions and Thread limits are not inferred."}
+			elseif request.kind == "atlasTransition" then
+				local before,after=planner.validate(request.before),planner.validate(request.after)
+				result={before=before.id,after=after.id,transition=require("Modules.AtlasStrategy").transition(before,after)}
 			else
-				local plan,added=planner.connect(request.plan,request.targets,request.avoid)
-				result={plan=plan,added=added,report=planner.report(plan),officialUrl=planner.url(plan)}
+				assert(request.optimize==nil or type(request.optimize)=="boolean","Invalid Atlas optimization setting")
+				local plan,added,routing=(request.optimize and planner.connectOptimized or planner.connect)(request.plan,request.targets,request.avoid)
+				result={plan=plan,added=added,routing=routing,report=planner.report(plan),strategySummary=require("Modules.AtlasTargets").summary(plan)}
+				if #result.report.missingChoices>0 then result.officialUrlWarning="Choose an effect for every allocated choice node before sharing an official link."
+				else
+					result.officialUrl=planner.url(plan)
+					if plan.genesis and #plan.genesis.nodes>0 then result.officialUrlWarning="Official Atlas links omit Genesis allocations; copy the full Atlas plan to preserve them." end
+				end
 			end
 			M.status={id=request.id,status="atlas",atlas=result}; M.publishState(); return
 		end
-		if request.kind == "craftAction" or request.kind == "craftSimulate" then
+		if request.kind=="craftCompareAlternatives" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh crafting context.")
+			assert(not build.savers.CraftingProjects.unreadable,build.savers.CraftingProjects.warning)
+			local project;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==request.projectId then project=entry;break end end
+			assert(project,"Unknown crafting project")
+			assert(request.includePrimary==nil or type(request.includePrimary)=="boolean","Invalid primary recipe selection")
+			assert(request.reference==nil or request.reference=="primary" or request.reference=="firstAlternative","Invalid reference selection")
+			assert(request.reference~="primary" or request.includePrimary,"A primary reference requires includePrimary")
+			assert(type(request.names)=="table" and #request.names>=1,"Choose saved alternatives")
+			for key in pairs(request.names) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#request.names,"Alternative names must be an array") end
+			assert(request.options==nil or type(request.options)=="table","Invalid comparison options")
+			local byName={};for _,entry in ipairs(project.recipeAlternatives or {}) do byName[entry.name]=entry end
+			local chosen,seen={},{};local primary
+			if request.includePrimary then
+				assert(project.nativeRecipe,"This project has no primary recipe")
+				primary={name="Primary recipe",kind="primary",recipe=copyTable(project.nativeRecipe)}
+				if request.reference~="firstAlternative" then chosen[#chosen+1]=primary end
+			end
+			for _,name in ipairs(request.names) do
+				assert(type(name)=="string" and #name<=120 and name:match("%S") and not name:find("[%c%^]"),"Invalid alternative recipe name")
+				assert(not seen[name],"Choose each saved alternative once");seen[name]=true
+				local alternative=assert(byName[name],"Unknown saved alternative recipe: "..name);chosen[#chosen+1]={name=alternative.name,kind="alternative",recipe=copyTable(alternative.recipe)}
+			end
+			if primary and request.reference=="firstAlternative" then chosen[#chosen+1]=primary end
+			assert(#chosen>=2,"Choose at least two saved routes")
+			local options=copyTable(request.options or {});local trials,budget=options.trials,options.maxActions
+			local function validBudget(value) return value==nil or type(value)=="number" and value==math.floor(value) and value>=1 and value<=2000 end
+			assert(validBudget(trials) and validBudget(budget),"Invalid comparison trials or action budget")
+			if not trials and not budget then budget=math.min(100,math.floor(20000/#chosen)) end
+			if not trials then trials=budget>0 and math.min(100,math.floor(20000/(#chosen*budget))) or 0 end
+			if not budget then budget=math.min(100,math.floor(20000/(#chosen*trials))) end
+			assert(trials>=1 and budget>=1 and #chosen*trials*budget<=20000,"Use at most 20000 total budgeted actions across routes")
+			options.trials,options.maxActions=trials,budget;options.treeVersion=build.spec.treeVersion
+			if not options.priceBook and project.priceBook then options.priceBook=copyTable(project.priceBook) end
+			local reference=chosen[1].recipe;local session=M.session
+			local function publish(status,values)
+				if not M.enabled or M.session~=session then return end
+				M.status={id=request.id,status=status,baseRevision=request.baseRevision};for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+			end
+			publish("calculating",{})
+			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				local simulator=require("Modules.CraftingSimulator");local routes={}
+				for index,entry in ipairs(chosen) do
+					local original=entry.recipe;local candidate=copyTable(original)
+					local startDiffers=not tableDeepEquals(original.initialState,reference.initialState)
+					local goalDiffers=not tableDeepEquals(original.targets,reference.targets) or not tableDeepEquals(original.requirements,reference.requirements) or original.requiredGroups~=reference.requiredGroups or original.rarity~=reference.rarity
+					candidate.initialState=reference.initialState and copyTable(reference.initialState) or nil;candidate.targets=copyTable(reference.targets)
+					candidate.requirements=reference.requirements and copyTable(reference.requirements) or nil;candidate.requiredGroups=reference.requiredGroups;candidate.rarity=reference.rarity
+					local routeOptions=copyTable(options);routeOptions.checkpoint=function(progress) checkpoint({route=index,routes=#chosen,trial=progress.trial,trials=progress.trials}) end
+					local ok,result=pcall(simulator.simulate,project.startingItem,candidate,routeOptions)
+					routes[#routes+1]={name=entry.name,kind=entry.kind,savedStartDiffers=startDiffers,savedGoalDiffers=goalDiffers,result=ok and result or nil,error=not ok and readableError(result) or nil}
+				end
+				return {projectId=request.projectId,referenceName=chosen[1].name,referenceKind=chosen[1].kind,settings={trials=trials,maxActions=budget,seed=options.seed or 104729},routes=routes,notes={"All routes use the reference starting state and final targets; their own step conditions remain unchanged.","Sampling intervals do not include model uncertainty; no route is ranked automatically."}}
+			end,function(result) publish("crafted",{craftingComparison=result}) end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end)
+			job.requestId=request.id;return
+		end
+		if request.kind == "craftAction" or request.kind == "craftSimulate" or request.kind == "craftCalculate" or request.kind == "craftOptimize" then
 			assert(request.baseRevision == M.revision(build),"Build changed. Refresh crafting context.")
-			local raw=request.itemText
+			local replay,alternative,primary
+			assert(request.usePrimary==nil or type(request.usePrimary)=="boolean","Invalid primary recipe selection")
+			assert(not request.usePrimary or not request.alternativeName,"Choose either the primary recipe or an alternative")
+			if request.kind=="craftSimulate" and request.projectId~=nil then
+				assert(not request.itemText and not request.slot and not request.recipe,"A saved simulation cannot be combined with item or recipe inputs")
+				assert(not build.savers.CraftingProjects.unreadable,build.savers.CraftingProjects.warning)
+				local project;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==request.projectId then project=entry;break end end
+				assert(project,"Unknown crafting project")
+				if request.usePrimary then
+					assert(project.nativeRecipe,"This project has no saved primary recipe")
+					primary={raw=project.startingItem,recipe=copyTable(project.nativeRecipe),priceBook=project.priceBook and copyTable(project.priceBook),settings=project.primarySimulation and copyTable(project.primarySimulation)}
+				elseif request.alternativeName~=nil then
+					assert(type(request.alternativeName)=="string" and #request.alternativeName<=120 and request.alternativeName:match("%S") and not request.alternativeName:find("[%c%^]"),"Invalid alternative recipe name")
+					for _,entry in ipairs(project.recipeAlternatives or {}) do if entry.name==request.alternativeName then alternative={name=entry.name,raw=project.startingItem,recipe=copyTable(entry.recipe),priceBook=project.priceBook and copyTable(project.priceBook)};break end end
+					assert(alternative,"Unknown saved alternative recipe")
+				else
+					assert(not request.options,"A saved simulation cannot be combined with other inputs")
+					local run=project.run;assert(run and run.simulationRequest and not run.simulationRequestWarning,"This project has no readable saved simulation setup")
+					replay=copyTable(run.simulationRequest)
+				end
+			else assert(not request.alternativeName and not request.usePrimary,"A saved recipe requires a project ID") end
+			local savedRecipe=alternative or primary
+			local raw=replay and replay.raw or savedRecipe and savedRecipe.raw or request.itemText
 			if not raw then local slot=assert(build.itemsTab.slots[request.slot],"Unknown item slot"); raw=assert(build.itemsTab.items[slot.selItemId],"Selected slot is empty").raw end
 			local simulator=require("Modules.CraftingSimulator")
 			M.status={id=request.id,status="calculating"}; M.publishState()
-			local result=request.kind == "craftAction" and simulator.perform(raw,request.action,request.seed,request.initialState) or simulator.simulate(raw,request.recipe,request.options)
-			M.status={id=request.id,status="crafted",nativeCrafting=result}; M.publishState()
+			if request.kind == "craftSimulate" or request.kind == "craftOptimize" or request.kind == "craftCalculate" then
+				local session=M.session;local options=copyTable(replay and replay.options or request.options or {});options.treeVersion=options.treeVersion or build.spec.treeVersion
+				if savedRecipe and not options.priceBook and savedRecipe.priceBook then options.priceBook=copyTable(savedRecipe.priceBook) end
+				if primary and primary.settings then for key,value in pairs(primary.settings) do if options[key]==nil then options[key]=value end end end
+				local function publish(status,values)
+					if not M.enabled or M.session ~= session then return end
+					M.status={id=request.id,status=status,baseRevision=request.baseRevision}
+					for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+				end
+				local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+					options.checkpoint=checkpoint
+					if request.kind == "craftCalculate" then return simulator.calculate(raw,request.action,request.targets,request.initialState,options) end
+					local result=request.kind == "craftOptimize" and simulator.optimizeFossils(raw,request.targets,options) or simulator.simulate(raw,replay and replay.recipe or savedRecipe and savedRecipe.recipe or request.recipe,options)
+					if replay then result.savedSimulation={projectId=request.projectId,label=replay.label} end
+					if alternative then result.savedAlternative={projectId=request.projectId,name=alternative.name} end
+					if primary then result.savedPrimary={projectId=request.projectId} end
+					return result
+				end,function(result) publish("crafted",{nativeCrafting=result}) end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end)
+				job.requestId=request.id
+			else
+				local result=simulator.perform(raw,request.action,request.seed,request.initialState,build.spec.treeVersion)
+				M.status={id=request.id,status="crafted",nativeCrafting=result}; M.publishState()
+			end
 			return
+		end
+		if request.kind == "craftInventorySearch" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh crafting context.")
+			assert(not build.savers.CraftingProjects.unreadable,build.savers.CraftingProjects.warning)
+			assert(type(request.query)=="string" and #request.query<=160 and request.query:match("%S"),"Enter a search query")
+			local projects=build.savers.CraftingProjects.projects;local session=M.session
+			local function publish(status,values)
+				if not M.enabled or M.session~=session then return end
+				M.status={id=request.id,status=status,baseRevision=request.baseRevision};for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+			end
+			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				return require("Modules.CraftingInventory").search(projects,request.query,request.offset,request.limit,checkpoint)
+			end,function(result)
+				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh crafting context."}) else publish("inventorySearch",{inventorySearch=result}) end
+			end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end,"Crafting inventory search slice")
+			job.requestId=request.id;publish("calculating",{});return
+		end
+		if request.kind == "craftUnlockReview" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh crafting context.")
+			assert(not build.savers.CraftingProjects.unreadable,build.savers.CraftingProjects.warning)
+			local project;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==request.projectId then project=copyTable(entry);break end end
+			assert(project,"Unknown crafting project");local session=M.session
+			local function publish(status,values)
+				if not M.enabled or M.session~=session then return end
+				M.status={id=request.id,status=status,baseRevision=request.baseRevision};for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+			end
+			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				require("Modules.CraftingAdvanced").prepare(checkpoint);local sim=require("Modules.CraftingSimulator");local model=sim.model(project.startingItem)
+				local initial=project.nativeRecipe and project.nativeRecipe.initialState;local state=initial and sim.validateState(model,initial) or model.initial
+				return require("Modules.CraftingUnlockTasks").review(build,project.id,sim.context(model,state),project.nativeRecipe and project.nativeRecipe.steps or {})
+			end,function(result)
+				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh crafting context."}) else publish("craftUnlocks",{craftUnlocks=result}) end
+			end,function(message) publish("failed",{error=readableError(message)}) end,function(progress) publish("calculating",{progress=progress}) end,"Craft unlock review slice")
+			job.requestId=request.id;publish("calculating",{});return
 		end
 		if request.kind == "craftInspect" then
 			assert(request.baseRevision == M.revision(build),"Build changed. Refresh crafting context.")
@@ -458,8 +931,65 @@ function M.poll(build, force)
 				raw = assert(build.itemsTab.items[slot.selItemId],"Selected slot is empty").raw
 			end
 			M.status = {id=request.id,status="inspected",crafting=require("Modules.CraftingProjects").inspect(raw,request.query,request.limit)}
-			local ok,catalog=pcall(require("Modules.CraftingSimulator").catalog,raw,request.query,request.limit)
-			if ok then M.status.crafting.nativeEngine=catalog else M.status.crafting.nativeEngineUnavailable=tostring(catalog):match("^[^\n]+") end
+			if request.benchRarityOutcome~=nil then
+				local preview=require("Modules.CraftingBenchRarityPreview")
+				local ok,result
+				if request.benchRarityOutcome=="UNIQUE" and not request.benchRarityUniqueTitle then ok,result=pcall(preview.uniqueCandidates,raw,request.initialState)
+				else ok,result=pcall(preview.preview,raw,request.benchRarityOutcome,request.benchRaritySeed,request.initialState,request.benchRarityUniqueTitle) end
+				M.status.crafting.benchRarityPreview=ok and {available=true,result=result} or {available=false,reason=readableError(result)}
+				if request.benchRarityProject then
+					local valid,project=pcall(function()
+						assert(ok and result.conditional,"Choose a valid example before making a project template")
+						local args=request.benchRarityProject;assert(type(args)=="table","Invalid project request")
+						for _,existing in ipairs(build.savers.CraftingProjects.projects) do assert(existing.id~=args.id,"A project already uses this ID") end
+						local candidate=preview.proposal(raw,result,args.slot,args.title,args.id)
+						assert(build.itemsTab.slots[candidate.slot] and build.itemsTab:IsItemValidForSlot(require("Modules.CraftingProjects").item(candidate.startingItem),candidate.slot),"Example does not fit the selected slot")
+						return candidate
+					end)
+					M.status.crafting.benchRarityProject=valid and {available=true,project=project,note="Template only; propose for desktop review and save the build."} or {available=false,reason=readableError(project)}
+				end
+			end
+			assert(request.includeBlankBase==nil or type(request.includeBlankBase)=="boolean","Invalid blank base option")
+			if request.includeBlankBase then
+				local ok,base=pcall(require("Modules.CraftingProjects").blankBase,raw)
+				M.status.crafting.blankBase=ok and {available=true,itemText=base,note="Hypothetical normal base; only base type and item level are retained. Review its implicit, sockets and quality. No item was equipped or changed."}
+					or {available=false,reason=readableError(base)}
+			end
+			assert(request.includeBaseImplicitChoices==nil or type(request.includeBaseImplicitChoices)=="boolean","Invalid base implicit option")
+			if request.includeBaseImplicitChoices then
+				local ok,choices,reason=pcall(function()
+					local sim=require("Modules.CraftingSimulator");local model=sim.model(raw)
+					local state=request.initialState and sim.validateState(model,request.initialState) or model.initial
+					return require("Modules.CraftingBaseImplicit").options(sim,model,state)
+				end)
+				M.status.crafting.baseImplicitChoices=ok and choices and {available=true,choices=choices,note="Hypothetical values use PoB scaling. Merge the chosen statePatch into the inspected initialState; no currency or equipped item is changed."}
+					or {available=false,reason=ok and reason or readableError(choices)}
+			end
+			local ok,catalog=pcall(require("Modules.CraftingSimulator").catalog,raw,request.query,request.limit,request.initialState,build.spec.treeVersion)
+			if ok then
+				M.status.crafting.nativeEngine=catalog
+				if request.action and catalog.uniqueCrafting then
+					if request.action.method=="gwennen" then catalog.gwennenPair={available=false,unavailableReason="Gwennen requires rare equipment in this model."} end
+					catalog.allflameUnavailable="Allflame craft analysis is not modeled for unique items."
+					if request.action.method=="beast_prefix_suffix" or request.action.method=="beast_suffix_prefix" then catalog.beastPoolUnavailable="This Bestiary modifier craft is not modeled for unique items." end
+				elseif request.action then
+					local simulator=require("Modules.CraftingSimulator");local model=simulator.model(raw)
+					local state=request.initialState and simulator.validateState(model,request.initialState) or model.initial
+					local action=copyTable(request.action)
+					if action.method=="gwennen" then
+						local available,reason=require("Modules.CraftingAvailability").check(action.method,state,model)
+						if available then reason=simulator.configurationReason(model,state,action) or simulator.gwennenPairReason(model,state,action);available=not reason end
+						catalog.gwennenPair={available=available,unavailableReason=reason,note="Both branches are probed once in the model. Random later outcomes and in-game eligibility remain unverified."}
+					end
+					if action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix" then
+						local valid,pool=pcall(simulator.beastCatalog,model,state,action,request.query,request.limit,request.beastOffset)
+						if valid then catalog.beastPool=pool else catalog.beastPoolUnavailable=readableError(pool) end
+					end
+					action.allflame=action.allflame or {auto=true}
+					local valid,profile=pcall(simulator.allflameProfile,model,state,action)
+					if valid then catalog.allflameProfile=profile else catalog.allflameUnavailable=readableError(profile) end
+				end
+			else M.status.crafting.nativeEngineUnavailable=readableError(catalog) end
 			M.publishState()
 			return
 		end
@@ -484,8 +1014,8 @@ function M.poll(build, force)
 		M.publishState()
 	end)
 	if not ok then
-		M.lastError = tostring(err):match("^[^\n]+")
-		M.status = {id=M.status and M.status.id,status="failed",error=M.lastError}
+		M.lastError = readableError(err)
+		M.status = {id=requestId,status="failed",error=M.lastError}
 		pcall(M.publishState)
 	end
 end

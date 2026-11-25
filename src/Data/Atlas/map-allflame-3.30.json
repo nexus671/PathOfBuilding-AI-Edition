@@ -1,0 +1,106 @@
+{
+  "clientVersion": "3.30.0.4",
+  "sourceCommit": "c97553d1fc14a134dd6813e672d2b45fddf5b42d",
+  "baseItemsSha256": "b16dc6c967b7e70ee369fba80506cdf08a1fa5bc5dd5c4f07aaddead97c98b2f",
+  "items": [
+    {
+      "id": "Metadata/Items/MapFragments/MeatSackAllflamePack",
+      "name": "Allflame Ember of Flesh",
+      "description": "Enchants a Map to substitute 18 Monster Packs in Area with a single meaty Monster",
+      "icon": "Assets/MapCrafting/Allflame/744e8309c24c2cf6b461.png",
+      "iconSha256": "5748127c8e4884a490b06b305d4a89656985ce487bbc64657c722d78f1fa77b3",
+      "width": 78,
+      "height": 78
+    },
+    {
+      "id": "Metadata/Items/MapFragments/BetrayalAllflamePack",
+      "name": "Allflame Ember of Kulemak",
+      "description": "Enchants a Map to substitute 7 Monster Packs in Area with Syndicate Members\nPack Monsters revive after Final Map Boss has been slain",
+      "icon": "Assets/MapCrafting/Allflame/7f57ccf2c67889a63cad.png",
+      "iconSha256": "e55bdff99dbcfb8c95d9531f193246985a4b2466457fbabb64508fbe1433633d",
+      "width": 78,
+      "height": 78
+    },
+    {
+      "id": "Metadata/Items/MapFragments/PropagationAllflamePack",
+      "name": "Allflame Ember of Propagation",
+      "description": "Enchants a Map to substitute 11 Monster Packs in Area with Fungal Shamans\nPack Monsters that die when Rare spread Modifiers to\nother Rare Monsters in Area",
+      "icon": "Assets/MapCrafting/Allflame/a1f465bf00b5c9534d89.png",
+      "iconSha256": "6d9601c4b4aa9d7a3fe6e3d8711d25f02b41ee042385b232eeb1a16f5128d5ec",
+      "width": 78,
+      "height": 78
+    },
+    {
+      "id": "Metadata/Items/MapFragments/ResplendenceAllflamePack",
+      "name": "Allflame Ember of Resplendence",
+      "description": "Enchants a Map to substitute 15 Monster Packs in Area with\nPacks that do not drop items\nPack Monsters grant increased Item Rarity when slain, up to\n400%, decaying over time",
+      "icon": "Assets/MapCrafting/Allflame/7c4df83466c224475a62.png",
+      "iconSha256": "2b5238141f7f291fe99ac3a676f09496ea2a2ee73c9f51c4254a712355899923",
+      "width": 78,
+      "height": 78
+    },
+    {
+      "id": "Metadata/Items/MapFragments/ToadAllflamePack",
+      "name": "Allflame Ember of Toads",
+      "description": "Enchants a Map to substitute 17 Monster Packs in Area with harmless Toads",
+      "icon": "Assets/MapCrafting/Allflame/038155490d6b4d911140.png",
+      "iconSha256": "ffb4662786f277cf7b613704c55859b2a08a8d4514e92dc34d644f60b9668811",
+      "width": 78,
+      "height": 78
+    },
+    {
+      "id": "Metadata/Items/MapFragments/CloisterAllflamePack",
+      "name": "Allflame Ember of the Cloister",
+      "description": "Enchants a Map to substitute 30 Monster Packs in Area with Doedre's Devoted",
+      "icon": "Assets/MapCrafting/Allflame/90a009214d2069f1de5c.png",
+      "iconSha256": "02b7f4009957d95d5fdae1c70559b4648d9fdd22faf7c4b429dc776cdf13d5e6",
+      "width": 78,
+      "height": 78
+    },
+    {
+      "id": "Metadata/Items/MapFragments/PantheonAllflamePack",
+      "name": "Allflame Ember of the Divine",
+      "description": "Enchants a Map to substitute 5 Monster Packs in Area with Packs led by\na Pantheon-Touched Rare Monster",
+      "icon": "Assets/MapCrafting/Allflame/4c82606ad53b51903548.png",
+      "iconSha256": "ef8d848d76894a92fef468a4d0e4a3c95c1f00f998be5973fee29c82cd104277",
+      "width": 78,
+      "height": 78
+    },
+    {
+      "id": "Metadata/Items/MapFragments/CleansedAllflamePack",
+      "name": "Allflame Ember of the Ethereal",
+      "description": "Enchants a Map to substitute 11 Monster Packs in Area with Packs that\ncannot drop Equipment, Flasks or Tinctures",
+      "icon": "Assets/MapCrafting/Allflame/433d22f34e0fc02b7a26.png",
+      "iconSha256": "0eea264aa816ede18178a679fd973f12d24844509a4e6e7d44e1d0f1fb071617",
+      "width": 78,
+      "height": 78
+    },
+    {
+      "id": "Metadata/Items/MapFragments/GoldAllflamePack",
+      "name": "Allflame Ember of the Gilded",
+      "description": "Enchants a Map to substitute 12 Monster Packs in Area with Packs that\nconvert dropped Equipment to Gold",
+      "icon": "Assets/MapCrafting/Allflame/e79882e1a0bbca4f90dd.png",
+      "iconSha256": "3fa45593ef1e88647a15fedef01bee36da58e7e4bd3a89519befff6427cce64f",
+      "width": 78,
+      "height": 78
+    },
+    {
+      "id": "Metadata/Items/MapFragments/AtlasAllflamePack",
+      "name": "Allflame Ember of the Multitude",
+      "description": "Enchants a Map to substitute 30 Monster Packs in Area with Difficult and Rewarding Packs which drop 300% increased Maps",
+      "icon": "Assets/MapCrafting/Allflame/66e1491530615a288951.png",
+      "iconSha256": "48f666668e27c82075a0435d47ae398c565e3680eb31d5488c21e739c1ba747e",
+      "width": 78,
+      "height": 78
+    },
+    {
+      "id": "Metadata/Items/MapFragments/WildwoodAllflamePack",
+      "name": "Allflame Ember of the Wildwood",
+      "description": "Enchants a Map to substitute 11 Monster Packs in Area with Wildwood Fiends\nPack Leaders Empower Map Bosses with Wildwood Wisps when slain",
+      "icon": "Assets/MapCrafting/Allflame/10061bbe228cb67b602a.png",
+      "iconSha256": "230d6b5cc8c8448f32b22a68ff14451790ca15bbb059c95ff1d01cc1d21b9a76",
+      "width": 78,
+      "height": 78
+    }
+  ]
+}

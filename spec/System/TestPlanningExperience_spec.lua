@@ -1,0 +1,250 @@
+describe("Planning experience queries",function()
+	local atlas=require("Modules.AtlasPlanner")
+	local strategy=require("Modules.AtlasStrategy")
+	local sim=require("Modules.CraftingSimulator")
+	local inspect=require("Modules.CraftingInspection")
+	local function empty(version) return {id="test",title="Strategy",version=version or "3.29.1",budget=138,nodes={},notes=""} end
+	before_each(function() newBuild() end)
+	after_each(function() main.popups={} end)
+	it("takes a longer safe starting route when the shortest path blocks encounters",function()
+		local version="3.29.3";local previousTree=atlas.tree(version);local previousMechanics=strategy.mechanics
+		local function node(id,name,kind,links,stats) return {id=id,name=name,kind=kind,links=links,stats=stats or {},grantedPoints=0} end
+		atlas.cache[version]={version=version,start=1,maxPoints=10,nodes={
+			[1]=node(1,"Start","small",{2,3}),
+			[2]=node(2,"Blocker","notable",{1,4},{"Your Maps have no chance to contain Breaches"}),
+			[3]=node(3,"Detour","small",{1,5}),
+			[5]=node(5,"Detour","small",{3,4}),
+			[4]=node(4,"Breach target","notable",{2,5},{"Your Maps have increased chance to contain a Breach"}),
+		}}
+		strategy.mechanics={"Breach"}
+		local ok,err=pcall(function()
+			local plan={id="test",title="Route",version=version,budget=10,nodes={},desired={2},avoided={}}
+			assert.same({2,4},atlas.connect(plan,{4}).nodes)
+			local routes=strategy.presets(plan);assert.equal(1,#routes)
+			assert.same({3,4,5},routes[1].plan.nodes)
+			assert.same(plan.desired,routes[1].plan.desired);assert.same(plan.avoided,routes[1].plan.avoided)
+			atlas.cache[version].nodes[3].links={1};atlas.cache[version].nodes[4].links={2}
+			assert.same({2,4},atlas.connect(plan,{4}).nodes)
+			assert.same({},strategy.presets(plan))
+		end)
+		atlas.cache[version]=previousTree;strategy.mechanics=previousMechanics
+		assert.is_true(ok,err)
+	end)
+	it("does not recommend mechanic-blocking notables as starting targets",function()
+		local targets=require("Modules.AtlasTargets")
+		local routes=strategy.presets(empty("3.29.3"));assert.is_true(#routes>0)
+		for _,route in ipairs(routes) do
+			for _,id in ipairs(route.targets) do
+				assert.equal(0,#targets.blocking(atlas.tree(route.plan.version).nodes[id]),route.label..": "..id)
+			end
+			for _,id in ipairs(route.plan.nodes) do
+				assert.equal(0,#targets.blocking(atlas.tree(route.plan.version).nodes[id]),route.label.." path: "..id)
+			end
+		end
+	end)
+	it("refreshes cached Atlas search text when node or choice text changes",function()
+		local version="3.29.3";local previous=atlas.tree(version)
+		local node={id=2,name="First node",kind="notable",links={1},stats={"Breach effect"},grantedPoints=0,variantEffects={{effect=1,stats={"Original choice"}}}}
+		atlas.cache[version]={version=version,start=1,maxPoints=10,nodes={[1]={id=1,name="Start",kind="small",links={2},stats={},grantedPoints=0},[2]=node}}
+		local ok,err=pcall(function()
+			local plan=empty(version)
+			assert.equal(2,strategy.results(plan,"original choice","Breach")[1].id)
+			node.stats[1]="Harvest effect";node.variantEffects[1].stats[1]="Changed choice"
+			assert.equal(0,#strategy.results(plan,"original choice","Breach"))
+			assert.equal(2,strategy.results(plan,"changed choice","Harvest")[1].id)
+			node.name="Renamed node"
+			assert.equal(2,strategy.results(plan,"renamed","Harvest")[1].id)
+		end)
+		atlas.cache[version]=previous;assert.is_true(ok,err)
+	end)
+	it("extends an existing strategy with reachable unallocated notables",function()
+		local version="3.29.3";local previousTree=atlas.tree(version);local previousMechanics=strategy.mechanics
+		local function node(id,kind,links,stats) return {id=id,name="Node "..id,kind=kind,links=links,stats=stats or {"Breach"},grantedPoints=0} end
+		atlas.cache[version]={version=version,start=1,maxPoints=12,nodes={
+			[1]=node(1,"small",{2,7,8}),[2]=node(2,"notable",{1,3}),[3]=node(3,"notable",{2,4}),
+			[4]=node(4,"notable",{3,5}),[5]=node(5,"notable",{4}),
+			[7]=node(7,"notable",{1,6},{"Your Maps have no chance to contain Breaches"}),[6]=node(6,"notable",{7}),
+			[8]=node(8,"small",{1,9}),[9]=node(9,"small",{8,10}),[10]=node(10,"notable",{9}),
+		}}
+		strategy.mechanics={"Breach"}
+		local ok,err=pcall(function()
+			local plan={id="test",title="In progress",version=version,budget=12,nodes={2,3,4},avoided={}}
+			local routes=strategy.presets(plan);assert.equal(1,#routes)
+			assert.same({5,10},routes[1].targets);assert.same({2,3,4,5,8,9,10},routes[1].plan.nodes)
+			assert.same({2,3,4},plan.nodes)
+		end)
+		atlas.cache[version]=previousTree;strategy.mechanics=previousMechanics;assert.is_true(ok,err)
+	end)
+	it("preserves allocated blockers and saved preferences when suggesting routes",function()
+		local original=atlas.connect(empty("3.29.3"),{24930})
+		original.desired={24930};original.avoided={39896};original=atlas.validate(original)
+		local routes=strategy.presets(original);assert.is_true(#routes>0)
+		for _,route in ipairs(routes) do
+			assert.is_truthy(isValueInTable(route.plan.nodes,24930))
+			assert.same(original.desired,route.plan.desired);assert.same(original.avoided,route.plan.avoided)
+			for _,id in ipairs(route.plan.nodes) do
+				if not isValueInTable(original.nodes,id) then assert.equal(0,#strategy.blocking(atlas.tree(original.version).nodes[id])) end
+			end
+		end
+	end)
+	it("finds an alternative when a target is two allocations away",function()
+		local plan=atlas.connect(empty(),{42692});local target=52858
+		local shortest,added=atlas.connect(plan,{target});assert.equal(2,#added)
+		local routes=strategy.routes(plan,target);assert.is_true(#routes>=2)
+		assert.is_not.same(routes[1].plan.nodes,routes[2].plan.nodes);local found=false
+		for _,route in ipairs(routes) do assert.same(route.plan.nodes,atlas.validate(route.plan).nodes);assert.equal(target,route.added[1]);if route.label=="Shortest connection" then assert.same(shortest.nodes,route.plan.nodes);found=true end end
+		assert.is_true(found)
+	end)
+	it("edits shared item properties without changing or exposing a modifier group",function()
+		local groups={{anyOf={"example-a"},minRoll=0.75,fractured=true},{anyOf={"example-b"},atLeast=2}}
+		local before=copyTable(groups);local kept,properties,required
+		local c=require("Classes.CraftingTargetControl").Open(groups,{nativeStats={Armour=100}},1,function(a,b,d) kept=a;properties=b;required=d end,0)
+		assert.are.equal("Item properties",main.popups[1].title)
+		assert.is_false(c.fractured:IsShown());assert.is_false(c.count:IsShown());assert.is_false(c.groups:IsShown())
+		assert.is_true(c.minQuality:IsShown());c.minQuality:SetText("20");c.keep:Click()
+		assert.are.same(before,kept);assert.are.same(before,groups);assert.are.equal(1,required)
+		assert.are.equal(20,properties.minQuality);assert.are.equal(100,properties.nativeStats.Armour)
+		c=require("Classes.CraftingTargetControl").Open(groups,properties,required,function() end,2)
+		assert.is_true(c.fractured:IsShown());assert.is_true(c.count:IsShown());assert.are.equal("2",c.count.buf)
+	end)
+	it("shows validation messages without Lua source locations",function()
+		local text=require("Modules.PlanningUI").errorText
+		assert.are.equal("Enter a number",text("./Modules/CraftingSimulator.lua:73: Enter a number\nstack traceback:"))
+		assert.are.equal("Choose a modifier",text([[C:\Program Files\PoB\Modules\CraftingSimulator.lua:73: ./Modules/CraftingAdvanced.lua:42: Choose a modifier]]))
+		assert.are.equal("Invalid choice",text('[string "module"]:12: Invalid choice'))
+	end)
+	it("retains multiline error details without source locations or stack traces",function()
+		local details=require("Modules.PlanningUI").errorDetails
+		assert.are.equal("First problem\nSecond problem",details("Modules/Example.lua:12: First problem\n  C:\\PoB\\Other.lua:34: Second problem\nstack traceback:\n  internal frame"))
+		assert.are.equal("Unable to complete this action.",details("\n"))
+		assert.are.equal("Crafting job cancelled",details("Crafting job cancelled"))
+	end)
+	it("preserves useful punctuation and handles empty validation messages",function()
+		local text=require("Modules.PlanningUI").errorText
+		assert.are.equal("Required: 5 chaos",text("Required: 5 chaos"))
+		assert.are.equal("Could not open template.lua:4: example",text("Could not open template.lua:4: example"))
+		assert.are.equal("Unable to complete this action.",text(nil))
+		assert.are.equal("Unable to complete this action.",text(""))
+	end)
+	it("keeps an invalid Atlas cost in its editor until the user corrects it",function()
+		local input=empty();local kept;local saved=copyTable(build.savers.AtlasPlans.plans)
+		require("Classes.AtlasPlanningControl").Open(build,input,function(value) kept=value end)
+		local c=main.popups[1].controls;c.page:SelByValue("Strategy");c.maps:SetText("T16 maps");c.amount:SetText("many")
+		assert.is_true(pcall(c.keep.Click,c.keep))
+		assert.are.equal("Atlas strategy",main.popups[1].title)
+		assert.are.equal("Enter a numeric setup cost",main.popups[1].controls[1].label)
+		assert.is_nil(kept);main.popups[1].controls.close:Click()
+		assert.are.equal(c,main.popups[1].controls);assert.are.equal("T16 maps",c.maps.buf);assert.are.equal("many",c.amount.buf)
+		c.amount:SetText("25");c.keep:Click()
+		assert.are.equal(25,kept.strategy.setupCost.amount);assert.are.equal("T16 maps",kept.strategy.maps)
+		assert.is_nil(input.strategy);assert.are.same(saved,build.savers.AtlasPlans.plans)
+	end)
+	it("uses one distance field and sorts literal search results by added points",function()
+		local plan=empty();local tree=atlas.tree(plan.version);local neighbor=tree.nodes[tree.start].links[1]
+		local costs=strategy.costs(plan);assert.are.equal(1,costs[neighbor])
+		local grown=atlas.connect(plan,{neighbor});assert.are.equal(0,strategy.costs(grown)[neighbor])
+		local results=strategy.results(plan,"Essence","Essence")
+		assert.is_true(#results>0)
+		for i,entry in ipairs(results) do if i>1 then assert.is_true(entry.cost>=results[i-1].cost) end;assert.are.equal("Essence",strategy.mechanic(entry.node)) end
+		assert.are.equal(0,#plan.nodes)
+	end)
+	it("returns valid bounded alternatives and explicit waypoints without mutating exclusions",function()
+		local plan=empty();local target=65225;local avoid={}
+		local routes=strategy.routes(plan,target,avoid,atlas.tree(plan.version).nodes[atlas.tree(plan.version).start].links[1])
+		assert.is_true(#routes>0)
+		local seen={}
+		for _,route in ipairs(routes) do
+			local valid=atlas.validate(route.plan);assert.are.equal(#valid.nodes,route.cost)
+			local key=table.concat(valid.nodes,",");assert.is_nil(seen[key]);seen[key]=true
+		end
+		assert.are.equal(0,#avoid);assert.are.equal(0,#plan.nodes)
+		assert.are.equal(0,#strategy.routes(empty(),target,{target}))
+	end)
+	it("compares raw bonus counts and refuses cross-version plan comparisons",function()
+		local a=empty();local b=atlas.connect(a,{65225});local delta=strategy.compare(a,b)
+		assert.are.equal(#b.nodes,#delta.added);assert.are.equal(0,#delta.removed);assert.is_true(#delta.stats>0)
+		local reverse=strategy.compare(b,a);assert.are.equal(#b.nodes,#reverse.removed)
+		assert.is_false(pcall(strategy.compare,a,empty("3.27.0")))
+	end)
+	it("builds editable starting routes from the pinned version and budget",function()
+		for _,version in ipairs(atlas.versions) do
+			local plan=empty(version);plan.budget=atlas.tree(version).maxPoints
+			local presets=strategy.presets(plan);assert.is_true(#presets>0)
+			for _,preset in ipairs(presets) do assert.are.equal(version,atlas.validate(preset.plan).version);assert.is_true(#preset.targets<=3) end
+		end
+	end)
+	it("accepts official link decorations and rejects lookalike hosts and unsupported builders",function()
+		local plan=atlas.connect(empty(),{65225});local url=atlas.url(plan)
+		assert.are.same(plan.nodes,atlas.import(url.."/?tracking=1#tree",plan.version).nodes)
+		assert.is_false(pcall(atlas.import,url:gsub("www.pathofexile.com","www.pathofexile.com.invalid"),plan.version))
+		assert.is_false(pcall(atlas.import,"https://poeplanner.com/atlas-tree/example",plan.version))
+	end)
+	it("inspects ordinary and bench modifiers without assuming every entry has spawn weights",function()
+		local model=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		assert.is_true(#inspect.modDetails(model,model.mods[1].id)>2)
+		assert.is_true(#inspect.modDetails(model,model.bench[1].id)>2)
+	end)
+	it("distinguishes a changed roll from added or removed affixes and flags socket changes",function()
+		local model=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local id=model.mods[1].id
+		local a={rarity="RARE",affixes={{id=id,range=0}}};local b={rarity="RARE",affixes={{id=id,range=1,fractured=true}},sockets={{color="R",group=1}}}
+		local result=table.concat(inspect.diff(model,a,b),"\n")
+		assert.is_truthy(result:find("Changed:",1,true));assert.is_truthy(result:find("fractured",1,true));assert.is_truthy(result:find("Socket",1,true))
+		assert.is_truthy(inspect.slots(model,b):find("Prefixes",1,true))
+	end)
+	it("uses readable singular and plural browser result counts",function()
+		local c=require("Classes.PlanningBrowserControl").Open("Find",{{id="a",label="Life"},{id="b",label="Mana"}})
+		assert.matches("2 results |",StripEscapes(c.count.label),1,true)
+		c.search:SetText("Life",true);assert.matches("1 result |",StripEscapes(c.count.label),1,true)
+		c.search:SetText("nothing",true);assert.matches("0 results |",StripEscapes(c.count.label),1,true)
+		main:ClosePopup()
+	end)
+	it("finds browser entries by multiple words in any order",function()
+		local chosen;local c=require("Classes.PlanningBrowserControl").Open("Find",{
+			{id="abyss",label="Abyss",category="Encounters",search="eye jewels and scarabs"},
+			{id="other",label="Breach",category="Encounters",search="scarabs and splinters"},
+			{id="item",label="Abyss jewel",category="Items",search="scarabs"},
+		},{choose=function(entry) chosen=entry.id end})
+		c.search:SetText("  SCARABS  jewel  ",true);assert.matches("2 results |",StripEscapes(c.count.label),1,true)
+		c.category:SelByValue("Encounters");c.category.selFunc();assert.matches("1 result |",StripEscapes(c.count.label),1,true)
+		c.choose:Click();assert.equal("abyss",chosen)
+	end)
+	it("keeps standalone modifier pickers read-only until a selection is confirmed",function()
+		local chosen
+		local controls=require("Classes.PlanningBrowserControl").Open("Find",{{id="a",label="Life",category="Prefix",details={"A target"}}},{choose=function(entry) chosen=entry.id end,favorites={}})
+		assert.is_nil(chosen);controls.favorite:Click();assert.is_nil(chosen);controls.choose:Click();assert.are.equal("a",chosen)
+	end)
+	it("draws only visible text rows even for a large history",function()
+		local ui=require("Modules.HeadlessUI").install({width=1024,height=768})
+		local ok,message=pcall(function()
+			local rows={};for i=1,10000 do rows[i]={height=18,"^7History entry "..i} end
+			local list=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,16,600,200},nil,rows)
+			ui:frame(function() list:Draw(main.viewPort) end)
+			assert.is_true(#ui.commands<200,"Hidden rows still generate drawing commands")
+			list.controls.scrollBar:SetOffset(9000);ui:frame(function() list:Draw(main.viewPort) end)
+			assert.is_true(#ui.commands<200,"Scrolling draws the entire history")
+		end)
+		ui:restore();assert.is_true(ok,tostring(message))
+	end)
+	it("can browse and select entries beyond the first page",function()
+		local entries={};for i=1,301 do entries[i]={id=i,label="Entry "..i} end;local chosen
+		local c=require("Classes.PlanningBrowserControl").Open("All entries",entries,{choose=function(entry) chosen=entry.id end})
+		assert.is_false(c.previousPage.enabled());assert.is_true(c.nextPage.enabled());c.nextPage:Click();assert.equal(151,c.results.list[1].entry.id)
+		c.search:OnKeyDown("UP");assert.equal(1,c.results.list[1].entry.id)
+		c.nextPage:Click();c.nextPage:Click();assert.equal(301,c.results.list[1].entry.id);assert.is_false(c.nextPage.enabled());c.choose:Click();assert.equal(301,chosen)
+	end)
+	it("keeps unavailable browser actions disabled for button and Enter activation",function()
+		local chosen;local c=require("Classes.PlanningBrowserControl").Open("Availability",{{id="blocked",label="Blocked"},{id="ready",label="Ready"}},{canChoose=function(entry) return entry.id=="ready" end,choose=function(entry) chosen=entry.id end})
+		assert.is_false(c.choose.enabled());c.choose:Click();c.search.enterFunc();assert.is_nil(chosen)
+		c.search.buf="Ready";c.search.changeFunc();assert.is_true(c.choose.enabled());c.choose:Click();assert.equal("ready",chosen)
+	end)
+	it("reports held keys during headless input dispatch and releases them afterwards",function()
+		local ui=require("Modules.HeadlessUI").install({width=1024,height=768});local down
+		local ok,err=pcall(function()
+			local host={ProcessControlsInput=function() down=IsKeyDown("LEFTBUTTON") end}
+			ui:dispatch(host,{{type="KeyDown",key="LEFTBUTTON"}});assert.is_true(down)
+			ui:dispatch(host,{{type="KeyUp",key="LEFTBUTTON"}});assert.is_false(down)
+		end)
+		ui:restore();assert.is_true(ok,err)
+	end)
+end)

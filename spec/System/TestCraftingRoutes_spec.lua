@@ -1,0 +1,31 @@
+describe("Visual crafting routes",function()
+	local routes=require("Modules.CraftingRoutes")
+	it("draws default routes and recovery destinations using simulator semantics",function()
+		local recipe={steps={{method="alchemy"},{method="chaos",onFailureAction="restart"},{method="divine",onFailureAction="salvage"}}}
+		local edges=routes.edges(recipe);assert.equal(6,#edges);assert.equal(2,edges[1].target);assert.equal(1,edges[4].target);assert.equal(4,edges[6].target);assert.equal("Salvage",edges[6].label)
+	end)
+	it("stages explicit connections without changing the source or the other branch",function()
+		local recipe={steps={{method="alchemy",onSuccess=2,onFailureAction="stop"},{method="chaos"}}}
+		local changed=routes.set(recipe,1,"failure",1);assert.equal("route",changed.steps[1].onFailureAction);assert.equal(1,changed.steps[1].onFailure);assert.equal(2,changed.steps[1].onSuccess);assert.equal("stop",recipe.steps[1].onFailureAction)
+		assert.is_false(pcall(routes.set,recipe,1,"failure",4));assert.is_false(pcall(routes.set,recipe,0,"success",1))
+	end)
+	it("keeps explicit finish routes at the end when adding a step",function()
+		local recipe={steps={{method="alchemy",onSuccess=3,onFailure=3},{method="chaos",onSuccess=1}}}
+		local action={method="fossil",fossils={"first"}};local changed=routes.append(recipe,action)
+		assert.equal(4,changed.steps[1].onSuccess);assert.equal(4,changed.steps[1].onFailure)
+		assert.equal(1,changed.steps[2].onSuccess);assert.is_nil(changed.steps[2].onFailure)
+		assert.equal(3,recipe.steps[1].onSuccess);assert.equal(2,#recipe.steps)
+		action.fossils[1]="changed";assert.equal("first",changed.steps[3].fossils[1])
+		assert.equal(4,routes.edges(changed)[1].target)
+	end)
+	it("describes failure recovery and explicit destinations in project reviews",function()
+		local recipe={steps={{method="alchemy",onFailureAction="restart",onFailure=2,untilTargets={{anyOf={"one"}},{anyOf={"two"}}},untilRequiredGroups=1},{method="chaos",onFailureAction="stop"},{method="divine",onFailureAction="salvage"},{method="exalt",onSuccess=1,onFailure=5}}}
+		local project={title="Test",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={},nativeRecipe=recipe}
+		local lines=require("Modules.CraftingProjects").lines(project);local text=table.concat(lines,"\n")
+		assert.matches("success %-> step 2 | failure %-> restart with starting item at step 1",text)
+		assert.matches("Step target groups: 1 of 2 required",text)
+		assert.matches("success %-> step 3 | failure %-> stop",text)
+		assert.matches("success %-> step 4 | failure %-> salvage and stop",text)
+		assert.matches("success %-> step 1 | failure %-> finish",text)
+	end)
+end)

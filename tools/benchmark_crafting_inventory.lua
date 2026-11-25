@@ -1,0 +1,4 @@
+arg={};dofile('HeadlessWrapper.lua');newBuild();local UI=require('Modules.HeadlessUI');local ui=UI.install({width=960,height=640});ui:bind(build)
+local raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';local sim=require('Modules.CraftingSimulator');local inventory=require('Modules.CraftingInventory');local state=sim.perform(raw,{method='alchemy'},42).state
+local project={id='bench',title='Inventory benchmark',slot='Helmet',startingItem=raw,goals={},steps={}};project.inventory={inventory.capture(project,state,'First'),inventory.capture(project,state,'Second')};build.savers.CraftingProjects:Upsert(project)
+local c=require('Classes.CraftingInventoryControl').Open(build,{});local begin=os.clock();for i=1,20 do c.items:OnKeyDown(i%2==1 and 'RIGHT' or 'LEFT') end;print('INVENTORY_SELECTION_CPU',os.clock()-begin);ui:restore()

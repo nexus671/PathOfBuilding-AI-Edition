@@ -22,8 +22,8 @@ function Workspace:Draw()
 		DrawString(x,y+offset,"LEFT",size or 14,"VAR",value)
 	end
 	if summary.SurvivalChance then
-		text(0,string.format("Survival: %.1f%%   |   95%% interval: %.1f-%.1f%%   |   %d trials   |   %.1fs window",
-			summary.SurvivalChance,summary.ConfidenceLow,summary.ConfidenceHigh,summary.Trials,summary.Window),16)
+		text(0,string.format("Survival: %.1f%%   |   95%% interval: %.1f-%.1f%%   |   %d trial%s   |   %.1fs window",
+			summary.SurvivalChance,summary.ConfidenceLow,summary.ConfidenceHigh,summary.Trials,summary.Trials==1 and "" or "s",summary.Window),16)
 		text(24,string.format("Attack uptime: %.1f%%   |   Damage / window: %.0f DPS   |   Configuration warnings: %d",
 			summary.AttackUptime or 0,summary.DamageDPS or 0,summary.Warnings or 0))
 	else text(0,"Run a supported encounter to see survival and resource history.",16) end
@@ -31,13 +31,16 @@ function Workspace:Draw()
 		text(46,string.format("Comparison B - A: survival %+.1f points | time %+.2fs | damage %+.0f DPS",
 			current.comparison.SurvivalDelta,current.comparison.TimeDelta,current.comparison.DamageDelta))
 	end
-	for index,line in ipairs(report.deathLines(current)) do
+	local deathLines=report.deathLines(current)
+	for index,line in ipairs(deathLines) do
 		-- Fit long hit descriptions to the workspace instead of drawing over its border.
 		while DrawStringWidth(14,"VAR",line) > width and #line > 4 do line = line:sub(1,-5).."..." end
 		text(78+(index-1)*18,line)
 	end
-	if current.trace and current.trace.caps and height >= 510 then
-		self.tab.controls.breakdown:DrawEncounterTimeline(x,y+174,{ timeline=current.trace,width=width })
+	local chartY=math.max(112,78+#deathLines*18+16)
+	local chartHeight=math.min(340,height-chartY-28)
+	if current.trace and current.trace.caps and chartHeight>=210 then
+		self.tab.controls.breakdown:DrawEncounterTimeline(x,y+chartY,{timeline=current.trace,width=width,height=chartHeight,options=self.options})
 	else text(184,"Open the event log to inspect the full chart and exact resource changes.") end
 	text(height-18,"One trial is shown. The survival estimate and confidence interval describe the configured encounter only.",12)
 end
@@ -79,18 +82,38 @@ function Workspace.Open(tab)
 		return string.format("Incoming: %s   |   Enemy interval: %.0fms   |   Attacking: %s   |   Timed effects: %s",
 			config.input.enemyDamageType or "Average",(tab.calcsOutput.enemySkillTime or 0)*1000,config.input.recoverySimulationAttacking and "yes" or "no",config.input.recoverySimulationTimedEffects == false and "no" or "yes")
 	end)
-	button("settings",16,88,145,"Encounter settings",function() main:ClosePopup(); config:ShowEncounterSimulation() end)
-	button("events",173,88,120,"Full event log",function()
+	button("settings",16,88,130,"Encounter settings",function() main:ClosePopup(); config:ShowEncounterSimulation() end)
+	button("events",154,88,102,"Full event log",function()
 		main:ClosePopup(); tab:ShowRecoverySimulation()
 		tab:SetDisplayStat({{breakdown="RecoverySimulationTimeline"},x=100,y=100,width=0},true)
 	end)
-	button("ai",305,88,120,"AI tools / MCP",function() Workspace.OpenAI(tab) end)
-	button("checks",437,88,125,"Review warnings",function()
+	button("ai",264,88,100,"AI tools / MCP",function() Workspace.OpenAI(tab) end)
+	button("checks",372,88,116,"Review warnings",function()
 		main:ClosePopup(); tab:ShowRecoverySimulation()
 		tab:SetDisplayStat({{breakdown="RecoverySimulationWarnings"},x=100,y=100,width=0},true)
 	end)
-	button("close",width-112,88,96,"Close",function() main:ClosePopup() end)
-	controls.overview = new("EncounterWorkspaceControl"):EncounterWorkspaceControl({"TOPLEFT",nil,"TOPLEFT"},{16,132,width-32,height-148},tab)
+	controls.preset=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{496,88,math.max(60,width-712),24},(function() local list={};for i,preset in ipairs(require("Modules.CalcEncounter").presets) do list[#list+1]={label=preset.name,val=i} end;return list end)())
+	controls.preset.tooltipText=function() local choice=controls.preset.list[controls.preset.selIndex];return choice and ("Scenario: "..choice.label) or "Select a scenario" end
+	button("usePreset",width-208,88,104,"New scenario",function()
+		local encounters=require("Modules.CalcEncounter");local index=controls.preset:GetSelValueByKey("val");local preset=encounters.presets[index]
+		local c={};local w,h=math.min(820,main.screenW-40),math.min(450,main.screenH-48);local ui=require("Modules.PlanningUI")
+		ui.label(c,"name",16,28,preset.name,22);c.details=new("TextListControl"):TextListControl(ui.anchor,{16,72,w-32,h-146},nil,ui.rows(encounters.presetLines(preset),w-56))
+		c.create=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-48,220,28},"Create separate scenario",function()
+			config:CreateEncounterConfigSet(index);config:UpdateEncounterComparisonList()
+			controls.compare:SetList(config.varControls.recoverySimulationCompareSet.list);controls.compare:SelByValue(0,"val");controls.window:SetText(tostring(config.input.recoverySimulationWindow or 60));build.buildFlag=true;main:ClosePopup()
+		end)
+		c.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-48,140,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(c,{create=true});main:OpenPopup(w,h,"Scenario assumptions",c,nil,nil,"close")
+	end)
+	button("close",width-96,88,80,"Close",function() main:ClosePopup() end)
+	controls.overview = new("EncounterWorkspaceControl"):EncounterWorkspaceControl({"TOPLEFT",nil,"TOPLEFT"},{16,168,width-32,height-184},tab)
+	local options={hidden={},hideEmpty=true,raw=false};controls.overview.options=options
+	for index,entry in ipairs({{"Life","Life",16,68},{"EnergyShield","ES",92,68},{"Mana","Mana",168,68},{"crab","Crab",244,68},{"shrouds","Shrouds",320,88},{"chargesTotal","Charges",416,88},{"poison","Poison",512,88}}) do
+		local key,label,x,w=unpack(entry);button("series_"..key,x,124,w,function() return (options.hidden[key] and "[ ] " or "[x] ")..label end,function() options.hidden[key]=not options.hidden[key] end)
+	end
+	button("chartUnits",608,124,128,function() return options.raw and "Actual values" or "Normalized %" end,function() options.raw=not options.raw end)
+	button("emptyLanes",744,124,160,function() return options.hideEmpty and "Hide empty: on" or "Hide empty: off" end,function() options.hideEmpty=not options.hideEmpty end)
+	require("Modules.PlanningUI").style(controls,{run=true})
 	main:OpenPopup(width,height,"Encounter simulation",controls,nil,nil,"close")
 end
 

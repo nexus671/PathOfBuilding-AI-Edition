@@ -114,4 +114,49 @@ describe("ItemDBControl", function()
 		assert.are.equal(item.raw, itemsTab.displayRaw)
 		assert.is_true(itemsTab.displayIsUnique)
 	end)
+
+	it("appends typed Wickerman filters after Grafts", function()
+		local item = new("Item"):Item("")
+		item.base = { }
+		for _, dbType in ipairs({ "RARE", "UNIQUE" }) do
+			local control = new("ItemDBControl"):ItemDBControl(nil, { 0, 0, 100, 100 }, { }, { list = { } }, dbType)
+			item.type = "Graft"
+			control.controls.slot:SelByValue("Graft 1")
+			assert.are.equal("Graft 1", control.slotList[control.controls.slot.selIndex])
+			assert.is_true(control:DoesItemMatchFilters(item))
+			control.controls.slot:SelByValue("Graft 2")
+			assert.are.equal("Graft 2", control.slotList[control.controls.slot.selIndex])
+			local lastIndex = control.controls.slot.selIndex
+			for _, slotName in ipairs({ "Head", "Body", "Arm", "Leg" }) do
+				control.controls.slot:SelByValue(slotName)
+				assert.are.equal(lastIndex + 1, control.controls.slot.selIndex)
+				assert.is_false(control:DoesItemMatchFilters(item))
+				item.type = slotName
+				assert.is_true(control:DoesItemMatchFilters(item))
+				lastIndex = control.controls.slot.selIndex
+			end
+		end
+	end)
+	it("sorts Viscera by the calculated stat while keeping name sorting as default", function()
+		newBuild()
+		local control=build.itemsTab.controls.visceraDB
+		assert.is_truthy(control.controls.sort);assert.equal("NAME",control.sortMode);assert.is_nil(control.sortDetail.stat)
+		local selected={}
+		for _,item in pairs(control.db.list) do
+			if item.name:find("Lesser Warden's Arm",1,true) or item.name:find("Crustacean's Claw",1,true) then selected[#selected+1]=item end
+		end
+		assert.is_true(#selected>=2);control.db={list=selected};control.controls.slot:SelByValue("Arm");control:SetSortMode("Life")
+		local task=coroutine.create(function() control:ListBuilder() end)
+		repeat local ok,err=coroutine.resume(task);assert.is_true(ok,err) until coroutine.status(task)=="dead"
+		assert.is_truthy(control.list[1].name:find("Lesser Warden's Arm",1,true));assert.is_true(control.list[1].measuredPower>control.list[#control.list].measuredPower)
+	end)
+	it("filters upstream Viscera using the fork's compatible Wickerman slots", function()
+		local item = new("Item"):Item("Rarity: NORMAL\nScorched Arm")
+		assert.are.equal("Viscera", item.type)
+		assert.are.equal("Wickerman Upper Limb", item:GetPrimarySlot())
+		local control = new("ItemDBControl"):ItemDBControl(nil, { 0, 0, 100, 100 }, { }, { list = { item } }, "RARE")
+		control.controls.slot:SelByValue("Arm");assert.is_true(control:DoesItemMatchFilters(item))
+		control.controls.slot:SelByValue("Head");assert.is_false(control:DoesItemMatchFilters(item))
+	end)
+
 end)

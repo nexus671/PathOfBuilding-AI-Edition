@@ -2143,7 +2143,7 @@ skills["SupportExcommunicate"] = {
 	statDescriptionScope = "gem_stat_descriptions",
 	statMap = {
 		["support_excommunicate_on_melee_attack_hit_for_X_ms"] = {
-			flag("Condition:CanExcommunicate"),
+			flag("Condition:CanExcommunicate", { type = "GlobalEffect", effectType = "Buff", effectName = "Excommunicate Support" }),
 		},
 	},
 	qualityStats = {
@@ -2537,10 +2537,15 @@ skills["AvengingFlame"] = {
 	skillTypes = { [SkillType.Spell] = true, [SkillType.Damage] = true, [SkillType.Area] = true, [SkillType.AreaSpell] = true, [SkillType.Fire] = true, [SkillType.ProjectileNumber] = true, [SkillType.ProjectileSpeed] = true, [SkillType.Triggerable] = true, [SkillType.SkillGrantedBySupport] = true, [SkillType.Triggered] = true, [SkillType.InbuiltTrigger] = true, [SkillType.Cooldown] = true, [SkillType.SummonsTotem] = true, [SkillType.Projectile] = true, },
 	statDescriptionScope = "debuff_skill_stat_descriptions",
 	castTime = 1,
-	preDamageFunc = function(activeSkill, output)
+	preDamageFunc = function(activeSkill, output, breakdown, env)
 		local uuid = activeSkill.skillData.triggerSourceUUID
-		local cache = uuid and (GlobalCache.cachedData["MAIN"][uuid] or GlobalCache.cachedData["CALCS"][uuid])
-		local totemLife = cache and cache.Env.player.output.TotemLife or 0
+		-- Use the source calculated for this environment and override; the
+		-- main tab's cache can describe a different passive or item setup.
+		local cache = uuid and env.triggerSourceCache and env.triggerSourceCache[uuid]
+		if not cache and uuid then cache = GlobalCache.cachedData[env.mode][uuid] end
+		-- Rejected cost probes have no published environment and must not
+		-- fall back to an older calculation for the same skill.
+		local totemLife = cache and cache.Env and cache.Env.player.output.TotemLife or 0
 
 		local add = totemLife * activeSkill.skillData.lifeDealtAsFire / 100
 		activeSkill.skillData.FireMax = (activeSkill.skillData.FireMax or 0) + add
@@ -5066,6 +5071,7 @@ skills["SupportSpellTotem"] = {
 		"totem_support_gem_level",
 		"base_skill_is_totemified",
 		"is_totem",
+		"skill_is_spell_totemified",
 	},
 	notMinionStat = {
 		"totem_support_gem_level",
@@ -5174,13 +5180,13 @@ skills["SupportStun"] = {
 }
 skills["SupportTransfusion"] = {
 	name = "Transfusion",
-	description = "Supports non-blessing spells.",
+	description = "Supports spells. Does not support instant or blessing spells.",
 	flavourText = {"Let the eternal scream within", "flow from your weeping blood.", },
 	color = 1,
 	support = true,
 	requireSkillTypes = { SkillType.Spell, },
 	addSkillTypes = { },
-	excludeSkillTypes = { SkillType.Blessing, },
+	excludeSkillTypes = { SkillType.Blessing, SkillType.Instant, },
 	ignoreMinionTypes = true,
 	statDescriptionScope = "gem_stat_descriptions",
 	statMap = {
@@ -5193,28 +5199,28 @@ skills["SupportTransfusion"] = {
 		{ "base_life_cost_+%", 0.5 },
 	},
 	stats = {
-		"random_nearby_minion_gain_a_soul_eater_soul_on_X_life_spent",
+		"random_nearby_minion_gain_a_charge_on_X_life_spent",
 		"base_skill_cost_life_instead_of_mana",
 	},
 	notMinionStat = {
-		"random_nearby_minion_gain_a_soul_eater_soul_on_X_life_spent",
+		"random_nearby_minion_gain_a_charge_on_X_life_spent",
 	},
 	levels = {
-		[1] = { 200, levelRequirement = 72, manaMultiplier = 50, statInterpolation = { 1, }, },
-		[2] = { 200, levelRequirement = 74, manaMultiplier = 70, statInterpolation = { 1, }, },
-		[3] = { 200, levelRequirement = 76, manaMultiplier = 90, statInterpolation = { 1, }, },
-		[4] = { 200, levelRequirement = 78, manaMultiplier = 110, statInterpolation = { 1, }, },
-		[5] = { 200, levelRequirement = 80, manaMultiplier = 120, statInterpolation = { 1, }, },
-		[6] = { 200, levelRequirement = 82, manaMultiplier = 130, statInterpolation = { 1, }, },
-		[7] = { 200, levelRequirement = 84, manaMultiplier = 140, statInterpolation = { 1, }, },
-		[8] = { 200, levelRequirement = 86, manaMultiplier = 150, statInterpolation = { 1, }, },
-		[9] = { 200, levelRequirement = 88, manaMultiplier = 160, statInterpolation = { 1, }, },
-		[10] = { 200, levelRequirement = 90, manaMultiplier = 170, statInterpolation = { 1, }, },
-		[11] = { 200, levelRequirement = 91, manaMultiplier = 180, statInterpolation = { 1, }, },
-		[12] = { 200, levelRequirement = 92, manaMultiplier = 190, statInterpolation = { 1, }, },
-		[13] = { 200, levelRequirement = 93, manaMultiplier = 200, statInterpolation = { 1, }, },
-		[14] = { 200, levelRequirement = 94, manaMultiplier = 210, statInterpolation = { 1, }, },
-		[15] = { 200, levelRequirement = 95, manaMultiplier = 220, statInterpolation = { 1, }, },
+		[1] = { 400, levelRequirement = 72, manaMultiplier = 50, statInterpolation = { 1, }, },
+		[2] = { 400, levelRequirement = 74, manaMultiplier = 70, statInterpolation = { 1, }, },
+		[3] = { 400, levelRequirement = 76, manaMultiplier = 90, statInterpolation = { 1, }, },
+		[4] = { 400, levelRequirement = 78, manaMultiplier = 110, statInterpolation = { 1, }, },
+		[5] = { 400, levelRequirement = 80, manaMultiplier = 120, statInterpolation = { 1, }, },
+		[6] = { 400, levelRequirement = 82, manaMultiplier = 130, statInterpolation = { 1, }, },
+		[7] = { 400, levelRequirement = 84, manaMultiplier = 140, statInterpolation = { 1, }, },
+		[8] = { 400, levelRequirement = 86, manaMultiplier = 150, statInterpolation = { 1, }, },
+		[9] = { 400, levelRequirement = 88, manaMultiplier = 160, statInterpolation = { 1, }, },
+		[10] = { 400, levelRequirement = 90, manaMultiplier = 170, statInterpolation = { 1, }, },
+		[11] = { 400, levelRequirement = 91, manaMultiplier = 180, statInterpolation = { 1, }, },
+		[12] = { 400, levelRequirement = 92, manaMultiplier = 190, statInterpolation = { 1, }, },
+		[13] = { 400, levelRequirement = 93, manaMultiplier = 200, statInterpolation = { 1, }, },
+		[14] = { 400, levelRequirement = 94, manaMultiplier = 210, statInterpolation = { 1, }, },
+		[15] = { 400, levelRequirement = 95, manaMultiplier = 220, statInterpolation = { 1, }, },
 	},
 }
 skills["SupportTrauma"] = {

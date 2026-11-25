@@ -1,0 +1,146 @@
+local ui=require("Modules.PlanningUI")
+local inventory=require("Modules.CraftingInventory")
+local projects=require("Modules.CraftingProjects")
+local sim=require("Modules.CraftingSimulator")
+local art=require("Modules.CraftingWorkbench")
+local visual=require("Modules.LootFilterVisuals")
+local M={}
+function M.Open(build,options)
+	options=options or {};local store=build.savers.CraftingProjects;local c={};local w,h=math.min(1080,main.screenW-40),math.min(720,main.screenH-60)
+	local left=math.floor((w-48)*0.46);local right=left+32;local compact=right<424;local panelHeight=h-(compact and 226 or 188);local selected,entries,removed;local thumbs={};local models={};local searchCache={};local pending
+	-- Reuse recent starting-item models while browsing snapshots. This
+	-- cache belongs to the open dialog and never limits the saved inventory.
+	local function itemModel(raw)
+		for i,entry in ipairs(models) do if entry.raw==raw then table.remove(models,i);table.insert(models,1,entry);return entry.model end end
+		local model=sim.model(raw);table.insert(models,1,{raw=raw,model=model});if #models>4 then table.remove(models) end;return model
+	end
+	local function button(key,x,y,width,label,run)
+		c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,function() local ok,err=pcall(run);if not ok then require("Modules.PlanningUI").errorPopup("Crafting inventory",err) end end)
+	end
+	local function save(project)
+		local kept=store:Upsert(project);if options.change then options.change(kept) end;return kept
+	end
+	local function owner()
+		assert(selected,"Select an item first")
+		for _,project in ipairs(store.projects) do if project.id==selected.project.id then return copyTable(project) end end
+		error("The owning project is no longer available")
+	end
+	c.search=new("EditControl"):EditControl(ui.anchor,{16,28,left,28},"","Search items, slots and modifiers",nil,160)
+	c.itemTitle=new("EditControl"):EditControl(ui.anchor,{right,28,w-right-16,28},"","Snapshot name",nil,120)
+	local grid=new("Control"):Control(ui.anchor,{16,76,left,panelHeight});c.items=grid;grid.scroll=0;grid.planningFocusable=true
+	function grid:IsMouseOver() return self:IsShown() and self:IsMouseInBounds() end
+	local function choose(entry)
+		selected=entry;c.itemTitle:SetText(entry and entry.item.title or "")
+		c.savedItem=nil;c.savedItemMods=nil
+		if entry then
+			local model=itemModel(entry.item.baseItem)
+			local short=panelHeight<240
+			local refresh=art.item(c,"savedItem",right,76,w-right-16,panelHeight,model,function() return entry.item.state end,nil,{header=short and 140 or 180,artSize=short and 48 or 88,short=short});refresh()
+			for _,key in ipairs({"savedItem","savedItemMods"}) do c[key].anchor.other=c.search.anchor.other end
+			c.savedItem.enabled=false;c.savedItem.layoutAudit="crafting-inventory";c.savedItemMods.layoutAudit="crafting-inventory"
+		end
+	end
+	local function refresh()
+		local old=selected;entries=inventory.entries(store.projects,c.search.buf);grid.scroll=0;local keep
+		for _,entry in ipairs(entries) do if old and entry.item.id==old.item.id and entry.project.id==old.project.id then keep=entry end end
+		choose(keep or entries[1])
+		pending=nil
+		if c.search.buf~="" then
+			local all=inventory.entries(store.projects,"");local seen={};for _,entry in ipairs(entries) do seen[entry.project.id.."/"..entry.item.id]=true end
+			local queue={};for _,entry in ipairs(all) do if not seen[entry.project.id.."/"..entry.item.id] then queue[#queue+1]=entry end end
+			if #queue>0 then pending={queue=queue,index=1,query=c.search.buf:lower(),failed=0} end
+		end
+	end
+	-- Index one unmatched snapshot per frame so searching a large inventory stays
+	-- responsive. Cached text is tied to its exact state and starting item.
+	local function searchStep()
+		if not pending or pending.index>#pending.queue then return end
+		local entry=pending.queue[pending.index];pending.index=pending.index+1
+		local id=entry.project.id.."/"..entry.item.id;local signature=entry.item.baseItem.."\0"..require("dkjson").encode(entry.item.state);local cached=searchCache[id]
+		if not cached or cached.signature~=signature then
+			local ok,item=pcall(function() return sim.toItem(itemModel(entry.item.baseItem),entry.item.state) end)
+			cached={signature=signature,text=ok and item.raw and item.raw:lower() or nil};searchCache[id]=cached
+		end
+		if not cached.text then pending.failed=pending.failed+1
+		elseif cached.text:find(pending.query,1,true) then
+			entries[#entries+1]=entry;table.sort(entries,function(a,b) if a.item.at~=b.item.at then return a.item.at>b.item.at end;return a.project.id..a.item.id<b.project.id..b.item.id end)
+			if not selected then choose(entry) end
+		end
+	end
+	local function dimensions() local cols=math.max(1,math.floor(grid.width/126));return cols,(grid.width-12-(cols-1)*8)/cols end
+	local function move(delta)
+		local at=1;for i,entry in ipairs(entries) do if entry==selected then at=i end end
+		at=math.max(1,math.min(#entries,at+delta));choose(entries[at]);local cols=dimensions();local top=6+math.floor((at-1)/cols)*128
+		if top<grid.scroll then grid.scroll=math.max(0,top-6) elseif top+120>grid.scroll+grid.height then grid.scroll=top+126-grid.height end
+	end
+	grid.planningMove=function(delta) local cols=dimensions();move(delta*cols) end
+	function grid:OnKeyDown(key)
+		if key=="LEFTBUTTON" and self:IsMouseOver() then return self end
+		if key=="LEFT" or key=="RIGHT" then move(key=="LEFT" and -1 or 1);return self end
+	end
+	function grid:Draw()
+		searchStep()
+		local x,y=self:GetPos();local cols,tile=dimensions();SetViewport(x,y,self.width,self.height);visual.box(0,0,self.width,self.height,"^x101822")
+		for i,entry in ipairs(entries) do local tx,ty=6+(i-1)%cols*(tile+8),6+math.floor((i-1)/cols)*128-self.scroll
+			if ty+120>0 and ty<self.height then
+				local active=selected and selected.project.id==entry.project.id and selected.item.id==entry.item.id
+				local color=entry.item.state.destroyed and "^xE07070" or entry.item.state.rarity=="UNIQUE" and "^xAF6025" or entry.item.state.rarity=="RARE" and "^xD4BC72" or entry.item.state.rarity=="MAGIC" and "^x929BE0" or "^x8D9DB0"
+				visual.box(tx,ty,tile,120,active and "^xE1C586" or "^x3F566F");visual.box(tx+1,ty+1,tile-2,118,active and "^x293447" or "^x182331")
+				local key=entry.project.id.."/"..entry.item.id;local thumb=thumbs[key]
+				if not thumb then local item=projects.item(entry.item.state.baseItem or entry.item.baseItem);local path,iw,ih=art.itemArt(item);local aw,ah,sprite=art.artDimensions(item,iw,ih,64);thumb={handle=visual.image(path),w=aw,h=ah,sprite=sprite};thumbs[key]=thumb end
+				SetDrawColor(1,1,1);art.drawArt(thumb.handle,tx+(tile-thumb.w)/2,ty+8,thumb.w,thumb.h,thumb.sprite)
+				visual.text(tx+6,ty+78,13,entry.item.title,color,tile-12);visual.text(tx+6,ty+100,12,entry.item.slot,"^xA6B3C6",tile-12)
+			end
+		end
+		if #entries==0 then visual.text(12,16,14,pending and pending.index<=#pending.queue and "Searching item modifiers..." or "No saved items match.","^xD5DEE8",self.width-24);if c.search.buf=="" then visual.text(12,44,13,"Use Keep item snapshot in the workbench.","^xA6B3C6",self.width-24) end end
+		SetViewport()
+	end
+	ui.label(c,"searchStatus",16,h-106,"",12);c.searchStatus.label=function() return pending and (pending.index<=#pending.queue and "^7Searching item modifiers: "..(pending.index-1).." / "..#pending.queue or pending.failed>0 and "^xE4B26C Some items could not be searched" or "") or "" end
+	function grid:OnKeyUp(key)
+		if not self:IsMouseOver() then return end;local cols,tile=dimensions()
+		if key=="WHEELUP" or key=="WHEELDOWN" then self.scroll=math.max(0,math.min(math.max(0,12+math.ceil(#entries/cols)*128-self.height),self.scroll+(key=="WHEELUP" and -128 or 128)));return self
+		elseif key=="LEFTBUTTON" then local x,y=self:GetPos();local px,py=GetCursorPos();px,py=px-x,py-y+self.scroll
+			local col=math.floor((px-6)/(tile+8));local row=math.floor((py-6)/128);local entry=col>=0 and col<cols and row>=0 and entries[row*cols+col+1]
+			if entry and (px-6)%(tile+8)<=tile and (py-6)%128<120 then choose(entry) end;return self
+		end
+	end
+	button("rename",16,h-84,120,"Rename",function()
+		assert(c.itemTitle.buf:match("%S"),"Enter an item name");local project=owner();for _,entry in ipairs(project.inventory) do if entry.id==selected.item.id then entry.title=c.itemTitle.buf end end;save(project);refresh()
+	end)
+	button("remove",148,h-84,120,"Remove",function()
+		local project=owner();for i,entry in ipairs(project.inventory) do if entry.id==selected.item.id then removed={projectId=project.id,item=copyTable(entry)};table.remove(project.inventory,i);break end end;save(project);refresh()
+	end)
+	button("undoRemove",280,h-84,136,"Undo removal",function()
+		assert(removed,"No removed item to restore");for _,project in ipairs(store.projects) do if project.id==removed.projectId then local copy=copyTable(project);copy.inventory=copy.inventory or {};copy.inventory[#copy.inventory+1]=removed.item;save(copy);removed=nil;refresh();return end end;error("The owning project is no longer available")
+	end)
+	c.undoRemove.enabled=function() return removed~=nil end
+	for _,key in ipairs({"rename","remove","itemTitle"}) do c[key].enabled=function() return selected~=nil end end
+	button("source",right,h-84,132,"View source",function()
+		assert(selected and selected.item.originNote,"No source note for this item")
+		require("Classes.PlanningBrowserControl").Open("Saved item source",{{id="source",label=selected.item.title,details={selected.item.originNote}}})
+	end)
+	c.source.enabled=function() return selected~=nil and selected.item.originNote~=nil and selected.item.originNote~="" end
+	c.source.tooltipText="Read the saved item's source and assumptions."
+	ui.label(c,"count",right+144,h-78,"",13);c.count.label=function() return "^7"..ui.fit(selected and selected.project.title or #entries.." saved items",compact and w-200 or w-right-160,13) end
+	button("resume",16,h-42,260,"Resume as separate working craft",function()
+		assert(selected,"Select an item first");local project=inventory.project(selected.item,build.savers.CraftingProjects.projects);main:ClosePopup();options.resume(project)
+	end);c.resume.enabled=function() return selected~=nil and options.resume~=nil end
+	button("compare",292,h-42,220,"Compare with working item",function() assert(selected and options.current,"Choose a saved item and open inventory from a working craft");require("Classes.CraftingItemComparisonControl").Open(selected.item,options.current) end)
+	c.compare.enabled=function() return selected~=nil and options.current~=nil end;c.compare.tooltipText="Open the inventory from a working craft to compare its item with this saved snapshot."
+	ui.label(c,"saveHint",528,h-36,"Use build Save.",12)
+	button("close",w-156,h-42,140,"Close",function() main:ClosePopup() end)
+	if compact then
+		local width=math.floor((w-56)/4)
+		for i,key in ipairs({"rename","remove","undoRemove","source"}) do local control=c[key];control.x=16+(i-1)*(width+8);control.y=h-122;control.width=width end
+		local half=math.floor((w-40)/2);c.resume.x=16;c.resume.y=h-84;c.resume.width=half;c.compare.x=24+half;c.compare.y=h-84;c.compare.width=half
+		c.searchStatus.y=h-144;c.count.x=16;c.count.y=h-36;c.saveHint.shown=false
+	end
+	c.search.changeFunc=refresh;ui.style(c,{resume=true},{savedItem=true});for _,control in pairs(c) do control.layoutAudit="crafting-inventory" end;refresh()
+	if options.selectProjectId and options.selectItemId then
+		for index,entry in ipairs(entries) do if entry.project.id==options.selectProjectId and entry.item.id==options.selectItemId then
+			choose(entry);local cols=dimensions();local top=6+math.floor((index-1)/cols)*128;grid.scroll=math.max(0,math.min(math.max(0,12+math.ceil(#entries/cols)*128-grid.height),top));break
+		end end
+	end
+	main:OpenPopup(w,h,"Crafting item inventory",c,nil,"search","close");return c
+end
+return M

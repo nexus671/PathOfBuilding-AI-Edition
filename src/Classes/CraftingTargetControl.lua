@@ -1,0 +1,250 @@
+-- cspell:ignore RRBG
+local sim=require("Modules.CraftingSimulator")
+local Panel={}
+function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseName,model)
+	local groups=copyTable(targets);local conditions=copyTable(requirements or {});local controls={}
+	local function edit(key,x,y,value,prompt)
+		controls[key.."Label"]=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,0,14},prompt)
+		controls[key]=new("EditControl"):EditControl({"TOPLEFT",nil,"TOPLEFT"},{x,y+16,180,24},tostring(value or ""),nil,nil,8)
+	end
+	local function button(key,x,y,w,text,callback)
+		controls[key]=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,w,24},text,function()
+			local ok,message=pcall(callback);if not ok then require("Modules.PlanningUI").errorPopup("Crafting targets",message) end
+		end)
+	end
+	groupIndex=groupIndex or #groups
+	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,28,0,14},"Edit group "..groupIndex..". Blank item-property fields impose no condition.")
+	local group=groups[groupIndex]
+	if not group then controls.info.label="Set item properties. Blank fields impose no condition." end
+	local defaultInfo=controls.info.label
+	local function updateCatalystInfo()
+		if conditions.catalyst then
+			local names=require("Modules.CraftingUniqueQuality").catalysts;local name=names[conditions.catalyst] or "Unknown"
+			controls.info.label="Catalyst target: "..name..(conditions.minCatalystQuality~=nil and (" "..conditions.minCatalystQuality.."%") or " (any quality)").." (edit with Catalyst)"
+		else controls.info.label=defaultInfo end
+		if group and main.screenH<646 then controls.info.tooltipText=controls.info.label;controls.info.label=require("Modules.PlanningUI").fit(controls.info.label,370,14) end
+	end
+	updateCatalystInfo()
+	edit("count",16,64,group and group.atLeast or 1,"Matching mods in group")
+	edit("roll",212,64,group and group.minRoll and group.minRoll*100 or nil,"Minimum roll % (0-100)")
+	controls.mode=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{408,80,200,24},{"Require group","Exclude group"})
+	controls.mode:SelByValue(group and group.negate and "Exclude group" or "Require group")
+	controls.scope=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,124,376,24},{"Explicit modifiers","Implicit modifiers","Enchantments"})
+	controls.scope:SelByValue(group and group.scope == "enchant" and "Enchantments" or group and group.scope == "implicit" and "Implicit modifiers" or "Explicit modifiers")
+	edit("groups",408,108,requiredGroups,"Required groups (blank=all)")
+	for i,key in ipairs({"fractured","crafted"}) do
+		local title=key == "fractured" and "Fractured" or "Crafted"
+		controls[key]=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16+(i-1)*294,164,278,24},{"Any "..key.." state",title.." only","Not "..key})
+		controls[key]:SelByValue(group and group[key] == true and title.." only" or group and group[key] == false and "Not "..key or "Any "..key.." state")
+	end
+	if group then
+		button("baseRoll",16,188,180,"Base roll value...",function()
+			local ui=require("Modules.PlanningUI");local popup={}
+			ui.description(popup,"help",16,24,448,48,{"Values are before catalyst and character scaling.","For multiple ranges, number them left to right, then top to bottom."},14)
+			ui.label(popup,"minLabel",16,84,"Minimum",14);ui.label(popup,"maxLabel",166,84,"Maximum",14);ui.label(popup,"componentLabel",316,84,"Range (blank if one)",14)
+			popup.minimum=new("EditControl"):EditControl(ui.anchor,{16,106,134,26},group.minBaseValue~=nil and tostring(group.minBaseValue) or "",nil,nil,16)
+			popup.maximum=new("EditControl"):EditControl(ui.anchor,{166,106,134,26},group.maxBaseValue~=nil and tostring(group.maxBaseValue) or "",nil,nil,16)
+			popup.component=new("EditControl"):EditControl(ui.anchor,{316,106,140,26},group.baseValueComponent and tostring(group.baseValueComponent) or "",nil,nil,2)
+			popup.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,158,180,28},"Keep values",function()
+				local ok,why=pcall(function()
+					local minimum=popup.minimum.buf~="" and assert(tonumber(popup.minimum.buf),"Enter a numeric minimum") or nil
+					local maximum=popup.maximum.buf~="" and assert(tonumber(popup.maximum.buf),"Enter a numeric maximum") or nil
+					local component=popup.component.buf~="" and assert(tonumber(popup.component.buf),"Enter a range number") or nil
+					for _,value in ipairs({minimum or 0,maximum or 0}) do assert(value==value and math.abs(value)<=10000000,"Base values must be within the supported range") end
+					assert(minimum==nil or maximum==nil or minimum<=maximum,"Minimum base value exceeds maximum")
+					if component~=nil then assert(component==math.floor(component) and component>=1 and component<=20,"Choose a range number from 1 to 20");assert(minimum~=nil or maximum~=nil,"A range number needs a minimum or maximum value") end
+					if minimum~=nil or maximum~=nil then
+						assert(controls.scope:GetSelValue()=="Explicit modifiers","Base-roll values currently require explicit modifier targets")
+						if model then for _,id in ipairs(group.anyOf) do
+							local mod=model.byId[id];assert(mod,"This modifier needs its own base-roll model: "..id)
+							local reason=sim.baseRollReason(mod,component);assert(not reason,(reason or "Unsupported base roll")..": "..id)
+						end end
+					end
+					group.minBaseValue,group.maxBaseValue,group.baseValueComponent=minimum,maximum,component
+				end)
+				if not ok then ui.errorPopup("Base roll value",why);return end;main:ClosePopup()
+			end))
+			popup.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{340,158,116,28},"Cancel",function() main:ClosePopup() end))
+			ui.style(popup,{keep=true});for _,control in pairs(popup) do control.layoutAudit="crafting-base-roll-target" end
+			main:OpenPopup(472,202,"Base roll value",popup,nil,nil,"close")
+		end)
+		controls.baseRoll.label=function() return (group.minBaseValue~=nil or group.maxBaseValue~=nil) and "Base value set..." or "Base roll value..." end
+		controls.baseRoll.tooltipText=function()
+			local selected=(group.minBaseValue~=nil and ("Minimum: "..group.minBaseValue..". ") or "")..(group.maxBaseValue~=nil and ("Maximum: "..group.maxBaseValue..". ") or "")
+			return selected..(group.baseValueComponent and ("Range: "..group.baseValueComponent..". ") or "").."Set base values before catalyst and character scaling. Choose a range number for multi-value modifiers."
+		end
+	end
+	local properties={{"openPrefixes","Open prefixes"},{"openSuffixes","Open suffixes"},{"minAffixes","Minimum affixes"},{"maxAffixes","Maximum affixes"},{"minQuality","Minimum quality"},{"sockets","Minimum sockets"},{"links","Minimum linked sockets"},{"minMemoryStrands","Minimum memory strands"},{"maxMemoryStrands","Maximum memory strands"},{"minFractured","Minimum fractured mods"},{"maxFractured","Maximum fractured mods"},{"minIntangibility","Minimum Intangibility"},{"maxIntangibility","Maximum Intangibility"}}
+	for i,entry in ipairs(properties) do edit(entry[1],16+(i-1)%3*196,214+math.floor((i-1)/3)*42,conditions[entry[1]],entry[2]) end
+	controls.socketsLabel.label="Sockets";controls.sockets.width=72
+	if conditions.exactSockets~=nil then controls.sockets:SetText(tostring(conditions.exactSockets)) end
+	controls.socketMode=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{488,272,100,24},{"At least","Exactly"})
+	controls.socketMode:SelByValue(conditions.exactSockets~=nil and "Exactly" or "At least")
+	edit("socketColours",212,382,conditions.socketColours,"Socket colours (e.g. RRBG)")
+	controls.linkedColours=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{408,398,180,24},{"Anywhere on item","In one linked group"})
+	controls.linkedColours:SelByValue(conditions.linkedColours and "In one linked group" or "Anywhere on item")
+	controls.corrupted=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,438,278,24},{"Any corruption state","Must be corrupted","Must be uncorrupted","Must be twice corrupted","Must be corrupted once","Must not be twice corrupted"})
+	controls.corrupted:SelByValue(conditions.twiceCorrupted==true and "Must be twice corrupted" or conditions.corrupted==false and "Must be uncorrupted" or conditions.twiceCorrupted==false and (conditions.corrupted==true and "Must be corrupted once" or "Must not be twice corrupted") or conditions.corrupted==true and "Must be corrupted" or "Any corruption state")
+	controls.mirrored=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{310,438,278,24},{"Any mirror / foresight","Must be mirrored","Must not be mirrored","Must be foreseeing","Must not be foreseeing","Neither mirrored nor foreseeing"})
+	controls.mirrored:SelByValue(conditions.foreseeing==true and "Must be foreseeing" or conditions.mirrored==true and "Must be mirrored" or conditions.foreseeing==false and conditions.mirrored==false and "Neither mirrored nor foreseeing" or conditions.foreseeing==false and "Must not be foreseeing" or conditions.mirrored==false and "Must not be mirrored" or "Any mirror / foresight")
+	local base=baseName and data.itemBases[baseName];local flask=base and base.tags and base.tags.utility_flask
+	local enchantments={{label=flask and "Any flask enchantment" or "Any Harvest enchantment",val=false}}
+	if flask then
+		for group,pool in pairs(require("Modules.CraftingFlaskEnchants").data().pools) do for _,entry in ipairs(pool) do
+			enchantments[#enchantments+1]={label=(group=="INSTILLING" and "Instilling: " or "Enkindling: ")..data.enchantments.UtilityFlask[group][entry.index]:gsub("/.*$","")..(entry.weight==0 and " (not rollable)" or ""),val=entry.id}
+		end end
+	else for id,craft in pairs(require("Modules.CraftingEnchants").data().crafts) do enchantments[#enchantments+1]={label=(id:find("Body",1,true) and "Body: " or "Weapon: ")..craft.lines[#craft.lines],val=id} end end
+	table.sort(enchantments,function(a,b) if not a.val then return not not b.val elseif not b.val then return false else return a.label<b.label end end)
+	controls.harvestEnchant=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,478,376,24},enchantments)
+	local currentEnchant=conditions.harvestEnchant;if flask then currentEnchant=conditions.flaskEnchant end
+	controls.harvestEnchant:SelByValue(currentEnchant or false,"val")
+	local minimum=conditions.minAbyssSockets;if flask then minimum=conditions.flaskEnchantMin end
+	edit("minAbyssSockets",408,462,minimum,flask and "Minimum enchant roll" or "Minimum Abyss sockets")
+	controls.minAbyssSockets.tooltipText=flask and "Optional minimum for an Enkindling enchantment's numeric roll." or "Counts actual Abyssal sockets, independently of modifier text. Modeled layout changes can be experimental."
+	local influences={{label="Any influence",val=false}}
+	for _,info in ipairs(itemLib.influenceInfo.default) do influences[#influences+1]={label=info.display.." influence",val=info.key} end
+	controls.influence=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,518,376,24},influences)
+	controls.influence:SelByValue(conditions.influence or false,"val")
+	controls.uniqueNameLabel=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{408,502,0,14},"Unique jewel name (exact)")
+	local uniqueCandidates=require("Modules.CraftingJewelCorruption").candidates(baseName)
+	local uniqueRollName=conditions.uniqueName
+	local function updateUniqueRollLabel() controls.uniqueNameLabel.label=(conditions.uniqueModifier or conditions.uniqueModifiers) and "Unique jewel name (roll target set)" or "Unique jewel name (exact)" end
+	updateUniqueRollLabel()
+	controls.uniqueName=new("EditControl"):EditControl({"TOPLEFT",nil,"TOPLEFT"},{408,518,#uniqueCandidates>0 and 120 or 180,24},conditions.uniqueName or "",nil,nil,160)
+	if #uniqueCandidates>0 then
+		button("chooseUnique",536,518,52,"Pick",function()
+			local entries={};for _,candidate in ipairs(uniqueCandidates) do
+				entries[#entries+1]={id=candidate.title,label=candidate.title,details=function()
+					local item=require("Modules.CraftingJewelCorruption").item(baseName,candidate.title,83,104729)
+					local lines={candidate.title,baseName,"Example rolls; eligibility and odds are unverified.",""}
+					for _,line in ipairs(item.explicitModLines or {}) do lines[#lines+1]=itemLib.formatModLine(line,false) or line.line end
+					return lines
+				end}
+			end
+			require("Classes.PlanningBrowserControl").Open("Choose a unique jewel",entries,{action="Use name",choose=function(entry) controls.uniqueName:SetText(entry.id,true) end})
+		end)
+		button("uniqueRoll",408,545,180,"Unique roll target...",function()
+			local name=uniqueRollName or controls.uniqueName.buf;local jewel=require("Modules.CraftingJewelCorruption");local okItem,item=pcall(jewel.item,baseName,name,83,104729);local options=okItem and jewel.rollOptions(item) or {}
+			if #options==0 and not conditions.uniqueModifier and not conditions.uniqueModifiers then error("This jewel has no supported single-integer roll targets") end
+			local ui=require("Modules.PlanningUI");local popup={};local choices={}
+			for index,option in ipairs(options) do choices[#choices+1]={label=ui.fit(option.line.." ("..option.min.."-"..option.max..")",410,14),val=index} end
+			if #choices==0 then choices[1]={label="No supported roll targets",val=0} end
+			ui.label(popup,"help",16,20,"Choose a roll on "..name..". Odds are experimental.",14)
+			popup.stat=new("DropDownControl"):DropDownControl(ui.anchor,{16,48,448,24},choices)
+			popup.stat.tooltipText=function() local option=options[popup.stat:GetSelValueByKey("val")];return option and (option.line.." | "..option.min.."-"..option.max) or "No supported roll targets are available." end
+			local staged=copyTable(conditions.uniqueModifiers or {});if conditions.uniqueModifier then staged[#staged+1]=copyTable(conditions.uniqueModifier) end
+			local previous=conditions.uniqueModifier;if previous and uniqueRollName==name then for index,option in ipairs(options) do if option.line==previous.line then popup.stat:SelByValue(index,"val") end end end
+			popup.direction=new("DropDownControl"):DropDownControl(ui.anchor,{16,90,180,24},{"At least","At most"});popup.direction:SelByValue(previous and previous.maxValue~=nil and "At most" or "At least")
+			popup.value=new("EditControl"):EditControl(ui.anchor,{208,90,120,24},previous and tostring(previous.minValue or previous.maxValue) or "",nil,"%D",6)
+			local function combined(includeCurrent)
+				local goals=copyTable(staged)
+				if includeCurrent and popup.value.buf~="" then
+					local option=options[popup.stat:GetSelValueByKey("val")];assert(option,"Choose a modifier");local value=assert(tonumber(popup.value.buf),"Enter a roll value");local goal={line=option.line,component=1};goal[popup.direction:GetSelValue()=="At most" and "maxValue" or "minValue"]=value
+					local replaced=false;for index,existing in ipairs(goals) do if existing.line==goal.line and (existing.component or 1)==1 and (existing.maxValue~=nil)==(goal.maxValue~=nil) then goals[index]=goal;replaced=true;break end end
+					if not replaced then goals[#goals+1]=goal end
+				end
+				assert(#goals<=12,"Use at most twelve roll conditions")
+				if #goals>0 then assert(okItem,"The saved unique jewel is unavailable; remove or clear its roll conditions");local requirements={uniqueName=name,uniqueModifiers=goals};sim.validateRecipe({steps={{method="vaal"}},targets={},requirements=requirements});jewel.matchesRolls(item,requirements) end
+				return goals
+			end
+			popup.add=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,132,160,28},"Add condition",function()
+				local ok,result=pcall(function() assert(popup.value.buf~="","Enter a roll value");return combined(true) end);if not ok then ui.errorPopup("Unique jewel roll",result);return end
+				staged=result;popup.value:SetText("",true)
+			end))
+			popup.add.enabled=function() return #options>0 end
+			popup.review=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{184,132,128,28},"Review added",function()
+				local entries={};for index,goal in ipairs(staged) do local text=(goal.maxValue~=nil and "At most "..goal.maxValue or "At least "..goal.minValue).." | "..goal.line;entries[#entries+1]={id=index,label=text,details={text,"All conditions must be met on the same jewel.","Remove this condition or close to keep it."}} end
+				require("Classes.PlanningBrowserControl").Open("Unique jewel conditions",entries,{action="Remove condition",choose=function(entry)
+					local removed=table.remove(staged,entry.id);local selected=options[popup.stat:GetSelValueByKey("val")];local upper=popup.direction:GetSelValue()=="At most"
+					if selected and removed.line==selected.line and (removed.component or 1)==1 and (removed.maxValue~=nil)==upper and tonumber(popup.value.buf)==(removed.minValue or removed.maxValue) then popup.value:SetText("",true) end
+				end})
+			end));popup.review.enabled=function() return #staged>0 end
+			ui.label(popup,"count",16,180,"",14);popup.count.label=function() return "^7"..#staged.." added condition"..(#staged==1 and "" or "s").."; a filled value is also included." end
+			popup.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,220,160,28},"Keep roll target",function()
+				local ok,result=pcall(function() local goals=combined(true);assert(#goals>0,"Add a condition or enter a roll value");return goals end)
+				if not ok then ui.errorPopup("Unique jewel roll",result);return end
+				conditions.uniqueModifier=#result==1 and result[1] or nil;conditions.uniqueModifiers=#result>1 and result or nil;uniqueRollName=name;updateUniqueRollLabel();main:ClosePopup()
+			end))
+			popup.clear=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{184,220,128,28},"Clear targets",function() conditions.uniqueModifier=nil;conditions.uniqueModifiers=nil;uniqueRollName=nil;updateUniqueRollLabel();main:ClosePopup() end))
+			popup.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{344,220,120,28},"Cancel",function() main:ClosePopup() end))
+			ui.style(popup);for _,control in pairs(popup) do control.layoutAudit="unique-jewel-roll-target" end;main:OpenPopup(480,266,"Unique jewel roll",popup,nil,nil,"close")
+		end)
+		controls.uniqueRoll.tooltipText=function() return conditions.uniqueModifier and ("Roll target: "..conditions.uniqueModifier.line.." | "..tostring(conditions.uniqueModifier.minValue or conditions.uniqueModifier.maxValue)) or conditions.uniqueModifiers and (#conditions.uniqueModifiers.." roll conditions; review or remove them here.") or "Choose supported modifier roll conditions for the named unique jewel." end
+	end
+	button("keep",16,568,184,"Keep conditions",function()
+		if group then
+			group.atLeast=assert(tonumber(controls.count.buf),"Enter a matching-mod count")
+			group.minRoll=controls.roll.buf ~= "" and assert(tonumber(controls.roll.buf),"Enter a minimum roll percent")/100 or nil
+			group.negate=controls.mode:GetSelValue() == "Exclude group";local scope=controls.scope:GetSelValue();group.scope=scope == "Enchantments" and "enchant" or scope == "Implicit modifiers" and "implicit" or "explicit"
+			for _,key in ipairs({"fractured","crafted"}) do local value=controls[key]:GetSelValue();group[key]=nil;if not value:match("^Any ") then group[key]=not value:match("^Not ") end end
+		end
+		local result={nativeStats=conditions.nativeStats and copyTable(conditions.nativeStats),catalyst=conditions.catalyst,minCatalystQuality=conditions.minCatalystQuality,uniqueModifier=conditions.uniqueModifier and copyTable(conditions.uniqueModifier),uniqueModifiers=conditions.uniqueModifiers and copyTable(conditions.uniqueModifiers)};for _,entry in ipairs(properties) do local value=controls[entry[1]].buf;if value ~= "" then result[entry[1]]=assert(tonumber(value),"Enter a number for "..entry[2]:lower()) end end
+		if result.sockets~=nil and controls.socketMode:GetSelValue()=="Exactly" then result.exactSockets=result.sockets;result.sockets=nil end
+		if controls.uniqueName.buf:match("%S") then result.uniqueName=controls.uniqueName.buf end
+		if result.uniqueModifier or result.uniqueModifiers then assert(result.uniqueName and result.uniqueName==uniqueRollName,"Choose the same unique jewel as the saved roll target, or clear the target") end
+		if controls.minAbyssSockets.buf~="" then
+			local value=assert(tonumber(controls.minAbyssSockets.buf),"Enter a numeric minimum")
+			if flask then result.flaskEnchantMin=value else result.minAbyssSockets=value end
+		end
+		local corruption=controls.corrupted:GetSelValue()
+		if corruption=="Must be corrupted" or corruption=="Must be corrupted once" then result.corrupted=true elseif corruption=="Must be uncorrupted" then result.corrupted=false end
+		local mirror=controls.mirrored:GetSelValue();if mirror=="Must be mirrored" then result.mirrored=true elseif mirror=="Must not be mirrored" or mirror=="Neither mirrored nor foreseeing" then result.mirrored=false end
+		if mirror=="Must be foreseeing" then result.foreseeing=true elseif mirror=="Must not be foreseeing" or mirror=="Neither mirrored nor foreseeing" then result.foreseeing=false end
+		if corruption=="Must be twice corrupted" then result.twiceCorrupted=true elseif corruption=="Must be corrupted once" or corruption=="Must not be twice corrupted" then result.twiceCorrupted=false end
+		if flask then result.flaskEnchant=controls.harvestEnchant:GetSelValueByKey("val") or nil else result.harvestEnchant=controls.harvestEnchant:GetSelValueByKey("val") or nil end
+		result.influence=controls.influence:GetSelValueByKey("val") or nil
+		if controls.socketColours.buf~="" then result.socketColours=controls.socketColours.buf:upper();result.linkedColours=controls.linkedColours:GetSelValue()=="In one linked group" end
+		local required=controls.groups.buf ~= "" and assert(tonumber(controls.groups.buf),"Invalid required group count") or nil
+		if not next(result) then result=nil end
+		if #groups==0 and not result then required=nil else sim.validateRecipe({steps={{method="chaos"}},targets=groups,requirements=result,requiredGroups=required}) end
+		local conflict=sim.requirementsConflict(result);assert(not conflict,conflict)
+		onKeep(groups,result,required);main:ClosePopup()
+	end)
+	button("close",496,568,112,"Close",function() main:ClosePopup() end)
+	button("itemStats",208,568,166,"Item stat goals",function()
+		require("Classes.CraftingItemStatsControl").Open(conditions.nativeStats,function(value) conditions.nativeStats=value end)
+	end)
+	button("catalystGoal",382,568,106,"Catalyst...",function()
+		local ui=require("Modules.PlanningUI");local popup={};local choices={{label="Any catalyst",val=0}}
+		for id,name in ipairs(require("Modules.CraftingUniqueQuality").catalysts) do choices[#choices+1]={label=name.." Catalyst",val=id} end
+		ui.label(popup,"intro",16,20,"Jewellery catalyst target; blank quality accepts any.",14)
+		ui.label(popup,"kindLabel",16,58,"Catalyst type",14);ui.label(popup,"qualityLabel",224,58,"Minimum quality %",14)
+		popup.kind=new("DropDownControl"):DropDownControl(ui.anchor,{16,80,192,24},choices);popup.kind:SelByValue(conditions.catalyst or 0,"val")
+		popup.quality=new("EditControl"):EditControl(ui.anchor,{224,80,180,24},conditions.minCatalystQuality~=nil and tostring(conditions.minCatalystQuality) or "",nil,"%D",2)
+		popup.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,140,180,28},"Keep catalyst goal",function()
+			local ok,result=pcall(function()
+				local id=popup.kind:GetSelValueByKey("val");local value=popup.quality.buf~="" and assert(tonumber(popup.quality.buf),"Enter a numeric quality") or nil
+				assert(id~=0 or value==nil,"Choose a catalyst type before setting quality")
+				local goal={catalyst=id~=0 and id or nil,minCatalystQuality=value}
+				if next(goal) then sim.validateRecipe({steps={{method="chaos"}},targets={},requirements=goal}) end;return goal
+			end)
+			if not ok then ui.errorPopup("Catalyst goal",result);return end
+			conditions.catalyst=result.catalyst;conditions.minCatalystQuality=result.minCatalystQuality;updateCatalystInfo();main:ClosePopup()
+		end))
+		popup.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{288,140,116,28},"Cancel",function() main:ClosePopup() end))
+		ui.style(popup);main:OpenPopup(420,184,"Catalyst goal",popup,nil,nil,"close")
+	end)
+	controls.catalystGoal.tooltipText="Choose a catalyst type and optional minimum quality, or clear the goal."
+	if not group then
+		for _,key in ipairs({"count","countLabel","roll","rollLabel","mode","scope","groups","groupsLabel","fractured","crafted"}) do controls[key].enabled=false;controls[key].shown=false end
+		for _,control in pairs(controls) do if type(control.y)=="number" and control.y>=214 then control.y=control.y-150 end end
+		controls.keep.label="Keep item properties"
+	elseif main.screenH<646 then
+		local page="group";local groupKeys={count=true,countLabel=true,roll=true,rollLabel=true,mode=true,scope=true,groups=true,groupsLabel=true,fractured=true,crafted=true,baseRoll=true}
+		local footer={keep=true,close=true,itemStats=true,catalystGoal=true}
+		for key,control in pairs(controls) do
+			if groupKeys[key] then local shown=control.shown;control.shown=function() return page=="group" and (shown==nil or shown==true or type(shown)=="function" and shown()) end
+			elseif type(control.y)=="number" and control.y>=214 then
+				control.y=control.y-150
+				if not footer[key] then local shown=control.shown;control.shown=function() return page=="properties" and (shown==nil or shown==true or type(shown)=="function" and shown()) end end
+			end
+		end
+		updateCatalystInfo()
+		button("switchPage",400,24,208,"Item properties",function() page=page=="group" and "properties" or "group" end)
+		controls.switchPage.label=function() return page=="group" and "Item properties" or "Group conditions" end
+	end
+	require("Modules.PlanningUI").style(controls,{keep=true})
+	main:OpenPopup(624,group and main.screenH>=646 and 616 or math.min(466,main.screenH-30),group and "Crafting target conditions" or "Item properties",controls,nil,nil,"close")
+	return controls
+end
+return Panel

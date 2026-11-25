@@ -3,6 +3,26 @@ describe("Encounter reporting and comparisons",function()
 	local time=require("Modules.CalcTime")
 	before_each(function() newBuild() end)
 
+	it("highlights distinct important timeline events instead of repeated recharge events",function()
+		local breakdown=build.calcsTab.controls.breakdown
+		local events=breakdown:TimelineEventHighlights({
+			{time=0,event="Recharge interrupted by hit"},{time=1,event="Recharge interrupted by hit"},
+			{time=3,event="Guard expired"},{time=4,event="Tincture deactivated"},{time=9,event="Death"},
+		})
+		assert.same({"9.00s Death","3.00s Guard expired","4.00s Tincture deactivated"},events)
+		local guard=breakdown:TimelineEventHighlights({{time=0,event="Recharge interrupted by hit"},{time=3,event="Guard expired"}})
+		assert.same({"3.00s Guard expired","0.00s Recharge interrupted by hit"},guard)
+	end)
+	it("keeps encounter scenario names readable at the narrow window size",function()
+		local ui=require("Modules.HeadlessUI").install({width=960,height=640});ui:bind(build)
+		local ok,err=pcall(function()
+			build.calcsTab:OpenEncounterWorkspace();local preset=main.popups[1].controls.preset
+			local width,height=preset:GetSize();local textSize=math.min(height-4,preset.planningTextSize or height-4)
+			for _,entry in ipairs(preset.list) do assert.is_true(DrawStringWidth(textSize,"VAR",entry.label)<=width-height,entry.label) end
+			preset:SelByValue(7,"val");assert.equal("Scenario: Hits plus continuous damage",preset:GetProperty("tooltipText"))
+		end)
+		main:ClosePopup();ui:restore();assert.is_true(ok,tostring(err))
+	end)
 	it("formats digit-bearing poison outputs as values instead of raw placeholders",function()
 		assert.are.equal("123.5",formatCalcStr("{1:output:PoisonDPSAt1}",{output={PoisonDPSAt1=123.456}}))
 		assert.are.equal("7",formatCalcStr("{output:PoisonDPSAt10}",{output={PoisonDPSAt10=7}}))
@@ -14,6 +34,59 @@ describe("Encounter reporting and comparisons",function()
 		for key,value in pairs({MeleeAvoidChance=51,SpellAvoidChance=12,ProjectileAvoidChance=63,MinionMeleeAvoidChance=7,Life=100,MinionLife=999,TotalPoisonDPS=1200}) do
 			assert.are.equal(value,data.powerStatList.GetFromOutput(output,{stat=key}))
 		end
+	end)
+	it("offers net regeneration and recharge for item sorting and node power",function()
+		runCallback("OnFrame")
+		local calc=build.calcsTab:GetMiscCalculator()
+		local function output(lines)
+			local item=new("Item"):Item("Rarity: RARE\nTest\nGold Ring\nItem Level: 86\nImplicits: 0\n"..lines)
+			return calc({repSlotName="Ring 1",repItem=item},false)
+		end
+		local base="Regenerate 100 Life per second\nRegenerate 30 Mana per second\nRegenerate 40 Energy Shield per second\n+100 to maximum Energy Shield"
+		local plain=output(base)
+		local changed=output(base.."\nLose 100 Life per second\nLose 25 Mana per second\nLose 20 Energy Shield per second\n100% increased Energy Shield Recharge Rate")
+		for _,case in ipairs({{"Life",100},{"Mana",25},{"EnergyShield",20}}) do
+			local raw,net=case[1].."Regen",case[1].."RegenRecovery"
+			assert.equal(plain[raw],changed[raw]);assert.near(case[2],plain[net]-changed[net],0.001)
+			local selection;for _,entry in ipairs(data.powerStatList) do if entry.stat==net then selection=entry end end
+			assert.is_not_nil(selection);assert.near(-case[2],build.calcsTab:CalculatePowerStat(selection,changed,plain),0.001)
+		end
+		assert.is_true(changed.EnergyShieldRecharge>plain.EnergyShieldRecharge)
+		for _,key in ipairs({"LifeRegenRecovery","ManaRegenRecovery","EnergyShieldRegenRecovery","EnergyShieldRecharge"}) do
+			local found,minion=false,false
+			for _,entry in ipairs(data.powerStatList) do if entry.stat==key then found=true elseif entry.stat=="Minion"..key then minion=true end end
+			assert.is_true(found and minion,key)
+			assert.equal(123,data.powerStatList.GetFromOutput({Minion={[key]=123}},{stat="Minion"..key}))
+			local present=false;for _,entry in ipairs(build.treeTab.powerStatList) do if entry.stat==key then present=true end end;assert.is_true(present,key)
+			local sort=build.itemsTab.controls.craftingSorting;sort:SelByValue(key,"stat");assert.equal(key,sort:GetSelValue().stat)
+		end
+	end)
+	it("keeps node power and heatmap colours defined for zero and infinite values",function()
+		local power=common.classes.CalcsTab.CalculatePowerStat;local stat={stat="SecondMinimalMaximumHitTaken"}
+		assert.equal(0,power(nil,stat,{SecondMinimalMaximumHitTaken=math.huge},{SecondMinimalMaximumHitTaken=math.huge}))
+		assert.equal(math.huge,power(nil,stat,{SecondMinimalMaximumHitTaken=math.huge},{SecondMinimalMaximumHitTaken=100}))
+		local color=data.powerStatList.HeatmapIntensity
+		assert.equal(0,color(0,0));assert.equal(0,color(1,math.huge));assert.equal(0,color(0/0,10))
+		assert.near(math.sqrt(1.5),color(math.huge,math.huge),1e-9);assert.near(math.sqrt(0.75),color(5,10),1e-9)
+	end)
+	it("draws zero and infinite power heatmaps without invalid colours",function()
+		local ui=require("Modules.HeadlessUI").install({width=1024,height=768});local viewer=build.treeTab.viewer;local oldTheme=main.nodePowerTheme
+		local ok,message=pcall(function()
+			viewer.showHeatMap=true;build.calcsTab.BuildPower=function() end;main.nodePowerTheme="RED/BLUE"
+			for _,node in pairs(build.spec.nodes) do node.power=node.power or {} end
+			for _,case in ipairs({{single=true,value=0},{single=false,value=0},{single=true,value=math.huge},{single=false,value=math.huge}}) do
+				build.calcsTab.powerStat=case.single and {stat="SecondMinimalMaximumHitTaken"} or nil
+				build.calcsTab.powerMax={singleStat=case.value,offence=case.value,defence=case.value}
+				for _,node in pairs(build.spec.nodes) do node.power.singleStat=case.value;node.power.offence=case.value;node.power.defence=case.value end
+				ui:frame(function(viewport) viewer:Draw(build,viewport,{}) end)
+				local count,highlight=0,false
+				for _,command in ipairs(ui.commands) do for _,value in ipairs(command.color or {}) do
+					assert.is_true(type(value)=="number" and value==value and math.abs(value)<math.huge);count=count+1;if value>1.2 then highlight=true end
+				end end
+				assert.is_true(count>0);if case.value==math.huge then assert.is_true(highlight) end
+			end
+		end)
+		ui:restore();main.nodePowerTheme=oldTheme;assert.is_true(ok,message)
 	end)
 
 	it("calculates distinct node identities with identical modifiers independently",function()
@@ -103,6 +176,16 @@ describe("Encounter reporting and comparisons",function()
 		bank:gain(1,3); assert.are.equal(17,bank.charges)
 		assert.is_true(bank:use(2)); assert.are.equal(8,bank.charges)
 		bank:advance(4); assert.are.equal(10,bank.charges)
+	end)
+	it("blocks passive and hit or critical flask charges only while its effect lasts",function()
+		local sealed=encounter.charges({charges=10,used=10,generation=2,gain=1,duration=4,noGainDuringEffect=true},function() return 1 end)
+		local ordinary=encounter.charges({charges=10,used=10,generation=2},function() return 1 end)
+		assert.is_true(sealed:use(0));assert.is_true(ordinary:use(0))
+		local events=encounter.chargeEvents({sealed,ordinary},{{chargesWhenHit=3,critChance=100},{chargesWhenHit=3}},function() return 0 end)
+		events:hit(1);events:critical(1,0);assert.equal(0,sealed.charges);assert.equal(5,ordinary.charges)
+		sealed:update(2,4,1);assert.equal(0,sealed.charges);assert.equal(6.5,sealed:next(2))
+		sealed:advance(4);assert.equal(0,sealed.charges);sealed:gain(4,2);assert.equal(2,sealed.charges)
+		sealed:advance(5);ordinary:advance(5);assert.equal(6,sealed.charges);assert.equal(10,ordinary.charges)
 	end)
 
 	it("honors non-consumption without allowing repeated uses at the same timestamp",function()
@@ -209,6 +292,23 @@ describe("Encounter reporting and comparisons",function()
 		assert(not __mainObject__.promptMsg,__mainObject__.promptMsg)
 		return build.calcsTab.calcsOutput
 	end
+	it("applies the no-charge enchantment to the actual encounter flask trace",function()
+		local function trace(enchant)
+			newBuild()
+			local raw="Rarity: MAGIC\nGranite Flask\nItem Level: 86\n"..(enchant and "Implicits: 1\n{enchant}Gains no Charges during Effect\n" or "")
+			local flask=new("Item"):Item(raw);build.itemsTab:AddItem(flask)
+			build.itemsTab.slots["Flask 1"].selItemId=flask.id;build.itemsTab.slots["Flask 1"].active=true
+			calculate();build.configTab.input.customMods="+3000 to maximum Life\n+60% to Cold Resistance\nFlasks gain 10 Charges every 1 seconds"
+			build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg)
+			return build.calcsTab.calcsEnv.player.recoverySimulationTrace.points
+		end
+		local normal,sealed=trace(false),trace(true)
+		local function atOne(points)
+			for _,point in ipairs(points) do if point.time>=1-1e-8 then return point.chargesTotal end end
+			error("Missing one-second flask sample")
+		end
+		assert.is_true(atOne(normal)>atOne(sealed),"An active enchanted flask must not gain passive charges")
+	end)
 
 	it("does not apply quality twice to game tincture modifiers but retains external effect",function()
 		local claw=new("Item"):Item("Rarity: Normal\nImperial Claw")
@@ -234,6 +334,58 @@ describe("Encounter reporting and comparisons",function()
 		assert.is_true(speed("Item Class: Tinctures\n"..raw,"Tinctures applied to you have 20% increased effect") > final)
 	end)
 
+	it("retains copied tincture local-effect baseline when editing the item",function()
+		local claw=new("Item"):Item("Rarity: Normal\nImperial Claw");build.itemsTab:AddItem(claw);build.itemsTab.slots["Weapon 1"].selItemId=claw.id
+		build.skillsTab:PasteSocketGroup("Viper Strike 20/0  1");build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1])
+		local raw="Item Class: Tinctures\nRarity: MAGIC\nHorticultural Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 86\nQuality: 20\nImplicits: 0\n20% increased effect\n29% increased Attack Speed"
+		local function speed(text) local item=new("Item"):Item(text);build.itemsTab:AddItem(item);build.itemsTab.slots["Flask 1"].selItemId=item.id;build.itemsTab.slots["Flask 1"].active=true;build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg);return build.calcsTab.calcsOutput.Speed end
+		local original=new("Item"):Item(raw);assert.equal(20,original.tinctureImportedEffect);local saved=original:BuildRaw();assert.matches("Tincture Imported Effect: 20",saved,1,true)
+		local changed=(saved:gsub("20%% increased effect","40%% increased effect"));local restored=new("Item"):Item(changed)
+		assert.equal(20,restored.tinctureImportedEffect);assert.equal(40,restored.tinctureData.effectInc);assert.is_true(speed(changed)>speed(raw))
+		local negative=new("Item"):Item((raw:gsub("20%% increased effect","20%% reduced effect")));assert.equal(-20,negative.tinctureImportedEffect);assert.equal(-20,new("Item"):Item(negative:BuildRaw()).tinctureImportedEffect)
+	end)
+	it("applies quality changes to copied unique tincture effects",function()
+		local claw=new("Item"):Item("Rarity: Normal\nImperial Claw");build.itemsTab:AddItem(claw);build.itemsTab.slots["Weapon 1"].selItemId=claw.id
+		build.skillsTab:PasteSocketGroup("Viper Strike 20/0  1");build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1])
+		-- The modifier is synthetic to isolate the quality baseline in character calculations.
+		local raw="Item Class: Tinctures\nRarity: UNIQUE\nThe Battle Within\nOakbranch Tincture\nItem Level: 86\nQuality: 10\nImplicits: 0\n29% increased Attack Speed"
+		local function speed(text)
+			local item=new("Item"):Item(text);build.itemsTab:AddItem(item);build.itemsTab.slots["Flask 1"].selItemId=item.id;build.itemsTab.slots["Flask 1"].active=true
+			build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg);return build.calcsTab.calcsOutput.Speed
+		end
+		local before=speed(raw);local changed=raw;for _=1,10 do changed=require("Modules.CraftingUniqueQuality").apply(changed).itemText end
+		local after=speed(changed);local withoutBaseline=speed((raw:gsub("Quality: 10","Quality: 20")))
+		assert.is_true(after>before);assert.are.near(before,withoutBaseline,1e-8)
+	end)
+	it("scales newly rerolled tincture modifiers as base values",function()
+		local raw="Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed"
+		local result=require("Modules.CraftingSimulator").perform(raw,{method="alteration"},3);assert.is_true(result.state.tinctureBaseExplicit)
+		local claw=new("Item"):Item("Rarity: Normal\nImperial Claw");build.itemsTab:AddItem(claw);build.itemsTab.slots["Weapon 1"].selItemId=claw.id;build.skillsTab:PasteSocketGroup("Viper Strike 20/0  1");build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1])
+		local function speed(text) local item=new("Item"):Item(text);build.itemsTab:AddItem(item);build.itemsTab.slots["Flask 1"].selItemId=item.id;build.itemsTab.slots["Flask 1"].active=true;build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg);return build.calcsTab.calcsOutput.Speed end
+		local reference=result.itemText:gsub("\nTincture Values: Final",""):gsub("\nTincture Imported Quality: [^\n]+",""):gsub("\nTincture Imported Effect: [^\n]+",""):gsub("\nTincture Base Explicit: true","")
+		assert.are.near(speed(reference),speed(result.itemText),1e-8)
+		local withEffect=require("Modules.CraftingSimulator").perform(raw,{method="alteration"},11500000).itemText
+		assert.matches("17%% increased effect",withEffect);assert.equal(17,new("Item"):Item(withEffect).tinctureData.effectInc)
+		local baseReference=withEffect:gsub("\nTincture Values: Final",""):gsub("\nTincture Imported Quality: [^\n]+",""):gsub("\nTincture Imported Effect: [^\n]+",""):gsub("\nTincture Base Explicit: true","")
+		assert.are.near(speed(baseReference),speed(withEffect),1e-8)
+	end)
+	it("scales a newly added tincture suffix without rescaling copied values",function()
+		local common="Item Class: Tinctures\nRarity: MAGIC\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n"
+		local added=require("Modules.CraftingSimulator").perform(common.."26% reduced Mana Burn rate",{method="augmentation"},500000);assert.is_true(added.state.tinctureBaseSuffix)
+		local claw=new("Item"):Item("Rarity: Normal\nImperial Claw");build.itemsTab:AddItem(claw);build.itemsTab.slots["Weapon 1"].selItemId=claw.id;build.skillsTab:PasteSocketGroup("Viper Strike 20/0  1");build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1])
+		local function speed(text) local item=new("Item"):Item(text);build.itemsTab:AddItem(item);build.itemsTab.slots["Flask 1"].selItemId=item.id;build.itemsTab.slots["Flask 1"].active=true;build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg);return build.calcsTab.calcsOutput.Speed end
+		local reference=added.itemText:gsub("\nTincture Values: Final",""):gsub("\nTincture Imported Quality: [^\n]+",""):gsub("\nTincture Imported Effect: [^\n]+",""):gsub("\nTincture Base Suffix: true","")
+		assert.are.near(speed(reference),speed(added.itemText),1e-8)
+		local copied=common.."29% increased Melee Weapon Attack Speed";local withPrefix=require("Modules.CraftingSimulator").perform(copied,{method="augmentation"},3);assert.is_true(withPrefix.state.tinctureBasePrefix);assert.are.near(speed(copied),speed(withPrefix.itemText),1e-8)
+	end)
+	it("scales a rerolled tincture implicit as a base value",function()
+		local raw="Item Class: Tinctures\nRarity: MAGIC\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate"
+		local result=require("Modules.CraftingSimulator").perform(raw,{method="blessed"},5);assert.is_true(result.state.tinctureBaseImplicit)
+		local claw=new("Item"):Item("Rarity: RARE\nTest Claw\nImperial Claw\nAdds 100 to 200 Fire Damage");build.itemsTab:AddItem(claw);build.itemsTab.slots["Weapon 1"].selItemId=claw.id;build.skillsTab:PasteSocketGroup("Viper Strike 20/0  1");build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1])
+		local function dps(text) local item=new("Item"):Item(text);build.itemsTab:AddItem(item);build.itemsTab.slots["Flask 1"].selItemId=item.id;build.itemsTab.slots["Flask 1"].active=true;build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg);return build.calcsTab.calcsOutput.TotalDPS end
+		local reference=result.itemText:gsub("\nTincture Values: Final",""):gsub("\nTincture Imported Quality: [^\n]+",""):gsub("\nTincture Imported Effect: [^\n]+",""):gsub("\nTincture Base Implicit: true","")
+		local withoutMarker=(result.itemText:gsub("\nTincture Base Implicit: true",""));local actual=dps(result.itemText);assert.are.near(dps(reference),actual,1e-8);assert.is_true(actual>dps(withoutMarker))
+	end)
 	it("deactivates a native tincture at zero mana and removes its drain",function()
 		local tincture=new("Item"):Item("Rarity: Normal\nPrismatic Tincture")
 		build.itemsTab:AddItem(tincture); build.itemsTab.slots["Flask 1"].selItemId=tincture.id
@@ -251,7 +403,21 @@ describe("Encounter reporting and comparisons",function()
 		end
 		assert.is_truthy(deactivated)
 		assert.is_true(deactivated.time > 0.7)
+		local last=trace.points[#trace.points];assert.is_true(last.time>deactivated.time);assert.is_true(last.Mana==0)
 		assert.is_true(build.calcsTab.calcsOutput.RecoverySimulationSurvivalChance > 0)
+	end)
+
+	it("shows mana recovering in the trace after a tincture shuts off",function()
+		local tincture=new("Item"):Item("Rarity: Normal\nPrismatic Tincture")
+		build.itemsTab:AddItem(tincture);build.itemsTab.slots["Flask 1"].selItemId=tincture.id;build.itemsTab.slots["Flask 1"].active=true
+		calculate()
+		local input=build.configTab.input;input.recoverySimulationAttacking=false;input.recoverySimulationWindow=30
+		input.customMods="+3000 to maximum Life\n+60% to Cold Resistance\nRegenerate 1 Mana per second";input.multiplierManaBurnStacks=99
+		build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg)
+		local trace=build.calcsTab.calcsEnv.player.recoverySimulationTrace;local deactivated
+		for _,event in ipairs(trace.rows) do if event.event:find("Tincture deactivated",1,true) then deactivated=event;break end end
+		assert.is_truthy(deactivated);assert.is_true(deactivated.Mana==0)
+		local last=trace.points[#trace.points];assert.is_true(last.time>deactivated.time);assert.is_true(last.Mana>0)
 	end)
 
 	it("creates named scenarios using existing saved config sets",function()
@@ -368,6 +534,25 @@ describe("Encounter reporting and comparisons",function()
 		assert.are.same(expected,tab.calcsEnv.player.recoverySimulationResults)
 		assert.are.same(expectedTrace,tab.calcsEnv.player.recoverySimulationTrace.points)
 	end)
+	it("preserves timed tincture trials when projected calculations yield",function()
+		local tincture=new("Item"):Item("Rarity: Normal\nPrismatic Tincture")
+		build.itemsTab:AddItem(tincture);build.itemsTab.slots["Flask 1"].selItemId=tincture.id;build.itemsTab.slots["Flask 1"].active=true
+		calculate()
+		local tab=build.calcsTab;local tasks=require("Modules.RecoveryTasks")
+		local expected=copyTable(tab.calcsEnv.player.recoverySimulationResults)
+		local expectedTrace=copyTable(tab.calcsEnv.player.recoverySimulationTrace.points)
+		assert.is_truthy(expected)
+		tab:BuildOutput(true);local originalCache=GlobalCache;local calculator=GlobalCache.cachedData.CALCULATOR
+		local perform=tab.calcs.perform;local projections=0
+		tab.calcs.perform=function(env,...) if env.recoveryProjection and env.recoveryCheckpoint then projections=projections+1 end;return perform(env,...) end
+		local ok,message=pcall(function()
+			local steps=0;while tab.recoveryJob do tasks.tick(tab,0);steps=steps+1;assert.is_true(steps<5000);assert.are.equal(originalCache,GlobalCache);assert.are.equal(calculator,GlobalCache.cachedData.CALCULATOR) end
+			assert.is_true(steps>2);assert.is_true(projections>0);assert.is_falsy(tab.calcsOutput.RecoverySimulationUnsupported)
+		end)
+		tab.calcs.perform=perform;assert.is_true(ok,message)
+		assert.are.same(expected,tab.calcsEnv.player.recoverySimulationResults)
+		assert.are.same(expectedTrace,tab.calcsEnv.player.recoverySimulationTrace.points)
+	end)
 	it("replaces pending recovery on edits and keeps captured level and configuration",function()
 		calculate()
 		local tab=build.calcsTab;local tasks=require("Modules.RecoveryTasks")
@@ -380,6 +565,22 @@ describe("Encounter reporting and comparisons",function()
 		assert.are.same(expected,tab.calcsEnv.player.recoverySimulationResults)
 		assert.is_nil(previous.current.player.recoverySimulationResults)
 		build.characterLevel=level
+	end)
+	it("can replace a recovery job while a tincture projection is suspended",function()
+		local tincture=new("Item"):Item("Rarity: Normal\nPrismatic Tincture")
+		build.itemsTab:AddItem(tincture);build.itemsTab.slots["Flask 1"].selItemId=tincture.id;build.itemsTab.slots["Flask 1"].active=true
+		calculate();local tab=build.calcsTab;local tasks=require("Modules.RecoveryTasks")
+		local expected=copyTable(tab.calcsEnv.player.recoverySimulationResults);local perform=tab.calcs.perform;local entered=false
+		tab:BuildOutput(true);local cancelled=tab.recoveryJob;local cache=GlobalCache
+		tab.calcs.perform=function(env,...) if env.recoveryProjection and env.recoveryCheckpoint then entered=true;env.recoveryCheckpoint() end;return perform(env,...) end
+		local ok,message=pcall(function()
+			local steps=0;while not entered and tab.recoveryJob do tasks.tick(tab,0);steps=steps+1;assert.is_true(steps<5000);assert.are.equal(cache,GlobalCache) end
+			assert.is_true(entered);assert.are.equal(cancelled,tab.recoveryJob)
+		end)
+		tab.calcs.perform=perform;assert.is_true(ok,message)
+		tab:BuildOutput(true);assert.are_not.equal(cancelled,tab.recoveryJob)
+		local steps=0;while tab.recoveryJob do tasks.tick(tab,0);steps=steps+1;assert.is_true(steps<5000);assert.are.equal(cache,GlobalCache) end
+		assert.are.same(expected,tab.calcsEnv.player.recoverySimulationResults)
 	end)
 
 	it("keeps paired configuration comparisons identical when recovery yields",function()

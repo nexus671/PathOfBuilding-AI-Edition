@@ -36,21 +36,30 @@ function TextListClass:Draw(viewPort)
 		contentHeight = contentHeight + lineInfo.height
 	end
 	scrollBar:SetContentDimension(contentHeight, height - 4)
-	SetDrawColor(0.66, 0.66, 0.66)
+	if self.borderColor then SetDrawColor(self.borderColor) else SetDrawColor(0.66, 0.66, 0.66) end
 	DrawImage(nil, x, y, width, height)
-	SetDrawColor(0.05, 0.05, 0.05)
+	if self.backgroundColor then SetDrawColor(self.backgroundColor) else SetDrawColor(0.05, 0.05, 0.05) end
 	DrawImage(nil, x + 1, y + 1, width - 2, height - 2)
 	self:DrawControls(viewPort)
 	SetViewport(x + 2, y + 2, width - 20, height - 4)
 	for colIndex, colInfo in pairs(self.columns) do
 		local lineY = -scrollBar.offset
 		for _, lineInfo in ipairs(self.list) do
-			if lineInfo[colIndex] then
+			if lineInfo[colIndex] and lineY+lineInfo.height>=0 and lineY<height-4 then
+				if colIndex==1 and lineInfo.card then SetDrawColor("^x344253");DrawImage(nil,2,lineY+2,width-24,lineInfo.height-8);SetDrawColor("^x151E29");DrawImage(nil,3,lineY+3,width-26,lineInfo.height-10) end
+				if colIndex==1 and lineInfo.selected then SetDrawColor("^x30445B");DrawImage(nil,0,lineY,width-20,lineInfo.height) end
+				if colIndex==1 and lineInfo.iconPath then
+					self.rowIcons=self.rowIcons or {};local icon=self.rowIcons[lineInfo.iconPath]
+					if not icon then icon=NewImageHandle();icon:Load(lineInfo.iconPath);self.rowIcons[lineInfo.iconPath]=icon end
+					SetDrawColor(1,1,1);DrawImage(icon,4,lineY+3,26,26)
+				end
 				local textX = lineInfo.x or colInfo.x
 				local align = lineInfo.align or colInfo.align
-				DrawString(textX, lineY, align, lineInfo.height, lineInfo.font or "VAR", lineInfo[colIndex])
+				DrawString(textX, lineY, align, lineInfo.textSize or lineInfo.height, lineInfo.font or "VAR", lineInfo[colIndex])
+				if colIndex==1 and lineInfo.subtitle then SetDrawColor("^xA6B3C6");DrawString(textX,lineY+19,"LEFT",13,"VAR",lineInfo.subtitle) end
+				if colIndex==1 and lineInfo.detail then SetDrawColor("^xD5DEE8");DrawString(textX,lineY+44,"LEFT",14,"VAR",lineInfo.detail) end
 				if lineInfo.underline and lineInfo.underline[colIndex] then
-					local width = DrawStringWidth(lineInfo.height, "VAR", StripEscapes(lineInfo[colIndex]))
+					local width = DrawStringWidth(lineInfo.textSize or lineInfo.height, "VAR", StripEscapes(lineInfo[colIndex]))
 					-- note: not fully handled. this is currently only used for
 					-- the side bar stats
 					if align == "RIGHT_X" then
@@ -84,6 +93,7 @@ function TextListClass:OnKeyDown(key, doubleClick)
 	if not self:IsShown() or not self:IsEnabled() then
 		return
 	end
+	if self.planningFocusable and key:match("BUTTON") and not self:IsMouseOver() then return end
 	if key == "LEFTBUTTON" and self.onClick then
 		self.onClick(self.hoveredLine)
 	end
@@ -91,6 +101,7 @@ function TextListClass:OnKeyDown(key, doubleClick)
 	if mOverControl and mOverControl.OnKeyDown then
 		return mOverControl:OnKeyDown(key)
 	end
+	if key=="LEFTBUTTON" and self.planningFocusable then return self end
 end
 
 function TextListClass:OnKeyUp(key)
@@ -120,4 +131,5 @@ function TextListClass:OnKeyUp(key)
 		scrollBar:Scroll(-1)
 		return self
 	end
+	if self.planningFocusable then return self end
 end

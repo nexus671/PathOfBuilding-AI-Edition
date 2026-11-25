@@ -73,17 +73,13 @@ def create_manifest(version: str | None = None, replace: bool = False) -> None:
         logging.critical(f"Manifest configuration file not found in path '{base_path}'")
         return
 
-    base_url = "https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding/{branch}/"
-    parts: list[dict[str, str]] = []
-    for part in config.sections():
-        url = base_url + config[part]["path"]
-        url_with_trailing_slash = url if url.endswith("/") else url + "/"
-        attributes = (
-            {"part": part, "platform": "win32", "url": url_with_trailing_slash}
-            if part == "runtime"
-            else {"part": part, "url": url_with_trailing_slash}
-        )
-        parts.append(attributes)
+    # The manifest is the release's source of truth: regenerating it must not
+    # silently redirect an AI Edition installation to the community fork.
+    parts = [dict(source.attrib) for source in old_root.findall("Source")]
+    if not parts or any(not source.get("part") or not source.get("url") for source in parts):
+        raise ValueError("Existing manifest must contain valid download sources")
+    if set(config.sections()) != {source["part"] for source in parts}:
+        raise ValueError("Manifest sources and configured parts do not match")
 
     files: list[dict[str, str]] = []
     for section in config.sections():
@@ -93,6 +89,8 @@ def create_manifest(version: str | None = None, replace: bool = False) -> None:
         exclude_dirs = _parse_list_option(config, section, "exclude-directories")
         source = pathlib.Path(config[section]["path"])
         for path in source.glob("**/*.*"):
+            if not path.is_file():
+                continue
             if include_files and not _exclude_file(include_files, path):
                 continue
             if include_dirs and not _exclude_directory(include_dirs, path):
@@ -108,11 +106,34 @@ def create_manifest(version: str | None = None, replace: bool = False) -> None:
             sha1 = hashlib.sha1(data).hexdigest()
             name = path.relative_to(config[section]["path"]).as_posix()
             attributes = (
-                {"name": name, "part": section, "runtime": "win32", "sha1": sha1}
-                if path.suffix in [".dll", ".exe"]
+                {"name": name, "part": section, "platform": "win32", "sha1": sha1}
+                if section == "runtime" or path.suffix.lower() in [".dll", ".exe"]
                 else {"name": name, "part": section, "sha1": sha1}
             )
             files.append(attributes)
+
+    # Older fork manifests include a subset of Export files that the current
+    # configuration excludes. Keep and rehash already published entries; a
+    # missing file must be reviewed rather than silently disappearing.
+    present = {(entry["part"], entry["name"]) for entry in files}
+    for entry in old_root.findall("File"):
+        part, name = entry.get("part"), entry.get("name")
+        if not part or part not in config or not name:
+            raise ValueError("Invalid existing manifest file entry")
+        relative = pathlib.PurePosixPath(name)
+        if relative.is_absolute() or ".." in relative.parts or "\\" in name:
+            raise ValueError(f"Invalid existing manifest path: {name}")
+        if (part, name) not in present:
+            path = pathlib.Path(config[part]["path"]) / relative
+            if not path.is_file():
+                raise ValueError(f"Existing manifest file is missing: {part}/{name}")
+            data = path.read_bytes()
+            if b"\0" not in data:
+                data = re.sub(rb"\r\n?|\n", b"\r\n", data)
+            attributes = dict(entry.attrib)
+            attributes["sha1"] = hashlib.sha1(data).hexdigest()
+            files.append(attributes)
+            present.add((part, name))
 
     files.sort(key=lambda attr: (attr["part"], _alphanumeric(attr["name"])))
 

@@ -1373,6 +1373,7 @@ end
 
 --- @class CharacterItemsData : CharacterBasicData
 --- @field equipment GGGItem[]
+--- @field wickerman? GGGItem[]
 --- @param charData CharacterItemsData
 --- @param clearItems boolean
 --- @param clearSkills boolean
@@ -1421,6 +1422,9 @@ function ImportTabClass:ImportItemsAndSkills(charData, clearItems, clearSkills, 
 			self:ImportItem(itemData, nil, ignoreWeaponSwap, guardianSet.id)
 		end
 		self:AssignGuardianItemSet(guardianSet.id)
+	end
+	for _, itemData in ipairs(charData.wickerman or { }) do
+		self:ImportItem(itemData)
 	end
 	if skillOrder then
 		local groupOrder = { }
@@ -1490,9 +1494,10 @@ function ImportTabClass:ImportItemsAndSkills(charData, clearItems, clearSkills, 
 	return charData, colorCodes.POSITIVE .. "Items and skills successfully imported."
 end
 
-local rarityMap = { [0] = "NORMAL", "MAGIC", "RARE", "UNIQUE", [9] = "RELIC", [10] = "RELIC" }
+local rarityMap = { [0] = "NORMAL", "MAGIC", "RARE", "UNIQUE", [9] = "RELIC", [10] = "RELIC", [15] = "NORMAL" }
 local slotMap = { ["Weapon"] = "Weapon 1", ["Offhand"] = "Weapon 2", ["Weapon2"] = "Weapon 1 Swap", ["Offhand2"] = "Weapon 2 Swap", ["Helm"] = "Helmet", ["BodyArmour"] = "Body Armour", ["Gloves"] = "Gloves", ["Boots"] = "Boots",
-				  ["Amulet"] = "Amulet", ["Ring"] = "Ring 1", ["Ring2"] = "Ring 2", ["Ring3"] = "Ring 3", ["Belt"] = "Belt",  ["BrequelGrafts"] = "Graft 1", ["BrequelGrafts2"] = "Graft 2", }
+				  ["Amulet"] = "Amulet", ["Ring"] = "Ring 1", ["Ring2"] = "Ring 2", ["Ring3"] = "Ring 3", ["Belt"] = "Belt",  ["BrequelGrafts"] = "Graft 1", ["BrequelGrafts2"] = "Graft 2",
+				  ["VisceraHead"] = "Wickerman Head", ["VisceraBody"] = "Wickerman Torso", ["VisceraArm"] = "Wickerman Upper Limb", ["VisceraLeg"] = "Wickerman Lower Limb", }
 
 function ImportTabClass:ImportItem(itemData, slotName, ignoreWeaponSwap, itemSetId)
 	if not slotName then
@@ -1542,7 +1547,27 @@ function ImportTabClass:ImportItem(itemData, slotName, ignoreWeaponSwap, itemSet
 			itemData.implicitMods = { }
 			itemData.explicitMods = { }
 		end
+		-- Lesser and Greater Wickerman names overlap ordinary names: prefer the exact base.
+		local exactBase = self.build.data.itemBases[item.name]
+		if exactBase and exactBase.type == "Viscera" then
+			item.baseName = item.name
+			item.type = exactBase.type
+		end
+		if itemData.frameType == 15 and not item.baseName then
+			-- A prefixed Viscera must not resolve to an unrelated equipment base.
+			-- Prefer the longest matching Viscera base when names overlap.
+			local best,first,last
+			for baseName,baseData in pairs(self.build.data.itemBases) do
+				local s,e=item.name:find(baseName,1,true)
+				if s and baseData.type == "Viscera" and (not best or #baseName>#best) then best,first,last=baseName,s,e end
+			end
+			if not best then return end
+			item.baseName=best;item.namePrefix=item.name:sub(1,first-1);item.nameSuffix=item.name:sub(last+1);item.type=self.build.data.itemBases[best].type
+		end
 		for baseName, baseData in pairs(self.build.data.itemBases) do
+			if item.baseName then
+				break
+			end
 			local s, e = item.name:find(baseName, 1, true)
 			if s then
 				item.baseName = baseName
@@ -1862,8 +1887,9 @@ function ImportTabClass:ImportSocketedItems(item, socketedItems, slotName)
 				local socketGroup = itemSocketGroupList[groupID]
 				t_insert(socketGroup.gemList, gemInstance)
 				if socketedItem.builtInSupport then
-					socketGroup.imbuedSupport = socketedItem.builtInSupport:gsub("Supported by Level 1 ", "")
-					self.build.skillsTab.controls.imbuedSupport.gemChangeFunc(data.gems[data.gemForBaseName[socketGroup.imbuedSupport:lower().." support"]], nil, nil, true, slotName)
+					local name = escapeGGGString(socketedItem.builtInSupport):gsub("Supported by Level 1 ", "")
+					local gem = self.build.skillsTab:FindImbuedSupport(name)
+					socketGroup.imbuedSupport = gem and gem.name or name
 				end
 			end
 		end
@@ -1890,6 +1916,7 @@ function ImportTabClass:ImportSocketedItems(item, socketedItems, slotName)
 		end
 		if repGroup then
 			-- Update the existing one
+			repGroup.imbuedSupport = repGroup.slot and itemSocketGroup.imbuedSupport or nil
 			for gemIndex, gem in pairs(repGroup.gemList) do
 				local itemGem = itemSocketGroup.gemList[gemIndex]
 				gem.level = itemGem.level
@@ -1899,7 +1926,11 @@ function ImportTabClass:ImportSocketedItems(item, socketedItems, slotName)
 			t_insert(self.build.skillsTab.socketGroupList, itemSocketGroup)
 		end
 		self.build.skillsTab:ProcessSocketGroup(itemSocketGroup)
+		if repGroup and repGroup == self.build.skillsTab.displayGroup then
+			self.build.skillsTab:SetDisplayGroup(repGroup)
+		end
 	end
+	self.build.skillsTab:RebuildImbuedSupportBySlot()
 end
 
 -- Return the index of the group with the most gems

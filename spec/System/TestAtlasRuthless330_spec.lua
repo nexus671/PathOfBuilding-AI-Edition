@@ -1,0 +1,53 @@
+describe("3.30 Ruthless Atlas preview",function()
+	local atlas=require("Modules.AtlasPlanner")
+	local version="3.30.0-preview-ruthless"
+	it("loads the official Ruthless graph with its own node descriptions and shared art",function()
+		local tree=atlas.tree(version);local standard=atlas.tree("3.30.0-preview")
+		assert.equal("ruthless",tree.mode);assert.equal(150,tree.maxPoints);assert.is_true(tree.preview)
+		assert.equal("4dc8e707da02fc5039671e8ec490ed5315ce8a384f5024cf6a4d08bc70142559",tree.sha256)
+		assert.equal("8febfece08bccfea3982e67811ccd3badb2dacf5b1d48753bff4d9a5a8e52fa4",tree.leagueSha256)
+		assert.same({"Tier 1-15 Maps found have 3% chance to become 1 tier higher"},tree.nodes[57123].stats)
+		assert.not_same(standard.nodes[57123].stats,tree.nodes[57123].stats)
+		assert.same(standard.nodes[57123].links,tree.nodes[57123].links)
+		assert.is_truthy(require("Modules.AtlasArt").load(version))
+	end)
+	it("defaults Ruthless characters correctly and keeps mode in plans and reports",function()
+		assert.equal("3.30.0c-ruthless",atlas.defaultVersion("3_30_ruthless"));assert.equal("3.30.0c",atlas.defaultVersion("3_30"))
+		local plan=atlas.connect({id="ruthless",title="Ruthless Atlas",version=version,budget=150,nodes={}}, {57123})
+		assert.equal("Ruthless",atlas.report(plan).mode)
+		local restored=atlas.import(atlas.export(plan),version);assert.same(plan.nodes,restored.nodes);assert.equal(version,restored.version)
+		assert.same(plan.nodes,atlas.import(atlas.url(plan),version).nodes)
+		assert.has_error(function() atlas.import("https://www.pathofexile.com/fullscreen-atlas-skill-tree/AAAA",version) end)
+	end)
+	it("imports and exports official Ruthless links without adding the free start",function()
+		-- Captured from the official Ruthless tree after allocating two adjacent nodes.
+		-- cspell:ignore HYAAA
+		local token="AAAABgAAAh_EuHYAAA=="
+		local official="https://www.pathofexile.com/atlas-skill-tree/ruthless/"..token
+		local full="https://www.pathofexile.com/fullscreen-atlas-skill-tree/ruthless/"..token
+		local plan=atlas.import(official,version)
+		assert.same({8132,47222},plan.nodes)
+		assert.equal(full,atlas.url(plan))
+		assert.same(plan.nodes,atlas.import(full,version).nodes)
+		assert.same(plan.nodes,atlas.import(full:gsub("/ruthless/","/ruthless-league/"),version).nodes)
+		assert.has_error(function() atlas.import(full:gsub("/ruthless/","/ruthless-league/"),"3.29.3-ruthless") end)
+		assert.has_error(function() atlas.import(official,"3.30.0-preview") end)
+		assert.has_error(function() atlas.import(full:gsub("/ruthless/","/"),version) end)
+		local empty={id="empty",title="Empty",version=version,budget=150,nodes={}}
+		assert.same({},atlas.import(atlas.url(empty),version).nodes)
+	end)
+	it("loads historical Ruthless Standard graphs and chooses matching defaults",function()
+		for _,case in ipairs({{"3.27.0-ruthless","3.27.0",132,"f3df4307bcb35ff807822173954b050c171ce8c63cf4c04ceb024cdfffa2ff68"},
+			{"3.29.1-ruthless","3.29.1",138,"51fa3eddcd73e31f91def9c3d7c0cb3ddf9e917f016d0a145a104dfd64d2da6b"},
+			{"3.29.3-ruthless","3.29.3",138,"08027e339b6edfec7b571cfb080d45c55edf5090df2134b3d1dee3e3f99f480f"}}) do
+			local tree=atlas.tree(case[1]);assert.equal("ruthless",tree.mode);assert.equal(case[3],tree.maxPoints);assert.equal(case[4],tree.sha256)
+			assert.same({"Ruthless Standard"},tree.compatibleModes)
+			assert.same({"Beyond Portals in your Maps have 5% increased Merging Radius"},tree.nodes[27].stats)
+			assert.not_same(atlas.tree(case[2]).nodes[27].stats,tree.nodes[27].stats)
+			assert.is_truthy(require("Modules.AtlasArt").load(case[1]))
+			local plan=atlas.connect({id="historic",title="Historical Ruthless",version=case[1],budget=case[3],nodes={}}, {27})
+			assert.equal(case[1],atlas.import(atlas.export(plan),case[1]).version);assert.equal("Ruthless",atlas.report(plan).mode)
+		end
+		assert.equal("3.27.0-ruthless",atlas.defaultVersion("3_27_ruthless"));assert.equal("3.29.3-ruthless",atlas.defaultVersion("3_29_ruthless"))
+	end)
+end)

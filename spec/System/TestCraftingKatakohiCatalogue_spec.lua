@@ -1,0 +1,85 @@
+-- cspell:ignore Katakohi
+
+describe("Katakohi enchantment catalogue",function()
+ local sim=require("Modules.CraftingSimulator")
+ it("lists the 24 pinned modifiers without inventing roll probabilities",function()
+  local raw="Rarity: NORMAL\nIron Gauntlets\nItem Level: 86"
+  local catalog=sim.catalog(raw,"",100);assert.equal(24,#catalog.katakohiEnchants);assert.matches("not probabilities",catalog.katakohiNote)
+  for _,row in ipairs(catalog.katakohiEnchants) do assert.equal("-1 to maximum Sockets",row.lines[1]);assert.equal(20,row.requiredLevel);assert.is_nil(row.chance) end
+  local movement=sim.catalog(raw,"Movement Speed",100);assert.equal(1,#movement.katakohiEnchants);assert.equal("DeepwaterTattooEnchantDexMovementSpeed",movement.katakohiEnchants[1].id)
+  assert.equal(2,#sim.catalog(raw,"",2).katakohiEnchants)
+  assert.is_nil(sim.catalog("Rarity: NORMAL\nIron Hat\nItem Level: 86","",100).katakohiEnchants)
+ end)
+end)
+
+describe("Hypothetical socket enchantments",function()
+ local sim=require("Modules.CraftingSimulator")
+ local raw="Rarity: NORMAL\nIron Gauntlets\nItem Level: 86\nSockets: W-W-W-W"
+ local movement="DeepwaterTattooEnchantDexMovementSpeed"
+ local fire="DeepwaterTattooEnchantStrGlobalFireDamage"
+ it("previews and saves chosen enchantments with reduced sockets",function()
+  newBuild();local model=sim.model(raw);local before=copyTable(model.initial)
+  local state=sim.setKatakohi(model,before,{movement,fire})
+  assert.same(model.initial,before);assert.equal(2,#state.sockets);assert.equal(2,sim.socketLimit(model,state))
+  local item=sim.toItem(model,state);assert.equal(4,#item.enchantModLines);assert.matches("6%% increased Movement Speed",item.raw);assert.matches("20%% increased Fire Damage",item.raw)
+  local reopened=sim.model(item.raw);assert.equal(2,sim.socketLimit(reopened,reopened.initial));assert.equal(2,reopened.item.selectableSocketCount)
+  assert.same({movement,fire},require("Modules.CraftingKatakohi").identify(reopened.item))
+  runCallback("OnFrame");local beforeSpeed=build.calcsTab.mainOutput.MovementSpeedMod
+  build.itemsTab:CreateDisplayItemFromRaw(item.raw);build.itemsTab:AddDisplayItem();runCallback("OnFrame")
+  assert.are.near(beforeSpeed+0.06,build.calcsTab.mainOutput.MovementSpeedMod,1e-9)
+  local project={id="katakohi",title="Socket enchantments",slot="Gloves",startingItem=raw,goals={},steps={}}
+  project.inventory={require("Modules.CraftingInventory").capture(project,state,"Hypothetical gloves")};build.savers.CraftingProjects:Upsert(project)
+  local xml=build:SaveDB("Enchanted gloves");loadBuildFromXML(xml,"Enchanted gloves")
+  assert.same({movement,fire},build.savers.CraftingProjects.projects[1].inventory[1].state.katakohiEnchants)
+ end)
+ it("only recognizes complete and unambiguous imported enchantments",function()
+  local identify=require("Modules.CraftingKatakohi").identify
+  local function gloves(...) local lines={};for _,line in ipairs({...}) do lines[#lines+1]={line=line} end;return {type="Gloves",enchantModLines=lines} end
+  assert.same({},identify(gloves()))
+  assert.same({movement,fire},identify(gloves("-2 to maximum Sockets","6% increased Movement Speed","20% increased Fire Damage")))
+  assert.is_nil(identify(gloves("-1 to maximum Sockets","6% increased Movement Speed","Unknown enchantment")))
+  assert.is_nil(identify(gloves("-1 to maximum Sockets","6% increased Movement Speed","6% increased Movement Speed")))
+  assert.is_nil(identify(gloves("-2 to maximum Sockets","6% increased Movement Speed")))
+ end)
+ it("rejects duplicate, unknown and ineligible choices",function()
+  local model=sim.model(raw)
+  assert.is_false(pcall(sim.setKatakohi,model,model.initial,{movement,movement}))
+  assert.is_false(pcall(sim.setKatakohi,model,model.initial,{"unknown"}))
+  assert.is_false(pcall(sim.setKatakohi,sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86"),model.initial,{movement}))
+  local low=sim.model(raw:gsub("86","10"));assert.is_false(pcall(sim.setKatakohi,low,low.initial,{movement}))
+ end)
+ it("matches socket enchantment targets on edited and imported gloves",function()
+  local model=sim.model(raw);local state=sim.setKatakohi(model,model.initial,{movement,fire})
+  local rows=require("Modules.CraftingModifiers").inspect(model,state).rows;local found
+  for _,row in ipairs(rows) do if row.id==movement then found=row;break end end
+  assert.is_not_nil(found);assert.is_nil(found.chance)
+  local target={{scope="enchant",anyOf={movement}}}
+  assert.is_true(sim.matches(state,target,nil,model))
+  assert.is_false(sim.matches(state,{{scope="implicit",anyOf={movement}}},nil,model))
+  assert.is_true(sim.matches(state,{{scope="enchant",anyOf={movement,fire},atLeast=2}},nil,model))
+  assert.is_false(sim.matches(state,{{scope="enchant",anyOf={movement},fractured=true}},nil,model))
+  local imported=sim.model(sim.toItem(model,state).raw)
+  assert.is_true(sim.matches(imported.initial,target,nil,imported))
+  local cleared=sim.setKatakohi(imported,imported.initial,{})
+  assert.is_false(sim.matches(cleared,target,nil,imported))
+  local recipe={steps={{method="alchemy"}},targets=target}
+  sim.validateRecipe(recipe)
+  local result=sim.simulate(imported.raw,recipe,{trials=2,maxActions=2})
+  assert.equal(2,result.successes)
+  local unknown=sim.model(raw.."\nImplicits: 1\n{enchant}Unknown enchantment")
+  local ok,reason=pcall(sim.matches,unknown.initial,{{scope="enchant",anyOf={movement},negate=true}},nil,unknown)
+  assert.is_false(ok);assert.matches("could not be identified",reason)
+ end)
+ it("treats explicitly cleared imported enchantments as absent everywhere",function()
+  local model=sim.model(raw);local etched=sim.setKatakohi(model,model.initial,{movement,fire})
+  local item=sim.toItem(model,etched);local imported=sim.model(item.raw)
+  local state=sim.validateState(imported,{rarity="NORMAL",affixes={},enchantCleared=true})
+  assert.equal(4,sim.socketLimit(imported,state));assert.equal(2,#state.sockets)
+  assert.equal(0,#sim.toItem(imported,state).enchantModLines)
+  assert.is_true(sim.matches(state,{{scope="enchant",anyOf={movement},negate=true}},nil,imported))
+  local expanded=sim.perform(item.raw,{method="socket_bench",count=4},1,state);assert.equal(4,#expanded.state.sockets)
+  local unknown=sim.model(raw.."\nImplicits: 1\n{enchant}Unknown enchantment")
+  local cleared=sim.validateState(unknown,{rarity="NORMAL",affixes={},enchantCleared=true})
+  assert.is_true(sim.matches(cleared,{{scope="enchant",anyOf={movement},negate=true}},nil,unknown))
+ end)
+end)

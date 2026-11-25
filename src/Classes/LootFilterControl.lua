@@ -1,0 +1,482 @@
+-- A graphical rule workbench. Raw filter text is confined to import/export.
+local ui=require("Modules.PlanningUI")
+local filters=require("Modules.LootFilters")
+local parser=require("Modules.LootFilterParser")
+local M={}
+local sampleFields={"BaseType","Class","Rarity","ItemLevel","AreaLevel","DropLevel","Width","Height","UnidentifiedItemTier","SocketGroup","Sockets","SocketColours","LinkedSockets","StackSize","GemLevel","MapTier","Quality","BaseDefencePercentile","MemoryStrands","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence","HasExplicitMod"}
+local function additionalSampleFields()
+	local seen=copyTable(parser.poe2Only);for _,key in ipairs(sampleFields) do seen[key]=true end
+	local fields={};for _,group in ipairs({parser.numeric,parser.booleans,parser.strings}) do for key in pairs(group) do if not seen[key] then fields[#fields+1]=key;seen[key]=true end end end
+	table.sort(fields);return fields
+end
+local function button(c,key,x,y,w,label,run) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,w,28},label,run);return c[key] end
+local function notify(title,message)
+	local c={};local w,h=math.min(760,main.screenW-40),math.min(360,main.screenH-60)
+	ui.description(c,"message",16,28,w-32,h-100,{tostring(message)},16)
+	button(c,"close",w-156,h-48,140,"Close",function() main:ClosePopup() end);ui.style(c);main:OpenPopup(w,h,title,c,"close",nil,"close")
+end
+local function attempt(callback) local ok,why=pcall(callback);if not ok then notify("Loot filter",ui.errorText(why)) end end
+local function modal(title,raw,save,existing)
+	local c={};local pending,pendingText,pendingPath;local w,h=math.min(860,main.screenW-40),math.min(570,main.screenH-60)
+	local attached={};for _,file in ipairs(existing or {}) do attached[file.name]=true end
+	ui.description(c,"help",16,28,w-32,44,{save and "Paste a filter or load a local filter file. Original text is preserved; personal rules stay separate." or "Copy the filter text, or export a file for your game mode. Copy does not change any game files."},14)
+	c.text=new("EditControl"):EditControl(ui.anchor,{16,84,w-32,h-(save and 205 or 150)},raw,nil,"^%C\t\n",filters.limit,nil,14,true)
+	if save then
+		ui.label(c,"pathLabel",16,h-114,"Local file path",14)
+		c.path=new("EditControl"):EditControl(ui.anchor,{16,h-96,w-284,26},"",nil,nil,1024)
+		local function loadFile() attempt(function() local text=require("Modules.LootFilterImports").readFile(c.path.buf,filters.limit);c.text:SetText(text);pending=nil end) end
+		button(c,"browseFile",w-256,h-96,100,"Browse",function() require("Classes.LootFilterFileBrowser").Open(c.path.buf,function(path) c.path:SetText(path);loadFile() end) end)
+		button(c,"loadFile",w-148,h-96,132,"Load file",loadFile)
+		button(c,"loadLinked",304,h-48,180,"Load linked files",function() attempt(function()
+			local imports=require("Modules.LootFilterImports");pending=imports.collectLocal(c.text.buf,c.path.buf,filters.limit);pendingText=c.text.buf;pendingPath=c.path.buf
+			local entries={};for _,file in ipairs(pending.files) do entries[#entries+1]={id=file.name,label=file.name,category="Loaded",details={"Loaded from the selected filter's folder.",attached[file.name] and "Using this import replaces the existing attached copy with this name." or "This copy will be kept with the imported filter."}} end
+			for _,issue in ipairs(pending.issues) do local status=issue.optional and "Optional file not loaded" or "File not loaded";entries[#entries+1]={id=issue.name,label=issue.name,category=status,details={status,issue.reason}} end
+			local ok,unresolved=pcall(imports.unresolved,c.text.buf,pending.files,filters.limit)
+			if ok then for _,row in ipairs(unresolved) do if row.cycle then entries[#entries+1]={id=row.name,label=row.name,category="Circular reference",details={"A circular reference remains unresolved. Edit the included files to break the cycle."}} end end
+			else entries[#entries+1]={id="preview",label="Expanded filter could not be checked",category="Review",details={tostring(unresolved)}} end
+			if #entries==0 then notify("Linked filter files","No linked filter files were found.") else require("Classes.PlanningBrowserControl").Open("Linked filter files",entries) end
+		end) end)
+		c.loadLinked.label=function() return pending and ("Linked: "..#pending.files.." loaded") or "Load linked files" end
+		c.loadLinked.tooltipText="Load referenced sibling filter files, including nested references. Other paths remain unresolved."
+	end
+	button(c,"copy",16,h-48,124,"Copy filter",function() Copy(c.text.buf) end)
+	if save then button(c,"import",152,h-48,140,"Use import",function() attempt(function() assert(not pending or c.text.buf==pendingText and c.path.buf==pendingPath,"The filter text or path changed; load linked files again.");save(c.text.buf,pending and pending.files);main:ClosePopup() end) end) end
+	button(c,"close",w-140,h-48,124,"Close",function() main:ClosePopup() end)
+	ui.style(c);main:OpenPopup(w,h,title,c,nil,"text","close")
+end
+function M.Conditions(rule,save,mode)
+	local c={};local w,h=math.min(880,main.screenW-40),math.min(600,main.screenH-60);local parsed=parser.parse(rule.text);local block=parsed.rules[1]
+	local conditions=copyTable(block.conditions);local keywords={"BaseType","Class","Rarity","ItemLevel","AreaLevel","Quality","BaseDefencePercentile","MemoryStrands","LinkedSockets","Sockets","SocketGroup","GemLevel","MapTier","StackSize","UnidentifiedItemTier","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence"}
+	local known=copyTable(parser.poe2Only);for _,key in ipairs(keywords) do known[key]=true end
+	local additional={};for _,group in ipairs({parser.numeric,parser.booleans,parser.strings}) do for key in pairs(group) do if not known[key] then additional[#additional+1]=key;known[key]=true end end end
+	table.sort(additional);for _,key in ipairs(additional) do keywords[#keywords+1]=key end
+	for _,condition in ipairs(conditions) do local known=false;for _,k in ipairs(keywords) do if k==condition.keyword then known=true end end;if not known then keywords[#keywords+1]=condition.keyword end end
+	ui.label(c,"nameLabel",16,28,"Rule name",14);c.title=new("EditControl"):EditControl(ui.anchor,{16,50,w-200,26},rule.title,nil,nil,160)
+	c.action=new("DropDownControl"):DropDownControl(ui.anchor,{w-168,50,152,26},parser.actionChoices(mode,block.action));c.action:SelByValue(block.action)
+	ui.description(c,"hint",16,88,w-32,42,{"All conditions must match. Enter a value for each condition; use quotes for names with spaces. Unidentified explicit modifiers cannot be inspected."},14)
+	c.hint.shown=function() return not parser.actionReason(mode,c.action:GetSelValue()) end
+	ui.label(c,"modeNotice",16,88,"",14);c.modeNotice.label=function() local reason=parser.actionReason(mode,c.action:GetSelValue());return reason and "^xFFD27F"..reason or "" end
+	c.action.tooltipText=function() return parser.actionReason(mode,c.action:GetSelValue()) or "Choose how matching drops are displayed." end
+	local rows=math.max(1,math.floor((h-330)/40));local offset=1;local dialog
+	ui.label(c,"conditionFieldLabel",16,128,"Condition",14)
+	ui.label(c,"conditionOperatorLabel",218,128,"Operator",14)
+	ui.label(c,"conditionValueLabel",302,128,"Value",14)
+	local function actionY() return 150+math.min(rows,math.max(0,#conditions-offset+1))*40 end
+	local function drawConditions()
+		offset=math.min(offset,math.max(1,#conditions-rows+1))
+		for i=1,rows do
+			local index=offset+i-1;local condition=conditions[index];local y=150+(i-1)*40
+			for _,suffix in ipairs({"key","op","values","remove"}) do c["c"..i..suffix]=nil end
+			if condition then
+				c["c"..i.."key"]=new("DropDownControl"):DropDownControl(ui.anchor,{16,y,190,26},keywords,function(_,value) condition.keyword=value end);c["c"..i.."key"]:SelByValue(condition.keyword)
+				c["c"..i.."op"]=new("DropDownControl"):DropDownControl(ui.anchor,{218,y,72,26},{"=","==",">=","<=",">","<","!=","!"},function(_,value) condition.operator=value end);c["c"..i.."op"]:SelByValue(condition.operator)
+				local values={};for j,v in ipairs(condition.values) do values[#values+1]=(condition.quoted and condition.quoted[j] or v:find(" ",1,true)) and filters.quote(v) or v end
+				c["c"..i.."values"]=new("EditControl"):EditControl(ui.anchor,{302,y,w-366,26},table.concat(values," "),nil,nil,2000,function(value) local ok,result,quoted=pcall(parser.tokens,value);condition.invalid=not ok;if ok then condition.values=result;condition.quoted=quoted end end)
+				button(c,"c"..i.."remove",w-52,y,36,"X",function() table.remove(conditions,index);drawConditions() end)
+			end
+		end
+		if dialog then for _,control in pairs(c) do if not control.anchor.other then control.anchor.other=dialog end end;ui.style(c,{keepRule=true}) end
+	end
+	local styleY=h-124
+	ui.label(c,"themeLabel",16,styleY-24,"Label style",14)
+	c.theme=new("DropDownControl"):DropDownControl(ui.anchor,{16,styleY,160,26},{"Keep original","Gold / cyan","High contrast"})
+	c.sound=new("DropDownControl"):DropDownControl(ui.anchor,{188,styleY,164,26},{"Keep sound","Silent","Alert 2","Alert 6"})
+	button(c,"addCondition",16,actionY,140,"Add condition",function() conditions[#conditions+1]={keyword="BaseType",operator="==",values={}};offset=math.max(1,#conditions-rows+1);drawConditions() end)
+	button(c,"previous",168,actionY,60,"<",function() offset=math.max(1,offset-rows);drawConditions() end)
+	button(c,"next",240,actionY,60,">",function() offset=math.min(math.max(1,#conditions-rows+1),offset+rows);drawConditions() end)
+	c.previous.shown=function() return #conditions>rows end;c.previous.enabled=function() return offset>1 end
+	c.next.shown=function() return #conditions>rows end;c.next.enabled=function() return offset+rows-1<#conditions end
+	ui.label(c,"conditionCount",316,0,"",14);c.conditionCount.y=function() return actionY()+7 end
+	c.conditionCount.label=function() return "^7"..#conditions..(#conditions==1 and " condition" or " conditions") end
+	button(c,"keepRule",16,h-48,140,"Keep rule",function() attempt(function()
+		local lines={c.action:GetSelValue()};for _,condition in ipairs(conditions) do
+			assert(not condition.invalid,"Close every quoted condition value")
+			local controlValues={};for i,value in ipairs(condition.values) do controlValues[#controlValues+1]=not parser.countExactMarker(condition,i) and ((condition.quoted and condition.quoted[i]) or (parser.strings[condition.keyword] and not tonumber(value)) or value:find("%s")) and filters.quote(value) or value end
+			assert(#controlValues>0,"Every condition needs a value")
+			local count=(condition.keyword=="HasExplicitMod" or condition.keyword=="HasEnchantment") and not (condition.quoted and condition.quoted[1]) and tonumber(condition.values[1])
+			if count then lines[#lines+1]="    "..condition.keyword.." "..condition.operator..table.concat(controlValues," ")
+			else lines[#lines+1]="    "..condition.keyword.." "..condition.operator.." "..table.concat(controlValues," ") end
+		end
+		local styles={}
+		if c.theme.selIndex>1 then local generated=filters.rule("style","Style",{},nil,c.theme.selIndex==3 and "contrast" or "default");styles=parser.parse(generated.text).rules[1].styles end
+		if c.sound.selIndex>1 then
+			for _,key in ipairs({"PlayAlertSound","PlayAlertSoundPositional","CustomAlertSound","CustomAlertSoundOptional"}) do styles[key]=false end
+			if c.sound.selIndex==2 then styles.PlayAlertSound={"None"};styles.CustomAlertSound={"None"} else styles.PlayAlertSound={c.sound.selIndex==3 and "2" or "6","200"} end
+		end
+		require("Modules.LootFilterLibrary").appendStyleLines(lines,block,styles)
+		local nextRule=copyTable(rule);nextRule.title=c.title.buf;nextRule.text=table.concat(lines,"\n");nextRule.origin=nil
+		local p=filters.profile("validate","Validate");p.rules={nextRule};filters.validate({schemaVersion=1,activeId=p.id,profiles={p}})
+		save(nextRule);main:ClosePopup()
+	end) end)
+	button(c,"cancel",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
+	local function keepReason()
+		local reason=parser.actionReason(mode,c.action:GetSelValue());if reason then return reason end
+		for _,condition in ipairs(conditions) do
+			if condition.invalid then return "Close every quoted condition value." end
+			if #condition.values==0 then return "Enter a value for every condition." end
+		end
+	end
+	c.keepRule.enabled=function() return not keepReason() end
+	c.keepRule.tooltipText=function() return keepReason() or "Keep this rule's conditions." end
+	drawConditions();ui.style(c,{keepRule=true});main:OpenPopup(w,h,"Loot filter rule",c,nil,"title","cancel");dialog=main.popups[1]
+end
+function M.EditRule(rule,save,mode)
+ require("Classes.LootFilterAppearance").Open(rule,function(nextRule)
+  local profile=filters.profile("validate","Validate");profile.rules={nextRule};filters.validate({schemaVersion=1,activeId=profile.id,profiles={profile}})
+  save(nextRule)
+ end,function(nextRule,keep) M.Conditions(nextRule,keep,mode) end,{mode=mode})
+end
+function M.Import(save,existing)
+ modal("Import loot filter","",function(raw,linked)
+  local parsed=parser.parse(raw);assert(#parsed.rules>0 or #parsed.imports>0,"No filter rules or imports found")
+  for _,d in ipairs(parsed.diagnostics) do assert(not d.error,d.error) end
+  save(raw,linked)
+ end,existing)
+end
+function M.Open(build,source,layout)
+ return require("Classes.LootFilterWorkspace").Open(build,source,layout,M)
+end
+function M.Account(profile,import)
+	local account=require("Modules.LootFilterAccount");local c={};local w,h=math.min(900,main.screenW-40),math.min(560,main.screenH-60);local entries={};local selected;local status="No account request made."
+	ui.description(c,"help",16,28,w-32,70,{"Optional account sync needs account:item_filter permission from GGG. Log in requests that additional scope; it may require OAuth client approval. Local export works independently. Publishing is explicit and sends this profile's compiled filter."},14)
+	c.realm=new("DropDownControl"):DropDownControl(ui.anchor,{16,112,160,26},{"pc","xbox","sony"})
+	c.entries=new("TextListControl"):TextListControl(ui.anchor,{16,154,w-32,h-298},nil,{})
+	ui.selectable(c.entries,function(row) return row.entry and row.entry.id end,function(row) selected=row.entry end)
+	c.status=new("TextListControl"):TextListControl(ui.anchor,{16,h-132,w-32,60},nil,ui.rows({status},w-64,14))
+	local function show(message) status=message;c.status.list=ui.rows({status},w-64,14) end
+	local function request(method,target,payload,done)
+		attempt(function() show("Request in progress...");account.request(main.api,method,target,payload,function(value,err)
+			if err then show(err) else local ok=pcall(done,value);if not ok then show("The account response was incomplete. Check your account before retrying a write.") end end
+		end) end)
+	end
+	local bw=math.floor((w-72)/6)
+	local function action(key,i,label,run) button(c,key,16+i*(bw+8),h-48,bw,label,run);c[key].enabled=function() return not account.busy end end
+	action("login",0,"Log in",function() show("Complete login in your browser. If item-filter scope is unavailable, use local export.");main.api:FetchAuthToken(function(err) show(err and "Login failed; item-filter permission may need approval. Use local export." or "Logged in. List filters to check access.") end,true) end)
+	action("fetch",1,"List filters",function() request("GET",nil,nil,function(value)
+		entries=value.filters or {};local rows={};selected=nil;for _,entry in ipairs(entries) do rows[#rows+1]={height=30,textSize=15,"^7"..ui.fit((entry.filter_name or entry.id).." ["..(entry.realm or "?").."]",w-64,15),entry=entry} end;c.entries.list=rows
+	end) end)
+	action("importAccount",2,"Import selected",function() if selected then request("GET",selected.id,nil,function(value) assert(value.filter and value.filter.filter,"No filter text returned");import(value.filter.filter);show("Imported as a working draft. Keep in build and Save to persist.") end) else show("Select a listed filter first.") end end)
+	local function publish(target)
+		local raw,report=filters.compile(profile);for _,d in ipairs(report.diagnostics) do assert(not d.error,d.error) end
+		local payload={filter_name=profile.title,realm=c.realm:GetSelValue(),description="Created with Path of Building AI Edition",version="3.30",type=profile.mode or "Normal",filter=raw}
+		if not target then payload.public=false end
+		if target then assert(selected.realm==payload.realm,"Choose the selected filter's realm before updating") end
+		local confirmation={};local cw,ch=math.min(760,main.screenW-40),320
+		local lines={target and "Replace account filter: "..(selected.filter_name or target).." ["..target.."]" or "Create a new private account filter: "..profile.title,"Realm: "..payload.realm.." | "..report.rules.." rules | "..#raw.." bytes"}
+		if #report.unresolvedImports>0 then lines[#lines+1]=#report.unresolvedImports.." linked filter names are unresolved. Review included files before publishing." end
+		lines[#lines+1]="This publishes the current working profile, including personal rules and 3.30 migrations. Existing subscriptions are not changed. The server will validate against its current game version."
+		ui.description(confirmation,"summary",16,28,cw-32,200,lines,16)
+		button(confirmation,"publish",16,ch-48,160,target and "Replace filter" or "Create filter",function() main:ClosePopup();request("POST",target,payload,function(value) show("Server confirmed valid filter "..value.filter.id..". Select it in game.") end) end)
+		button(confirmation,"cancel",cw-176,ch-48,160,"Cancel",function() main:ClosePopup() end);ui.style(confirmation,{publish=true});main:OpenPopup(cw,ch,"Review account publication",confirmation,nil,nil,"cancel")
+	end
+	action("createAccount",3,"Publish new",function() attempt(function() publish() end) end)
+	action("updateAccount",4,"Update selected",function() if selected then attempt(function() publish(selected.id) end) else show("Select a listed filter first.") end end)
+	action("close",5,"Close",function() main:ClosePopup() end)
+	ui.style(c);main:OpenPopup(w,h,"Account loot filters",c,nil,nil,"close")
+end
+function M.EditAdditionalSample(item,save,focusKey)
+	local c={};local w,h=math.min(820,main.screenW-40),math.min(560,main.screenH-60)
+	local draft=copyTable(item);local fields=additionalSampleFields();local columns=4;local rowHeight=46
+	local rows=math.max(1,math.floor((h-120)/rowHeight));local perPage=columns*rows;local page=1;local pages=math.max(1,math.ceil(#fields/perPage));local visible={};local dialog
+	for index,key in ipairs(fields) do if key==focusKey then page=math.ceil(index/perPage);break end end
+	ui.description(c,"hint",16,26,w-32,36,{"Optional filter properties. Leave fields blank or choose Unknown when the value is unavailable."},14)
+	local function collect()
+		for _,key in ipairs(visible) do
+			local control=c["extra_"..key];local value=parser.booleans[key] and key~="TransfiguredGem" and control:GetSelValue() or control.buf
+			if parser.numeric[key] then local n=value~="" and tonumber(value);assert(value=="" or n and n==n and math.abs(n)<1e9,"Enter a finite number for "..key);draft[key]=n or nil
+			elseif key=="TransfiguredGem" then if value=="" then draft[key]=nil elseif value=="True" then draft[key]=true elseif value=="False" then draft[key]=false else draft[key]=value end
+			elseif parser.booleans[key] then if value=="Unknown" then draft[key]=nil else draft[key]=value=="Yes" end
+			elseif key=="HasEnchantment" or key=="ArchnemesisMod" or type(draft[key])=="table" then
+				if value=="" then draft[key]=nil elseif value=="[]" then draft[key]={} else draft[key]=parser.tokens(value) end
+			else draft[key]=value~="" and value or nil end
+		end
+	end
+	local function draw()
+		for _,key in ipairs(visible) do c["extra_"..key]=nil;c["extraLabel_"..key]=nil end;visible={}
+		local width=w/columns
+		for index=(page-1)*perPage+1,math.min(page*perPage,#fields) do
+			local key=fields[index];local slot=index-(page-1)*perPage-1;local x=16+(slot%columns)*width;local y=70+math.floor(slot/columns)*rowHeight
+			visible[#visible+1]=key;ui.label(c,"extraLabel_"..key,x,y,ui.fit(key:gsub("(%l)(%u)","%1 %2"),width-32,14),14)
+			local value=draft[key]
+			if parser.booleans[key] and key~="TransfiguredGem" then
+				c["extra_"..key]=new("DropDownControl"):DropDownControl(ui.anchor,{x,y+18,width-32,24},{"Unknown","Yes","No"})
+				c["extra_"..key]:SelByValue(value==nil and "Unknown" or value and "Yes" or "No")
+			else
+				if type(value)=="table" then local names={};for _,name in ipairs(value) do names[#names+1]=filters.quote(name) end;value=#names>0 and table.concat(names," ") or "[]"
+				elseif type(value)=="boolean" then value=value and "True" or "False" end
+				c["extra_"..key]=new("EditControl"):EditControl(ui.anchor,{x,y+18,width-32,24},tostring(value==nil and "" or value),nil,nil,1000)
+			end
+			c["extra_"..key].tooltipText=key=="TransfiguredGem" and "Enter True, False or the base gem name; leave blank if unknown." or (key=="HasEnchantment" or key=="ArchnemesisMod") and "Enter quoted names, [] for a known empty list, or leave blank if unknown." or key
+		end
+		if dialog then for _,control in pairs(c) do if not control.anchor.other then control.anchor.other=dialog end end;ui.style(c,{keepExtra=true}) end
+	end
+	button(c,"extraPrevious",16,h-48,76,"<",function() attempt(function() collect();page=math.max(1,page-1);draw() end) end)
+	button(c,"extraNext",104,h-48,76,">",function() attempt(function() collect();page=math.min(pages,page+1);draw() end) end)
+	c.extraPrevious.enabled=function() return page>1 end;c.extraNext.enabled=function() return page<pages end
+	c.extraPage=ui.label(c,"extraPage",194,h-42,"",14);c.extraPage.label=function() return "^7Page "..page.." / "..pages end
+	button(c,"keepExtra",w-318,h-48,150,"Use properties",function() attempt(function() collect();save(draft);main:ClosePopup() end) end)
+	button(c,"cancelExtra",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
+	draw();ui.style(c,{keepExtra=true});main:OpenPopup(w,h,"More sample properties",c,nil,focusKey and c["extra_"..focusKey] and "extra_"..focusKey or nil,"cancelExtra");dialog=main.popups[1]
+end
+function M.EditSample(item,save,focusKey)
+	local c={};local w,h=math.min(820,main.screenW-40),math.min(560,main.screenH-60)
+	local fields=sampleFields;local extra=copyTable(item)
+	local columns=4;local fieldWidth=w/columns;local rowHeight=h<520 and 48 or 56
+	for i,key in ipairs(fields) do local x=16+((i-1)%columns)*fieldWidth;local y=28+math.floor((i-1)/columns)*rowHeight;ui.label(c,key.."Label",x,y,key:gsub("(%l)(%u)","%1 %2"),14)
+		local value=item[key];if type(value)=="table" then
+			if key=="HasExplicitMod" then local names={};for _,name in ipairs(value) do names[#names+1]=filters.quote(name) end;value=#names>0 and table.concat(names," ") or "[]"
+			elseif key=="HasInfluence" and #value==0 then value="None"
+			else value=table.concat(value," ") end
+		end
+		if parser.booleans[key] then
+			c[key]=new("DropDownControl"):DropDownControl(ui.anchor,{x,y+18,fieldWidth-32,24},{"Unknown","Yes","No"})
+			c[key]:SelByValue(value==nil and "Unknown" or value and "Yes" or "No")
+		else c[key]=new("EditControl"):EditControl(ui.anchor,{x,y+18,fieldWidth-32,24},tostring(value==nil and "" or value),nil,nil,240) end
+		if key=="HasExplicitMod" then c[key].tooltipText='Enter quoted modifier names, or [] for a known empty list. Editing this field clears names inferred from pasted text.' end
+		if key=="HasInfluence" then c[key].tooltipText='Leave blank if unknown; enter None for an uninfluenced item, or names such as Shaper Elder.' end
+		if key=="SocketGroup" then c[key].tooltipText='Enter linked groups and the total in Sockets to calculate links. Use 0 for no sockets; leave blank if unknown.' end
+		if key=="DropLevel" or key=="Width" or key=="Height" or key=="BaseDefencePercentile" or key=="MemoryStrands" or key=="UnidentifiedItemTier" then c[key].tooltipText="Leave blank if this property is unknown." end
+	end
+	c.HasExplicitMod.changeFunc=function() extra.KnownExplicitMods=nil end
+	c.HasInfluence.changeFunc=function() extra.ShaperItem=nil;extra.ElderItem=nil end
+	local previousBase=c.BaseType.buf
+	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, defence percentile, item tier, memory strands, map tier, influence and sockets. Enter values for the new item."
+	c.BaseType.changeFunc=function(value)
+		if value~=previousBase then
+			for _,key in ipairs({"Class","DropLevel","Width","Height","BaseDefencePercentile","UnidentifiedItemTier","MemoryStrands","MapTier","SocketGroup","Sockets","SocketColours","LinkedSockets","HasInfluence"}) do c[key]:SetText("") end
+			extra.AlwaysShow=nil
+			extra.KnownExplicitMods=nil
+			for _,key in ipairs(additionalSampleFields()) do extra[key]=nil end
+			previousBase=value
+		end
+	end
+	local previousRarity=c.Rarity.buf
+	c.Rarity.changeFunc=function(value)
+		if value:lower()~=previousRarity:lower() then extra.KnownExplicitMods=nil end
+		if value:lower()~=previousRarity:lower() then c.UnidentifiedItemTier:SetText("") end
+		if value:lower()=="unique" and previousRarity:lower()~="unique" then c.DropLevel:SetText("");c.BaseDefencePercentile:SetText("") end
+		previousRarity=value
+	end
+	button(c,"useSample",16,h-48,140,"Test drop",function() attempt(function()
+		local nextItem=copyTable(extra);for _,key in ipairs(fields) do local v=parser.booleans[key] and c[key]:GetSelValue() or c[key].buf
+			if parser.numeric[key] then local n=v~="" and tonumber(v);assert(v=="" or n and n==n and math.abs(n)<1e9,"Enter a finite number for "..key);if key=="BaseDefencePercentile" and n then assert(n>=0 and n<=100,"Defence percentile must be between 0 and 100") elseif key=="MemoryStrands" and n then assert(n>=0 and n<=100 and n==math.floor(n),"Memory strands must be a whole number between 0 and 100") end;nextItem[key]=n or nil
+			elseif parser.booleans[key] then if v=="Unknown" then nextItem[key]=nil else nextItem[key]=v=="Yes" end
+			elseif key=="HasInfluence" then nextItem[key]=v:match("%S") and parser.tokens(v) or nil
+			elseif key=="HasExplicitMod" then if v=="" then nextItem[key]=nil elseif v=="[]" then nextItem[key]={} else nextItem[key]=parser.tokens(v) end
+			else nextItem[key]=v~="" and v or nil end
+		end;save(nextItem);main:ClosePopup()
+	end) end)
+	button(c,"moreSample",168,h-48,160,"More properties",function() M.EditAdditionalSample(extra,function(value) extra=value end) end)
+	button(c,"cancel",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
+	if h<520 or w<760 then
+		c.page=new("DropDownControl"):DropDownControl(ui.anchor,{16,20,160,26},{"Item","Properties"})
+		ui.tabs(c,c.page,{{"pageItem","Item","Item"},{"pageProperties","Properties","Properties"}},16,20,w-32)
+		for i,key in ipairs(fields) do
+			local name=i<=16 and "Item" or "Properties";local slot=(i-1)%16;local x=16+(slot%columns)*fieldWidth;local y=60+math.floor(slot/columns)*60
+			local label,control=c[key.."Label"],c[key];label.x=x;label.y=y;label.label=ui.fit(key:gsub("(%l)(%u)","%1 %2"),fieldWidth-32,14);control.x=x;control.y=y+18
+			label.shown=function() return c.page:GetSelValue()==name end;control.shown=label.shown
+			if key==focusKey then c.page:SelByValue(name) end
+		end
+	end
+	ui.style(c,{useSample=true});main:OpenPopup(w,h,"Test a drop",c,nil,c[focusKey or ""] and focusKey or "BaseType","cancel")
+	for _,key in ipairs(additionalSampleFields()) do if key==focusKey then M.EditAdditionalSample(extra,function(value) extra=value end,key);break end end
+end
+function M.Export(profile,raw,report)
+	local c={};local w,h=math.min(800,main.screenW-40),386
+	local names=require("Modules.LootFilterFileNames");local extension=names.extension(profile)
+	local imports=report and report.unresolvedImports or require("Modules.LootFilterImports").summarize(parser.parse(raw),profile.importFiles)
+	ui.description(c,"help",16,28,w-32,62,{"Save a "..extension.." file, then select it in Path of Exile's item-filter settings. Exporting does not equip items or change the character."},16)
+	ui.label(c,"directoryLabel",16,106,"Destination directory",14)
+	c.directory=new("EditControl"):EditControl(ui.anchor,{16,128,w-32,26},main.userPath.."LootFilters",nil,nil,1000)
+	c.filename=new("EditControl"):EditControl(ui.anchor,{16,170,w-32,26},profile.id..extension,nil,nil,120)
+	ui.description(c,"importsStatus",16,200,w-32,30,{#imports>0 and (#imports.." linked filter names unresolved. Review them before saving.") or "All included filter files are resolved."},14)
+	button(c,"copy",16,236,140,"Copy text",function() Copy(raw) end)
+	button(c,"write",168,236,140,"Save file",function() attempt(function()
+		names.stem(profile,c.filename.buf)
+		local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a directory")
+		local target=directory.."/"..c.filename.buf;local existing=io.open(target,"rb")
+		if existing then existing:close();notify("File exists","Choose another filename to preserve the existing filter.");return end
+		MakeDir(directory);require("Modules.LootFilterExports").writeNew(target,raw);notify("Filter exported",target)
+	end) end)
+	button(c,"raw",320,236,140,"Inspect text",function() modal("Compiled filter",raw) end)
+	button(c,"reviewImports",472,236,160,"Review imports",function()
+		local entries={};for _,entry in ipairs(imports) do
+			local status=entry.cycle and "Circular reference" or entry.optional and "Optional file missing" or "Required file missing"
+			entries[#entries+1]={id=entry.name,label=entry.name,details={status,entry.count.." reference(s) in the compiled filter.",entry.cycle and "Resolve the cycle in Included filter files." or entry.optional and "The game may skip this optional file if it is absent." or "Attach the file in Included filter files, or supply it alongside the exported filter."}}
+		end
+		require("Classes.PlanningBrowserControl").Open("Unresolved filter imports",entries)
+	end)
+	c.reviewImports.enabled=#imports>0
+	c.reviewImports.tooltipText="Review missing and circular references retained in the exported text."
+	button(c,"writeAll",16,282,280,"Save all seven strictnesses",function() attempt(function()
+		names.stem(profile,c.filename.buf)
+		local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a directory")
+		local variants=filters.variants(profile);local targets={}
+		for i,variant in ipairs(variants) do
+			local target=directory.."/"..names.variant(profile,c.filename.buf,variant.strictness);local existing=io.open(target,"rb")
+			if existing then existing:close();error("Batch cancelled: file already exists: "..target) end;targets[i]=target
+		end
+		MakeDir(directory);local written=0
+		for i,variant in ipairs(variants) do
+			local ok,err=pcall(require("Modules.LootFilterExports").writeNew,targets[i],variant.text)
+			assert(ok,"Could not export "..targets[i]..". Files already completed: "..written..". "..ui.errorText(err));written=written+1
+		end
+		notify("Filters exported","Saved seven strictnesses to "..directory)
+	end) end)
+	c.writeAll.enabled=not profile.template;c.writeAll.tooltipText="Keeps personal rules and global appearance in every variant. Imported filters have no preset variants."
+	button(c,"writeZip",308,282,196,"Save strictness ZIP",function() attempt(function()
+		local stem=names.stem(profile,c.filename.buf)
+		local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a directory")
+		local target=directory.."/"..stem.."-strictnesses.zip"
+		local existing=io.open(target,"rb");if existing then existing:close();notify("File exists","Choose another filename to preserve the existing archive.");return end
+		local archive=require("Modules.LootFilterZip").variants(profile,c.filename.buf)
+		MakeDir(directory);require("Modules.LootFilterExports").writeNew(target,archive)
+		notify("Filters exported",target)
+	end) end)
+	c.writeZip.enabled=not profile.template;c.writeZip.tooltipText=c.writeAll.tooltipText
+	button(c,"soundZip",16,326,280,"Save filter + sounds ZIP",function()
+		local popup={};ui.description(popup,"help",16,24,568,45,{"Relative sound paths are read from this folder. Absolute local paths are also supported."},14)
+		popup.source=new("EditControl"):EditControl(ui.anchor,{16,82,568,26},c.directory.buf,nil,nil,1000)
+		popup.source.inactiveText=function(value)
+			return DrawStringWidth(popup.source.planningTextSize or 16,"VAR",value)>560 and "Long folder path (click to view or edit)" or value
+		end
+		ui.description(popup,"note",16,120,568,45,{"Extract all files together into the game's filter folder. Missing sounds or remaining imports stop export."},14)
+		local function saveBundle(all)
+			attempt(function()
+				local stem=names.stem(profile,c.filename.buf);local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a destination directory")
+				local target=directory.."/"..stem..(all and "-strictnesses-sounds.zip" or "-sounds.zip");local existing=io.open(target,"rb");if existing then existing:close();error("File exists; choose another filename.") end
+				local zip=require("Modules.LootFilterZip");local archive,count
+				if all then archive,count=zip.soundBundleVariants(profile,c.filename.buf,popup.source.buf) else archive,count=zip.soundBundle(profile,c.filename.buf,raw,popup.source.buf) end
+				MakeDir(directory);require("Modules.LootFilterExports").writeNew(target,archive);main:ClosePopup();notify("Filter and sounds exported",count.." sound files in "..target)
+			end)
+		end
+		button(popup,"save",16,180,180,"Save sound bundle",function() saveBundle(false) end)
+		button(popup,"saveAllSounds",210,180,220,"Save all + sounds",function() saveBundle(true) end)
+		popup.saveAllSounds.enabled=not profile.template;popup.saveAllSounds.tooltipText="Includes all seven preset strictnesses. Imported filters have no preset variants."
+		button(popup,"close",468,180,116,"Cancel",function() main:ClosePopup() end);ui.style(popup,{save=true});main:OpenPopup(600,224,"Portable filter and sounds",popup,nil,nil,"close")
+	end)
+	c.soundZip.tooltipText="Package this filter and local sounds together. Existing archives are never replaced."
+	button(c,"close",w-156,236,140,"Close",function() main:ClosePopup() end);ui.style(c,{write=true});main:OpenPopup(w,h,"Export loot filter",c,nil,"filename","close")
+end
+local function showBaselineReview(title, plan, versions, save)
+	local details = versions
+	if plan.checked then
+		details[#details+1] = string.format("%d added and %d removed condition occurrences",plan.addedCount,plan.removedCount)
+		details[#details+1] = string.format("%d protected visibility checks and %d saved examples",plan.checked,plan.examplesChecked)
+	end
+	if plan.comparison then details[#details+1] = plan.comparison end
+	if plan.warnings and #plan.warnings>0 then details[#details+1] = string.format("%d review warning%s in Examples",#plan.warnings,#plan.warnings==1 and "" or "s") end
+	details[#details+1] = #plan.blocks == 0 and "Apply to the draft after reviewing the changes."
+		or "Resolve the changes in the Blocked category before applying."
+	local entries = {{id="summary",label="Baseline update summary",category="Summary",details=details}}
+	for index, problem in ipairs(plan.blocks) do
+		entries[#entries+1] = {id="protected-"..index,label="Baseline update blocked",category="Blocked",details={problem}}
+	end
+	for index, problem in ipairs(plan.warnings or {}) do
+		entries[#entries+1] = {id="example-"..index,label="Review warning",category="Examples",details={problem}}
+	end
+	for index, removed in ipairs(plan.removedConditions or {}) do
+		entries[#entries+1] = {id="removed-"..index,label=removed.text:sub(1,100),category="Removed conditions",
+			details={removed.text:sub(1,2000),"Occurrences removed: "..removed.count}}
+	end
+	require("Classes.PlanningBrowserControl").Open(title,entries,{
+		action="Apply to draft",enterChooses=false,closeOnChoose=false,
+		canChoose=function(entry) return entry.id=="summary" and plan.profile and #plan.blocks==0 end,
+		choose=function() main:ClosePopup(); save(plan.profile) end,
+		secondary={label="View full diff",run=function() require("Classes.LootFilterDiffControl").Open(plan.before,plan.after,true) end},
+	})
+end
+
+local function reviewBaseUpdate(profile, save)
+	local refresh = require("Modules.LootFilterBaseRefresh")
+	local owner = main.popups[1]
+	if launch.noSSL then main:OpenMessagePopup("NeverSink base review","Enable HTTPS certificate verification in PoB."); return end
+	local supported, endpoint = pcall(refresh.previousURL,profile)
+	if not supported then main:OpenMessagePopup("NeverSink base review",ui.errorText(endpoint)); return end
+	launch:DownloadPage(endpoint,function(response,err)
+		if main.popups[1] ~= owner then return end
+		if err or not response or type(response.body) ~= "string" then
+			main:OpenMessagePopup("NeverSink base review","Could not load the saved NeverSink revision. Try again before applying an update.")
+			return
+		end
+		local ok, plan = pcall(refresh.plan,profile,response.body)
+		if not ok then main:OpenMessagePopup("NeverSink base review",ui.errorText(plan)); return end
+		main:ClosePopup()
+		showBaselineReview("NeverSink base review",plan,{
+			"Saved revision: "..profile.baseCommit,
+			"Bundled revision: "..plan.profile.baseCommit,
+		},save)
+	end,{timeout=20,maxBytes=filters.limit})
+end
+
+local function reviewImportedBase(profile, save)
+	local width = math.min(main.screenW-40,640)
+	local controls = {}
+	local function fileField(key, y, label)
+		ui.label(controls,key.."Label",16,y,label,14)
+		local field = new("EditControl"):EditControl(ui.anchor,{16,y+24,width-140,26},"",nil,nil,1024)
+		controls[key] = field
+		button(controls,key.."Browse",width-112,y+24,96,"Browse",function()
+			require("Classes.LootFilterFileBrowser").Open(field.buf,function(path) field:SetText(path) end)
+		end)
+	end
+	ui.description(controls,"help",16,16,width-32,44,{"Choose the original upstream file and its replacement to carry your personal edits forward."},14)
+	fileField("previous",68,"Previous upstream filter")
+	fileField("latest",132,"New upstream filter")
+	button(controls,"preview",16,202,150,"Review update",function()
+		attempt(function()
+			local read = require("Modules.LootFilterImports").readFile
+			local before = read(controls.previous.buf,filters.limit)
+			local after = read(controls.latest.buf,filters.limit)
+			local plan = require("Modules.LootFilterBaseRefresh").planImported(profile,before,after)
+			local sha = require("sha1")
+			main:ClosePopup()
+			main:ClosePopup()
+			showBaselineReview("Imported base review",plan,{
+				"Previous upstream checksum: "..sha(before),
+				"New upstream checksum: "..sha(after),
+			},save)
+		end)
+	end)
+	controls.preview.enabled=function() return controls.previous.buf:match("%S") and controls.latest.buf:match("%S") end
+	button(controls,"close",width-132,202,116,"Cancel",function() main:ClosePopup() end)
+	ui.style(controls)
+	main:OpenPopup(width,248,"Update imported baseline",controls,nil,"previous","close")
+end
+
+function M.Audit(profile,report,save,focusErrors)
+	local revision = filters.source().commit
+	local needsUpdate = not profile.template and profile.baseCommit ~= revision
+	local entries={{id="update",label="Update bundled NeverSink base",details={"Saved revision: "..profile.baseCommit,"Bundled revision: "..revision,
+		needsUpdate and "Review baseline differences and protected drops before applying." or profile.template and "This profile uses an imported base." or "This profile is current."}}};for name,value in pairs(report and report.changes or {}) do entries[#entries+1]={id=name,label=name,details={value=="removed" and "Removed in 3.30. An empty BaseType list removes its entire rule." or "Renamed to "..value}} end
+	if profile.template then
+		entries[1] = {id="imported-update",label="Update imported baseline",details={
+			profile.upstreamDigest and "Last reviewed upstream checksum: "..profile.upstreamDigest or "Choose the original upstream filter.",
+			"Preview how the new baseline combines with personal rules before applying.",
+		}}
+	end
+	if report and report.error then entries[#entries+1]={id="compile-error",label="Compilation error",details={ui.errorText(report.error)}} end
+	for i,d in ipairs(report and report.diagnostics or {}) do
+		local uniqueFlask=d.code=="hiddenUniqueSulphur"
+		entries[#entries+1]={id="diagnostic-"..i,label=uniqueFlask and "Hidden unique Sulphur Flask (line "..d.line..")" or "Line "..d.line,search=uniqueFlask and "Bottled Faith" or nil,showUniqueFlask=uniqueFlask,details=uniqueFlask and {d.warning,"Apply selected adds a styled Show rule with an alert above all other rules for every unique Sulphur Flask, including replicas. You can edit, move or remove it later."} or {d.error or d.warning}}
+	end
+	if focusErrors then
+		local id=report and report.error and "compile-error"
+		if not id then for i,d in ipairs(report and report.diagnostics or {}) do if d.error then id="diagnostic-"..i;break end end end
+		if id then for i,entry in ipairs(entries) do if entry.id==id then table.insert(entries,1,table.remove(entries,i));break end end end
+	end
+	local controls=require("Classes.PlanningBrowserControl").Open("Filter audit",entries,{action="Apply selected",enterChooses=false,closeOnChoose=false,
+		canChoose=function(entry) return entry.id=="imported-update" or entry.id=="update" and needsUpdate or entry.showUniqueFlask end,choose=function(entry)
+			if entry.id=="update" then reviewBaseUpdate(profile,save); return
+		elseif entry.id=="imported-update" then reviewImportedBase(profile,save); return
+			elseif entry.showUniqueFlask then
+				local next=copyTable(profile);local used={};for _,rule in ipairs(next.rules or {}) do used[rule.id]=true end
+				local id="unique-sulphur";local suffix=1;while used[id] do suffix=suffix+1;id="unique-sulphur-"..suffix end
+				next.rules=next.rules or {};table.insert(next.rules,1,filters.rule(id,"Unique Sulphur Flask",{'Rarity == Unique','BaseType == "Sulphur Flask"'},nil,next.theme))
+				next=filters.validate({schemaVersion=1,activeId=next.id,profiles={next}}).profiles[1];save(next)
+			end
+			main:ClosePopup()
+		end})
+	controls.choose.tooltipText="Select the base update or the unique-flask warning to apply its described change. Other diagnostics require a separate edit."
+end
+return M

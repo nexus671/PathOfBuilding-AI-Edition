@@ -1,0 +1,161 @@
+{
+  "_comment": "spell-checker: disable",
+  "copyright": "Grinding Gear Games",
+  "icons": {
+    "KeepersCurrencyNode": {
+      "file": "Assets/Genesis/KeepersCurrencyNode.png",
+      "sha256": "8d98bc4a9396ee1812c718c6dc25525642c42b23d5297387b1f5d57d7385626f",
+      "source": "https://www.poewiki.net/images/0/04/KeepersCurrencyNode_passive_skill_icon.png"
+    },
+    "KeepersCurrencyNotable": {
+      "file": "Assets/Genesis/KeepersCurrencyNotable.png",
+      "sha256": "c0e1c9a72e72b56c7cfdd8dd0ea9c0146fb91909368627d7b5280c24fce44336",
+      "source": "https://www.poewiki.net/images/4/48/KeepersCurrencyNotable_passive_skill_icon.png"
+    },
+    "KeepersEquipmentNode": {
+      "file": "Assets/Genesis/KeepersEquipmentNode.png",
+      "sha256": "22a94df16bd6b00fb0b914f5ed7c25143ad750e57db5ba8b64bb78329b3c717a",
+      "source": "https://www.poewiki.net/images/f/fb/KeepersEquipmentNode_passive_skill_icon.png"
+    },
+    "KeepersEquipmentNotable": {
+      "file": "Assets/Genesis/KeepersEquipmentNotable.png",
+      "sha256": "9e632ddb916c697a61a400410623540dc54e64a5f27e04c5dee3e5245f182388",
+      "source": "https://www.poewiki.net/images/f/f8/KeepersEquipmentNotable_passive_skill_icon.png"
+    },
+    "KeepersMiscellaneousNode": {
+      "file": "Assets/Genesis/KeepersMiscellaneousNode.png",
+      "sha256": "1bd8c9476801988a89b7989e1ec36724350132b955575eca9d99a8a890b76d9a",
+      "source": "https://www.poewiki.net/images/b/b0/KeepersMiscellaneousNode_passive_skill_icon.png"
+    },
+    "KeepersMiscellaneousNotable": {
+      "file": "Assets/Genesis/KeepersMiscellaneousNotable.png",
+      "sha256": "941667ee4c3b43475e31597524686849af57c5d6d14ea4d3f26eefb03f0cccb4",
+      "source": "https://www.poewiki.net/images/c/c3/KeepersMiscellaneousNotable_passive_skill_icon.png"
+    },
+    "KeepersSelectionNotable": {
+      "file": "Assets/Genesis/KeepersSelectionNotable.png",
+      "sha256": "90ac799bc3f1bdda3be1080d7e0d8a6f44fa97c788c5ac17427340a9608e3758",
+      "source": "https://cdn.poedb.tw/image/Art/2DArt/SkillIcons/passives/KeepersSelectionNotable.webp",
+      "sourceSha256": "69ef5974bbfc30fffb0839768ac359df5ef024bdfd3c4c0e8f6bd6ca4f1a2186",
+      "sourceFormat": "WebP"
+    },
+    "KeepersUniqueNode": {
+      "file": "Assets/Genesis/KeepersUniqueNode.png",
+      "sha256": "599653d87ba7da4560123db52ebfef76b089a6f2455ca3c72af4a5c575bb5657",
+      "source": "https://www.poewiki.net/images/b/be/KeepersUniqueNode_passive_skill_icon.png"
+    },
+    "KeepersUniqueNotable": {
+      "file": "Assets/Genesis/KeepersUniqueNotable.png",
+      "sha256": "3b3a5d810ad99fcac59ccf5383c887c1c83b4d55a18f8aaa00fd238a32ddc70b",
+      "source": "https://www.poewiki.net/images/8/83/KeepersUniqueNotable_passive_skill_icon.png"
+    },
+    "MasteryBlank": {
+      "file": "Assets/Genesis/MasteryBlank.png",
+      "sha256": "9d489004daa6e524e27afd569912bc79424fa6d6f46f11cab6f4a5798ba37b8b",
+      "source": "https://www.poewiki.net/images/6/6a/MasteryBlank_passive_skill_icon.png"
+    }
+  },
+  "sourceNote": "Game passive icons mirrored by PoE Wiki and PoEDB; the background is extracted from GGG game data. Artwork remains copyright Grinding Gear Games.",
+  "background": {
+    "file": "Assets/Genesis/Background.png",
+    "sha256": "f685b7dac863ea0fa0d8b53a667d4b570ae9e35447e89a1b25bde294b9ba0f05",
+    "source": "https://patch.poecdn.com/3.30.0.4/Bundles2/Folders/art/textures/interface/2d/2dart/55/uiimages_2.bundle.bin",
+    "sourcePath": "art/textures/interface/2d/2dart/uiimages/ingame/breachleague/breachtreepassivebackground.dds",
+    "sourceSha256": "60b518341495c5b1fbf677f0a9e8d9a7bf82a245c5c361ac643314a944e793bb",
+    "nativeSize": [
+      7576,
+      6640
+    ],
+    "size": [
+      2048,
+      1795
+    ]
+  },
+  "frames": {
+    "FrameSmall": {
+      "file": "Assets/Genesis/FrameSmall.png",
+      "sha256": "9a5b79802f51103ba831ecf95ea44a6c6ecffddb6b38685600315af90534ed55",
+      "source": "https://patch.poecdn.com/3.30.0.4/Bundles2/Folders/art/textures/interface/2d/2dart/97/uiimages.bundle.bin",
+      "sourcePath": "art/textures/interface/2d/2dart/uiimages/ingame/breachleague/4k/5.dds",
+      "sourceSha256": "75ec2c20f2347f6882e262c568d22aae8c35e7b1a6bb4e4bbd74183d40a468fa",
+      "crop": [
+        129,
+        0,
+        253,
+        123
+      ],
+      "size": [
+        124,
+        123
+      ]
+    },
+    "FrameSmallActive": {
+      "file": "Assets/Genesis/FrameSmallActive.png",
+      "sha256": "f09e4d93ed2783b1b28a9b9af3f92624fa39498a874a790bb3e146b0aafd4dcb",
+      "source": "https://patch.poecdn.com/3.30.0.4/Bundles2/Folders/art/textures/interface/2d/2dart/97/uiimages.bundle.bin",
+      "sourcePath": "art/textures/interface/2d/2dart/uiimages/ingame/breachleague/4k/5.dds",
+      "sourceSha256": "75ec2c20f2347f6882e262c568d22aae8c35e7b1a6bb4e4bbd74183d40a468fa",
+      "crop": [
+        0,
+        0,
+        123,
+        123
+      ],
+      "size": [
+        123,
+        123
+      ]
+    },
+    "FrameNotable": {
+      "file": "Assets/Genesis/FrameNotable.png",
+      "sha256": "bc712a28b38a8a4206a96036f53a56973d9a4b4feda5e9e8c076e4e0956c682d",
+      "source": "https://patch.poecdn.com/3.30.0.4/Bundles2/Folders/art/textures/interface/2d/2dart/C0/uiimages_1.bundle.bin",
+      "sourcePath": "art/textures/interface/2d/2dart/uiimages/ingame/breachleague/4k/4.dds",
+      "sourceSha256": "a2574a9628a94bfeb0dde4568b257a4cab6d19f4cae336c3d5adbfffce43c47b",
+      "crop": [
+        0,
+        243,
+        206,
+        448
+      ],
+      "size": [
+        206,
+        205
+      ]
+    },
+    "FrameNotableActive": {
+      "file": "Assets/Genesis/FrameNotableActive.png",
+      "sha256": "d7c2f499321b56d2aba2f134e890074ce687811f000398b6876361b675613187",
+      "source": "https://patch.poecdn.com/3.30.0.4/Bundles2/Folders/art/textures/interface/2d/2dart/C0/uiimages_1.bundle.bin",
+      "sourcePath": "art/textures/interface/2d/2dart/uiimages/ingame/breachleague/4k/4.dds",
+      "sourceSha256": "a2574a9628a94bfeb0dde4568b257a4cab6d19f4cae336c3d5adbfffce43c47b",
+      "crop": [
+        213,
+        243,
+        420,
+        448
+      ],
+      "size": [
+        207,
+        205
+      ]
+    },
+    "Womb": {
+      "file": "Assets/Genesis/Womb.png",
+      "sha256": "80a9b75e6e9ffbb3cc1745d563154dcf6f85c835c4966caa3b56442fdab9f4b2",
+      "source": "https://patch.poecdn.com/3.30.0.4/Bundles2/Folders/art/textures/interface/2d/2dart/8E/uiimages_2.bundle.bin",
+      "sourcePath": "art/textures/interface/2d/2dart/uiimages/ingame/breachleague/4k/3.dds",
+      "sourceSha256": "965dc42e065046c4dd71b51d711e44deda50a83155c53c1d051ca8e9d0ba9247",
+      "crop": [
+        1136,
+        1398,
+        1448,
+        1723
+      ],
+      "size": [
+        312,
+        325
+      ]
+    }
+  }
+}

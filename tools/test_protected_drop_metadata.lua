@@ -1,0 +1,146 @@
+local parser=require('Modules.LootFilterParser');local protected=require('Modules.LootFilterProtectedDrops');local refresh=require('Modules.LootFilterBaseRefresh');local validate=require('Modules.LootFilterSyncValidation')
+local raw=[[Show
+ BaseType == "Cord Belt" "Agate Amulet"
+ MinimapIcon 0 Purple Star
+Show
+ BaseType == "Royal Plate"
+ MinimapIcon 0 Red Diamond
+Show
+ BaseType == "Iron Ring"
+ MinimapIcon 0 Yellow Diamond
+# PoB economy: begin
+Hide
+ Class == "Stackable Currency"
+ BaseType == "Orb of Alteration"
+ StackSize <= 6
+# PoB economy: end
+Show
+]]
+assert(validate(raw,{},true,1))
+local personal = [[# CUSTOM: Show Fated equipment on rank A and B bases
+Show
+    BaseType == "Amethyst Ring" "Agate Amulet"
+    Fated True
+    Rarity Normal Magic Rare
+    MinimapIcon 0 Purple Star
+# CUSTOM: Show fractured magic equipment
+Show
+    Class == "Boots" "Rings"
+    Rarity Magic
+    FracturedItem True
+    MinimapIcon 0 Yellow Diamond
+# CUSTOM: Hide Wisdom and Portal Scrolls
+Hide
+    BaseType == "Scroll of Wisdom" "Portal Scroll"
+]]..raw
+assert(select(6,validate(personal,{},true,1))==68)
+local extraChecks=0
+protected.checkPersonalSamples(personal,function() extraChecks=extraChecks+1 end)
+assert(extraChecks==20)
+for _, obstruction in ipairs({
+	{block='Hide\n    BaseType == "Amethyst Ring"\n',name="Amethyst Ring"},
+	{block='Hide\n    Class == "Boots"\n    Rarity Magic\n',name=require("Modules.LootFilterLibrary").baseExampleForClass("Boots")},
+	{block='Show\n    BaseType == "Portal Scroll"\n',name="Portal Scroll"},
+}) do
+	local ok, why = pcall(validate,obstruction.block..personal,{},true,1)
+	assert(not ok and why:find("Protected drop failed",1,true) and why:find(obstruction.name,1,true),tostring(why))
+end
+local candidate='Hide\n BaseType == "Cord Belt"\n Width >= 2\n'..raw;local ok,why=pcall(validate,candidate,{},true,1);assert(not ok and why:find('Protected drop failed',1,true),tostring(why))
+local uncertain='Hide\n Rarity == Unique\n DropLevel >= 1\n'..raw;local certain,reason=pcall(validate,uncertain,{},true,1);assert(not certain and reason:find('Missing DropLevel',1,true),tostring(reason))
+local uncertainDefence='Hide\n Rarity == Unique\n BaseDefencePercentile >= 50\n'..raw;local certainDefence,defenceReason=pcall(validate,uncertainDefence,{},true,1);assert(not certainDefence and defenceReason:find('Missing BaseDefencePercentile',1,true),tostring(defenceReason))
+local report=refresh.evaluate(parser.parse(raw),parser.parse(candidate),{});assert(#report.blocks>0,'base refresh missed protected width change')
+local unknown='Hide\n DropLevel >= 80\n'..raw;local report2=refresh.evaluate(parser.parse(unknown),parser.parse(raw),{});assert(#report2.warnings>0,'unknown baseline not reported')
+local seen={};for _,entry in ipairs(protected.samples()) do local item=entry.item;if item.BaseType=='Cord Belt' then assert(item.Width==2 and item.Height==1);if item.Rarity=='Unique' then assert(item.DropLevel==nil and item.BaseDefencePercentile==nil) else assert(item.DropLevel==75 and item.BaseDefencePercentile==100) end end;if item.BaseType=='Royal Plate' then assert(item.Width==2 and item.Height==3 and item.ItemLevel==85);if item.Rarity~='Unique' then assert(item.DropLevel==84 and item.BaseDefencePercentile==0) end end;seen[item.BaseType]=true end;assert(seen['Cord Belt'] and seen['Royal Plate']);print('PROTECTED_SAMPLE_REGRESSION_OK')
+local impact=[[Show
+ BaseType == "Cord Belt"
+# PoB economy: begin
+Hide
+ Class == "Stackable Currency"
+ BaseType == "Orb of Alteration"
+ StackSize <= 6
+# PoB economy: end
+Show
+ BaseType == "Orb of Alteration"
+ DropLevel == 2
+Hide
+]]
+local body='{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.21,"volumePrimaryValue":1000}]}'
+local bodies={};for index in ipairs(require('Modules.LootFilterEconomy').categories) do bodies[index]=body end
+local _,count,changes=validate(impact,bodies,false,1,{{BaseType='Cord Belt',Rarity='Magic'}});assert(count==1 and changes[1].sample.before=='Hide' and changes[1].sample.action=='Show','Economy impact did not use the base drop level')
+local levelImpact=impact:gsub('DropLevel == 2','ItemLevel >= 84');local _,levelCount,levelChanges=validate(levelImpact,bodies,false,1,{{BaseType='Cord Belt',Rarity='Magic'}});assert(levelCount==1 and levelChanges[1].sample.action=='Unknown' and levelChanges[1].sample.afterMissing[1]=='ItemLevel','An unknown item level was not explained')
+local early='Show\n BaseType == "Orb of Alteration"\n ItemLevel >= 84\n'..levelImpact;local _,_,earlyChanges=validate(early,bodies,false,1,{{BaseType='Cord Belt',Rarity='Magic'}});assert(earlyChanges[1].sample.before=='Unknown' and earlyChanges[1].sample.beforeMissing[1]=='ItemLevel','Previous uncertainty was not retained')
+local missing=parser.safeMissingProperties({'ItemLevel','ItemLevel','C:/private/filter','DropLevel','UnknownPrivateName'});assert(#missing==2 and missing[1]=='ItemLevel' and missing[2]=='DropLevel','Missing-property sanitization failed')
+print('ECONOMY_IMPACT_METADATA_OK')
+
+
+local function checkAdditivePersonalProtections()
+	local custom={{BaseType="Cord Belt",Rarity="Magic",Class="Belts",FracturedItem=false,Fated=false}}
+	local marked="# CUSTOM: Always show Cord Belts\n# CUSTOM: Show six-linked items before equipment hides\n"..personal
+	assert(protected.hasPersonalMarkerSet(marked) and not protected.hasPersonalMarkerSet(personal))
+	assert(select(6,validate(marked,{},true,1))==68)
+	assert(select(6,validate(marked,{},true,1,custom))==69)
+	for _, obstruction in ipairs({
+		'Hide\n    BaseType == "Cord Belt"\n    Rarity Unique\n',
+		'Hide\n    BaseType == "Royal Plate"\n    LinkedSockets == 6\n',
+		'Hide\n    BaseType == "Amethyst Ring"\n    Fated True\n',
+		'Hide\n    Class == "Boots"\n    Rarity Magic\n    FracturedItem True\n',
+		'Show\n    BaseType == "Portal Scroll"\n',
+		'Show\n    BaseType == "Cord Belt"\n    MinimapIcon 0 Cyan Star\n',
+	}) do
+		local passed,why=pcall(validate,obstruction..marked,{},true,1,custom)
+		assert(not passed and why:find("Protected drop failed",1,true),tostring(why))
+	end
+	-- Unrelated filters and incomplete marker sets retain custom-only validation.
+	local generic='Show\n    BaseType == "Cord Belt"\n# PoB economy: begin\nHide\n    BaseType == "Orb of Alteration"\n    Class == "Stackable Currency"\n    StackSize <= 6\n# PoB economy: end\nHide\n'
+	assert(select(6,validate(generic,{},true,1,custom))==1)
+	assert(select(6,validate("# CUSTOM: Different personal filter\n"..generic,{},true,1,custom))==1)
+	assert(select(6,validate("# CUSTOM: Always show Cord Belts\n"..generic,{},true,1,custom))==1)
+	assert(select(6,validate(personal,{},true,1,custom))==1)
+end
+checkAdditivePersonalProtections()
+print("PERSONAL_PROTECTIONS_REMAIN_REQUIRED_WITH_CUSTOM_SAMPLES_OK")
+
+do
+	local prefix = [[# CUSTOM: Hide Wisdom and Portal Scrolls
+Hide
+    BaseType == "Scroll of Wisdom" "Portal Scroll"
+Show
+    BaseType == "Chaos Orb"
+]]
+	local rareRules = [[# CUSTOM: Highlight item tier 5 rare equipment on rank A and B bases
+Show
+    Identified False
+    Rarity Rare
+    UnidentifiedItemTier 5
+    BaseType == "Royal Plate" "Agate Amulet"
+    MinimapIcon 0 Red Diamond
+# CUSTOM: Suppress other unidentified rare bases before broad tiered gear rules
+Hide
+    Identified False
+    Rarity Rare
+# CUSTOM: Identified corrupted rare modifier rules copied from the filter
+Show
+    Identified True
+    Corrupted True
+    Rarity Rare
+    HasExplicitMod >=3 "Merciless" "Flaring" "of Celebration"
+# CUSTOM: Hide other identified corrupted rare equipment
+Hide
+    Identified True
+    Corrupted True
+    Rarity Rare
+    CorruptedMods < 2
+Show
+]]
+	local baseline = prefix..rareRules
+	assert(protected.personalRulesPreserved(baseline,baseline:gsub("\n","\r\n")))
+	assert(not protected.personalRulesPreserved(baseline,baseline:gsub("UnidentifiedItemTier 5","UnidentifiedItemTier 4")))
+	assert(not protected.personalRulesPreserved(baseline,baseline:gsub("of Celebration","of Incision")))
+	assert(not protected.personalRulesPreserved(baseline,baseline:gsub("gear rules\nHide","gear rules\nShow")))
+	assert(not protected.personalRulesPreserved(baseline,prefix..'Hide\n    BaseType == "Royal Plate"\n'..rareRules))
+	assert(not protected.personalRulesPreserved(baseline,prefix..'Show\n    BaseType == "Royal Plate"\n    MinimapIcon 0 Red Diamond\n    SetFontSize 18\n'..rareRules))
+	assert(not protected.personalRulesPreserved(baseline,prefix..'Show\n    BaseType == "Plate Vest"\n'..rareRules))
+	assert(not protected.personalRulesPreserved(baseline,prefix..'Show\n    BaseType == "Vaal Axe"\n'..rareRules))
+	assert(protected.personalRulesPreserved(baseline,prefix..'Show\n    BaseType == "Mirror of Kalandra"\n'..rareRules))
+end
+print("PERSONAL_RARE_VISIBILITY_PRECEDENCE_OK")

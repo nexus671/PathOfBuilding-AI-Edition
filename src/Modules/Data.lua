@@ -17,6 +17,7 @@ local skillTypes = {
 	"act_dex",
 	"act_int",
 	"other",
+	"ai_edition",
 	"glove",
 	"minion",
 	"spectre",
@@ -180,6 +181,14 @@ data.powerStatList = {
 	{ stat="SpellSuppressionChance", label="Spell Suppression Chance" },
 }
 
+function data.powerStatList.HeatmapIntensity(value, maximum)
+	if type(value) ~= "number" or value ~= value or type(maximum) ~= "number" or maximum ~= maximum or maximum <= 0 then return 0 end
+	value = math.max(value, 0)
+	if maximum == math.huge then return value == math.huge and 1.5 ^ 0.5 or 0 end
+	if value == math.huge then return 1.5 ^ 0.5 end
+	return (value / maximum * 1.5) ^ 0.5
+end
+
 ---@param output any Calc output
 ---@param statTable PowerStat Table with stats as in data.powerStatList
 ---@param skipTransform? boolean Whether the stat transform should be skipped. This is useful if you want to e.g. divide two less is better stats
@@ -235,6 +244,21 @@ for i = 1, #data.powerStatList do
 	minionStat.label = "Minion " .. minionStat.label
 	t_insert(data.powerStatList, minionStat)
 	::statContinue::
+end
+-- Append these choices after the existing entries to preserve their order.
+-- Net regeneration includes direct resource degeneration and flat recovery;
+-- it is not a simulation of leech, recharge uptime or incoming damage.
+for _, stat in ipairs({
+	{stat="LifeRegenRecovery",label="Net life regen"},
+	{stat="ManaRegenRecovery",label="Net mana regen"},
+	{stat="EnergyShieldRegenRecovery",label="Net ES regen"},
+	{stat="EnergyShieldRecharge",label="ES recharge rate"},
+}) do
+	t_insert(data.powerStatList, stat)
+	local minionStat = copyTable(stat)
+	minionStat.stat = "Minion" .. stat.stat
+	minionStat.label = "Minion " .. stat.label
+	t_insert(data.powerStatList, minionStat)
 end
 data.misc = { -- magic numbers
 	ServerTickTime = 0.033,
@@ -667,6 +691,7 @@ data.itemMods = {
 	JewelCharm = LoadModule("Data/ModJewelCharm"),
 	Foulborn = LoadModule("Data/ModFoulborn"),
 	Mercenary = LoadModule("Data/ModMercenary"),
+	Ducat = LoadModule("Data/ModDucat"),
 	Vestigial = {}
 }
 for modId, mod in pairs(data.itemMods.ItemExclusive) do
@@ -687,7 +712,7 @@ data.enchantments = {
 
 -- combined table of many mod categories
 data.itemMods.Item = {}
-for _, key in ipairs({ "Explicit", "ItemExclusive", "Corrupted", "Delve", "Synthesis", "Scourge", "Eldritch", "Mercenary" }) do
+for _, key in ipairs({ "Explicit", "ItemExclusive", "Corrupted", "Delve", "Synthesis", "Scourge", "Eldritch", "Mercenary", "Ducat" }) do
 	local itemData = data.itemMods[key]
 	for k, v in pairs(itemData) do
 		data.itemMods.Item[k] = v
@@ -774,7 +799,6 @@ data.itemTagSpecialExclusionPattern = {
 			"while you are on Full Life", -- foxshade
 			"when on Full Life",
 			"when on Low Life",
-			"Gain Maximum Life instead of Maximum Energy Shield",
 			"^Socketed Gems are Supported by Level",
 			"^Allocates",
 			"Void Spawns' Life", -- Servant of Decay
@@ -1101,6 +1125,7 @@ local function setupGem(gem, gemId)
 	if gem.grantedEffect.support and gem.grantedEffectId ~= "SupportBarrage" then
 		baseName = baseName .. " Support"
 	end
+	gem.itemBaseName = baseName
 	data.gemForBaseName[baseName:lower()] = gemId
 	-- Hybrid gems (e.g. Vaal gems) use the display name of the active skill e.g. Vaal Summon Skeletons of Sorcery
 	if gem.baseTypeName and gem.baseTypeName ~= baseName then
@@ -1244,6 +1269,9 @@ data.itemBases = { }
 for _, type in pairs(itemTypes) do
 	LoadModule("Data/Bases/" .. type)(data.itemBases)
 end
+LoadModule("Data/BaseImplicit330")(data.itemBases)
+-- Wickerman has base data only; no unique rarity or modifier ownership is assumed.
+LoadModule("Data/Bases/wickerman")(data.itemBases)
 
 ---@class ItemBaseEntry
 ---@field label string
@@ -1305,6 +1333,7 @@ table.sort(data.itemBaseTypeList)
 
 -- Rare templates
 data.rares = LoadModule("Data/Rares")
+data.viscera = LoadModule("Data/Viscera")
 
 data.casterTagCrucibleUniques = {
 	["Atziri's Rule"] = true,
@@ -1504,3 +1533,5 @@ local mapFile = io.open("Data/ModFoulbornMap.jsonc", "r")
 data.foulbornMap = dkjson.decode(mapFile:read("*a"))
 mapFile:close()
 data.flavourText = LoadModule("Data/FlavourText")
+data.worldAreas = {}
+LoadModule("Data/WorldAreas", data.worldAreas)
