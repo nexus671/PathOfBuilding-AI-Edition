@@ -279,34 +279,38 @@ function A.extend(M,api)
 	local originalCatalog=M.catalog
 	local originalRoll=M.rollRange
 	local identities=setmetatable({},{__mode="k"})
-	local suppressionRanges=setmetatable({},{__mode="k"})
+	local scaledRanges=setmetatable({},{__mode="k"})
+	local scaledFormats={
+		["base_spell_suppression_chance_150%_of_value"]={factor=1.5,pattern="^%+%((%d+)%-(%d+)%)%% chance to Suppress Spell Damage$"},
+		["old_do_not_use_spell_block_%_from_assumed_block_value"]={factor=0.3,pattern="^%((%d+)%-(%d+)%)%% Chance to Block Spell Damage$"},
+	}
 	local veiledCache={}
 	function M.rollRange(mod,random)
 		local regeneration=M.rawRegenRange(mod,random);if regeneration~=nil then return regeneration end
 		local metadata=A.data().mods[identities[mod]] or mod.clientStats and {stats=mod.clientStats}
-		-- The 150% suppression stat truncates each raw integer after scaling.
-		-- Interpolating rounded endpoints gives 11 for raw 7 instead of 10.
-		local suppression=suppressionRanges[mod]
-		if suppression==nil then
-			suppression=false
-			local stat;local supported=metadata and metadata.stats and #metadata.stats>0
+		-- These stats truncate each raw integer after scaling. Interpolating
+		-- displayed endpoints can otherwise assign the wrong visible roll.
+		local scaled=scaledRanges[mod]
+		if scaled==nil then
+			scaled=false
+			local stat,format;local supported=metadata and metadata.stats and #metadata.stats>0
 			for _,entry in ipairs(metadata and metadata.stats or {}) do
-				if entry.id=="base_spell_suppression_chance_150%_of_value" and not stat then stat=entry
+				if scaledFormats[entry.id] and not stat then stat=entry;format=scaledFormats[entry.id]
 				elseif entry.id~="dummy_stat_display_nothing" then supported=false end
 			end
 			local line=#mod==1 and mod[1];local low,high
-			if line then low,high=line:match("^%+%((%d+)%-(%d+)%)%% chance to Suppress Spell Damage$") end
+			if line and format then low,high=line:match(format.pattern) end
 			low,high=tonumber(low),tonumber(high)
-			if supported and stat and stat.min>=0 and stat.max>stat.min and stat.max-stat.min<=1000 and low and high and high>low and math.floor(stat.min*1.5)==low and math.floor(stat.max*1.5)==high then
+			if supported and stat and stat.min>=0 and stat.max>stat.min and stat.max-stat.min<=1000 and low and high and high>low and math.floor(stat.min*format.factor)==low and math.floor(stat.max*format.factor)==high then
 				local valid=true
-				for raw=stat.min,stat.max do local value=math.floor(raw*1.5);if M.baseRollValue(mod,(value-low)/(high-low),1)~=value then valid=false;break end end
-				if valid then suppression={min=stat.min,steps=stat.max-stat.min,low=low,high=high} end
+				for raw=stat.min,stat.max do local value=math.floor(raw*format.factor);if M.baseRollValue(mod,(value-low)/(high-low),1)~=value then valid=false;break end end
+				if valid then scaled={min=stat.min,steps=stat.max-stat.min,low=low,high=high,factor=format.factor} end
 			end
-			if metadata then suppressionRanges[mod]=suppression end
+			if metadata then scaledRanges[mod]=scaled end
 		end
-		if suppression then
-			local raw=suppression.min+math.floor(random()*(suppression.steps+1))
-			return (math.floor(raw*1.5)-suppression.low)/(suppression.high-suppression.low)
+		if scaled then
+			local raw=scaled.min+math.floor(random()*(scaled.steps+1))
+			return (math.floor(raw*scaled.factor)-scaled.low)/(scaled.high-scaled.low)
 		end
 		local varying={};for _,stat in ipairs(metadata and metadata.stats or {}) do if stat.max ~= stat.min then varying[#varying+1]=stat end end
 		local display=0;for _,line in ipairs(mod) do for range in line:gmatch("%b()") do if range:match("%-?%d+%.?%d*%-%-?%d+%.?%d*") then display=display+1 end end end
