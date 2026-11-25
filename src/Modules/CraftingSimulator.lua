@@ -795,7 +795,7 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   end
   for _,entry in ipairs(entries) do
    local roll=type(entry.range) == "table" and math.min(unpack(entry.range)) or entry.range or 0.5
-   if model and (type(entry.range)=="number" or type(entry.range)=="table" and #entry.range==1) then
+   if (roll<0 or roll>1 or group.minRoll~=nil) and model and (type(entry.range)=="number" or type(entry.range)=="table" and #entry.range==1) then
     local mod=model.byId and model.byId[entry.id]
     local position=mod and M.rawRegenPosition(mod,roll)
     if position then roll=position end
