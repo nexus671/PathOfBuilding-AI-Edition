@@ -59,3 +59,18 @@ activeUI:click('new');activePlanning.newId=activeNewId
 assert(active.cache.atlas.layout.snapshot().id~=activeId,'New plan reused the active unsaved draft ID')
 assert(active.atlasDrafts[activeId] and active.atlasDrafts[activeId].plan.id==activeId,'Active draft was lost during navigation')
 activeUI:restore();print('ATLAS_ACTIVE_DRAFT_ID_OK')
+-- Search session drafts by the complete title, including text beyond its display width.
+newBuild();main.popups={};local searchUI=require('Modules.HeadlessUI').install({width=960,height=640});searchUI:bind(build)
+local searchWorkspace=require('Modules.PlanningWorkspace').new(build);build.planningWorkspace=searchWorkspace;build.viewMode='PLANNER';searchWorkspace:Show('atlas')
+local longPlan=copyTable(searchWorkspace.cache.atlas.layout.snapshot());longPlan.title=string.rep('Long farming plan ',5)..'SENTINEL'
+local another=copyTable(longPlan);another.id=longPlan.id..'-other';another.title=string.rep('Long farming plan ',5)..'ANOTHER'
+require('Classes.AtlasPlannerControl').Library(build,{atlasDrafts=function() return {{plan=longPlan,conflict=true},{plan=another}} end})
+local choices=main.popups[1].controls.plans;assert(not choices.list[1].label:find('SENTINEL',1,true),'Fixture title did not exceed the visible label')
+searchUI:click('plans');for char in ('SENTINEL'):gmatch('.') do searchUI:dispatch(searchUI:activeHost(),{{type='Char',key=char}}) end
+assert(choices:GetMatchCount()==1 and choices.searchInfos[1].matches,'Long draft title cannot be found by its ending')
+local tip={lines={}};function tip:Clear() self.lines={} end;function tip:AddLine(_,line) self.lines[#self.lines+1]=line end
+choices.tooltipFunc(tip,'HOVER',1,choices.list[1]);local count=#tip.lines;choices.tooltipFunc(tip,'HOVER',1,choices.list[1])
+assert(#tip.lines==count and table.concat(tip.lines,' '):find('SENTINEL',1,true),'Draft tooltip must show the complete title without accumulating lines')
+searchUI:frame();local sx,sy=choices:GetPos();local _,sh=choices:GetSize();searchUI:clickAt(sx+30,sy+sh+10)
+assert(choices:GetSelValueByKey('val')==longPlan.id,'Selecting a filtered title must select the matching draft')
+main.popups={};searchUI:restore();print('ATLAS_DRAFT_SEARCH_OK')
