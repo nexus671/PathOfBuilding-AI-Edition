@@ -20,6 +20,12 @@ for rawValue=196,240 do
 end
 assert(counts[3.3]==5 and counts[3.4]==6 and counts[4]==4,"Abyss regeneration display distribution changed")
 local abyssState=copyTable(abyss.initial);abyssState.rarity="RARE";abyssState.affixes={{id=abyssId,range=sim.rollRange(abyssMod,function()return 0 end)}}
+assert(not sim.requiresRollSource(abyssState.affixes[1],abyss),"A valid raw tick must not require a legacy source")
+assert(pcall(sim.validateState,abyss,abyssState),"A generated raw tick must validate against its original base")
+local checkpoint=require("Modules.CraftingCheckpoint").validate(abyss.raw,require("Modules.CraftingInventory").run(abyssState))
+assert(math.abs(checkpoint.state.affixes[1].range-abyssState.affixes[1].range)<1e-9 and not checkpoint.state.affixes[1].legacySource,"Checkpoint must preserve the tick without manufacturing legacy provenance")
+local badAbyss=copyTable(abyssState);badAbyss.affixes[1].range=-0.5
+assert(sim.requiresRollSource(badAbyss.affixes[1],abyss) and not pcall(sim.validateState,abyss,badAbyss),"Unrelated out-of-range rolls must still require provenance")
 local abyssImported=sim.model(sim.toItem(abyss,abyssState).raw)
 assert(math.abs(abyssImported.initial.affixes[1].range-abyssState.affixes[1].range)<1e-9,"Abyss raw tick did not survive item import")
 local function hasOutsideWarning(m)
@@ -180,6 +186,17 @@ assert(restored.projects[1].nativeRecipe.targets[1].minBaseValue==65 and restore
 store:Upsert({id="multi-roll",title="Multi roll",slot="Weapon 1",startingItem=weaponRaw,goals={},steps={},nativeRecipe={steps={{method="alchemy"}},targets={minTarget,maxTarget}}})
 xml={};store:Save(xml);restored=require("Modules.CraftingProjects").new(build);restored:Load(xml)
 assert(restored.projects[2].nativeRecipe.targets[2].baseValueComponent==2,"Saved recipe lost the component")
+local jewelSlot
+for id,node in pairs(build.spec.tree.nodes) do
+ local slot="Jewel "..id
+ if node.isJewelSocket and build.itemsTab:IsItemValidForSlot(abyss.item,slot) then jewelSlot=slot;break end
+end
+assert(jewelSlot,"Expected a compatible jewel socket")
+store:Upsert({id="regen-raw",title="Regeneration",slot=jewelSlot,startingItem=abyss.raw,goals={},steps={},nativeRecipe={initialState=abyssState,steps={{method="divine"}},targets={{anyOf={abyssId},minRoll=0.02}}}})
+xml={};store:Save(xml);restored=require("Modules.CraftingProjects").new(build);restored:Load(xml)
+local savedState=restored.projects[3].nativeRecipe.initialState
+assert(math.abs(savedState.affixes[1].range-abyssState.affixes[1].range)<1e-9,"Saved recipe lost the raw regeneration tick")
+assert(pcall(sim.validateState,sim.model(abyss.raw),savedState),"Reopened recipe rejected its generated raw tick")
 local complex;for _,entry in ipairs(model.mods) do local n=0;for _,line in ipairs(entry.mod) do for _ in line:gmatch("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)") do n=n+1 end end;if n>1 then complex=entry.id;break end end
 assert(complex and not pcall(sim.calculate,raw,{method="alchemy"},{{anyOf={complex},minBaseValue=1}},nil,{trials=2,seed=5}),"Ambiguous multi-value modifier must be rejected")
 local tincture='Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n30% reduced Mana Burn rate\n30% increased Melee Weapon Attack Speed'

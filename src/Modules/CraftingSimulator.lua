@@ -1016,8 +1016,13 @@ function M.rollOutsideTier(entry)
 	for _,value in ipairs(ranges) do if type(value)=="number" and (value<0 or value>1) then return true end end
 	return false
 end
-function M.requiresRollSource(entry)
-	return entry.legacyLightRadius==true or M.rollOutsideTier(entry)
+function M.requiresRollSource(entry,model)
+	if entry.legacyLightRadius then return true end
+	if not M.rollOutsideTier(entry) then return false end
+	local ranges=type(entry.range)=="table" and entry.range or {entry.range or 0.5}
+	local mod=model and model.byId and model.byId[entry.id]
+	if #ranges==1 and mod and M.isRawRegenRange(mod,ranges[1]) then return false end
+	return true
 end
 local function sameAffixRoll(left,right,leftModel,rightModel)
 	if left.id~=right.id or not not left.legacyLightRadius~=not not right.legacyLightRadius or not not left.description330~=not not right.description330 then return false end
@@ -1036,7 +1041,7 @@ end
 function M.validateLegacyRolls(model,state)
 	for _,entry in ipairs(state.affixes or {}) do
 		assert(entry.legacySource==nil or type(entry.legacySource)=="string" and #entry.legacySource<=24000,"Invalid legacy roll source")
-		if M.requiresRollSource(entry) then
+		if M.requiresRollSource(entry,model) then
 			local found=false
 			for _,original in ipairs(model.initial.affixes or {}) do if sameAffixRoll(entry,original,model,model) then found=true;break end end
 			if not found and entry.legacySource then
