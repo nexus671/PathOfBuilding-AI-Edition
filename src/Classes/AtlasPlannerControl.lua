@@ -166,12 +166,14 @@ function Canvas:OnFocusLost() self.drag=nil end
 function Panel.Open(build,source,layout)
 	local store=build.savers.AtlasPlans
 	local version=atlas.defaultVersion(build.spec.treeVersion)
+	local draft
 	local function newAtlasId()
 		local used={};for _,plan in ipairs(store.plans) do used[#used+1]=plan end
+		if draft then used[#used+1]=draft end
 		if layout and layout.atlasDrafts then for _,entry in ipairs(layout.atlasDrafts()) do if entry.plan then used[#used+1]=entry.plan end end end
 		return require("Modules.PlanningData").newId("atlas-",used,12)
 	end
-	local draft=copyTable(source or store.plans[1] or {id=newAtlasId(),title="New Atlas plan",version=version,budget=atlas.tree(version).maxPoints,nodes={},notes=""})
+	draft=copyTable(source or store.plans[1] or {id=newAtlasId(),title="New Atlas plan",version=version,budget=atlas.tree(version).maxPoints,nodes={},notes=""})
 	local newDraft=true
 	for _,plan in ipairs(store.plans) do if plan.id==draft.id then newDraft=false;break end end
 	if layout and layout.restore and type(layout.restore.newDraft)=="boolean" then newDraft=layout.restore.newDraft end

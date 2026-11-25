@@ -45,3 +45,17 @@ local external=copyTable(saved.plan);external.title='Existing after restart';bui
 local after=require('Modules.PlanningWorkspace').new(build);build.planningWorkspace=after;after.drafts.atlas=saved;after.atlasDrafts[taken]=saved;after:Show('atlas');recoveryUI:click('keep')
 local restored=build.savers.AtlasPlans.plans;assert(#restored==2 and restored[1].title=='Existing after restart' and restored[2].title=='Recovered draft' and restored[2].id~=taken,'Recovered draft replaced the saved plan')
 recoveryUI:restore();print('ATLAS_RECOVERY_COLLISION_OK')
+-- The active unsaved draft is reserved before navigation saves it in the workspace.
+newBuild();main.popups={};local activeUI=require('Modules.HeadlessUI').install({width=960,height=640});activeUI:bind(build)
+local active=require('Modules.PlanningWorkspace').new(build);build.planningWorkspace=active;build.viewMode='PLANNER';active:Show('atlas');activeUI:text('title','Active draft')
+local activeId=active.cache.atlas.layout.snapshot().id;assert(not active.atlasDrafts[activeId],'Fixture needs an unrecorded active draft')
+local activeSuffix=assert(activeId:match('^atlas%-(%x+)$'));local alternate=activeSuffix==string.rep('b',12) and 'c' or 'b'
+local activePlanning=require('Modules.PlanningData');local activeNewId=activePlanning.newId;local activeSha=package.loaded.sha1 or require('sha1')
+activePlanning.newId=function(prefix,entries,length)
+ local attempts=0;package.loaded.sha1=function() attempts=attempts+1;return attempts==1 and activeSuffix..string.rep('0',28) or string.rep(alternate,40) end
+ local result=activeNewId(prefix,entries,length);package.loaded.sha1=activeSha;return result
+end
+activeUI:click('new');activePlanning.newId=activeNewId
+assert(active.cache.atlas.layout.snapshot().id~=activeId,'New plan reused the active unsaved draft ID')
+assert(active.atlasDrafts[activeId] and active.atlasDrafts[activeId].plan.id==activeId,'Active draft was lost during navigation')
+activeUI:restore();print('ATLAS_ACTIVE_DRAFT_ID_OK')

@@ -1574,7 +1574,7 @@
 	<File name="Assets/veiledicon.png" part="program" sha1="035479a7ee7847969ef50ff428e3bee897fba671" />
 	<File name="Assets/vestigialicon.png" part="program" sha1="ecb5dd4b9aed1cac0c1a677b18838ae9c62744d7" />
 	<File name="Assets/warlordicon.png" part="program" sha1="cca050c84884f5c0bb1380ece51d3c4b32be4900" />
-	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="fbb4250baeef63fe050e07be0f170cc3a8d4d8db" />
+	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="3815e7f9573183c21d2ee814d40b550af2155945" />
 	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="bc317bacfeecf533d7c1a5e3d3536a2edf847d6a" />
 	<File name="Classes/AtlasRegionsControl.lua" part="program" sha1="b0d056fb0937de21a124f35a28618ae9cf5b362d" />
 	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="091b4a396966a60064fe5c3ad148a80f97be18e7" />
