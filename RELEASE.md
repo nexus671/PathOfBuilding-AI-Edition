@@ -32,6 +32,11 @@ An existing installation directory is never overwritten. File checks establish
 integrity against the package manifest; verify the ZIP against the release's
 trusted source commit separately before installing.
 
+The Windows launcher has fork-specific icon and version resources. After
+changing the icon or edition version, regenerate them on Windows with
+`python tools/brand_windows_launcher.py "runtime/Path{space}of{space}Building.exe" src/Assets/AI-Edition.ico --version 1.0.1`,
+then regenerate the updater manifest and validate the resulting package.
+
 For a private, local installation, build with `--local-updates` and verify with
 `--require-local-updates`. This also accepts a clean local branch. The package
 keeps the usual portable build and settings folder and can refresh configured

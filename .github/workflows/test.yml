@@ -18,6 +18,8 @@ jobs:
       - name: Verify AI Edition installer
         shell: pwsh
         run: ./tools/test_install_ai_edition.ps1
+      - name: Verify Windows launcher branding
+        run: python -m unittest discover -s tools -p test_brand_windows_launcher.py
       - name: Verify authorized stash capture collector with fixture transport
         run: python -m unittest discover -s tools -p test_collect_public_stash_capture.py
       - name: Verify rolled-jewel fixtures against native matching
