@@ -255,13 +255,13 @@ function main:Init()
 		self:OpenUpdatePopup()
 	end)
 	self.controls.applyUpdate.shown = function()
-		return launch.updateAvailable and launch.updateAvailable ~= "none"
+		return not launch.localUpdates and launch.updateAvailable and launch.updateAvailable ~= "none"
 	end
 	self.controls.checkUpdate = new("ButtonControl"):ButtonControl({"BOTTOMLEFT",self.anchorMain,"BOTTOMLEFT"}, {0, -24, 140, 20}, "", function()
 		launch:CheckForUpdate()
 	end)
 	self.controls.checkUpdate.shown = function()
-		return not launch.devMode and (not launch.updateAvailable or launch.updateAvailable == "none")
+		return not launch.devMode and not launch.localUpdates and (not launch.updateAvailable or launch.updateAvailable == "none")
 	end
 	self.controls.checkUpdate.label = function()
 		return launch.updateCheckRunning and launch.updateProgress or "Check for Update"
@@ -598,6 +598,7 @@ function main:LoadSettings(ignoreBuild)
 				self.lastToken = node.attrib.lastToken
 				self.lastRefreshToken = node.attrib.lastRefreshToken
 				self.tokenExpiry = tonumber(node.attrib.tokenExpiry)
+				self.lastOAuthClientId = node.attrib.lastOAuthClientId
 				for _, child in ipairs(node) do
 					if child.elem == "Account" then
 						self.gameAccounts[child.attrib.accountName] = {
@@ -792,7 +793,7 @@ function main:SaveSettings()
 		return true
 	end
 	t_insert(setXML, mode)
-	local accounts = { elem = "Accounts", attrib = { lastAccountName = self.lastAccountName, lastRealm = self.lastRealm, lastLeague = self.lastLeague, lastToken = self.lastToken, lastRefreshToken = self.lastRefreshToken, tokenExpiry = tostring(self.tokenExpiry) } }
+	local accounts = { elem = "Accounts", attrib = { lastAccountName = self.lastAccountName, lastRealm = self.lastRealm, lastLeague = self.lastLeague, lastToken = self.lastToken, lastRefreshToken = self.lastRefreshToken, lastOAuthClientId = self.lastOAuthClientId, tokenExpiry = tostring(self.tokenExpiry) } }
 	for accountName, account in pairs(self.gameAccounts) do
 		t_insert(accounts, { elem = "Account", attrib = { accountName = accountName, sessionID = account.sessionID } })
 	end

@@ -30,6 +30,13 @@ local function quantity(value)
 	return type(value)=="number" and value>0 and value<=9007199254740991 and value==math.floor(value)
 end
 
+function M.evidence(value)
+	if type(value)~="table" or not quantity(value.hour) or value.hour%3600~=0 or value.hour>4102444800
+		or not quantity(value.count) or value.count<5 or not quantity(value.chaosVolume) or value.chaosVolume<100
+		or type(value.age)~="number" or value.age%1~=0 or value.age<0 or value.age>10800 then return end
+	return {hour=value.hour,age=value.age,count=value.count,chaosVolume=value.chaosVolume}
+end
+
 local function directItem(entry)
 	local pair = type(entry)=="table" and entry.market_pair
 	if type(pair)~="table" or #pair~=2 then return end

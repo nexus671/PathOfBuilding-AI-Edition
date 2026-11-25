@@ -72,7 +72,7 @@ function TradeQueryClass:TradeQuery(itemsTab)
 
 	self.tradeQueryRequests = new("TradeQueryRequests"):TradeQueryRequests()
 	if not main.api then
-		main.api = new("PoEAPI"):PoEAPI(main.lastToken, main.lastRefreshToken, main.tokenExpiry)
+		main.api = new("PoEAPI"):PoEAPI(main.lastToken, main.lastRefreshToken, main.tokenExpiry, main.lastOAuthClientId)
 	end
 
 	self.hostName = "https://www.pathofexile.com/"
@@ -341,7 +341,7 @@ function TradeQueryClass:PriceItem()
 	self.controls.tradeAuthButton = new("ButtonControl"):ButtonControl({"TOPLEFT", self.controls.setSelect, "TOPLEFT"}, {0, row_height + row_vertical_padding, 188, row_height}, self.loginStatus, function()
 		-- LOGIN
 		if not main.api.authToken then
-			main.api:FetchAuthToken(function()
+			main.api:FetchAuthToken(function(problem)
 				if main.api.authToken then
 					self.loginStatus = "Authenticated"
 
@@ -353,18 +353,13 @@ function TradeQueryClass:PriceItem()
 					TradeQueryClass:SetNotice(self.controls.pbNotice, "")
 				else
 					self.loginStatus = colorCodes.WARNING.."Not authenticated"
+					if problem then TradeQueryClass:SetNotice(self.controls.pbNotice,problem) end
 				end
 			end)
 			self.clickTime = os.time()
 		-- LOGOUT
 		else
-			main.lastToken = nil
-			main.api.authToken = nil
-			main.lastRefreshToken = nil
-			main.api.refreshToken = nil
-			main.tokenExpiry = nil
-			main.api.tokenExpiry = nil
-			main:SaveSettings()
+			main.api:ResetDetails()
 		end
 	end)
 	self.controls.tradeAuthButton.tooltipText = [[

@@ -1810,7 +1810,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("viewStyle");ui:click("style2");ui:click("applyStyle");frame("filter-themes");ui:click("globalStyle");ui:choose("minimumFontSize","Minimum size 40","label");ui:choose("alertVolume","Mute filter alerts","label");ui:choose("disableEffects","Disable beams","label");ui:choose("alertId","Use alert 6","label");ui:text("textColor","FFE0A0FF");ui:text("borderColor","C0A060FF");ui:text("backgroundColor","101820FF");ui:click("borderColorPick");frame("filter-global-colour-wheel");ui:text("hex","C0A060FF");ui:click("keep");assert(main.popups[1].controls.borderColor.buf=="C0A060FF","Global picker did not return the selected colour");frame("filter-global-style");ui:click("keep")
 	ui:click("categoryStyles");frame("filter-category-browser");ui:text("search","Currency");ui:click("choose");ui:text("textColor","00FF00FF");frame("filter-category-preview");ui:click("keep");frame("filter-category-applied")
 	assert(build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].categoryStyles[1].category=="Currency","Category style was not kept in the draft");ui:click("viewOverview")
-	filterTool("Account filters");frame("filter-account");ui:click("createAccount");frame("filter-account-review");ui:click("cancel");ui:click("close")
+	do
+		local accountAccessError=main.api.AccountAccessError
+		main.api.AccountAccessError=function() return nil end -- Exercise the review without an account request.
+		filterTool("Account filters");frame("filter-account");ui:click("createAccount");frame("filter-account-review");ui:click("cancel");ui:click("close")
+		main.api.AccountAccessError=accountAccessError
+	end
 	dofile("../tools/test_campaign_selection_ui.lua")(build,ui,frame,filterTool)
 	ui:click("viewCustomize");ui:choose("source","Policies");ui:text("search","Bow / areas 45-49")
 	do

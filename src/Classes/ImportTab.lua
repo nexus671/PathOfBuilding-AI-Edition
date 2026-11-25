@@ -163,6 +163,7 @@ local function addOAuthControls(self)
 
 	self.controls.authenticateButton = new("ButtonControl"):ButtonControl({ "TOPLEFT", self.controls.characterImportAnchor, "TOPLEFT" },
 		{ 0, 0, 200, 16 }, "^7Authorize with Path of Exile", function()
+			self.oauthTimer = os.time()
 			main.api:FetchAuthToken(function(errCode)
 				if errCode then
 					self.oauthErrCode = errCode
@@ -176,7 +177,6 @@ local function addOAuthControls(self)
 					fetchCharacters()
 				end
 			end)
-			self.oauthTimer = os.time()
 		end)
 	self.controls.authenticateButton.shown = function()
 		return self.usingOauth and not self.isAuthorized()
@@ -481,7 +481,7 @@ function ImportTabClass:ImportTab(build)
 	self.build = build
 
 	if not main.api then
-		main.api = new("PoEAPI"):PoEAPI(main.lastToken, main.lastRefreshToken, main.tokenExpiry)
+		main.api = new("PoEAPI"):PoEAPI(main.lastToken, main.lastRefreshToken, main.tokenExpiry, main.lastOAuthClientId)
 	end
 
 

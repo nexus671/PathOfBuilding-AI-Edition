@@ -43,13 +43,15 @@ test('negotiates versions, requires initialization, and keeps applying builds in
   assert.equal((await c.request('tools/list')).error.code,-32000);
   assert.equal((await c.initialize('2025-03-26')).result.protocolVersion,'2025-03-26');
   const list = (await c.request('tools/list')).result.tools;
-  assert.equal(list.length,61);
+  assert.equal(list.length,63);
   assert.ok(list.some(tool => tool.name === 'review_loot_sync_examples' && !tool.annotations.readOnlyHint));
   assert.ok(list.some(tool => tool.name === 'list_loot_sync_decisions' && !tool.annotations.readOnlyHint));
+  assert.ok(list.some(tool => tool.name === 'list_loot_sync_profiles' && tool.annotations.readOnlyHint));
+  assert.ok(list.some(tool => tool.name === 'read_loot_sync_profile' && !tool.annotations.readOnlyHint));
   assert.ok(list.some(tool => tool.name === 'get_loot_sync_status' && tool.annotations.readOnlyHint));
   assert.ok(list.some(tool => tool.name === 'get_loot_sync_diff' && tool.annotations.readOnlyHint));
   assert.ok(list.every(tool => !tool.annotations.openWorldHint));
-  assert.equal(list.filter(tool => !tool.annotations.readOnlyHint).length,44);
+  assert.equal(list.filter(tool => !tool.annotations.readOnlyHint).length,45);
   assert.ok(list.some(tool => tool.name === 'search_crafting_inventory' && !tool.annotations.readOnlyHint));
   assert.ok(list.some(tool => tool.name === 'get_crafting_inventory_item' && tool.annotations.readOnlyHint));
   assert.ok(list.some(tool => tool.name === 'review_same_base_vendor_items' && !tool.annotations.readOnlyHint));

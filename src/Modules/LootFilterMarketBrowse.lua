@@ -75,10 +75,12 @@ end
 function M.managedTarget(rule)
 	local market = require("Modules.LootFilterEconomy")
 	local entry = market.validateManagedRules({rule})[1]
-	local category = entry.exchangeCategory
+	local category = entry.uniqueFeed or entry.exchangeCategory
 	local target = {managed=true,name=entry.name,details={}}
-	if entry.class=="Maps" then
-		category = entry.mapType
+	if entry.uniqueFeed then
+		target.details[1] = "Highest supported listing estimate on this base. Every unidentified unique on the base stays visible."
+	elseif entry.class=="Maps" then
+		category = maps.variants[entry.mapType].feed or entry.mapType
 		target.mapTier = entry.tier
 	elseif gemMarket.classes[entry.class] then
 		category = gemMarket.feed
@@ -117,7 +119,7 @@ function M.managedQuote(body, target)
 	local supported = market.liquid(quote)
 	return {state=supported and "quoted" or "thin",row={name=target.name,price=quote.price,
 		identity=market.evidencePriceId(quote.providerId or quote.id),source=quote.source,volume=quote.volume,
-		supported=supported,liquidityUnit=quote.liquidityUnit,variant=quote.variant,mapTier=target.mapTier,
+		supported=supported,liquidityUnit=quote.liquidityUnit,variant=quote.variant or quote.uniqueName,mapTier=target.mapTier,
 		gemLevel=target.level,gemQuality=target.quality,corrupted=target.corrupted}}
 end
 
@@ -158,6 +160,14 @@ function M.listingTargetForItem(item)
 	local baseName,implicit=baseTradeIdentity(item.baseName)
 	if implicit==false then return end
 	return require("Modules.LootFilterGearListings").target(item,baseName)
+end
+
+function M.craftingBaseForItem(item)
+	if not item or type(item.baseName)~="string" then return end
+	local name, implicit = baseTradeIdentity(item.baseName)
+	if implicit==false then return end
+	local target = require("Modules.LootFilterGearListings").craftingBaseTarget(item,name)
+	return target, implicit
 end
 
 function M.overlayTarget(raw)
@@ -372,10 +382,12 @@ function M.buildTargets(build)
 				if category=="BaseType" then baseName,implicit=baseTradeIdentity(item.baseName) end
 				local itemLevel = item.itemLevel
 				if category~="BaseType" or implicit==false or not positive(itemLevel) or itemLevel>100 or itemLevel~=math.floor(itemLevel) then itemLevel=nil end
-				local listingItem = (itemLevel or cluster) and require("Modules.LootFilterGearListings").target(item,baseName)
+				local listings = require("Modules.LootFilterGearListings")
+				local listingItem = (itemLevel or cluster) and listings.target(item,baseName)
+				local plainBase = itemLevel and listings.craftingBaseTarget(item,baseName)
 				local labelLevel = itemLevel or listingItem and listingItem.level
 				add({name=baseName,category=category,baseTarget=true,itemLevel=itemLevel,baseImplicit=implicit or nil,
-					listingItem=listingItem,listingSlot=listingItem and slot.slotName or nil,
+					listingItem=listingItem,plainBase=plainBase,listingSlot=listingItem and slot.slotName or nil,
 					listingSocket=listingItem and slot.nodeId or nil,
 					baseVariant=baseName~=item.baseName and item.baseName or nil,
 					label=label.." | "..item.baseName..(labelLevel and (" | Item level "..labelLevel) or ""),

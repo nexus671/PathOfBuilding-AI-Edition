@@ -230,13 +230,15 @@ test('reads loot sync status from the desktop heartbeat without queuing a write'
 test('pages the last verified cutoff diff without recording a request', t => {
   const f = fixture(t);
   assert.equal(f.call('get_loot_sync_diff',{}).available,false);
-  const changes = [{item:'Orb of Alteration',priceId:'orb-of-alteration',previousCutoff:6,proposedCutoff:4,samples:[{area:83,before:'Hide',action:'Unknown',afterMissing:['ItemLevel']},{area:60,before:'Unknown',beforeMissing:['DropLevel'],action:'Show'}]},
+  const confirmedTrade = {hour:3600,age:3700,count:500,chaosVolume:100};
+  const changes = [{item:'Orb of Alteration',priceId:'orb-of-alteration',previousCutoff:6,proposedCutoff:4,confirmedTrade,samples:[{area:83,before:'Hide',action:'Unknown',afterMissing:['ItemLevel']},{area:60,before:'Unknown',beforeMissing:['DropLevel'],action:'Show'}]},
     {item:'Map (Tier 16)',previousCutoff:1,proposedCutoff:0,quotedPrice:8,samplesLimited:true,
       samples:[{class:'Maps',rarity:'Normal',before:'Hide',beforeLine:21,action:'Show',line:29},
         {class:'Maps',rarity:'Rare',before:'Hide',beforeLine:21,action:'Hide',line:26}]}];
   const priceFeed = {category:'Currency',responseAge:8,revalidated:true};
   f.state.lootSyncDiff = {checkedAt:100,verifiedProtection:true,protectedChecks:600,responseAges:[8,'private',3601],changeCount:3,
-    changes:[changes[0],{...changes[1],priceId:'C:/private.filter'}],
+    changes:[{...changes[0],confirmedTrade:{...confirmedTrade,path:'C:/private.filter'}},
+      {...changes[1],priceId:'C:/private.filter',confirmedTrade:{...confirmedTrade,hour:3601}}],
     feeds:[{...priceFeed,privatePath:'C:/do-not-share.filter'},{category:'C:/private',responseAge:8},{category:'Oil',responseAge:3601}],
     privatePath:'C:/do-not-share.filter'};
   f.write('state',f.state);
@@ -256,6 +258,22 @@ test('pages the last verified cutoff diff without recording a request', t => {
     assert.throws(()=>f.call('get_loot_sync_diff',args),/arguments/);
   }
   assert.equal(fs.existsSync(path.join(f.dir,'AI-build-request.json')),false);
+});
+
+test('lists named sync profiles safely and queues only registered profile IDs', t => {
+  const f=fixture(t), profileId='a'.repeat(40), other='b'.repeat(40);
+  f.state.lootSyncProfiles=[
+    {id:'default',name:'Default'},{id:profileId,name:'My filter',target:'C:/local.filter'},
+    {id:other,name:'C:/private.filter'},{id:profileId,name:'Duplicate'},{id:'C:/secret',name:'Private'}
+  ];
+  f.write('state',f.state);
+  const result=f.call('list_loot_sync_profiles',{});
+  assert.deepEqual(result.profiles,[{id:'default',name:'Default'},{id:profileId,name:'My filter'},{id:other,name:'Profile bbbbbbbb'}]);
+  assert.throws(()=>f.call('read_loot_sync_profile',{baseRevision:f.state.revision,profileId:'c'.repeat(40)}),/available sync profile/);
+  const request=f.call('read_loot_sync_profile',{baseRevision:f.state.revision,profileId});
+  assert.equal(request.status,'queued');
+  const saved=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(saved.kind,'read_loot_sync_profile');assert.equal(saved.profileId,profileId);
 });
 
 test('queues path-free pages for a specific verified loot decision', t => {

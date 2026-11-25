@@ -23,6 +23,10 @@ local function socketKey(sockets, colorKey)
 	return table.concat(parts)
 end
 
+function M.listingSockets(sockets)
+	return socketKey(sockets,"sColour")
+end
+
 function M.socketCounts(key)
 	local total, largest = 0, 0
 	for group in key:gmatch("%S+") do
@@ -146,7 +150,7 @@ function M.matches(item, target, links)
 		if sockets==nil then sockets={} end
 		if properties==nil then properties={} end
 	end
-	local key=socketKey(sockets,"sColour")
+	local key=M.listingSockets(sockets)
 	if key==nil or type(properties)~="table" then return false end
 	if links then
 		local count, largest=M.socketCounts(key)

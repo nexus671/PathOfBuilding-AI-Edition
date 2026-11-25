@@ -54,6 +54,20 @@ class PortablePackageTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             self.build()
 
+    def test_local_updates_must_be_recorded_in_the_manifest(self):
+        portable.build(self.root, self.output, "dev", "a" * 40, local_updates=True)
+        trusted = (self.root / "manifest.xml").read_bytes()
+        result = check_portable_package.verify(self.output, trusted, "a" * 40, require_local_updates=True)
+        self.assertEqual(result, (5, "test-preview", "dev", "a" * 40))
+        with zipfile.ZipFile(self.output) as source:
+            version = ET.fromstring(source.read("manifest.xml")).find("Version")
+            self.assertEqual(version.get("updates"), "local")
+            self.assertIn(b"App updates use local packages", source.read("PACKAGE-INFO.txt"))
+        online = self.root / "online.zip"
+        portable.build(self.root, online, "dev", "a" * 40)
+        with self.assertRaisesRegex(ValueError, "does not disable"):
+            check_portable_package.verify(online, require_local_updates=True)
+
     def test_verifier_rejects_unlisted_and_modified_content(self):
         self.build()
         with zipfile.ZipFile(self.output, "a") as archive:
