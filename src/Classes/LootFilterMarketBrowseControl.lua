@@ -122,12 +122,18 @@ local function showMarketDetails(entry, title, review, compareBuild)
 end
 
 local function showListingSample(target, league, sample, filterCount, review, compareBuild)
-	local details = {
-		league .. " | Local public stash listing sample",
-		string.format("%d same-base listings checked | %d matching %s",sample.inspected,sample.matched,
-			filterCount and "listings" or "rolls"),
-		string.format("%d matching listings with a supported asking price",sample.priced),
-	}
+	local recent = sample.expiredListings~=nil
+	local details = {league .. " | Local public stash listing sample"}
+	if recent then details[#details+1]="Automatic comparison uses stash observations under one hour old." end
+	if recent and sample.priced==0 then
+		details[#details+1]="No recently observed matching asking prices. Inspect the saved capture for recorded asks."
+	end
+	if recent and sample.expiredListings>0 then
+		details[#details+1]=string.format("Excluded %d older same-base listings.",sample.expiredListings)
+	end
+	details[#details+1]=string.format("%d same-base listings checked | %d matching %s",sample.inspected,sample.matched,
+		filterCount and "listings" or "rolls")
+	details[#details+1]=string.format("%d matching listings with a supported asking price",sample.priced)
 	if filterCount then
 		details[#details+1]=string.format("Filtered comparison | %d selected modifier %s",filterCount,filterCount==1 and "filter" or "filters")
 	end
@@ -153,7 +159,13 @@ local function showListingSample(target, league, sample, filterCount, review, co
 	if capture then
 		details[#details+1] = "Declared PC capture | "..os.date("!%Y-%m-%d %H:%M UTC",capture.capturedAt)
 		local minutes=math.max(0,math.floor((os.time()-capture.capturedAt)/60))
-		details[#details+1] = string.format("Capture age: %d min%s",minutes,minutes>=60 and " | Over one hour old" or "")
+		local age=minutes>=1440 and string.format("%d days",math.floor(minutes/1440))
+			or minutes>=60 and string.format("%dh %02dm",math.floor(minutes/60),minutes%60)
+			or string.format("%d min",minutes)
+		details[#details+1] = "Oldest page: "..age.." ago"
+		if not recent and minutes>=60 then
+			table.insert(details,2,"Recorded sample includes pages at least one hour old.")
+		end
 		details[#details+1] = string.format("Pages: %d | Stash updates: %d | Withdrawals: %d",capture.pages,capture.updated,capture.withdrawn)
 		if capture.conflicts>0 then details[#details+1]=string.format("%d conflicting stash changes excluded",capture.conflicts) end
 	end
@@ -188,17 +200,17 @@ local ok, result=pcall(function(path,league,encoded)
 	local json=require("dkjson")
 	local request=assert(json.decode(encoded))
 	local matchesRolls=request.filters and require("Modules.LootFilterMarketBrowse").listingRollMatcher(request.filters)
-	local sample=require("Modules.LootFilterGearListings").compareFile(path,request.target,league,matchesRolls,true)
+	local sample=require("Modules.LootFilterGearListings").compareFile(path,request.target,league,matchesRolls,true,request.recentOnly)
 	return assert(json.encode(sample))
 end,...)
 return ok,tostring(result)
 ]=]
 
-local function compareSavedCapture(path,target,league,filters,stillCurrent,review,compareBuild)
+local function compareSavedCapture(path,target,league,filters,stillCurrent,review,compareBuild,recentOnly)
 	local json=require("dkjson")
 	local host=main.popups[1]
 	if host.savedCaptureJob then return end
-	local request=assert(json.encode({target=target.listingItem,filters=filters}))
+	local request=assert(json.encode({target=target.listingItem,filters=filters,recentOnly=recentOnly}))
 	host.savedCaptureJob=LaunchSubScript(savedCaptureWorker,"","",path,league,request)
 	if not host.savedCaptureJob then
 		ui.errorPopup("Comparable asking prices","Could not start the saved capture comparison.")
@@ -382,12 +394,24 @@ local function open(build, managedTarget, overlay)
 				"Compare in PoB",compareBuild)
 			controls.compareBuild.enabled=function() return not busy and target and (target.listingItem~=nil or target.buildItem) end
 		end
+		local pinned=overlay and overlay.snapshot
 		controls.listingSample=new("ButtonControl"):ButtonControl(ui.anchor,{24+actionWidth,320,actionWidth,28},"Compare listing file",function()
 			local league=controls.league.buf:match("^%s*(.-)%s*$")
 			if not league:match("^[%w _-]+$") then status("Enter the trade league ID for the listing file."); return end
 			compareListingFile(target,league)
 		end)
 		controls.listingSample.enabled=function() return not busy and target and target.listingItem~=nil end
+		if pinned then
+			controls.savedListing=new("ButtonControl"):ButtonControl(ui.anchor,{16,320,actionWidth,28},"Inspect saved capture",function()
+				local league=controls.league.buf:match("^%s*(.-)%s*$")
+				if not league:match("^[%w _-]+$") then status("Enter the saved capture's league ID."); return end
+				local selected=target
+				compareSavedCapture(pinned,selected,league,nil,function()
+					return target==selected and controls.league.buf:match("^%s*(.-)%s*$")==league
+				end,nil,compareBuild)
+			end)
+			controls.savedListing.enabled=controls.listingSample.enabled
+		end
 		controls.rolledTrade = new("ButtonControl"):ButtonControl(ui.anchor,{24+actionWidth,358,actionWidth,28},"Review Trade search",function()
 			local league=controls.league.buf:match("^%s*(.-)%s*$")
 			if not league:match("^[%w _-]+$") then status("Enter a valid league ID to search official trade."); return end
@@ -563,7 +587,7 @@ local function open(build, managedTarget, overlay)
 				status("Saved listing capture selected.")
 				return true
 			end
-		end,review,compareBuild)
+		end,review,compareBuild,true)
 	end
 end
 

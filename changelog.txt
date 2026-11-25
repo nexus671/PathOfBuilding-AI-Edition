@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1330][2026/11/25]
+
+* Exclude older stash observations from automatic overlay prices and keep recorded asks available for review.
+
 VERSION[2.69.0-ai.preview1329][2026/11/25]
 
 * Page through every illustrative case for a current filter price decision.

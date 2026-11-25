@@ -6,6 +6,7 @@ local M = {}
 local maxPageBytes = 4 * 1024 * 1024
 local maxBytes = 16 * 1024 * 1024
 local captureFormat = "pob-public-stash-capture-v1"
+local recentSeconds = 60 * 60
 local jewellery = {Amulet=true, Ring=true, Belt=true}
 -- The pinned quiver catalogue contains both discontinued and current bases
 -- with these display names. Two pairs share the same natural implicit.
@@ -247,7 +248,7 @@ local function validCursor(value)
 	return type(value)=="string" and #value<=512 and #value>0 and not value:find("[%s%c]")
 end
 
-local function applyPage(stashes, latest, evidence, league)
+local function applyPage(stashes, latest, evidence, league, collectedAt)
 	local entries = {}
 	for _, stash in ipairs(stashes) do
 		local id = validID(stash.id) and stash.id:lower()
@@ -272,11 +273,11 @@ local function applyPage(stashes, latest, evidence, league)
 				evidence.updated=evidence.updated+1
 			end
 		end
-		latest[id] = stash and stash.public==true and stash.league==league and stash or nil
+		latest[id] = stash and stash.public==true and stash.league==league and {stash=stash,collectedAt=collectedAt} or nil
 	end
 end
 
-local function readStashes(raw, league, requireCapture)
+local function readStashes(raw, league, requireCapture, now)
 	assert(type(raw)=="string" and #raw<=maxBytes,"The listing file must be at most 16 MiB")
 	local document=assert(marketJSON.decode(raw),"Expected a public stash page or PoB listing capture")
 	local latest = {}
@@ -293,13 +294,18 @@ local function readStashes(raw, league, requireCapture)
 	assert(document.league==league,"The capture league does not match the selected league")
 	local capturedAt = document.capturedAt
 	assert(type(capturedAt)=="number" and capturedAt==math.floor(capturedAt)
-		and capturedAt>=1577836800 and capturedAt<=os.time(),"The capture requires a valid UTC capture timestamp")
+		and capturedAt>=1577836800 and capturedAt<=now,"The capture requires a valid UTC capture timestamp")
 	local pages = document.pages
 	assert(marketJSON.objectRows(pages) and #pages>=1 and #pages<=32,"A capture requires 1 to 32 stash pages")
 	local evidence = {realm=document.realm,capturedAt=capturedAt,pages=#pages,withdrawn=0,updated=0,conflicts=0}
-	local visited, expected = {}, nil
+	local visited, expected, lastTime = {}, nil, capturedAt
 	for index, entry in ipairs(pages) do
 		local request, page = entry.requestCursor, entry.response
+		local collectedAt = entry.collectedAt
+		if collectedAt==nil then collectedAt=capturedAt end
+		assert(type(collectedAt)=="number" and collectedAt==math.floor(collectedAt)
+			and collectedAt>=lastTime and collectedAt<=now and (index~=1 or collectedAt==capturedAt),
+			"The capture has an invalid page collection time")
 		assert(validCursor(request) and (not expected or request==expected) and not visited[request],
 			"The capture pages do not follow consecutive request cursors")
 		visited[request]=true
@@ -309,19 +315,22 @@ local function readStashes(raw, league, requireCapture)
 		assert(not visited[page.next_change_id] or terminal and page.next_change_id==request,
 			"The capture contains a cursor cycle")
 		assert(#page.stashes>0 or terminal,"An empty stash page must be the last page")
-		applyPage(page.stashes,latest,evidence,league)
+		applyPage(page.stashes,latest,evidence,league,collectedAt)
 		expected=page.next_change_id
+		lastTime=collectedAt
 	end
 	return latest,evidence
 end
 
-function M.compare(raw, target, league, matchesRolls, requireCapture)
+function M.compare(raw, target, league, matchesRolls, requireCapture, recentOnly)
 	assert(target,"Choose supported identified gear with complete rolls and equipment properties")
 	assert(not (target.blightcore and matchesRolls),"Putrid Seed requires an exact ordered comparison")
 	assert(type(league)=="string" and #league<=80 and league:match("^[%w _-]+$") and league:find("%S"),"Enter the trade league ID")
-	local stashes, capture = readStashes(raw,league,requireCapture)
+	local now=os.time()
+	local stashes, capture = readStashes(raw,league,requireCapture or recentOnly,now)
 	local listings = {}
-	for _, stash in pairs(stashes) do
+	for _, entry in pairs(stashes) do
+		local stash=entry.stash
 		if type(stash.accountName)=="string" and #stash.accountName<=128 and stash.accountName:find("%S")
 			and type(stash.items)=="table" then
 			local seller = stash.accountName:lower()
@@ -332,27 +341,32 @@ function M.compare(raw, target, league, matchesRolls, requireCapture)
 					if listings[id]~=nil then
 						listings[id]=false
 					else
-						listings[id]={item=item,seller=seller,stashNote=stash.stash}
+						listings[id]={item=item,seller=seller,stashNote=stash.stash,
+							expired=recentOnly and now-entry.collectedAt>=recentSeconds}
 					end
 				end
 			end
 		end
 	end
-	local matched, inspected, priced, ambiguous = 0,0,0,0
+	local matched, inspected, priced, ambiguous, expired = 0,0,0,0,0
 	local sellers = {chaos={}, divine={}}
 	for _, listing in pairs(listings) do
-		inspected=inspected+1
-		if not listing then
-			ambiguous=ambiguous+1
-		elseif sameItem(listing.item,target,matchesRolls) then
-			matched=matched+1
-			local note = listing.item.note
-			if note==nil or note=="" then note=listing.stashNote end
-			local unit, amount = askingPrice(note)
-			if unit then
-				priced=priced+1
-				local prices = sellers[unit]
-				prices[listing.seller]=math.min(prices[listing.seller] or amount,amount)
+		if listing and listing.expired then
+			expired=expired+1
+		else
+			inspected=inspected+1
+			if not listing then
+				ambiguous=ambiguous+1
+			elseif sameItem(listing.item,target,matchesRolls) then
+				matched=matched+1
+				local note = listing.item.note
+				if note==nil or note=="" then note=listing.stashNote end
+				local unit, amount = askingPrice(note)
+				if unit then
+					priced=priced+1
+					local prices = sellers[unit]
+					prices[listing.seller]=math.min(prices[listing.seller] or amount,amount)
+				end
 			end
 		end
 	end
@@ -369,14 +383,15 @@ function M.compare(raw, target, league, matchesRolls, requireCapture)
 		end
 		results[#results+1]=summary
 	end
-	return {inspected=inspected,matched=matched,priced=priced,ambiguous=ambiguous,results=results,capture=capture}
+	return {inspected=inspected,matched=matched,priced=priced,ambiguous=ambiguous,results=results,capture=capture,
+		expiredListings=recentOnly and expired or nil}
 end
 
-function M.compareFile(path, target, league, matchesRolls, requireCapture)
+function M.compareFile(path, target, league, matchesRolls, requireCapture, recentOnly)
 	local file=assert(io.open(path,"rb"),"Could not open the selected public stash file")
 	local raw=file:read(maxBytes+1)
 	file:close()
-	return M.compare(raw,target,league,matchesRolls,requireCapture)
+	return M.compare(raw,target,league,matchesRolls,requireCapture,recentOnly)
 end
 
 return M
