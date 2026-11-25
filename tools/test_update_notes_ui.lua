@@ -1,8 +1,9 @@
 local output=arg[1];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true
 local notes=require("Modules.UpdateNotes");local uiModule=require("Modules.HeadlessUI")
 local target,hash=notes.target("../manifest.xml")
-assert(target and target:match("%-ai%.preview%d+$") and notes.readVerified("../changelog.txt",hash),"Current manifest does not verify its release notes")
+assert(target and (target:match("%-ai%.preview%d+$") or target:match("%-ai%.%d+%.%d+%.%d+$")) and notes.readVerified("../changelog.txt",hash),"Current manifest does not verify its release notes")
 local file=assert(io.open("../changelog.txt","rb"));local current=file:read("*a");file:close();local unix=current:gsub("\r\n","\n");local windows=unix:gsub("\n","\r\n")
+assert(current:find("VERSION["..target.."][",1,true)==1,"Current version is missing from release notes")
 assert(notes.matches(unix,hash) and notes.matches(windows,hash),"Release notes must verify with both checkout newline styles")
 assert(not notes.matches("stale notes",hash),"Stale notes passed verification")
 local text="VERSION[2.68.1-ai.preview1139][2026/11/22]\nLatest change.\nVERSION[2.68.1-ai.preview1138][2026/11/22]\nEarlier change.\nVERSION[2.68.1-ai.preview1137][2026/11/22]\nAlready installed.\n"
