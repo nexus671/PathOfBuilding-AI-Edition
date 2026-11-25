@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1293][2026/11/24]
+
+* Leave more room for the Atlas tree in compact windows.
+
 VERSION[2.69.0-ai.preview1292][2026/11/24]
 
 * Compare rolled rare armour and weapon asking prices in the market browser and AI tools.

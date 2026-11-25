@@ -113,7 +113,10 @@ function Canvas:Draw()
 	end
 	-- A small overview preserves orientation while zoomed into a cluster.
 	local bounds=self.mapBounds
-	local mx,my,mw,mh=self.width-132,self.height-104,120,92
+	-- Keep the overview useful without covering most of a short compact canvas.
+	local overviewScale=math.min(1,math.max(0.6,self.height/225))
+	local mw,mh=math.floor(120*overviewScale),math.floor(92*overviewScale)
+	local mx,my=self.width-mw-12,self.height-mh-12
 	SetDrawColor("^x344253");DrawImage(nil,mx,my,mw,mh);SetDrawColor("^x101822");DrawImage(nil,mx+1,my+1,mw-2,mh-2)
 	local sx,sy=(mw-8)/(bounds[3]-bounds[1]),(mh-8)/(bounds[4]-bounds[2])
 	for id,node in pairs(self.tree.nodes) do
