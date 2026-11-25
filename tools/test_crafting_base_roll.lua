@@ -6,6 +6,24 @@ local regen=assert(model.byId.LifeRegeneration2)
 local influenced=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86\nShaper Item")
 local suppression=assert(influenced.byId.ChanceToDodgeAttacksInfluence2)
 local describe=LoadModule("Modules/StatDescriber")
+-- Reconstructed legacy modifiers have no normal spawn weight in this data.
+-- Compare each modeled raw tick with PoB's translator, not game drop odds.
+local blockBase=sim.model("Rarity: NORMAL\nPinnacle Tower Shield\nItem Level: 86")
+local blockData=require("Modules.CraftingAdvanced").data().mods
+for _,id in ipairs({"BlockAppliesToSpellsUber1","BlockAppliesToSpellsShieldUber1_"}) do
+ local mod=assert(blockBase.byId[id]);local stat=assert(blockData[id]).stats[1]
+ for rawValue=stat.min,stat.max do
+  local draw=(rawValue-stat.min+0.1)/(stat.max-stat.min+1)
+  local expected=tonumber(describe({[stat.id]=rawValue},"stat_descriptions")[1]:match("^(%d+)%%"))
+  assert(sim.baseRollValue(mod,sim.rollRange(mod,function() return draw end))==expected,id.." raw block translation mismatch")
+ end
+end
+local blockState=copyTable(blockBase.initial);blockState.rarity="RARE";blockState.affixes={{id="BlockAppliesToSpellsShieldUber1_",range=0}}
+local blockSource=sim.toItem(blockBase,blockState).raw;local blockImported=sim.model(blockSource)
+assert(blockImported.initial.affixes[1].id=="BlockAppliesToSpellsShieldUber1_","Legacy block identity did not survive import")
+local blockReroll=sim.action(blockImported,blockImported.initial,{method="divine"},function() return 2.1/11 end)
+assert(sim.matches(blockReroll,{{anyOf={"BlockAppliesToSpellsShieldUber1_"},minBaseValue=9,maxBaseValue=9}},nil,blockImported),"Raw 32 must render and match 9% spell block")
+assert(sim.itemText(blockImported,blockReroll):find("9% Chance to Block Spell Damage",1,true),"Legacy block roll rendered incorrectly")
 for index,draw in ipairs({0,0.34,0.67}) do
  local range=sim.rollRange(suppression,function() return draw end)
  local expected=({9,10,12})[index]
