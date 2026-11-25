@@ -183,6 +183,47 @@ function M.personalRulesPreserved(previous, candidate)
 	return true
 end
 
+function M.hasRareTierPolicy(raw)
+	return raw and raw:find(tierMarker,1,true)~=nil
+end
+
+function M.rareTierExceptions(raw, parsed, checkpoint)
+	assert(M.hasRareTierPolicy(raw), "This filter has no marked Tier 5 Rank A/B policy")
+	local ranked, classes, rules = {}, {}, {}
+	for _, name in ipairs(declaredValues(raw,tierMarker,"BaseType")) do ranked[name] = true end
+	for _, class in ipairs(declaredValues(raw,tierMarker,"Class")) do classes[class] = true end
+	for _, rule in ipairs(parsed.rules) do rules[rule.line] = rule end
+	local library = require("Modules.LootFilterLibrary")
+	local result = {rows={},shown=0,hidden=0,unknown=0,missing=0}
+	local names = {}
+	for name in pairs(data.itemBases) do
+		if not ranked[name] then names[#names+1] = name end
+	end
+	table.sort(names)
+	for _, name in ipairs(names) do
+		if checkpoint then checkpoint() end
+		local class = library.baseClass(name)
+		if classes[class] then
+			local base = library.baseProperties(name,"Rare")
+			if not base.Width or not base.Height or not base.DropLevel then
+				result.missing = result.missing+1
+			elseif base.DropLevel<=86 then
+				local item = sample({BaseType=name,Class=class,Rarity="Rare",ItemLevel=86,UnidentifiedItemTier=5})
+				item.BaseDefencePercentile = library.baseDefencePercentile(name,class,"Rare")
+				local decision = parser.simulate(parsed,item)
+				if decision.action=="Hide" then
+					result.hidden = result.hidden+1
+				else
+					local key = decision.action=="Show" and "shown" or "unknown"
+					result[key] = result[key]+1
+					result.rows[#result.rows+1] = {item=item,decision=decision,rule=rules[decision.line]}
+				end
+			end
+		end
+	end
+	return result
+end
+
 function M.checkPersonalSamples(raw, check)
 	local library = require("Modules.LootFilterLibrary")
 	local seen = {}

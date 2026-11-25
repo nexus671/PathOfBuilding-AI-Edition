@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1296][2026/11/24]
+
+* Explain Tier 5 rare bases shown outside the marked Rank A/B list.
+
 VERSION[2.69.0-ai.preview1295][2026/11/24]
 
 * Preserve Atlas drafts if another plan claims their ID before saving.
