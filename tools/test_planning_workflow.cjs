@@ -59,9 +59,13 @@ async function main(){
   const lootDiff=await call('get_loot_sync_diff');assert.equal(lootDiff.reviewRevision,'b'.repeat(40));assert.equal(lootDiff.changes[0].decisionIndex,1);
   const lootPage=await queued('review_loot_sync_examples',{baseRevision:context.revision,reviewRevision:lootDiff.reviewRevision,decisionIndex:1,offset:0,limit:1},'lootReview');
   assert.equal(lootPage.lootReview.total,2);assert.equal(lootPage.lootReview.results[0].action,'Show');assert.ok(!JSON.stringify(lootPage).includes('fixture-target'));
+  await host('fixture-loot-examples',{portableFixture:true});
+  const portableLoot=await queued('review_loot_sync_examples',{baseRevision:context.revision,reviewRevision:lootDiff.reviewRevision,decisionIndex:1,offset:0,limit:1},'lootReview');
+  assert.deepEqual(portableLoot.lootReview.results,lootPage.lootReview.results);
   const staleLoot=await call('review_loot_sync_examples',{baseRevision:context.revision,reviewRevision:'c'.repeat(40),decisionIndex:1});
   await host('tick',24,staleLoot.id,'failed');const staleStatus=(await call('get_proposal_status')).proposal;
   assert.equal(staleStatus.id,staleLoot.id);assert.equal(staleStatus.status,'failed');assert.match(staleStatus.error,/review or verified filters changed/i);assert.ok(!staleStatus.error.includes('fixture-target'));
+  await host('restore-loot-fixture');
   const rawRegenAbyss='Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86';
   const rawRegenInitial={affixes:[{id:'AbyssFlatManaShieldRegenerationJewel3',range:(196/60-3.3)/0.7}],corrupted:false,influences:[],intangibility:0,memoryStrands:0,mirrored:false,origin:createHash('sha1').update(rawRegenAbyss).digest('hex'),quality:0,rarity:'RARE',sockets:[]};
   const rawRegenRecipe={initialState:rawRegenInitial,steps:[{method:'divine'}],targets:[{anyOf:['AbyssFlatManaShieldRegenerationJewel3'],minRoll:.02}]};

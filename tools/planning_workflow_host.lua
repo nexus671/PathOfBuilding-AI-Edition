@@ -22,6 +22,7 @@ bridge.enable(build)
 io.stderr:write("Native workflow: bridge ready\n")
 local function respond(value) io.stdout:write("WORKFLOW\t"..json.encode(value).."\n") end
 local injected={}
+local savedFixturePair
 respond({ready=true,revision=bridge.revision(build)})
 for line in io.lines() do
 	local command=assert(json.decode(line))
@@ -59,6 +60,8 @@ for line in io.lines() do
 			if command.restore then simulator[key]=assert(injected[identity]);injected[identity]=nil
 			else assert(not injected[identity]);injected[identity]=simulator[key];simulator[key]=function() error("Modules/Example.lua:12: First problem\nC:/PoB/Other.lua:34: Second problem\nstack traceback:\n internal frame",0) end end
 		elseif command.kind=="fixture-loot-examples" then
+			local sync=require("Modules.LootFilterDailySync")
+			if savedFixturePair then sync.verifiedFilterPair=savedFixturePair;savedFixturePair=nil end
 			local baseline='Show\n    BaseType == "Cord Belt"\n# PoB economy: begin\nHide\n    Class == "Stackable Currency"\n    BaseType == "Orb of Alteration"\n    StackSize <= 6\n# PoB economy: end\nShow\n'
 			local output=baseline:gsub('StackSize <= 6','StackSize <= 4')
 			local baselinePath,targetPath=directory.."fixture-baseline.filter",directory.."fixture-target.filter"
@@ -68,7 +71,22 @@ for line in io.lines() do
 			local config={enabled=true,revision=string.rep("b",40),target=targetPath,baseline=baselinePath,baselineHash=sha(baseline),current=sha(output),
 				lastSuccess=now,targetValue=1,league="Standard",protections={{BaseType="Cord Belt",Rarity="Normal"}},
 				review={checkedAt=now,changes={{name="Orb of Alteration",old=6,cutoff=4,classes={"Stackable Currency"}}},skipped={}}}
-			write(directory.."LootFilterDailySync.json",assert(json.encode(config)));bridge.publishState()
+			write(directory.."LootFilterDailySync.json",assert(json.encode(config)))
+			-- Daily sync accepts Windows paths only. Exercise the real page and
+			-- bridge on Linux using this fixture's files and the same hash checks.
+			-- The Windows workflow runs the unmodified verification path.
+			if command.portableFixture or require("ffi").os~="Windows" then
+				savedFixturePair=sync.verifiedFilterPair
+				sync.verifiedFilterPair=function()
+					local function read(path) local file=assert(io.open(path,"rb"));local value=assert(file:read("*a"));file:close();return value end
+					local first,second=read(baselinePath),read(targetPath)
+					assert(sha(first)==config.baselineHash and sha(second)==config.current,"Fixture filters changed")
+					return first,second
+				end
+			end
+			bridge.publishState()
+		elseif command.kind=="restore-loot-fixture" then
+			if savedFixturePair then require("Modules.LootFilterDailySync").verifiedFilterPair=savedFixturePair;savedFixturePair=nil end
 		elseif command.kind=="request-test" then bridge.connectionTest={nonce="workflow-connection-test",requestedAt=os.time()};bridge.publishState()
 		elseif command.kind=="connection-proof" then return {client=bridge.client and bridge.client.name,tested=bridge.connectionTest and bridge.connectionTest.passed,synced=bridge.client and bridge.client.contextRevision==bridge.contextRevision}
 		elseif command.kind=="apply" then
