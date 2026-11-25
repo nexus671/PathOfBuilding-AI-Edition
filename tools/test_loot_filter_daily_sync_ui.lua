@@ -1823,3 +1823,56 @@ do
 	resized:click("cancel")
 	resized:click("close");resized:restore()
 end
+
+do
+	newBuild();main.popups={}
+	local profile = require("Modules.LootFilters").profile("rare-policy","Rare policy")
+	profile.template = [[# CUSTOM: Highlight item tier 5 rare equipment on rank A and B bases
+Show
+    Rarity Rare
+    Identified False
+    UnidentifiedItemTier 5
+    Class == "Body Armours"
+    BaseType == "Royal Plate"
+Show # Named exception
+    BaseType == "Plate Vest"
+Hide
+]]
+	local saved = build.savers.LootFilters
+	saved:Replace({schemaVersion=1,activeId=profile.id,profiles={profile}})
+	local fingerprint = require("Modules.PlanningData").hash(saved.data)
+	local auditUI = headless.install({width=720,height=600})
+	auditUI:bind(build)
+	build.planningWorkspace = require("Modules.PlanningWorkspace").new(build)
+	build.viewMode = "PLANNER"
+	build.planningWorkspace:Show("filters")
+	local function openAudit()
+		auditUI:click("manage")
+		auditUI:text("search","Tier 5 rare exceptions")
+		auditUI:click("choose")
+		assert(main.popups[1].controls.status)
+	end
+	openAudit()
+	auditUI:click("close")
+	auditUI:frame(build)
+	assert(not main.popups[1],"Cancellation still opened audit results")
+	openAudit()
+	for _=1,600 do
+		auditUI:frame(build)
+		if main.popups[1] and main.popups[1].controls.results then break end
+	end
+	assert(main.popups[1].controls.results,"Audit did not finish")
+	auditUI:text("search","Plate Vest")
+	local dialog = main.popups[1].controls
+	local details = {}
+	for _, row in ipairs(dialog.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+	local description = table.concat(details," ")
+	assert(description:find("Show at compiled filter line",1,true) and description:find("Named exception",1,true),description)
+	if output then auditUI:frame():write(output.."/720-rare-tier-exceptions.json") end
+	auditUI:click("choose")
+	local snapshot = build.planningWorkspace.cache.filters.layout.snapshot()
+	assert(snapshot.page=="Simulate" and snapshot.sample.BaseType=="Plate Vest" and snapshot.sample.UnidentifiedItemTier==5)
+	assert(require("Modules.PlanningData").hash(saved.data)==fingerprint)
+	auditUI:restore()
+	print("Tier 5 rare exceptions explain the matched rule and inspect a sample without changing the build.")
+end

@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1295][2026/11/24]
+
+* Explain Tier 5 rare bases shown outside the marked Rank A/B list.
+
 VERSION[2.69.0-ai.preview1294][2026/11/24]
 
 * Preserve personal tiered rare and corrupted affix rules during baseline changes.

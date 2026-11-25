@@ -158,6 +158,8 @@ When a kept bundled profile references an older NeverSink revision, open **Profi
 
 When refreshing an imported baseline or adopting external edits to the tiered test filter, PoB also protects its marked rare-equipment rules. It checks the Tier 5 Rank A/B block, fallback hide, and identified corrupted affix rules for changes. A precedence check replays the declared bases at tiers 4 and 5 and examples of lower-ranked and corrupted equipment. Their filter decisions and visible appearance must match before PoB accepts the update.
 
+Open **Profile tools → Tier 5 rare exceptions** to see which eligible bases outside the marked Rank A/B list show in the compiled filter. The audit tests unidentified, uncorrupted, item-level 86 rares in an area at level 83 with no sockets. It shows the deciding filter line, matching rule text and any unresolved conditions. Select **Inspect sample** to open the same item in Simulate. These are examples from PoB's item catalogue.
+
 ## Publish a verified filter to a PoE account
 
 In **Daily price sync**, open **Publish to account** after a successful refresh. Use the existing PoE login and item-filter permission, select an existing filter in the matching realm, and review the full diff. **Publish exact output** rechecks the local checksum and the remote filter before sending the approved text. The server validates the update.
