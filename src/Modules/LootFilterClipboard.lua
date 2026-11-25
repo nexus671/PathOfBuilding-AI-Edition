@@ -2,6 +2,28 @@
 -- Hidden affix identities remain unknown.
 -- cspell:ignore RGBWAD
 local M={}
+-- A displayed gem name can have multiple data records. Infer Exceptional only
+-- when all records for that name and class agree, and leave unknown names unset.
+local exceptionalNames
+local function exceptionalGem(name,class)
+	if not exceptionalNames then
+		exceptionalNames={}
+		for _,gem in pairs(data.gems) do
+			if gem.grantedEffect and gem.tags then
+				local gemClass=gem.grantedEffect.support and "Support Gems" or "Skill Gems"
+				for _,base in pairs({gem.itemBaseName,gem.baseTypeName}) do
+					if base then
+						local key=gemClass.."\0"..base:lower();local value=gem.tags.exceptional and "yes" or "no"
+						local existing=exceptionalNames[key]
+						exceptionalNames[key]=existing and existing~=value and "ambiguous" or value
+					end
+				end
+			end
+		end
+	end
+	local result=name and exceptionalNames[class.."\0"..name:lower()]
+	if result=="yes" then return true elseif result=="no" then return false end
+end
 function M.parse(raw,area)
 	assert(type(raw)=="string" and #raw>0 and #raw<=24000 and not raw:find("\0"),"Paste a copied game item (up to 24 KiB)")
 	raw=raw:gsub("\r\n","\n");local rarity=assert(raw:match("Rarity: (%a+)"),"The clipboard has no item rarity")
@@ -132,6 +154,9 @@ function M.parse(raw,area)
 		item.MapTier=tierInName
 	end
 	if class and class:find("Gems",1,true) then
+		if rarity:lower()=="gem" and (class=="Skill Gems" or class=="Support Gems") then
+			item.Exceptional=exceptionalGem(item.BaseType,class)
+		end
 		for line in raw:gmatch("[^\n]+") do
 			local level=line:match("^Level:%s*(%d+)")
 			if level then
