@@ -25,7 +25,8 @@ function M.Open(build,project,layout,snapshot)
 	local c={};local cardX=310;local cardWidth=w-cardX-16
 	ui.label(c,"heading",16,18,"Unique crafting",22)
 	local utility=require("Modules.CraftingFlaskEnchants").eligible({item=item})
-	ui.description(c,"intro",16,56,270,68,{utility and "Preview flask crafts." or not info.qualitySupported and (item.corrupted and "This item is corrupted." or "Preview supported Divine Orb rolls.") or (item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",utility and (item.corrupted and "Corrupted flasks cannot be enchanted." or "Enchant odds are experimental.") or not info.qualitySupported and (item.corrupted and "Divine Orbs cannot modify it." or "Catalyst preview uses bundled item tags.") or item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.",utility and "Keep target, then save the build." or "Keep the target, then save the build."},15)
+	local divineOnly=item.type=="Jewel" or item.type=="Quiver"
+	ui.description(c,"intro",16,56,270,68,{utility and "Preview flask crafts." or not info.qualitySupported and (item.corrupted and "This item is corrupted." or "Preview supported Divine Orb rolls.") or (item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",utility and (item.corrupted and "Corrupted flasks cannot be enchanted." or "Enchant odds are experimental.") or not info.qualitySupported and (item.corrupted and "Divine Orbs cannot modify it." or divineOnly and "Roll odds are estimated." or "Catalyst preview uses bundled item tags.") or item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.",utility and "Keep target, then save the build." or "Keep the target, then save the build."},15)
 	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM",{expanded=true})
 	local function button(key,y,label,run)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
@@ -125,7 +126,7 @@ function M.Open(build,project,layout,snapshot)
 		divineReason=not item.corrupted and unique.divineReason(raw) or nil
 		blessedReason=require("Modules.CraftingUniqueBlessed").reason(raw)
 		sacredReason=unique.sacredReason(raw)
-		c.status.label=not info.qualitySupported and "^7Catalyst quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or "Preview available") or "^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
+		c.status.label=divineOnly and (item.corrupted and "^7Corrupted | Divine unavailable" or divineReason and "^7Divine preview unavailable" or "^7Divine preview available") or not info.qualitySupported and "^7Catalyst quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or "Preview available") or "^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
 		c.apply.label=not info.qualitySupported and "Quality unavailable" or item.corrupted and (item.type=="Flask" or item.type=="Tincture") and "Quality unavailable" or item.corrupted and "Roll quality" or "Add quality"
 		c.apply.width=(not item.corrupted or not taintedQualityReason) and 130 or 270
 		if updateCurrency then updateCurrency() end

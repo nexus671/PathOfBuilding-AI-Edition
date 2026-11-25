@@ -33,6 +33,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Save per-resource quotes, reuse them across gear guides and share them with native/MCP simulations.
 - [x] Report modeled ingredient and service quantities separately from spending, with an illustrated resource browser.
 - [x] Apply quality enchantments with native item state, recipe goals and resource costs.
+- [x] Plan supported unique jewel and quiver Divine rolls in the native and MCP workflows. Template identification and modifier restrictions still apply; modeled roll probabilities are estimates.
 - [ ] Complete and validate current crafting coverage, including incomplete socket, corruption and league mechanics and their probabilities.
 - [ ] Model raw-stat precision when displayed endpoints are rounded. For example, the pinned 3.30.0.4 `LifeRegeneration2` modifier stores 126–480 life per minute, while PoB displays 2.1–8 life per second. Matching single-stat flat life and mana, and percentage life and energy-shield regeneration tiers sample per-minute integers when the raw bounds fit the displayed range and render to its endpoints. This includes rounded Essence regeneration bounds in the pinned data, though their current availability has not been established; other raw-stat formats remain incomplete. Uniform raw rolls and actual in-game distributions remain unverified.
 

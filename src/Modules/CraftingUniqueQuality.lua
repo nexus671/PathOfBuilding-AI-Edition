@@ -105,7 +105,8 @@ function M.inspect(raw)
 	local weapon=data.weaponTypeInfo[item.type]~=nil
 	local flask=item.type=="Flask" or item.type=="Tincture"
 	local jewellery=item.type=="Ring" or item.type=="Amulet" or item.type=="Belt"
-	assert(weapon or item.base.armour or flask or jewellery,"Unique crafting supports armour, weapons, flasks, tinctures and jewellery")
+	local divineOnly=item.type=="Jewel" or item.type=="Quiver"
+	assert(weapon or item.base.armour or flask or jewellery or divineOnly,"This unique item type is not supported by the crafting planner")
 	assert(not item.mirrored,"Mirrored items cannot be crafted")
 	assert(item.corrupted or not alwaysCorrupted(item.title,item.baseName),"This unique is always corrupted; include its Corrupted line in the starting item")
 	-- These uniques have hidden fixed six-link layouts. Only validate an
@@ -123,7 +124,8 @@ function M.inspect(raw)
 	end
 	assert(not item.foulborn,"Foulborn items need a separate modifier-mutation model")
 	local quality=jewellery and (item.catalystQuality or (item.catalyst and 20) or item.quality or 0) or (item.quality or 0);assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")
-	return item,{quality=quality,qualitySupported=not jewellery,available=not jewellery and quality<20 and not item.corrupted,resource=not jewellery and (flask and "Glassblower's Bauble" or weapon and "Blacksmith's Whetstone" or "Armourer's Scrap") or nil,resourceKey=not jewellery and (flask and "Metadata/Items/Currency/CurrencyFlaskQuality" or weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality") or nil}
+	local qualitySupported=not jewellery and not divineOnly
+	return item,{quality=quality,qualitySupported=qualitySupported,available=qualitySupported and quality<20 and not item.corrupted,resource=qualitySupported and (flask and "Glassblower's Bauble" or weapon and "Blacksmith's Whetstone" or "Armourer's Scrap") or nil,resourceKey=qualitySupported and (flask and "Metadata/Items/Currency/CurrencyFlaskQuality" or weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality") or nil}
 end
 -- A guide only: the item and modifier values are not rewritten or simulated.
 local function catalystGuideForItem(raw,item,info,catalyst,target)
@@ -672,6 +674,7 @@ end
 -- Known unique restrictions still apply when a saved item has partial text.
 function M.socketModificationReason(raw,item)
 	item=item or M.inspect(raw)
+	if item.type=="Jewel" or item.type=="Quiver" then return "Jewels and quivers cannot use ordinary socket crafts" end
 	if raw:lower():find("sockets cannot be modified",1,true) or uniqueSocketRestriction(item.title)=="locked" then return "This item's sockets cannot be modified" end
 end
 

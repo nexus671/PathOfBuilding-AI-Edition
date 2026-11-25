@@ -36,7 +36,7 @@ function M.new(controls,key,x,y,w,h,label,options)
 			if DrawStringWidth(13,"VAR",property)>propertyWidth then property=catalyst.." "..tostring(quality).."%" end
 		end
 		DrawString(cx+propertyX,cy+76,"LEFT",13,"VAR",fit(property,13,math.max(0,propertyWidth)))
-		if expanded and item then
+		if expanded and item and (item.type~="Jewel" and item.type~="Quiver" or quality>0) then
 			local qualityLabel=jewellery and (catalyst and (catalyst.." catalyst: +") or "Catalyst quality: +") or "Quality: +"
 			DrawString(cx+propertyX,cy+98,"LEFT",13,"VAR",fit(qualityLabel..tostring(quality).."%",13,w-propertyX-10))
 		end
