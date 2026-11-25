@@ -291,6 +291,7 @@ reviewFixture.review.changes[2]={name='Orb of Chance',old=6,cutoff=4,price=.2,vo
 reviewFixture.review.changes[3]={name="Map (Tier 16)",old=1,cutoff=0,price=8,volume=40,scope="maps",maps=true,samplesLimited=true,
 	samples={{area=83,count=1,class="Maps",rarity="Normal",before="Hide",beforeLine=21,action="Show",line=29},
 		{area=83,count=1,class="Maps",rarity="Rare",before="Hide",beforeLine=21,action="Hide",line=26}}}
+reviewFixture.revision="review-fixture";reviewFixture.review.changes[3].classes={"Maps"}
 reviewFixture.review.changes[4]={name="Blighted Map (Tier 16)",old=1,cutoff=0,price=12,volume=40,samplesLimited=true}
 reviewFixture.review.protectedChecks=600
 reviewFixture.review.skipped={
@@ -324,6 +325,23 @@ assert(mapProof:find("Normal Maps",1,true) and mapProof:find("Rare Maps",1,true)
 	and mapProof:find("baseline line 21",1,true) and mapProof:find("result line 26",1,true))
 assert(mapProof:find("still hidden",1,true) and mapProof:find("Some cases were omitted",1,true))
 if output then reviewUI:frame():write(output.."/"..reviewWidth.."-filter-map-rarity-impact.json") end
+do
+	local originalExamples=sync.reviewDecisionExamples;local calls={}
+	sync.reviewDecisionExamples=function(id,revision,index,offset,limit)
+		assert(id=="default" and revision=="review-fixture" and index==3 and limit==20)
+		calls[#calls+1]=offset
+		local results={};for i=1,(offset==0 and 20 or 1) do
+			results[i]={area=83,count=i,class="Maps",rarity=offset==0 and "Normal" or "Rare",before="Hide",action="Show"}
+		end
+		return {total=21,offset=offset,nextOffset=offset==0 and 20 or nil,results=results}
+	end
+	reviewUI:click("tertiary");assert(main.popups[1].title=="Review decision examples")
+	assert(main.popups[1].controls.count.label=="Examples 1-20 of 21")
+	if output then reviewUI:frame():write(output.."/"..reviewWidth.."-filter-decision-pages.json") end
+	reviewUI:click("next");assert(main.popups[1].controls.count.label=="Examples 21-21 of 21")
+	reviewUI:click("previous");assert(calls[1]==0 and calls[2]==20 and calls[3]==0)
+	reviewUI:click("close");sync.reviewDecisionExamples=originalExamples
+end
 assert(impactText("Blighted Map"):find("No samples for this decision",1,true))
 local capProof=impactText("Chaos Orb")
 assert(capProof:find("No eligible managed stack rule",1,true) and capProof:find("Configured cap: 5",1,true),capProof)

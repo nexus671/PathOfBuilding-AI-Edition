@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1329][2026/11/25]
+
+* Page through every illustrative case for a current filter price decision.
+
 VERSION[2.69.0-ai.preview1328][2026/11/25]
 
 * Flag import assumptions in loot filter baseline example reviews.

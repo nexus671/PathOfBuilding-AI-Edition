@@ -135,6 +135,40 @@ local function showObservedComparison(item,before,after,beforeLabel,afterLabel)
 	main:OpenPopup(width,detailsHeight+160,"Observed stack result",resultControls,nil,nil,"close")
 end
 
+local function openDecisionExamples(profileId,revision,index,name)
+	local width,height=math.min(700,main.screenW-40),math.min(520,main.screenH-60)
+	local controls={};local offset=0;local page
+	local function load(nextOffset)
+		local ok,result=pcall(sync.reviewDecisionExamples,profileId,revision,index,nextOffset,20)
+		if not ok then main:OpenMessagePopup("Review examples",ui.errorText(result));return false end
+		page,offset=result,nextOffset
+		local details={"Illustrative cases from the fixed baseline and verified filter. Item level is unknown."}
+		for _,sample in ipairs(page.results) do
+			local class=sample.rarity and sample.rarity.." "..sample.class or sample.class
+			local before=sample.before..(sample.beforeLine and " at line "..sample.beforeLine or "")
+			local after=sample.action..(sample.line and " at line "..sample.line or "")
+			details[#details+1]=string.format("Area %d, stack %d, %s: %s to %s",sample.area,sample.count,class,before,after)
+			if sample.marker then details[#details+1]="Marker: "..sample.marker end
+			for _,phase in ipairs({{"Before",sample.before,sample.beforeMissing},{"After",sample.action,sample.afterMissing}}) do
+				if phase[2]=="Unknown" then details[#details+1]=phase[1]..(phase[3] and ": needs "..table.concat(phase[3],", ") or ": an included file or rule is unresolved") end
+			end
+		end
+		controls.results.list=ui.rows(details,width-62,14);controls.results.controls.scrollBar.offset=0
+		controls.count.label=string.format("Examples %d-%d of %d",page.total==0 and 0 or offset+1,offset+#page.results,page.total)
+		return true
+	end
+	ui.label(controls,"name",16,16,ui.fit(name,width-32,14),14)
+	controls.results=new("TextListControl"):TextListControl(ui.anchor,{16,46,width-32,height-130},nil,{})
+	ui.label(controls,"count",16,height-76,"",14)
+	controls.previous=new("ButtonControl"):ButtonControl(ui.anchor,{16,height-42,130,28},"Previous",function() load(math.max(0,offset-20)) end)
+	controls.previous.enabled=function() return offset>0 end
+	controls.next=new("ButtonControl"):ButtonControl(ui.anchor,{156,height-42,130,28},"Next",function() if page and page.nextOffset then load(page.nextOffset) end end)
+	controls.next.enabled=function() return page and page.nextOffset~=nil end
+	controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-136,height-42,120,28},"Close",function() main:ClosePopup() end)
+	ui.style(controls)
+	if load(0) then main:OpenPopup(width,height,"Review decision examples",controls,nil,nil,"close") end
+end
+
 local function compareStackFile(compare, beforeLabel, afterLabel)
 	require("Classes.LootFilterFileBrowser").Open(main.userPath,function(path)
 		local ok,summary,rows = pcall(compare,path)
@@ -646,7 +680,7 @@ function M.Open(profileId, profileName, restored)
 					details[#details+1] = "Sample result unavailable."
 				end
 				entries[#entries+1] = {id="change-"..i,label=change.name,
-					category=change.retainedReason and "Retained" or "Changed",details=details,decision=change}
+					category=change.retainedReason and "Retained" or "Changed",details=details,decision=change,decisionIndex=i}
 			end
 			for i, item in ipairs(review.skipped or {}) do
 				local details = {item.reason}
@@ -705,6 +739,9 @@ function M.Open(profileId, profileName, restored)
 						end)
 					end,
 				},
+				tertiary = {label="Review examples",canRun=function(entry)
+					return not historical and entry.decisionIndex~=nil and type(entry.decision.classes)=="table" and #entry.decision.classes>0
+				end,run=function(entry) openDecisionExamples(profileId,saved.revision,entry.decisionIndex,entry.label) end},
 			})
 			owner = main.popups[1]
 		end
