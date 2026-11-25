@@ -608,11 +608,16 @@ function M.poll(build, force)
 			local selection=request.modifierFilters
 			assert(not (selection and target.blightcore),"Putrid Seed requires an exact ordered comparison")
 			local matchesRolls=selection~=nil and browse.listingRollSelection(target,selection) or nil
-			local result=require("Modules.LootFilterGearListings").compareFile(path,target,request.league,matchesRolls)
+			assert(request.recentOnly==nil or type(request.recentOnly)=="boolean","Use true or false for recentOnly")
+			assert(request.itemFilters==nil or type(request.itemFilters)=="table","Supply item filters as an object")
+			local result=require("Modules.LootFilterGearListings").compareFile(path,target,request.league,matchesRolls,nil,
+				request.recentOnly,request.itemFilters)
 			M.status={id=request.id,status="gearListings",gearListings={slot=request.slot,jewelSocketId=request.jewelSocketId,source=hasItem and "copied item" or "equipped item",league=request.league,comparison=result,
-				mode=matchesRolls and "filtered" or "exact",modifierFilters=selection,
+				mode=(matchesRolls or result.propertyFilters) and "filtered" or "exact",modifierFilters=selection,
+				captureMode=request.recentOnly and "recent" or "recorded",
 				equipment=target.equipment,cluster=target.cluster,blightcore=target.blightcore,
-				note="Asking prices from the supplied snapshot only; freshness, availability and completed sales are not established."}}
+				note=request.recentOnly and "Asking prices from recent stash observations. Live availability and completed sales are not established."
+					or "Asking prices from the supplied snapshot only; freshness, availability and completed sales are not established."}}
 			M.publishState();return
 		end
 		if request.kind=="review_same_base_vendor_items" then

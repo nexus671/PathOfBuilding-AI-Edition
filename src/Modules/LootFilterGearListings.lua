@@ -189,17 +189,22 @@ function M.propertyFilters(target, selection)
 	local links
 	if selection then
 		assert(not target.blightcore and type(selection)=="table","Property filters require identified rare gear")
+		assert(selection.level~=nil or selection.corruption~=nil or selection.links~=nil,"Choose at least one item filter")
+		for key in pairs(selection) do
+			assert(key=="level" or key=="corruption" or key=="links","Unknown item filter")
+		end
 		local function range(value, maximum, label)
 			assert(type(value)=="table","Enter "..label.." bounds")
-			for _, bound in pairs({value.min,value.max}) do
+			for key, bound in pairs(value) do
+				assert(key=="min" or key=="max","Unknown "..label.." bound")
 				assert(type(bound)=="number" and bound==math.floor(bound) and bound>=1 and bound<=maximum,
 					"Enter "..label.." bounds from 1 to "..maximum)
 			end
 			assert(not value.min or not value.max or value.min<=value.max,"The "..label.." minimum cannot exceed the maximum")
 			return {min=value.min,max=value.max}
 		end
-		level=range(selection.level,100,"item level")
-		corruption=selection.corruption
+		if selection.level~=nil then level=range(selection.level,100,"item level") end
+		if selection.corruption~=nil then corruption=selection.corruption end
 		assert(corruption=="true" or corruption=="false" or corruption=="any","Choose a corruption filter")
 		if selection.links~=nil then
 			assert(sockets and sockets>0,"This item has no configurable sockets")

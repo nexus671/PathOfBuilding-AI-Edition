@@ -33,13 +33,20 @@ test('queues an offline equipped or copied gear listing review', t => {
   assert.equal(JSON.parse(fs.readFileSync(path.join(socket.dir,'AI-build-request.json'))).jewelSocketId,123);
   const filtered=fixture(t);
   const modifierFilters=[{kind:'explicit',line:'+79 to maximum Life',min:75,max:85}];
-  filtered.call('compare_gear_listings',{...args,modifierFilters});
-  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(filtered.dir,'AI-build-request.json'))).modifierFilters,modifierFilters);
+  const itemFilters={level:{min:84,max:88},corruption:'any',links:{min:5}};
+  filtered.call('compare_gear_listings',{...args,modifierFilters,itemFilters,recentOnly:true});
+  const filteredRequest=JSON.parse(fs.readFileSync(path.join(filtered.dir,'AI-build-request.json')));
+  assert.deepEqual(filteredRequest.modifierFilters,modifierFilters);
+  assert.deepEqual(filteredRequest.itemFilters,itemFilters);
+  assert.equal(filteredRequest.recentOnly,true);
   for (const invalid of [{...args,slot:'Flask 1'},{...args,unexpected:true},{...args,snapshotPath:'x'.repeat(1025)},
     {...args,jewelSocketId:0},{...args,jewelSocketId:1.5},{...args,jewelSocketId:2147483648},
-    {...args,modifierFilters:[]},{...args,modifierFilters:[{kind:'trade',line:'X'}]},{...args,modifierFilters:[{kind:'explicit',line:'X',min:1000001}]}]) {
+    {...args,modifierFilters:[]},{...args,modifierFilters:[{kind:'trade',line:'X'}]},{...args,modifierFilters:[{kind:'explicit',line:'X',min:1000001}]},
+    {...args,itemFilters:{}},{...args,itemFilters:{corruption:true}},{...args,itemFilters:{level:{min:0}}},
+    {...args,itemFilters:{links:{max:7}}},{...args,itemFilters:{links:{maximum:5}}},{...args,recentOnly:'true'}]) {
     const other=fixture(t);assert.throws(()=>other.call('compare_gear_listings',invalid),/arguments/);
   }
+  assert.throws(()=>fixture(t).call('compare_gear_listings',{...args,itemFilters:{level:{min:90,max:85}}}),/minimum/);
   const both=fixture(t);assert.throws(()=>both.call('compare_gear_listings',{...args,baseRevision:both.state.revision,itemText:'item'}),/exactly one/);
   assert.throws(()=>both.call('compare_gear_listings',{...args,jewelSocketId:123}),/exactly one/);
   const neither=fixture(t);assert.throws(()=>neither.call('compare_gear_listings',{baseRevision:neither.state.revision,snapshotPath:args.snapshotPath,league:args.league}),/exactly one/);

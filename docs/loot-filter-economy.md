@@ -131,6 +131,8 @@ Choose **Compare listing file** inside **Review Trade search** to apply the sele
 
 AI clients can request the same offline review with `compare_gear_listings`, providing the build revision, exactly one item source (an equipped gear slot, an allocated passive jewel socket ID as `jewelSocketId`, or copied item text), an absolute path to a local JSON snapshot, and league ID. Omit `modifierFilters` for exact rolls. For a filtered comparison, pass a list with each selected modifier's `kind`, exact displayed `line` without its channel tag, and optional numeric `min` or `max`. Poll `get_proposal_status` for aggregate results. The tool returns asking prices from the supplied file and leaves the build as it was.
 
+For rare gear, `itemFilters` can include `level` or `links` with `min` and `max` bounds, and `corruption` with the string `"true"`, `"false"`, or `"any"`. Omitted filters keep the inspected item's exact property. An empty bounds object allows any value for that property. Setting `links` keeps the total socket count and compares the largest link group. Set `recentOnly: true` for observations collected less than one hour ago. This mode requires a timestamped capture and reports how many older same-base listings were excluded.
+
 To compare several pages recorded from the same PC stream, bundle up to 32 consecutive responses in a capture file. Keep the cursor actually used to request each page and the UTC capture time. The local bundler takes those values from the recorder and does not contact GGG. Select its output with **Compare listing file**.
 
 ```powershell

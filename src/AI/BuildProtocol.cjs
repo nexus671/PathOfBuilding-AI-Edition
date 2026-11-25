@@ -16,6 +16,11 @@ const gearModifierFilters = {...array(object({
   line:{...string(1200),minLength:1},
   min:number(-1e6,1e6),max:number(-1e6,1e6)
 },['kind','line']),64),minItems:1};
+const gearItemFilters = {...object({
+  level:object({min:integer(1,100),max:integer(1,100)}),
+  corruption:{enum:['true','false','any']},
+  links:object({min:integer(1,6),max:integer(1,6)})
+}),minProperties:1};
 const quoteSchema = object({amount:number(0,1e12),currency:{type:'string',pattern:'^[A-Za-z][A-Za-z0-9 _-]{0,23}$'},quotedAt:integer(0,4102444800),source:string(240)},['amount','currency','quotedAt','source']);
 const journeyId={type:'string',pattern:'^[A-Za-z0-9_-]{1,64}$'};
 const journeyList=items=>({type:'array',items});
@@ -135,7 +140,8 @@ function validate(value,schema) {
   if (type === 'array' && (value.length < (schema.minItems ?? 0) || value.length > (schema.maxItems ?? Infinity) || value.some(v => !validate(v,schema.items)))) return false;
   if (type === 'array' && schema.uniqueItems && value.some((item,index) => value.slice(0,index).some(previous => isDeepStrictEqual(item,previous)))) return false;
   if (type === 'object') {
-    if (Object.keys(value).length > (schema.maxProperties ?? Infinity) || (schema.required ?? []).some(k => !Object.hasOwn(value,k))) return false;
+    const count = Object.keys(value).length;
+    if (count < (schema.minProperties ?? 0) || count > (schema.maxProperties ?? Infinity) || (schema.required ?? []).some(k => !Object.hasOwn(value,k))) return false;
     for (const [key,entry] of Object.entries(value)) {
       const member = schema.properties && Object.hasOwn(schema.properties,key) ? schema.properties[key] : undefined;
       if (member ? !validate(entry,member) : schema.additionalProperties === false || typeof schema.additionalProperties === 'object' && !validate(entry,schema.additionalProperties)) return false;
@@ -145,7 +151,7 @@ function validate(value,schema) {
 }
 const readOnly = {readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false};
 const tools = [
-  {name:'compare_gear_listings',description:'Compare eligible rare gear or an anointed Putrid Seed with a local Public Stashes JSON page up to 4 MiB or capture up to 16 MiB. Supply exactly one equipped slot, allocated passive jewelSocketId, or copied itemText. Omit modifierFilters for exact rolls. For rare gear, select modifier kind, exact line text from the source item, and optional numeric bounds to compare selected modifiers. Returns aggregate asking prices and seller counts. Poll get_proposal_status and match the request ID.',inputSchema:object({baseRevision:string(40),slot:{enum:['Ring 1','Ring 2','Ring 3','Amulet','Belt','Weapon 1','Weapon 2','Helmet','Body Armour','Gloves','Boots']},jewelSocketId:integer(1,2147483647),itemText:string(24000),snapshotPath:string(1024),league:string(80),modifierFilters:gearModifierFilters},['baseRevision','snapshotPath','league']),annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}},
+  {name:'compare_gear_listings',description:'Compare eligible rare gear or an anointed Putrid Seed with a local Public Stashes JSON page up to 4 MiB or capture up to 16 MiB. Supply exactly one equipped slot, allocated passive jewelSocketId, or copied itemText. Omit modifierFilters for exact rolls. For selected modifiers, supply each rare item modifier kind and its exact text. Item filters can set item level, corruption, or the largest link group. Set recentOnly to require a timestamped capture and use stash observations collected less than one hour ago. Returns aggregate asking prices and seller counts. Poll get_proposal_status and match the request ID.',inputSchema:object({baseRevision:string(40),slot:{enum:['Ring 1','Ring 2','Ring 3','Amulet','Belt','Weapon 1','Weapon 2','Helmet','Body Armour','Gloves','Boots']},jewelSocketId:integer(1,2147483647),itemText:string(24000),snapshotPath:string(1024),league:string(80),modifierFilters:gearModifierFilters,itemFilters:gearItemFilters,recentOnly:boolean},['baseRevision','snapshotPath','league']),annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}},
   {name:'measure_journey_upgrades',description:'Calculate each planned wishlist target against the exact current native build without applying it. Targets come from exact item text or linked crafting targets. Poll get_proposal_status for measured deltas, constraints and ratios per supplied resource. No currency conversion or measured benefit is assumed.',inputSchema:object({baseRevision:string(40)},['baseRevision']),annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}},
   {name:'get_build_journey',description:'Read the saved roadmap, gear wishlist, leveling guide, actual resource ledger, reservations and explained next actions. Prices are user supplied. No live inventory or currency conversion is inferred.',inputSchema:object({}),annotations:readOnly},
   {name:'get_loot_sync_status',description:'Read the captured desktop loot filter sync status, failed price feed, last successful run and up to 40 cutoff changes. This reads no arbitrary files and exposes no local paths. It does not request prices or publish a filter.',inputSchema:object({}),annotations:readOnly},
@@ -391,7 +397,12 @@ function createBridge(reportPath, clientName = () => "MCP client") {
     }
     if (current.proposal?.status === 'review' || current.proposal?.status === 'calculating' && name !== 'cancel_crafting_simulation') throw new Error('Review or reject the pending proposal in PoB first.');
     if (!['set_build_goals','cancel_crafting_simulation'].includes(name) && args.baseRevision !== current.revision) throw new Error('Build revision changed. Read get_build_context and submit a fresh proposal.');
-    if (name === 'compare_gear_listings' && ([args.slot,args.jewelSocketId,args.itemText].filter(value=>value!==undefined).length !== 1 || args.itemText !== undefined && !args.itemText.trim())) throw new Error('Provide exactly one slot, jewelSocketId or itemText.');
+    if (name === 'compare_gear_listings') {
+      if ([args.slot,args.jewelSocketId,args.itemText].filter(value=>value!==undefined).length !== 1 || args.itemText !== undefined && !args.itemText.trim()) throw new Error('Provide exactly one slot, jewelSocketId or itemText.');
+      for (const bounds of [args.itemFilters?.level,args.itemFilters?.links]) {
+        if (bounds?.min !== undefined && bounds.max !== undefined && bounds.min > bounds.max) throw new Error('An item filter minimum cannot exceed its maximum.');
+      }
+    }
     if (['inspect_crafting_item','apply_crafting_action','simulate_crafting','calculate_crafting','optimize_crafting_fossils'].includes(name) && !(name === 'simulate_crafting' && args.projectId) && Number(Boolean(args.slot)) + Number(Boolean(args.itemText)) !== 1) throw new Error('Provide exactly one slot or itemText.');
     if (name === 'search_crafting_inventory' && !args.query.trim()) throw new Error('Enter a search query.');
     if (name === 'inspect_crafting_item' && args.beastOffset !== undefined && !['beast_prefix_suffix','beast_suffix_prefix'].includes(args.action?.method)) throw new Error('beastOffset requires a Bestiary modifier swap action.');
