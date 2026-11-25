@@ -69,6 +69,57 @@ local function showListingSample(target, league, sample)
 	showMarketDetails({label=target.label,details=details},"Comparable asking prices")
 end
 
+local function openTradeHistory(savedLeague)
+	local exchange = require("Modules.LootFilterExchangeCrossCheck")
+	local realms = {{id="pc",name="PC"},{id="xbox",name="Xbox"},{id="sony",name="PlayStation"}}
+	local width = math.min(540,main.screenW-40)
+	local controls = {}
+	local busy, popup
+	ui.label(controls,"realmLabel",16,22,"Trade realm",14)
+	controls.realm = new("DropDownControl"):DropDownControl(ui.anchor,{16,46,width-32,28},{"PC","Xbox","PlayStation"})
+	ui.label(controls,"leagueLabel",16,86,"Trade league ID",14)
+	controls.league = new("EditControl"):EditControl(ui.anchor,{16,110,width-32,26},savedLeague,"All leagues with trades",nil,80)
+	ui.description(controls,"help",16,148,width-32,46,{
+		"Browse completed direct-chaos trades from GGG. Leave the league blank to browse all leagues with trades in the selected realm.",
+	},14)
+	ui.label(controls,"status",16,201,"",14)
+	local function status(message) controls.status.label=ui.fit(message,width-32,14) end
+	controls.load = new("ButtonControl"):ButtonControl(ui.anchor,{16,230,172,28},"Load completed hour",function()
+		local name = controls.league.buf:match("^%s*(.-)%s*$")
+		if name~="" and not market.tradeLeague({id=name,name=name}) then status("Enter a valid trade league ID."); return end
+		if launch.noSSL then status("Enable HTTPS certificate verification first."); return end
+		local realm = realms[controls.realm.selIndex or 1]
+		local hour = exchange.hour(os.time())
+		busy=true
+		status("Loading completed trades for "..realm.name.."...")
+		exchange.fetch(hour,function(markets, err)
+			busy=false
+			if main.popups[1]~=popup then return end
+			if not markets then status(ui.errorText(err)); return end
+			local entries = {}
+			local period = os.date("!%Y-%m-%d %H:%M UTC",hour)
+			for _, quote in ipairs(exchange.review(markets,name~="" and name or nil)) do
+				entries[#entries+1] = {
+					id=tostring(#entries+1),category=quote.league,search=quote.league,
+					label=name=="" and (quote.name.." | "..quote.league) or quote.name,
+					details={quote.name,realm.name.." | "..quote.league,"Completed hour beginning "..period,
+						string.format("Average %.4g chaos per item",quote.price),
+						string.format("%d items traded for %.0f chaos",quote.count,quote.chaosVolume)},
+				}
+			end
+			if #entries==0 then status("No matching direct-chaos trades meet the liquidity thresholds."); return end
+			status("Loaded "..#entries.." liquid completed trade pairs.")
+			require("Classes.PlanningBrowserControl").Open(realm.name.." completed trades",entries)
+		end,realm.id)
+	end)
+	controls.realm.enabled = function() return not busy end
+	controls.league.enabled = function() return not busy end
+	controls.load.enabled = function() return not busy end
+	controls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,230,120,28},"Close",function() main:ClosePopup() end)
+	ui.style(controls)
+	popup = main:OpenPopup(width,276,"GGG trade history",controls,nil,nil,"close")
+end
+
 local function open(build, managedTarget)
 	local width = math.min(680,main.screenW-40)
 	local actionWidth = math.floor((width-48)/3)
@@ -126,6 +177,12 @@ local function open(build, managedTarget)
 		controls.exactBase.enabled=function() return not busy and target and target.itemLevel~=nil end
 	end
 	if not managedTarget then
+		local tradeX, tradeY = 322, 282
+		if width<576 then tradeX, tradeY=16,358 end
+		controls.tradeHistory=new("ButtonControl"):ButtonControl(ui.anchor,{tradeX,tradeY,116,28},"GGG trades",function()
+			openTradeHistory(controls.league.buf:match("^%s*(.-)%s*$"))
+		end)
+		controls.tradeHistory.enabled = function() return not busy end
 		controls.pasteItem=new("ButtonControl"):ButtonControl(ui.anchor,{16,320,actionWidth,28},"Paste rare item",function()
 			clearTarget()
 			local raw = Paste()
@@ -311,7 +368,8 @@ local function open(build, managedTarget)
 		selectTarget(managedTarget,"Exact managed target. Show prices to check its current quote.")
 	end
 	ui.style(controls)
-	popup=main:OpenPopup(width,managedTarget and 330 or 366,"Browse loot market prices",controls,nil,nil,"close")
+	local height = managedTarget and 330 or width<576 and 404 or 366
+	popup=main:OpenPopup(width,height,"Browse loot market prices",controls,nil,nil,"close")
 end
 
 function M.Open(build)

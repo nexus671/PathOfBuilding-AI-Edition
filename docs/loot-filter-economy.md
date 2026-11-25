@@ -14,6 +14,8 @@ In Pickup policy, set optional chaos thresholds for the normal and strong highli
 
 Enable GGG trade confirmation in Pickup policy to require a liquid direct-chaos trade before increasing a managed hide cutoff. PoB uses the higher of the recent live-price samples and the completed-hour GGG trade average. If the historical trade feed or exact match is unavailable, the original cutoff remains. This option leaves price-based visibility increases available.
 
+In **Browse loot market prices**, choose **GGG trades** to review a recent completed exchange hour for PC, Xbox, or PlayStation. Enter a league ID or leave it blank to browse leagues with eligible trades in that realm. Results identify the realm and league and show the average chaos per item, units traded, total chaos, and UTC hour. Quotes require an exact currency ID and at least five items and 100 chaos traded directly. The history is read-only. Automatic filters still use their configured PC price feeds. [GGG Currency Exchange API](https://www.pathofexile.com/developer/docs/reference#currency-exchange)
+
 ## Daily sync on Windows
 
 Price history matches the feed, provider price ID and exact item identity. Existing snapshots recorded by older builds still establish the usual feed coverage. Only snapshots with an exact identity contribute historical prices to the weekly median or to the three earlier observations required to tighten a cutoff above the fixed baseline.
