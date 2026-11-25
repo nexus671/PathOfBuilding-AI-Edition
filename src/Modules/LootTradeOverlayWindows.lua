@@ -212,4 +212,7 @@ end
 
 M.foreground=foreground
 M.minimized=function(window) return user.IsIconic(windowHandle(window))~=0 end
+M.pointerDown=function()
+	return bit.band(user.GetAsyncKeyState(1),0x8000)~=0 or bit.band(user.GetAsyncKeyState(2),0x8000)~=0
+end
 return M

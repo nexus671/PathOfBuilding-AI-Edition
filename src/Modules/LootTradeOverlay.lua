@@ -81,7 +81,7 @@ local function setup(state)
 end
 
 local function dismiss(state)
-	state.active,state.captured=nil,nil
+	state.active,state.captured,state.game,state.hadFocus=nil,nil,nil,nil
 	wipeTable(main.popups)
 	wipeTable(main.inputEvents)
 	setup(state)
@@ -132,6 +132,8 @@ function M.frame(state)
 		state.captured=nil
 		if state.win.present(state.window,captured.game) then
 			state.active=true
+			state.game=captured.game
+			state.hadFocus=state.win.foreground()==state.window
 			state.opened=GetTime()
 			wipeTable(main.popups)
 			wipeTable(main.inputEvents)
@@ -146,7 +148,12 @@ function M.frame(state)
 	end
 	if state.active then
 		local foreground=state.win.foreground()
-		if state.win.minimized(state.window) or (GetTime()-state.opened>650 and foreground~=state.window) then
+		if foreground==state.window then state.hadFocus=true end
+		-- Windows can leave the game focused when the companion first appears.
+		-- Keep the review visible until clicked, dismissed, or the user leaves the game.
+		local leftReview=foreground~=state.window and
+			(state.hadFocus or foreground~=state.game or state.win.pointerDown())
+		if state.win.minimized(state.window) or GetTime()-state.opened>300 and leftReview then
 			dismiss(state)
 			return
 		end

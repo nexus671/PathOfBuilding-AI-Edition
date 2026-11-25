@@ -2220,6 +2220,23 @@ Item Level: 86
 		main.popups={}
 		controller.OpenForOverlay("Unrecognized clipboard content","Covens")
 		assert(#requests==2 and not main.popups[1].controls.listingSample:IsEnabled())
+		main.popups,main.inputEvents={},{}
+		local pointerDown, minimized=false,false
+		local state={window=93,captured={game=94,raw=raw},league="Covens",win={
+			present=function(window,game) return window==93 and game==94 end,
+			foreground=function() return 94 end,
+			minimize=function() minimized=true end,
+			minimized=function() return minimized end,
+			pointerDown=function() return pointerDown end,
+		}}
+		local overlay=require("Modules.LootTradeOverlay")
+		overlay.frame(state)
+		state.opened=GetTime()-1000
+		overlay.frame(state)
+		assert(state.active and not state.hadFocus and not minimized,"The overlay should stay visible when Windows leaves the game focused")
+		pointerDown=true
+		overlay.frame(state)
+		assert(not state.active and minimized and main.popups[1].title=="PoB trade overlay setup")
 		sync.providerWait,Paste=previousWait,previousPaste
 	end
 	require("Classes.LootFilterFileBrowser").Open=originalPicker
