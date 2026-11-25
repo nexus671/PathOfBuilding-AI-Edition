@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1324][2026/11/25]
+
+* Search long Atlas session-draft titles by their full text.
+
 VERSION[2.69.0-ai.preview1323][2026/11/25]
 
 * Add a standalone Windows trade overlay preview for Path of Exile 1.
