@@ -204,6 +204,12 @@ function healthEvidence(payload) {
   }
   const info = { cached:payload.cached, pending:payload.pending };
   numericEvidence(info,payload,['cachedBytes','serviceable','hits','requests','coalesced','rejected']);
+  if (payload.snapshots!==undefined) {
+    const snapshots = {};
+    numericEvidence(snapshots,payload.snapshots,['restored','discarded','errors']);
+    if (Object.keys(snapshots).length!==3 || snapshots.errors>0) throw new Error('Market snapshot storage is unavailable');
+    info.snapshots = snapshots;
+  }
   if (payload.rejections) {
     const rejections = {};
     numericEvidence(rejections,payload.rejections,['client','queue','cooldown']);
