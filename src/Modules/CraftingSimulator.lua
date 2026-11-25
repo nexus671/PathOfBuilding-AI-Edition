@@ -527,11 +527,18 @@ function M.rawRegenPosition(mod,value)
  local raw=low and rawRegenSteps(mod,line,tonumber(low),tonumber(high));if not raw then return end
  local step=(value-raw.first)/(raw.last-raw.first)*raw.steps
  if step>=-1e-7 and step<=raw.steps+1e-7 and math.abs(step-math.floor(step+0.5))<1e-7 then
-  return math.max(0,math.min(1,step/raw.steps))
+  return math.max(0,math.min(1,math.floor(step+0.5)/raw.steps))
  end
 end
 function M.isRawRegenRange(mod,value)
  return M.rawRegenPosition(mod,value)~=nil
+end
+function M.rawRegenAtPosition(mod,position)
+ local line=#mod==1 and mod[1];if not line then return end
+ local low,high=line:match("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)")
+ local raw=low and rawRegenSteps(mod,line,tonumber(low),tonumber(high));if not raw then return end
+ local step=math.floor(position*raw.steps+0.5)
+ return raw.first+(step/raw.steps)*(raw.last-raw.first)
 end
 function M.rawRegenRange(mod,random)
  local line=#mod==1 and mod[1];if not line then return end

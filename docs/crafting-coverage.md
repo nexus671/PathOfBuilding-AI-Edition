@@ -19,7 +19,8 @@ For recognized single-stat regeneration affixes, raw per-minute bounds can sit
 slightly outside the displayed range when an endpoint rounds inward. The model
 retains those raw tick positions and only accepts an out-of-range offset as a
 matching tick when it lies on the pinned range. Minimum roll percentages use the
-position in that raw range. For example, the sampled 196–240
+position in that raw range; the manual item editor selects the nearest raw tick.
+For example, the sampled 196–240
 mana-per-minute Abyss tier displays as 3.3–4 per second. PoB's item and character
 calculations still use the displayed precision, and uniform raw sampling and
 current-game availability remain unverified.

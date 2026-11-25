@@ -188,6 +188,20 @@ local ok,why=pcall(sim.matches,tinctureModel.initial,imported,nil,tinctureModel)
 local rerolled=sim.perform(tincture,{method="alteration"},3).state;local affix=rerolled.affixes[1]
 assert(sim.matches(rerolled,{{anyOf={affix.id},minBaseValue=0}},nil,tinctureModel),"A newly generated tincture roll should be usable")
 local UI=require("Modules.HeadlessUI")
+newBuild();main.popups={};local editorUI=UI.install({width=1280,height=720});editorUI:bind(build)
+local editorModel=sim.model(sim.toItem(abyss,abyssState).raw);local editorKept
+require("Classes.CraftingItemEditorControl").Open(editorModel,editorModel.initial,function(value)editorKept=value end)
+editorUI:frame();local editor=main.popups[1].controls;editor.current.selFunc()
+assert(tonumber(editor.roll.buf)==0,"Rounded minimum should show as a zero-percent raw roll: "..tostring(editor.roll.buf))
+editorUI:click("replace");editorUI:click("keep")
+assert(editorKept and math.abs(editorKept.affixes[1].range-abyssState.affixes[1].range)<1e-9,"Editing the minimum raw roll changed its tick")
+local secondModel=sim.model(sim.toItem(abyssImported,secondTick).raw);local secondKept
+require("Classes.CraftingItemEditorControl").Open(secondModel,secondModel.initial,function(value)secondKept=value end)
+editorUI:frame();editor=main.popups[1].controls;editor.current.selFunc()
+assert(math.abs(tonumber(editor.roll.buf)-100/44)<1e-6,"Second raw tick showed an incorrect roll percentage")
+editorUI:click("replace");editorUI:click("keep")
+assert(secondKept and math.abs(secondKept.affixes[1].range-secondTick.affixes[1].range)<1e-9,"Editing the second raw roll changed its tick")
+main.popups={};editorUI:restore()
 for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build);local saved
 	local parent=require("Classes.CraftingTargetControl").Open({{anyOf={"LocalAddedColdDamage2"}}},nil,nil,function(groups) saved=groups end,1,nil,weapon)
