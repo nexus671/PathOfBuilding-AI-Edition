@@ -438,8 +438,10 @@ local configMock, originalFetch = sync.configuration, launch.DownloadPage
 sync.configuration = function()
 	return {league="Covens", target=selected, enabled=true, hour=9, summary="Protected drops verified.",
 		review={checkedAt=reviewTime,changes={{name="Orb of Alteration",old=10,cutoff=6,price=0.21,volume=1000,maps=true,
-			source="Currency",priceId="orb-of-alteration"},
+			source="Currency",priceId="orb-of-alteration",
+			samples={{area=68,count=7,class="Stackable Currency",before="Hide",beforeLine=11,action="Hide",line=21}}},
 			{name="Orb of Fusing",old=6,cutoff=0,retainedReason="Missing quote"}},
+			skipped={{name="Managed Hide at baseline line 27",reason="Price rules require exact Class and BaseType."}},
 			feeds={{category="Currency",age=128,revalidated=true}}}}
 end
 launch.DownloadPage = function(_, url, callback)
@@ -455,8 +457,17 @@ for _, entry in ipairs(main.popups[1].controls.details.list) do retainedDetails[
 local retainedText = table.concat(retainedDetails," "):gsub("%s+"," ")
 assert(retainedText:find("Kept the last verified lower cutoff. Missing quote.",1,true))
 assert(not retainedText:find("chaos used",1,true))
+feedUI:text("search","baseline line 27")
+local skipDetails = {}
+for _, entry in ipairs(main.popups[1].controls.details.list) do skipDetails[#skipDetails+1] = StripEscapes(entry[1] or "") end
+assert(table.concat(skipDetails," "):gsub("%s+"," "):find("Price rules require exact Class and BaseType.",1,true))
 feedUI:text("search","Orb of Alteration")
 assert(main.popups[1].controls.details.list[4][1]:find("orb-of-alteration",1,true))
+local boundaryDetails = {}
+for _, entry in ipairs(main.popups[1].controls.details.list) do boundaryDetails[#boundaryDetails+1] = StripEscapes(entry[1] or "") end
+local boundaryText = table.concat(boundaryDetails," "):gsub("%s+"," ")
+assert(boundaryText:find("Maps (area 68), 7 as Stackable Currency",1,true))
+assert(boundaryText:find("Hide at baseline line 11 to Hide at result line 21",1,true))
 feedUI:click("secondary")
 assert(main.popups[1].title=="GGG trade comparison")
 sync.configuration, launch.DownloadPage = configMock, originalFetch

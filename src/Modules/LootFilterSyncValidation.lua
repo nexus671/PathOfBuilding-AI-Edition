@@ -21,6 +21,8 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 		local remaining = 500
 		for _, change in ipairs(changes) do
 			local areas = change.scope == "campaign" and {60} or change.scope == "maps" and {83} or {83, 60}
+			if change.scope == "campaign" then areas[#areas+1] = 67 end
+			if change.scope == "maps" and not change.tier then areas[#areas+1] = 68 end
 			change.samples = {}
 			local stack = change.old==change.cutoff and change.highlights and change.highlights[1].firstStack
 				or math.min(change.cutoff,change.old)+1

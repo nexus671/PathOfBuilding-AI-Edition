@@ -579,6 +579,7 @@ function M.Open(profileId, profileName, restored)
 				local samples = change.samples or (change.sample and {change.sample}) or {}
 				for _, sample in ipairs(samples) do
 					local area = (sample.area or 83) >= 68 and "Maps" or "Campaign"
+					if sample.area then area = string.format("%s (area %d)",area,sample.area) end
 					local itemClass = sample.rarity and (sample.rarity.." "..sample.class) or sample.class
 					local after = sample.action..(sample.line and (" at result line "..sample.line) or "")
 					local before = sample.before and (sample.before..(sample.beforeLine and (" at baseline line "..sample.beforeLine) or "").." to ") or ""
@@ -610,7 +611,7 @@ function M.Open(profileId, profileName, restored)
 				elseif item.gemLevel then
 					details[#details+1] = string.format("Level %d, %d%% quality, %s",item.gemLevel,item.gemQuality,
 						item.corrupted and "corrupted" or "uncorrupted")
-				elseif not item.styleOnly then details[#details+1] = "Hide up to "..item.old end
+				elseif item.old then details[#details+1] = "Hide up to "..item.old end
 				entries[#entries+1] = {id="skip-"..i,label=item.name,category=item.policyCap and "Pickup policy" or "Unchanged",details=details}
 			end
 			if not historical then

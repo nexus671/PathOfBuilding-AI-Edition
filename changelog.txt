@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1309][2026/11/25]
+
+* Explain untouched managed price rules and show the area level of sampled stack decisions.
+
 VERSION[2.69.0-ai.preview1308][2026/11/24]
 
 * Recognize exceptional and ordinary gems more accurately in pasted filter previews.

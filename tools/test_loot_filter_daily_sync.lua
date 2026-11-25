@@ -944,6 +944,38 @@ assert(applied:find("AreaLevel >= 68\n    StackSize <= 7",1,true))
 assert(decisions[1].scope=="campaign" and decisions[1].sample.area==60
 	and decisions[1].sample.before=="Hide" and decisions[1].sample.action=="Hide")
 assert(decisions[2].scope=="maps" and decisions[2].sample.before=="Show" and decisions[2].sample.action=="Hide")
+assert(decisions[1].samples[2].area==67 and decisions[1].samples[2].action=="Hide")
+assert(decisions[2].samples[2].area==68 and decisions[2].samples[2].action=="Hide")
+do
+	local unmanaged = [[Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    StackSize <= 3
+    ItemLevel >= 70
+
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration" # keep this note
+    StackSize <= 3
+
+Show
+    BaseType == "Chaos Orb"
+
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    AreaLevel >= 72
+    StackSize <= 3
+
+]]
+	local fixed = scoped:gsub("# PoB economy: begin\n", function(marker) return marker..unmanaged end, 1)
+	local updated, _, _, reasons = validate(fixed,missing,false,1,samples,history,"today",now,policy)
+	assert(updated:find(unmanaged,1,true), "Unsupported managed rules must keep their exact bytes")
+	assert(#reasons==3)
+	assert(reasons[1].name=="Managed Hide at baseline line 5" and reasons[1].reason:find("conditions outside",1,true))
+	assert(reasons[2].name=="Managed Hide at baseline line 11" and reasons[2].reason:find("comment",1,true))
+	assert(reasons[3].name=="Managed Hide at baseline line 19" and reasons[3].reason:find("supported area",1,true))
+end
 local _, withoutHistory, _, skips = validate(scoped,missing,false,1,samples,{},"today",now,policy)
 assert(withoutHistory==1 and skips[1].reason:find("three earlier",1,true))
 do
