@@ -1,3 +1,9 @@
+VERSION[2.69.0-ai.1.0.1][2026/11/25]
+
+* Update loot filter prices from a fixed baseline with protected-drop checks and saved-category recovery.
+* Install AI Edition for the current Windows user with its own shortcut and icon.
+* Review named sync profiles, price decisions, and preserved rules in the app and local AI tools.
+
 VERSION[2.69.0-ai.1.0.0][2026/11/25]
 
 * Plan builds, crafting projects, Atlas strategies and loot filters, with local AI tools.

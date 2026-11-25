@@ -65,16 +65,15 @@ with the expected minimum for a different supported baseline. Run the check
 during the same local calendar day and load the approved filter in the PoE
 client separately.
 
-This produces a portable package, not an installer or a published release.
-A fork-owned release process still requires separate verification. The tool does
-not sign files or upload a release.
+This produces a portable package containing the fork-owned installer; it does
+not sign files or upload a release. Release publication requires separate
+source and package verification.
 
 The release and installer workflows below are inherited from Community Edition.
-The installer workflow uses the Community project's private installer and is
-guarded against running on this fork. AI Edition does not yet have a verified
-fork-owned installer or a documented 1.0 release procedure. Do not use the
-inherited workflow to create AI Edition installer assets. The upstream notes
-below are retained for data-maintenance reference, not fork release steps.
+The inherited installer workflow uses the Community project's private installer
+and is guarded against running on this fork. Do not use that workflow to create
+AI Edition installer assets. The upstream notes below are retained for
+data-maintenance reference, not fork release steps.
 
 ## Community Edition reference
 
