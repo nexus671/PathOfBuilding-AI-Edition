@@ -976,6 +976,13 @@ Hide
 	assert(reasons[2].name=="Managed Hide at baseline line 11" and reasons[2].reason:find("comment",1,true))
 	assert(reasons[3].name=="Managed Hide at baseline line 19" and reasons[3].reason:find("supported area",1,true))
 end
+do
+	local fixed = "# PoB economy: begin\n"..string.rep("Hide\n    ItemLevel >= 70\n\n",280).."# PoB economy: end\n"
+	local updated, changes, reasons = market.review(fixed,{},1)
+	assert(updated==fixed and #changes==0 and #reasons==251)
+	assert(reasons[250].name=="Managed Hide at baseline line 749")
+	assert(reasons[251].reason:find("preserved 30 more Hide rules",1,true))
+end
 local _, withoutHistory, _, skips = validate(scoped,missing,false,1,samples,{},"today",now,policy)
 assert(withoutHistory==1 and skips[1].reason:find("three earlier",1,true))
 do

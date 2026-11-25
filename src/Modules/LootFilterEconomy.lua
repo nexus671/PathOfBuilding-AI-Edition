@@ -616,6 +616,7 @@ function M.review(raw, quotes, target, preferences, confirmation, priorContinuit
 	local blocks = {}
 	local parsed = parser.parse(section)
 	local selections = tagged and exchangeSelections(section,parsed) or {}
+	local unsupportedCount, unsupportedLimit = 0, 250
 	for ordinal, rule in ipairs(parsed.rules) do
 		local last = rule.line + #rule.rawLines - 1
 		local original = table.concat(lines, "", rule.line, last)
@@ -637,9 +638,17 @@ function M.review(raw, quotes, target, preferences, confirmation, priorContinuit
 			reason = "PoB preserved this rule because it contains a comment or a gap between conditions."
 		end
 		if tagged and rule.action=="Hide" and reason then
-			local line = precedingLines + rule.line
-			skipped[#skipped+1] = {name="Managed Hide at baseline line "..line,reason=reason}
+			unsupportedCount = unsupportedCount + 1
+			if unsupportedCount <= unsupportedLimit then
+				local line = precedingLines + rule.line
+				skipped[#skipped+1] = {name="Managed Hide at baseline line "..line,reason=reason}
+			end
 		end
+	end
+	if unsupportedCount > unsupportedLimit then
+		skipped[#skipped+1] = {name="Additional unsupported managed rules",
+			reason=string.format("PoB preserved %d more Hide rules. The review shows the first %d.",
+				unsupportedCount-unsupportedLimit,unsupportedLimit)}
 	end
 	local index = 1
 	while index <= #lines do
