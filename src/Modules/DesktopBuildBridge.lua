@@ -588,9 +588,9 @@ function M.poll(build, force)
 			local path=request.snapshotPath
 			assert(type(path)=="string" and #path<=1024 and not path:find("[%c]") and path:lower():match("%.json$")
 				and (path:match("^[A-Za-z]:[\\/]") or path:sub(1,1)=="/" and path:sub(1,2)~="//"),"Supply an absolute local JSON snapshot path")
-			local target
+			local target, reason
 			local browse=require("Modules.LootFilterMarketBrowse")
-			if hasItem then target=browse.listingTargetForItem(new("Item"):Item(request.itemText))
+			if hasItem then target,reason=browse.listingTargetForItem(new("Item"):Item(request.itemText))
 			else
 				for _, entry in ipairs(browse.buildTargets(build)) do
 					if hasSlot and entry.listingSlot==request.slot or hasSocket and entry.listingSocket==request.jewelSocketId then
@@ -599,7 +599,7 @@ function M.poll(build, force)
 					end
 				end
 			end
-			assert(target,"The supplied item or selected slot does not contain supported comparable rare gear")
+			assert(target,reason or "The supplied item or selected slot does not contain supported comparable rare gear")
 			local result=require("Modules.LootFilterGearListings").compareFile(path,target,request.league)
 			M.status={id=request.id,status="gearListings",gearListings={slot=request.slot,jewelSocketId=request.jewelSocketId,source=hasItem and "copied item" or "equipped item",league=request.league,comparison=result,
 				equipment=target.equipment,cluster=target.cluster,note="Asking prices from the supplied snapshot only; freshness, availability and completed sales are not established."}}

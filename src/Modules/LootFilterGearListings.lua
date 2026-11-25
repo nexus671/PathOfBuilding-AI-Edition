@@ -122,7 +122,9 @@ function M.target(item, publicBase)
 	local cluster = item.type=="Jewel" and item.base.subType=="Cluster" and clusterLayout(item)
 	local jewel = item.type=="Jewel" and (not item.base.subType or item.base.subType=="Abyss" or cluster)
 	local quiver = item.type=="Quiver"
-	if quiver and not quiverBase(item) then return end
+	if quiver and not quiverBase(item) then
+		return nil,"The visible implicit cannot distinguish this quiver from its legacy base."
+	end
 	if item.base.armour or item.base.weapon or quiver then
 		equipment=gearProperties.target(item)
 		if not equipment then return end

@@ -2098,6 +2098,10 @@ async function main(){
   const copiedQuiver=await queued('compare_gear_listings',{baseRevision:context.revision,itemText:quiverText,snapshotPath,league:'Standard'},'gearListings');
   assert.equal(equippedQuiver.gearListings.comparison.matched,1);
   assert.deepEqual(equippedQuiver.gearListings.comparison,copiedQuiver.gearListings.comparison);
+  const ambiguousQuiverText=quiverText.replace('Broadhead Arrow Quiver','Penetrating Arrow Quiver')
+    .replace('9% increased Attack Speed','Arrows Pierce an additional Target');
+  const ambiguousQuiver=await queued('compare_gear_listings',{baseRevision:context.revision,itemText:ambiguousQuiverText,snapshotPath,league:'Standard'},'failed');
+  assert.match(ambiguousQuiver.error,/implicit cannot distinguish/);
   assert.equal((await call('get_build_context')).context.revision,context.revision);
   await host('undo-applied');
   const jewelText='Rarity: RARE\nReview Jewel\nCobalt Jewel\nItem Level: 86\n7% increased maximum Life';

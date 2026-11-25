@@ -1741,9 +1741,10 @@ Item Level: 86
 		local quiver=new("Item"):Item(rawQuiver)
 		local target=assert(listings.target(quiver))
 		assert(target.equipment.class=="Quiver" and target.base=="Broadhead Arrow Quiver")
+		local ambiguousBase="Rarity: RARE\nFixture Quiver\nPenetrating Arrow Quiver\nItem Level: 86\nImplicits: 1\nArrows Pierce an additional Target\n+79 to maximum Life"
 		for _, ambiguous in ipairs({
 			rawQuiver:gsub("9%% increased Attack Speed","6 to 12 Added Physical Damage with Bow Attacks"),
-			"Rarity: RARE\nFixture Quiver\nPenetrating Arrow Quiver\nItem Level: 86\nImplicits: 1\nArrows Pierce an additional Target\n+79 to maximum Life",
+			ambiguousBase,
 			rawQuiver.."\nCorrupted",
 		}) do
 			assert(not listings.target(new("Item"):Item(ambiguous)))
@@ -1793,10 +1794,14 @@ Item Level: 86
 		assert(table.concat(rows," "):find("2 matching rolls",1,true))
 		if output then gearUI:frame():write(output.."/quiver-listing-snapshot.json") end
 		local previousPaste=Paste
-		Paste=function() return rawQuiver end
+		Paste=function() return ambiguousBase end
 		main.popups={}
 		require("Classes.LootFilterMarketBrowseControl").Open({})
-		gearUI:text("league","Covens");gearUI:click("pasteItem");gearUI:click("listingSample")
+		gearUI:text("league","Covens");gearUI:click("pasteItem")
+		local controls=main.popups[1].controls
+		assert(controls.status.label:find("implicit cannot distinguish",1,true) and not controls.listingSample:IsEnabled())
+		Paste=function() return rawQuiver end
+		gearUI:click("pasteItem");gearUI:click("listingSample")
 		Paste=previousPaste
 		assert(main.popups[1].title=="Comparable asking prices")
 		print("Quiver pricing verifies copied and equipped rolls and excludes ambiguous legacy bases")

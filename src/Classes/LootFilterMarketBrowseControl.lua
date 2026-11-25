@@ -195,12 +195,13 @@ local function open(build, managedTarget)
 				status("Copy one identified rare item from Path of Exile first.")
 				return
 			end
-			local ok, comparison, base = pcall(function()
+			local ok, comparison, base, reason = pcall(function()
 				local item = new("Item"):Item(raw)
-				return browse.listingTargetForItem(item),item.baseName
+				local target, unavailable = browse.listingTargetForItem(item)
+				return target,item.baseName,unavailable
 			end)
 			if not ok or not comparison then
-				status("The copied item lacks comparable rolls or supported equipment properties.")
+				status(reason or "The copied item lacks comparable rolls or supported equipment properties.")
 				return
 			end
 			selectTarget({name=comparison.base,category=comparison.cluster and "ClusterJewel" or "BaseType",listingItem=comparison,
