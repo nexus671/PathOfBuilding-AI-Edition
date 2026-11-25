@@ -57,7 +57,9 @@ async function main(){
   let context=(await call('get_build_context')).context;const baseLife=context.stats.LifeUnreserved;
   await host('fixture-loot-examples');
   const lootDiff=await call('get_loot_sync_diff');assert.equal(lootDiff.reviewRevision,'b'.repeat(40));assert.equal(lootDiff.changes[0].decisionIndex,1);
-  const lootPage=await queued('review_loot_sync_examples',{baseRevision:context.revision,reviewRevision:lootDiff.reviewRevision,decisionIndex:1,offset:0,limit:1},'lootReview');
+  const lootDecisions=await queued('list_loot_sync_decisions',{baseRevision:context.revision,reviewRevision:lootDiff.reviewRevision,offset:250,limit:1},'lootDecisions');
+  assert.equal(lootDecisions.lootDecisions.total,300);assert.equal(lootDecisions.lootDecisions.decisions[0].decisionIndex,251);assert.ok(!JSON.stringify(lootDecisions).includes('fixture-target'));
+  const lootPage=await queued('review_loot_sync_examples',{baseRevision:context.revision,reviewRevision:lootDiff.reviewRevision,decisionIndex:251,offset:0,limit:1},'lootReview');
   assert.equal(lootPage.lootReview.total,2);assert.equal(lootPage.lootReview.results[0].action,'Show');assert.ok(!JSON.stringify(lootPage).includes('fixture-target'));
   await host('fixture-loot-examples',{portableFixture:true});
   const portableLoot=await queued('review_loot_sync_examples',{baseRevision:context.revision,reviewRevision:lootDiff.reviewRevision,decisionIndex:1,offset:0,limit:1},'lootReview');

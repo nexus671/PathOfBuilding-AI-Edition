@@ -263,7 +263,15 @@ test('queues path-free pages for a specific verified loot decision', t => {
   assert.equal(request.kind,'review_loot_sync_examples');assert.equal(request.reviewRevision,reviewRevision);assert.equal(request.offset,20);
   const invalid=fixture(t);
   assert.throws(()=>invalid.call('review_loot_sync_examples',{baseRevision:invalid.state.revision,reviewRevision:'C:/private',decisionIndex:1}),/arguments/);
-  assert.throws(()=>invalid.call('review_loot_sync_examples',{baseRevision:invalid.state.revision,reviewRevision,decisionIndex:251}),/arguments/);
+  assert.throws(()=>invalid.call('review_loot_sync_examples',{baseRevision:invalid.state.revision,reviewRevision,decisionIndex:0}),/arguments/);
+});
+
+test('queues later verified loot decision pages', t => {
+  const f=fixture(t),reviewRevision='b'.repeat(40);
+  const result=f.call('list_loot_sync_decisions',{baseRevision:f.state.revision,reviewRevision,offset:250,limit:50});
+  assert.match(result.instructions,/filter is not changed/);
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.kind,'list_loot_sync_decisions');assert.equal(request.offset,250);assert.equal(request.reviewRevision,reviewRevision);
 });
 
 test('returns every requested feed in a full economy audit',t=>{
