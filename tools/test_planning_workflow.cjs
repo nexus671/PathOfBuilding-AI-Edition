@@ -1794,6 +1794,12 @@ async function main(){
   const lastPage=await queued('test_loot_filter_examples',{baseRevision:context.revision,profile:sampleProfile,sampleSetId:'mixed',offset:firstPage.examples.nextOffset,limit:2},'tested');
   assert.deepEqual(lastPage.examples.results.map(entry=>entry.index),[2]);assert.equal(lastPage.examples.nextOffset,undefined);
   const impactBefore={...lootProfile,template:'Show',rules:[]};const impactAfter={...impactBefore,rules:[{id:'hide-chaos',title:'Hide Chaos',text:'Hide\n BaseType == "Chaos Orb"'}]};
+  for (const [module,method] of [['Modules.LootFilters','validate'],['Modules.LootFilterImpact','prepare']]) {
+    await host('inject-planning-error',{module,method});
+    const failure=await queued('compare_loot_filters',{baseRevision:context.revision,before:impactBefore,after:impactAfter,samples:[{BaseType:'Chaos Orb'}]},'failed');
+    assert.equal(failure.error,'First problem\nSecond problem');
+    await host('inject-planning-error',{module,method,restore:true});
+  }
   const impactResult=await queued('compare_loot_filters',{baseRevision:context.revision,before:impactBefore,after:impactAfter,samples:[{BaseType:'Chaos Orb'},{BaseType:'Divine Orb'}]},'tested');
   assert.equal(impactResult.comparison.total,2);assert.equal(impactResult.comparison.results[0].category,'Visibility changed');assert.equal(impactResult.comparison.results[1].category,'Unchanged');
   const scenePage=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene:'Preset highlights',seed:3,areaLevel:76,itemLevel:81,limit:2},'tested');
