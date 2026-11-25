@@ -1,6 +1,6 @@
 VERSION[2.69.0-ai.preview1297][2026/11/24]
 
-* Correct intermediate rolls for affected spell-suppression modifiers.
+* Correct intermediate rolls for recognized legacy spell-suppression modifiers.
 
 VERSION[2.69.0-ai.preview1296][2026/11/24]
 

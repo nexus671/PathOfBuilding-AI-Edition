@@ -19,6 +19,13 @@ local suppressionState=copyTable(influenced.initial);suppressionState.rarity="RA
 local suppressionReroll=sim.action(influenced,suppressionState,{method="divine"},function() return 0.34 end)
 assert(sim.matches(suppressionReroll,{{anyOf={"ChanceToDodgeAttacksInfluence2"},minBaseValue=10,maxBaseValue=10}},nil,influenced),"Divine suppression goal did not match the raw middle roll")
 assert(sim.itemText(influenced,suppressionReroll):find("+10% chance to Suppress Spell Damage",1,true),"Divine suppression roll rendered incorrectly")
+local legacyBase=sim.model("Rarity: NORMAL\nTwo-Toned Boots\nItem Level: 86\nRedeemer Item")
+local legacyState=copyTable(legacyBase.initial);legacyState.rarity="RARE";legacyState.affixes={{id="ChanceToDodgeAttacksInfluence2",range=0}}
+local legacyRaw=sim.toItem(legacyBase,legacyState).raw;local legacyModel=sim.model(legacyRaw)
+assert(legacyModel.initial.affixes[1].id=="ChanceToDodgeAttacksInfluence2","Legacy suppression identity did not survive import")
+local suppressionRecipe={steps={{method="divine"}},targets={{anyOf={"ChanceToDodgeAttacksInfluence2"},minBaseValue=10,maxBaseValue=10}}}
+local suppressionRun=sim.simulate(legacyRaw,suppressionRecipe,{trials=120,maxActions=1,seed=13})
+assert(suppressionRun.successes>15 and suppressionRun.successes<65,"Suppression target should occur in sampled Divine rolls")
 local checkedSuppression=0;local metadata=require("Modules.CraftingAdvanced").data().mods
 for id,mod in pairs(influenced.byId) do
  local stats=metadata[id] and metadata[id].stats;local stat=stats and #stats==1 and stats[1]
