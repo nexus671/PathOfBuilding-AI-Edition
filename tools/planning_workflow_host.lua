@@ -53,7 +53,7 @@ for line in io.lines() do
 		elseif command.kind=="inject-crafting-error" or command.kind=="inject-planning-error" then
 			local simulator=command.kind=="inject-crafting-error" and require("Modules.CraftingSimulator") or require(assert(command.module))
 			local key=assert(command.method)
-			assert(command.kind=="inject-crafting-error" and (key=="catalog" or key=="beastCatalog" or key=="allflameProfile") or command.kind=="inject-planning-error" and (command.module=="Modules.MapCurrency" and (key=="planningOptions" or key=="options") or command.module=="Modules.CraftingProjects" and key=="blankBase"))
+			assert(command.kind=="inject-crafting-error" and (key=="catalog" or key=="beastCatalog" or key=="allflameProfile") or command.kind=="inject-planning-error" and (command.module=="Modules.MapCurrency" and (key=="planningOptions" or key=="options") or command.module=="Modules.CraftingProjects" and key=="blankBase" or command.module=="Modules.LootFilters" and key=="validate" or command.module=="Modules.LootFilterImpact" and key=="prepare"))
 			local identity=(command.module or "Modules.CraftingSimulator")..":"..key
 			if command.restore then simulator[key]=assert(injected[identity]);injected[identity]=nil
 			else assert(not injected[identity]);injected[identity]=simulator[key];simulator[key]=function() error("Modules/Example.lua:12: First problem\nC:/PoB/Other.lua:34: Second problem\nstack traceback:\n internal frame",0) end end
