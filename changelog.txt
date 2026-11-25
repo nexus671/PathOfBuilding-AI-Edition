@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1325][2026/11/25]
+
+* Remember Windows trade overlay setup and open saved capture prices automatically.
+
 VERSION[2.69.0-ai.preview1324][2026/11/25]
 
 * Search long Atlas session-draft titles by their full text.
