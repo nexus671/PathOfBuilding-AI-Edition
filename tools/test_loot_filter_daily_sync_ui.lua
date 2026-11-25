@@ -1736,6 +1736,76 @@ Item Level: 86
 		return values
 	end
 	local function property(name,value) return {name=name,values={{value,0}}} end
+	do
+		local rawQuiver="Rarity: RARE\nFixture Quiver\nBroadhead Arrow Quiver\nItem Level: 86\nImplicits: 1\n9% increased Attack Speed\n+79 to maximum Life"
+		local quiver=new("Item"):Item(rawQuiver)
+		local target=assert(listings.target(quiver))
+		assert(target.equipment.class=="Quiver" and target.base=="Broadhead Arrow Quiver")
+		local ambiguousBase="Rarity: RARE\nFixture Quiver\nPenetrating Arrow Quiver\nItem Level: 86\nImplicits: 1\nArrows Pierce an additional Target\n+79 to maximum Life"
+		for _, ambiguous in ipairs({
+			rawQuiver:gsub("9%% increased Attack Speed","6 to 12 Added Physical Damage with Bow Attacks"),
+			ambiguousBase,
+			rawQuiver.."\nCorrupted",
+		}) do
+			assert(not listings.target(new("Item"):Item(ambiguous)))
+		end
+		local mods={{description="+79 to maximum Life"}}
+		local exact=equipmentRow(71,"Broadhead Arrow Quiver",nil,nil,mods)
+		exact.implicitMods={{description="9% increased Attack Speed"}}
+		local function changed(id,mutate)
+			local listing=copyTable(exact)
+			listing.id=string.format("%064x",id)
+			mutate(listing)
+			return listing
+		end
+		local header=changed(72,function(row) row.properties=assert(json.decode('[{"name":"Quiver","values":[]}]')) end)
+		local rivals={exact,header,
+			changed(73,function(row) row.explicitMods={{description="+78 to maximum Life"}} end),
+			changed(74,function(row) row.implicitMods={{description="6 to 12 Added Physical Damage with Bow Attacks"}} end),
+			changed(75,function(row) row.properties={property("Quality","+10%")} end),
+			changed(76,function(row) row.sockets="invalid" end),
+			changed(77,function(row) row.ilvl=85 end),
+			changed(78,function(row) row.corrupted=true end),
+			changed(79,function(row) row.sockets=sockets("R") end),
+		}
+		local encodedQuivers=json.encode({next_change_id="cursor",stashes={stash(71,"Quiver#0071",rivals)}})
+		assert(listings.compare(encodedQuivers,target,"Covens").matched==2)
+		local ornateRaw="Rarity: RARE\nFixture Quiver\nOrnate Quiver\nSockets: R\nItem Level: 86\nImplicits: 1\nHas 1 Socket\n+79 to maximum Life"
+		local ornate=assert(listings.target(new("Item"):Item(ornateRaw)))
+		assert(ornate.equipment.sockets=="R")
+		local ornateAsk=equipmentRow(81,"Ornate Quiver",sockets("R"),nil,mods)
+		ornateAsk.implicitMods={{description="Has 1 Socket"}}
+		local incorrect=equipmentRow(82,"Ornate Quiver",sockets("G"),nil,mods)
+		incorrect.implicitMods=ornateAsk.implicitMods
+		local filled=copyTable(ornateAsk)
+		filled.id=string.format("%064x",83)
+		filled.socketedItems={{baseType="Empower Support"}}
+		local ornatePage={next_change_id="cursor",stashes={stash(81,"Quiver#0081",{ornateAsk,incorrect,filled})}}
+		assert(listings.compare(json.encode(ornatePage),ornate,"Covens").matched==1)
+		file=assert(io.open(path,"wb"));assert(file:write(encodedQuivers));assert(file:close())
+		gearUI:bind(build);main.popups={}
+		require("Classes.LootFilterMarketBrowseControl").Open({itemsTab={orderedSlots={{slotName="Weapon 2"}},
+			items={quiver},activeItemSet={["Weapon 2"]={selItemId=1}}}})
+		gearUI:text("league","Covens");gearUI:click("buildTarget");gearUI:text("search","Weapon 2");gearUI:click("choose")
+		gearUI:click("listingSample")
+		assert(main.popups[1].title=="Comparable asking prices")
+		local rows={}
+		for _, line in ipairs(main.popups[1].controls.details.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
+		assert(table.concat(rows," "):find("2 matching rolls",1,true))
+		if output then gearUI:frame():write(output.."/quiver-listing-snapshot.json") end
+		local previousPaste=Paste
+		Paste=function() return ambiguousBase end
+		main.popups={}
+		require("Classes.LootFilterMarketBrowseControl").Open({})
+		gearUI:text("league","Covens");gearUI:click("pasteItem")
+		local controls=main.popups[1].controls
+		assert(controls.status.label:find("implicit cannot distinguish",1,true) and not controls.listingSample:IsEnabled())
+		Paste=function() return rawQuiver end
+		gearUI:click("pasteItem");gearUI:click("listingSample")
+		Paste=previousPaste
+		assert(main.popups[1].title=="Comparable asking prices")
+		print("Quiver pricing verifies copied and equipped rolls and excludes ambiguous legacy bases")
+	end
 	local armour = new("Item"):Item([[Rarity: RARE
 Fixture Armour
 Vaal Regalia

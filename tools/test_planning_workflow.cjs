@@ -2102,6 +2102,24 @@ async function main(){
   assert.equal(armourListings.gearListings.equipment.sockets,'B-B-B-B-R-G');
   assert.equal(armourListings.gearListings.equipment.properties['Energy Shield'],190);
   assert.equal((await call('get_build_context')).context.revision,context.revision);
+  const quiverText='Rarity: RARE\nReview Quiver\nBroadhead Arrow Quiver\nItem Level: 86\nImplicits: 1\n9% increased Attack Speed\n+79 to maximum Life';
+  await queued('propose_build',{mode:'edit',title:'Listing comparison quiver',baseRevision:context.revision,operations:[
+    {type:'equip_item',slot:'Weapon 1',text:'Rarity: NORMAL\nCrude Bow'},
+    {type:'equip_item',slot:'Weapon 2',text:quiverText}]},'review');
+  await host('apply');context=(await call('get_build_context')).context;
+  const quiverAsk={...listing,baseType:'Broadhead Arrow Quiver',implicitMods:[{description:'9% increased Attack Speed'}]};
+  const legacyQuiver={...quiverAsk,id:'5'.repeat(64),implicitMods:[{description:'6 to 12 Added Physical Damage with Bow Attacks'}]};
+  fs.writeFileSync(snapshotPath,JSON.stringify({next_change_id:'cursor',stashes:[{id:'2'.repeat(64),public:true,league:'Standard',accountName:'Seller#0001',items:[quiverAsk,legacyQuiver]}]}));
+  const equippedQuiver=await queued('compare_gear_listings',{baseRevision:context.revision,slot:'Weapon 2',snapshotPath,league:'Standard'},'gearListings');
+  const copiedQuiver=await queued('compare_gear_listings',{baseRevision:context.revision,itemText:quiverText,snapshotPath,league:'Standard'},'gearListings');
+  assert.equal(equippedQuiver.gearListings.comparison.matched,1);
+  assert.deepEqual(equippedQuiver.gearListings.comparison,copiedQuiver.gearListings.comparison);
+  const ambiguousQuiverText=quiverText.replace('Broadhead Arrow Quiver','Penetrating Arrow Quiver')
+    .replace('9% increased Attack Speed','Arrows Pierce an additional Target');
+  const ambiguousQuiver=await queued('compare_gear_listings',{baseRevision:context.revision,itemText:ambiguousQuiverText,snapshotPath,league:'Standard'},'failed');
+  assert.match(ambiguousQuiver.error,/implicit cannot distinguish/);
+  assert.equal((await call('get_build_context')).context.revision,context.revision);
+  await host('undo-applied');
   const jewelText='Rarity: RARE\nReview Jewel\nCobalt Jewel\nItem Level: 86\n7% increased maximum Life';
   const {jewelSocketId}=await host('equip-fixture-jewel',{itemText:jewelText});
   context=(await call('get_build_context')).context;
