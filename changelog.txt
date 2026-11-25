@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1335][2026/11/25]
+
+* Compare Betrayal examples in the loot filter simulator.
+
 VERSION[2.69.0-ai.preview1334][2026/11/25]
 
 * Expose item filters and recent stash observations in AI gear comparisons.
