@@ -159,11 +159,19 @@ function M.Open(options)
 			selected=copyTable(sample.selected);rolls=copyTable(sample.rolls);offset=0;candidate=nil;controls.search:SetText("");refresh()
 		end})
 	end)
-	controls.estimate.enabled=function()
-		local level=tonumber(controls.level.buf)
-		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and not mirrored and not unidentified and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and level~=nil and not levelProblem()
+	local function estimateUnavailable()
+		if not options.build then return "Open this map from a build to estimate rerolls." end
+		if unidentified then return "Identify the map before estimating rerolls." end
+		if mirrored then return "Mirrored maps cannot be rerolled." end
+		if isCorrupted() then return "Corrupted maps cannot be rerolled here." end
+		if getRarity()=="normal" then return "Choose a magic or rare map before estimating rerolls." end
+		if require("Modules.MapObservedEffects").hasExplicit(observedEffects) then return "Remove unsupported observed explicit modifiers before estimating rerolls." end
+		return levelProblem()
 	end
-	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. The item level must support those modifiers. Saved targets remain when the tier changes and may need editing. Corrupted or mirrored maps and unsupported explicit modifiers cannot be rerolled here. Nightmare estimates use unverified draw-order assumptions."
+	controls.estimate.enabled=function() return estimateUnavailable()==nil end
+	controls.estimate.tooltipText=function()
+		return estimateUnavailable() or "Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. Saved targets may need editing when the tier changes. Nightmare estimates use unverified draw-order assumptions."
+	end
 	button("delirium",32+2*cardButtonWidth,height-62,cardButtonWidth,"Delirium",function()
 		local module=require("Modules.MapObservedEffects");local known=module.delirium(observedEffects)
 		local uncertain=unidentified or module.hasExplicit(observedEffects) and not known
