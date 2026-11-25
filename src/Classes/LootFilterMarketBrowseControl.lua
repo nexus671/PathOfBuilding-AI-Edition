@@ -17,7 +17,7 @@ local function openExactBase(target,league)
 	openTradeSearch(league,query)
 end
 
-local function reviewTradeRolls(target, league)
+local function reviewTradeRolls(target, league, compare)
 	local rolls = browse.tradeRolls(target)
 	local openReview
 	local function edit(row)
@@ -52,17 +52,21 @@ local function reviewTradeRolls(target, league)
 		main:OpenPopup(width,188,"Trade roll bounds",c,nil,"minimum","close")
 	end
 	openReview = function()
-		local filters = browse.rolledTradeQuery(target,rolls)
-		local socketFilters = filters.filters.socket_filters
+		local query = browse.rolledTradeQuery(target,rolls)
+		local filters = query.stats[1].filters
+		local matchesRolls = browse.listingRollMatcher(filters)
+		local socketFilters = query.filters.socket_filters
 		local info = {target.base,league.." | Identified rare | Item level "..target.level,
 			target.corrupted and "Corrupted" or "Uncorrupted",
-			string.format("%d of %d item modifiers included",#filters.stats[1].filters,#rolls),
+			string.format("%d of %d item modifiers included",#filters,#rolls),
 		}
 		if socketFilters then
 			info[#info+1]=string.format("Sockets: %d | Largest link group: %d",
 				socketFilters.filters.sockets.min,socketFilters.filters.links.min)
 		end
 		info[#info+1]="Check influences, socket colors, and other item details in the Trade results."
+		info[#info+1]=matchesRolls and "Local comparisons also match item properties and base or layout identifiers."
+			or "Include a supported modifier to compare a local listing file."
 		local entries = {{id="summary",category="Search",label="Trade search for "..target.base,details=info}}
 		for index, row in ipairs(rolls) do
 			local filter = row.enabled and "Included" or row.id and "Excluded" or "Unavailable"
@@ -80,7 +84,9 @@ local function reviewTradeRolls(target, league)
 				main:ClosePopup()
 				openReview()
 			end,
-			secondary={label="Open official Trade",run=function() openTradeSearch(league,filters) end},
+			secondary={label="Open official Trade",run=function() openTradeSearch(league,query) end},
+			tertiary={label="Compare listing file",canRun=function() return matchesRolls~=nil end,
+				run=function() compare(matchesRolls,#filters) end},
 		})
 	end
 	openReview()
@@ -104,12 +110,16 @@ local function showMarketDetails(entry, title)
 	main:OpenPopup(width,height,title,controls,nil,nil,"close")
 end
 
-local function showListingSample(target, league, sample)
+local function showListingSample(target, league, sample, filterCount)
 	local details = {
 		league .. " | Local public stash listing sample",
-		string.format("%d same-base listings checked | %d matching rolls",sample.inspected,sample.matched),
+		string.format("%d same-base listings checked | %d matching %s",sample.inspected,sample.matched,
+			filterCount and "listings" or "rolls"),
 		string.format("%d matching listings with a supported asking price",sample.priced),
 	}
+	if filterCount then
+		details[#details+1]=string.format("Filtered comparison | %d selected modifier %s",filterCount,filterCount==1 and "filter" or "filters")
+	end
 	local equipment = target.listingItem.equipment
 	local cluster = target.listingItem.cluster
 	if cluster then
@@ -143,6 +153,15 @@ local function showListingSample(target, league, sample)
 	details[#details+1] = capture and "Asking prices from a partial stream. Live availability and sales are unverified."
 		or "Asking prices from this file. Realm, age and completed sales are unverified."
 	showMarketDetails({label=target.label,details=details},"Comparable asking prices")
+end
+
+local function compareListingFile(target, league, matchesRolls, filterCount)
+	require("Classes.LootFilterFileBrowser").Open(nil,function(path)
+		local ok,sample=pcall(require("Modules.LootFilterGearListings").compareFile,path,target.listingItem,league,matchesRolls)
+		if ok then showListingSample(target,league,sample,filterCount)
+		else ui.errorPopup("Comparable asking prices",sample) end
+	end,{title="Choose a public stash JSON file",itemLabel="Snapshot",category="Snapshots",
+		accept=function(name) return name:lower():match("%.json$")~=nil end})
 end
 
 local function openTradeHistory(savedLeague)
@@ -284,19 +303,16 @@ local function open(build, managedTarget)
 		controls.listingSample=new("ButtonControl"):ButtonControl(ui.anchor,{24+actionWidth,320,actionWidth,28},"Compare listing file",function()
 			local league=controls.league.buf:match("^%s*(.-)%s*$")
 			if not league:match("^[%w _-]+$") then status("Enter the trade league ID for the listing file."); return end
-			local selected=target
-			require("Classes.LootFilterFileBrowser").Open(nil,function(path)
-				local ok,sample=pcall(require("Modules.LootFilterGearListings").compareFile,path,selected.listingItem,league)
-				if ok then showListingSample(selected,league,sample)
-				else ui.errorPopup("Comparable asking prices",sample) end
-			end,{title="Choose a public stash JSON file",itemLabel="Snapshot",category="Snapshots",
-				accept=function(name) return name:lower():match("%.json$")~=nil end})
+			compareListingFile(target,league)
 		end)
 		controls.listingSample.enabled=function() return not busy and target and target.listingItem~=nil end
 		controls.rolledTrade = new("ButtonControl"):ButtonControl(ui.anchor,{24+actionWidth,358,actionWidth,28},"Review Trade search",function()
 			local league=controls.league.buf:match("^%s*(.-)%s*$")
 			if not league:match("^[%w _-]+$") then status("Enter a valid league ID to search official trade."); return end
-			reviewTradeRolls(target.listingItem,league)
+			local selected=target
+			reviewTradeRolls(selected.listingItem,league,function(matchesRolls,filterCount)
+				compareListingFile(selected,league,matchesRolls,filterCount)
+			end)
 		end)
 		controls.rolledTrade.enabled=function() return not busy and target and target.listingItem~=nil end
 	end

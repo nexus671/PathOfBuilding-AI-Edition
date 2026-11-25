@@ -132,7 +132,8 @@ function M.target(item, publicBase)
 		return
 	end
 	local target = {base=publicBase or item.baseName,level=item.itemLevel,equipment=equipment,cluster=cluster or nil,
-		abyssJewel=item.type=="Jewel" and item.base.subType=="Abyss"}
+		abyssJewel=item.type=="Jewel" and item.base.subType=="Abyss",
+		keepImplicit=quiver and sharedQuiverNames[item.baseName] or type(publicBase)=="string" and publicBase~=item.baseName}
 	for _, key in ipairs(conditions) do target[key]=item[key]==true end
 	for key in pairs(influences) do target[key]=item[key]==true end
 	for _, channel in ipairs(channels) do
@@ -144,7 +145,7 @@ function M.target(item, publicBase)
 	return target
 end
 
-local function sameItem(item, target)
+local function sameItem(item, target, matchesRolls)
 	if item.identified~=true or item.rarity~="Rare" or item.frameType~=nil and item.frameType~=2 or item.ilvl~=target.level or item.realm~=nil
 		or item.duplicated or item.doubleCorrupted or item.memoryItem or item.mutated or item.veiled
 		or item.lockedToCharacter or item.lockedToAccount or item.enshrouded or item.unmodifiable
@@ -177,10 +178,17 @@ local function sameItem(item, target)
 		local value = item[listing]
 		if value~=nil and type(value)~="boolean" or (value==true or active[listing]==true)~=target[build] then return false end
 	end
+	local rolled = matchesRolls and {}
 	for _, channel in ipairs(channels) do
-		if modList(item,channel,false)~=target[channel.listing] then return false end
+		local field = channel.listing
+		local mods = modList(item,channel,false)
+		if mods==nil then return false end
+		if not rolled or field=="enchantMods" and target.cluster or field=="implicitMods" and target.keepImplicit then
+			if mods~=target[field] then return false end
+		end
+		if rolled then rolled[field]=mods end
 	end
-	return true
+	return not rolled or matchesRolls(rolled)
 end
 
 local function validID(value)
@@ -266,7 +274,7 @@ local function readStashes(raw, league)
 	return latest,evidence
 end
 
-function M.compare(raw, target, league)
+function M.compare(raw, target, league, matchesRolls)
 	assert(target,"Choose identified rare gear with supported rolls and equipment properties")
 	assert(type(league)=="string" and #league<=80 and league:match("^[%w _-]+$") and league:find("%S"),"Enter the trade league ID")
 	local stashes, capture = readStashes(raw,league)
@@ -294,7 +302,7 @@ function M.compare(raw, target, league)
 		inspected=inspected+1
 		if not listing then
 			ambiguous=ambiguous+1
-		elseif sameItem(listing.item,target) then
+		elseif sameItem(listing.item,target,matchesRolls) then
 			matched=matched+1
 			local note = listing.item.note
 			if note==nil or note=="" then note=listing.stashNote end
@@ -322,11 +330,11 @@ function M.compare(raw, target, league)
 	return {inspected=inspected,matched=matched,priced=priced,ambiguous=ambiguous,results=results,capture=capture}
 end
 
-function M.compareFile(path, target, league)
+function M.compareFile(path, target, league, matchesRolls)
 	local file=assert(io.open(path,"rb"),"Could not open the selected public stash file")
 	local raw=file:read(maxBytes+1)
 	file:close()
-	return M.compare(raw,target,league)
+	return M.compare(raw,target,league,matchesRolls)
 end
 
 return M
