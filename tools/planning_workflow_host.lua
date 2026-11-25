@@ -71,6 +71,7 @@ for line in io.lines() do
 			local config={enabled=true,revision=string.rep("b",40),target=targetPath,baseline=baselinePath,baselineHash=sha(baseline),current=sha(output),
 				lastSuccess=now,targetValue=1,league="Standard",protections={{BaseType="Cord Belt",Rarity="Normal"}},
 				review={checkedAt=now,changes={{name="Orb of Alteration",old=6,cutoff=4,classes={"Stackable Currency"}}},skipped={}}}
+			for i=2,300 do config.review.changes[i]={name="Orb of Alteration",old=6,cutoff=4,classes={"Stackable Currency"}} end
 			write(directory.."LootFilterDailySync.json",assert(json.encode(config)))
 			-- Daily sync accepts Windows paths only. Exercise the real page and
 			-- bridge on Linux using this fixture's files and the same hash checks.

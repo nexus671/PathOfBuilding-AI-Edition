@@ -450,6 +450,20 @@ local function publicImpactSample(sample)
 		afterMissing=sample.action=="Unknown" and parser.safeMissingProperties(sample.afterMissing) or nil}
 end
 
+local function publicDecision(change,index)
+	local item=type(change)=="table" and safeText(change.name,200)
+	if not item or not finiteNumber(change.old) or not finiteNumber(change.cutoff) then return nil end
+	local samples={};if type(change.samples)=="table" then for i,entry in ipairs(change.samples) do if i>20 then break end;samples[#samples+1]=publicImpactSample(entry) end end
+	local corrupted;if type(change.corrupted)=="boolean" then corrupted=change.corrupted end
+	return {item=item,decisionIndex=index,source=safeText(change.source,40),priceId=market.evidencePriceId(change.priceId),
+		previousCutoff=change.old,proposedCutoff=change.cutoff,retainedReason=safeText(change.retainedReason,100),
+		quotedPrice=finiteNumber(change.currentPrice or change.price),priceUsed=finiteNumber(change.price),volume=finiteNumber(change.volume),
+		confirmedPrice=finiteNumber(change.confirmedPrice),liquidityUnit=safeText(change.liquidityUnit,40),
+		gemLevel=finiteNumber(change.gemLevel),gemQuality=finiteNumber(change.gemQuality),corrupted=corrupted,
+		mapOnly=change.maps==true,scope=safeText(change.scope,20),sample=publicImpactSample(change.sample),samples=#samples>0 and samples or nil,
+		samplesTruncated=type(change.samples)=="table" and #change.samples>20 or nil,samplesLimited=change.samplesLimited==true or nil}
+end
+
 -- Share the verified cutoff decisions, not filter source, target paths or
 -- protected drop definitions. These decisions are saved after publication.
 function M.publicDiff(now, id)
@@ -461,25 +475,7 @@ function M.publicDiff(now, id)
 	local source = type(review.changes) == "table" and review.changes or {}
 	for index, change in ipairs(source) do
 		if index > 250 then break end
-		local item = type(change) == "table" and safeText(change.name,200)
-		if item and finiteNumber(change.old) and finiteNumber(change.cutoff) then
-			local sample = publicImpactSample(change.sample)
-			local corruption
-			if type(change.corrupted)=="boolean" then corruption=change.corrupted end
-			local samples={};if type(change.samples)=="table" then for index,entry in ipairs(change.samples) do if index>20 then break end;samples[#samples+1]=publicImpactSample(entry) end end
-			changes[#changes+1] = {
-				item=item, decisionIndex=index, source=safeText(change.source,40), priceId=market.evidencePriceId(change.priceId), previousCutoff=change.old,
-				proposedCutoff=change.cutoff,
-				retainedReason=safeText(change.retainedReason,100),
-				quotedPrice=finiteNumber(change.currentPrice or change.price),
-				priceUsed=finiteNumber(change.price), volume=finiteNumber(change.volume), confirmedPrice=finiteNumber(change.confirmedPrice),
-				liquidityUnit=safeText(change.liquidityUnit,40),
-				gemLevel=finiteNumber(change.gemLevel),gemQuality=finiteNumber(change.gemQuality),corrupted=corruption,
-				mapOnly=change.maps==true, scope=safeText(change.scope,20),
-				sample=sample,samples=#samples>0 and samples or nil,samplesTruncated=type(change.samples)=="table" and #change.samples>20 or nil,
-				samplesLimited=change.samplesLimited==true or nil,
-			}
-		end
+		local entry=publicDecision(change,index);if entry then changes[#changes+1]=entry end
 	end
 	local ages = {}
 	for index, age in ipairs(type(review.ages) == "table" and review.ages or {}) do
@@ -646,12 +642,30 @@ end
 -- Bridge responses never include local paths or raw filter text.
 function M.publicDecisionExamples(revision,index,offset,limit)
 	assert(type(revision)=="string" and #revision==40 and revision:match("^[a-f0-9]+$"), "Refresh the latest sync review")
-	assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=250, "Choose a listed decision")
+	assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=1000000000, "Choose a listed decision")
 	local ok,page=pcall(M.reviewDecisionExamples,"default",revision,index,offset,limit)
 	assert(ok, "The review or verified filters changed, or this decision is unavailable. Refresh the sync review in PoB")
 	local results={};for _,entry in ipairs(page.results) do results[#results+1]=publicImpactSample(entry) end
 	return {decisionIndex=index,reviewRevision=revision,total=page.total,offset=page.offset,nextOffset=page.nextOffset,results=results,
 		limitations={"Illustrative cases use known base properties and leave item level unknown.","This compares the current verified default profile, not an archived review."}}
+end
+
+function M.publicDecisionPage(revision,offset,limit)
+	assert(type(revision)=="string" and #revision==40 and revision:match("^[a-f0-9]+$"), "Refresh the latest sync review")
+	offset,limit=offset or 0,limit or 25
+	assert(type(offset)=="number" and offset==math.floor(offset) and offset>=0 and offset<=1000000000, "Invalid decision offset")
+	assert(type(limit)=="number" and limit==math.floor(limit) and limit>=1 and limit<=50, "Use 1 to 50 decisions per page")
+	local loaded,config=pcall(get,"default")
+	assert(loaded and config, "Refresh the latest sync review")
+	assert(config.revision==revision and type(config.review)=="table" and type(config.review.changes)=="table", "The sync review changed. Refresh it in PoB")
+	local ok=pcall(M.verifiedFilterPair,"default");assert(ok, "The verified filters changed or are unavailable. Refresh the sync review in PoB")
+	local reloaded,latest=pcall(get,"default")
+	assert(reloaded and latest, "Refresh the latest sync review")
+	assert(latest.revision==revision, "The sync review changed. Refresh it in PoB")
+	local source=config.review.changes;local last=math.min(#source,offset+limit);local results={}
+	for index=offset+1,last do local entry=publicDecision(source[index],index);if entry then results[#results+1]=entry end end
+	return {reviewRevision=revision,total=#source,offset=offset,nextOffset=last<#source and last or nil,decisions=results,
+		limitations={"The current verified default profile is shown; archived reviews are unavailable.","Invalid stored decisions are omitted from the page."}}
 end
 
 function M.compareObservedStack(id, name, size, area, itemLevel, itemClass)
