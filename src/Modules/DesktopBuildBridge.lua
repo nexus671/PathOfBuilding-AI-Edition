@@ -602,7 +602,7 @@ function M.poll(build, force)
 			assert(target,"The supplied item or selected slot does not contain supported comparable rare gear")
 			local result=require("Modules.LootFilterGearListings").compareFile(path,target,request.league)
 			M.status={id=request.id,status="gearListings",gearListings={slot=request.slot,jewelSocketId=request.jewelSocketId,source=hasItem and "copied item" or "equipped item",league=request.league,comparison=result,
-				equipment=target.equipment,note="Asking prices from the supplied snapshot only; freshness, availability and completed sales are not established."}}
+				equipment=target.equipment,cluster=target.cluster,note="Asking prices from the supplied snapshot only; freshness, availability and completed sales are not established."}}
 			M.publishState();return
 		end
 		if request.kind=="review_same_base_vendor_items" then

@@ -69,6 +69,31 @@ local function modList(item, channel, build)
 	return table.concat(values,"\0")
 end
 
+local function clusterLayout(item)
+	local cluster, jewelData = item.clusterJewel, item.jewelData
+	local skill = cluster and jewelData and cluster.skills[jewelData.clusterJewelSkill]
+	if not skill or item.clusterJewelSkill~=jewelData.clusterJewelSkill
+		or jewelData.clusterJewelSocketCountOverride or jewelData.clusterJewelKeystone then return end
+	local bonuses = {}
+	for _, line in ipairs(skill.enchant) do bonuses[line]=true end
+	local passives, sockets
+	for _, enchant in ipairs(item.enchantModLines or {}) do
+		local line = enchant.line
+		local count = tonumber(line:match("^Adds (%d+) Passive Skills$"))
+		local socketCount = line=="1 Added Passive Skill is a Jewel Socket" and 1
+			or tonumber(line:match("^(%d+) Added Passive Skills are Jewel Sockets$"))
+		if count and not passives then passives=count
+		elseif socketCount and not sockets then sockets=socketCount
+		elseif bonuses[line] then bonuses[line]=nil
+		else return end
+	end
+	local expectedSockets = ({Small=0,Medium=1,Large=2})[cluster.size]
+	if not passives or passives<cluster.minNodes or passives>cluster.maxNodes or next(bonuses)
+		or passives~=jewelData.clusterJewelNodeCount or passives~=item.clusterJewelNodeCount
+		or (sockets or 0)~=expectedSockets or (jewelData.clusterJewelSocketCount or 0)~=expectedSockets then return end
+	return {passives=passives,sockets=expectedSockets}
+end
+
 function M.target(item, publicBase)
 	if item.rarity~="RARE" or not item.base or item.unidentifiedMarker
 		or type(item.itemLevel)~="number" or item.itemLevel<1 or item.itemLevel>100 or item.itemLevel~=math.floor(item.itemLevel)
@@ -77,14 +102,15 @@ function M.target(item, publicBase)
 		or (item.catalyst or 0)>0 or (item.catalystQuality or 0)>0
 		or hasEntries(item.scourgeModLines) or hasEntries(item.crucibleModLines) then return end
 	local equipment
-	local jewel = item.type=="Jewel" and (not item.base.subType or item.base.subType=="Abyss")
+	local cluster = item.type=="Jewel" and item.base.subType=="Cluster" and clusterLayout(item)
+	local jewel = item.type=="Jewel" and (not item.base.subType or item.base.subType=="Abyss" or cluster)
 	if item.base.armour or item.base.weapon then
 		equipment=gearProperties.target(item)
 		if not equipment then return end
 	elseif not (jewellery[item.type] or jewel) or (item.quality or 0)>0 or (item.base.socketLimit or 0)>0 or hasEntries(item.sockets) then
 		return
 	end
-	local target = {base=publicBase or item.baseName,level=item.itemLevel,equipment=equipment,
+	local target = {base=publicBase or item.baseName,level=item.itemLevel,equipment=equipment,cluster=cluster or nil,
 		abyssJewel=item.type=="Jewel" and item.base.subType=="Abyss"}
 	for _, key in ipairs(conditions) do target[key]=item[key]==true end
 	for key in pairs(influences) do target[key]=item[key]==true end

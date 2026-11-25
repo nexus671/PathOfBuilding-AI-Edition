@@ -1,6 +1,10 @@
-VERSION[2.69.0-ai.preview1307][2026/11/24]
+VERSION[2.69.0-ai.preview1308][2026/11/24]
 
 * Recognize exceptional and ordinary gems more accurately in pasted filter previews.
+
+VERSION[2.69.0-ai.preview1307][2026/11/24]
+
+* Compare rolled rare Cluster Jewels by passive layout and exact modifiers.
 
 VERSION[2.69.0-ai.preview1306][2026/11/24]
 

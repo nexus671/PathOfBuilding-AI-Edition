@@ -223,13 +223,15 @@ function M.buildTargets(build)
 				if category=="BaseType" then baseName,implicit=baseTradeIdentity(item.baseName) end
 				local itemLevel = item.itemLevel
 				if category~="BaseType" or implicit==false or not positive(itemLevel) or itemLevel>100 or itemLevel~=math.floor(itemLevel) then itemLevel=nil end
-				local listingItem = itemLevel and require("Modules.LootFilterGearListings").target(item,baseName)
+				local listingItem = (itemLevel or cluster) and require("Modules.LootFilterGearListings").target(item,baseName)
+				local labelLevel = itemLevel or listingItem and listingItem.level
 				add({name=baseName,category=category,baseTarget=true,itemLevel=itemLevel,baseImplicit=implicit or nil,
 					listingItem=listingItem,listingSlot=listingItem and slot.slotName or nil,
 					listingSocket=listingItem and slot.nodeId or nil,
 					baseVariant=baseName~=item.baseName and item.baseName or nil,
-					label=label.." | "..item.baseName..(itemLevel and (" | Item level "..itemLevel) or ""),
-					details={"Compare this crafting base. The equipped modifiers have their own value."}})
+					label=label.." | "..item.baseName..(labelLevel and (" | Item level "..labelLevel) or ""),
+					details={cluster and "Compare this Cluster Jewel base. A listing file checks the complete passive layout and rolls."
+						or "Compare this crafting base. The equipped modifiers have their own value."}})
 			end
 		end
 	end
