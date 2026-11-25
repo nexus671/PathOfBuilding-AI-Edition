@@ -387,6 +387,12 @@ local incursionExamples={
  {"Soul Core of Might","Stackable Currency"},{"Incursion Thread","Map Fragments"},
  {"Frayed Thread","Stackable Currency"},
 }
+-- Catalogue examples only; inclusion does not establish current availability.
+local betrayalExamples={
+ {"Betrayal Thread","Map Fragments"},{"Frayed Thread","Stackable Currency"},
+ {"Veiled Scarab","Stackable Currency"},{"Veiled Chaos Orb","Stackable Currency"},
+ {"Veiled Exalted Orb","Stackable Currency"},
+}
 local legionExamples={
 	{"Timeless Karui Splinter","Stackable Currency"},{"Timeless Maraketh Splinter","Stackable Currency"},
 	{"Timeless Eternal Empire Splinter","Stackable Currency"},{"Timeless Templar Splinter","Stackable Currency"},
@@ -523,7 +529,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end end
 		return list
 	end
-	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Breach"]=breachExamples,["Beyond"]=beyondExamples,["Incursion"]=incursionExamples,["Legion"]=legionExamples,["Delirium"]=deliriumExamples,["Harvest"]=harvestExamples,["Abyss"]=abyssExamples,["Ultimatum"]=ultimatumExamples,["Ritual"]=ritualExamples,["Sanctum"]=sanctumExamples,["Pinnacle bosses"]=bossExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
+	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Breach"]=breachExamples,["Beyond"]=beyondExamples,["Betrayal"]=betrayalExamples,["Incursion"]=incursionExamples,["Legion"]=legionExamples,["Delirium"]=deliriumExamples,["Harvest"]=harvestExamples,["Abyss"]=abyssExamples,["Ultimatum"]=ultimatumExamples,["Ritual"]=ritualExamples,["Sanctum"]=sanctumExamples,["Pinnacle bosses"]=bossExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)

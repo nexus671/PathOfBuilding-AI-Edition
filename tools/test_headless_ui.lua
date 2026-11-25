@@ -7,6 +7,12 @@ main.disableDevAutoSave=true
 local UI=require("Modules.HeadlessUI")
 local sim=require("Modules.CraftingSimulator")
 local frames=0
+function UI.checkEncounterSearch(ui,frame)
+	ui:click("browseScenes");ui:text("search","murderous eye jewel");assert(main.popups[1].controls.count.label:find("1 result",1,true),"Scene search did not find an exact example name");frame("filter-scene-browser");ui:click("choose")
+	assert(build.planningWorkspace.cache.filters.layout.snapshot().sceneKind=="Abyss","Scene browser did not select the matching scene")
+	ui:click("browseScenes");ui:text("search","veiled exalted orb");assert(main.popups[1].controls.count.label:find("1 result",1,true),"Scene search did not find the Betrayal example");ui:click("choose")
+	assert(build.planningWorkspace.cache.filters.layout.snapshot().sceneKind=="Betrayal","Scene browser did not select Betrayal")
+end
 function UI.checkSavedSceneSearch(ui,savedDraft)
 	ui:click("browseScenes");ui:choose("category","Saved");ui:text("search","Chaos Orb");local found=false;for _,row in ipairs(main.popups[1].controls.results.list) do if StripEscapes(row[1] or ""):find("Mapping examples",1,true) then found=true end end;assert(found,"Saved set item was not searchable");ui:text("search","Mapping examples");assert(main.popups[1].controls.count.label:find("1 result",1,true),"Saved set name was not searchable");ui:click("choose")
 	assert(build.planningWorkspace.cache.filters.layout.snapshot().sampleSetId==savedDraft.data.profiles[1].sampleSets[1].id,"Scene browser did not select the requested saved set")
@@ -1997,9 +2003,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("sceneKind","Vendor recipes");frame("filter-vendor-examples");ui:click("sceneStats");assert(main.popups[#main.popups].controls.count.label:find("20 results |",1,true),"Vendor recipe examples are missing");ui:click("choose")
 	ui:choose("sceneKind","Heist & Expedition");local heistScene=build.planningWorkspace.cache.filters.layout.snapshot();assert(heistScene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,"Heist & Expedition",heistScene.seed)[1].BaseType);frame("filter-heist-expedition-examples")
 	do ui:choose("sceneKind","Blight & oils");local blightScene=build.planningWorkspace.cache.filters.layout.snapshot();assert(blightScene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,"Blight & oils",blightScene.seed)[1].BaseType);frame("filter-blight-oil-examples") end
-	ui:click("browseScenes");ui:text("search","murderous eye jewel");assert(main.popups[1].controls.count.label:find("1 result",1,true),"Scene search did not find an exact example name");frame("filter-scene-browser");ui:click("choose")
-	assert(build.planningWorkspace.cache.filters.layout.snapshot().sceneKind=="Abyss","Scene browser did not select the matching scene")
-	for _,kind in ipairs({"Beyond","Incursion","Delirium","Harvest","Ritual","Abyss","Ultimatum","Sanctum","Pinnacle bosses"}) do
+	UI.checkEncounterSearch(ui,frame)
+	for _,kind in ipairs({"Beyond","Betrayal","Incursion","Delirium","Harvest","Ritual","Abyss","Ultimatum","Sanctum","Pinnacle bosses"}) do
 		ui:choose("sceneKind",kind);local scene=build.planningWorkspace.cache.filters.layout.snapshot()
 		assert(scene.sceneKind==kind and scene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,kind,scene.seed)[1].BaseType,"Encounter examples did not load")
 		frame("filter-"..kind:lower():gsub("%s+","-").."-examples")

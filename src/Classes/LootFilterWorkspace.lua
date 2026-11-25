@@ -253,7 +253,7 @@ function M.Open(build,source,layout,controller)
 		local canvas=new("Control"):Control(ui.anchor,{x,y,width,height});c[key]=canvas;backgrounds[key]=true
 		local columns=width>700 and 4 or width>460 and 3 or 2;local reserve=selectable and 98 or 46;local rows=math.max(2,math.floor((height-reserve)/70));local capacity=columns*rows;local cells={};local visible=0;local eligible={}
 		if selectable and (sceneKind=="Fated gear" or sceneKind=="Foulborn gear") then columns=math.min(columns,2);capacity=columns*rows end
-		if selectable and (sceneKind=="Essences" or sceneKind=="Preset highlights" or sceneKind=="Breach" or sceneKind=="Beyond" or sceneKind=="Incursion" or sceneKind=="Legion" or sceneKind=="Delirium" or sceneKind=="Harvest" or sceneKind=="Abyss" or sceneKind=="Ultimatum" or sceneKind=="Ritual" or sceneKind=="Sanctum" or sceneKind=="Pinnacle bosses") then columns=math.min(columns,3);capacity=columns*rows end
+		if selectable and (sceneKind=="Essences" or sceneKind=="Preset highlights" or sceneKind=="Breach" or sceneKind=="Beyond" or sceneKind=="Betrayal" or sceneKind=="Incursion" or sceneKind=="Legion" or sceneKind=="Delirium" or sceneKind=="Harvest" or sceneKind=="Abyss" or sceneKind=="Ultimatum" or sceneKind=="Ritual" or sceneKind=="Sanctum" or sceneKind=="Pinnacle bosses") then columns=math.min(columns,3);capacity=columns*rows end
 		local function evaluate(drop) return evaluateDrop(drop) end
 		for _,drop in ipairs(drops) do local evaluated=not showHidden and evaluate(drop) or nil;if showHidden or evaluated.action~="Hide" then eligible[#eligible+1]={item=drop,result=evaluated} end end
 		local pages=math.max(1,math.ceil(#eligible/capacity));if selectable then scenePage=math.max(1,math.min(scenePage,pages)) end
@@ -527,7 +527,7 @@ function M.Open(build,source,layout,controller)
 		if compactHeight then
 			button(c,"itemDetails",16,120,120,"Item details",function() main:OpenMessagePopup("Item details",table.concat(sampleDetails(item,result,true),"\n")) end)
 		else ui.label(c,"sceneTitle",16,124,"Loot simulator",20) end
-		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Fated gear","Foulborn gear","Vendor recipes","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition","Blight & oils","Breach","Beyond","Incursion","Legion","Delirium","Harvest","Abyss","Ultimatum","Ritual","Sanctum","Pinnacle bosses"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
+		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Fated gear","Foulborn gear","Vendor recipes","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition","Blight & oils","Breach","Beyond","Betrayal","Incursion","Legion","Delirium","Harvest","Abyss","Ultimatum","Ritual","Sanctum","Pinnacle bosses"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
 		local function selectScene(value,savedId)
 			if savedId then sampleSetId=savedId end
 			sceneKind=value;scenePage=1;if value=="Saved examples" then local chosen=savedSets[1];for _,entry in ipairs(savedSets) do if entry.id==sampleSetId then chosen=entry end end;item=copyTable(chosen.samples[1]) elseif value~="Build targets" then item=library.scene(profile,build,value,seed,settings.areaLevel,settings.itemLevel)[1] or item end;reopen()
@@ -543,13 +543,13 @@ function M.Open(build,source,layout,controller)
 				["Divination cards"]="Compare example divination cards.",Essences="Compare essence tiers and special essences.",
 				["Crafting materials"]="Compare fossils, resonators, Eldritch currency and Lifeforce.",["Heist & Expedition"]="Compare contracts, blueprints, a logbook and vendor currency.",
 				["Blight & oils"]="Compare oils, a Thread and Blighted map examples.",Breach="Compare splinters, a Breachstone and Threads.",
-				Beyond="Compare tainted currency for corrupted items.",Incursion="Compare Royal Visage, Soul Cores and Threads.",Legion="Compare splinters, emblems, incubators and a Thread.",Delirium="Compare Simulacrum items, Delirium Orbs and Refracting Fog.",
+				Beyond="Compare tainted currency for corrupted items.",Betrayal="Compare veiled currency, a scarab and Threads.",Incursion="Compare Royal Visage, Soul Cores and Threads.",Legion="Compare splinters, emblems, incubators and a Thread.",Delirium="Compare Simulacrum items, Delirium Orbs and Refracting Fog.",
 				Harvest="Compare Lifeforce and Sacred Blossom.",Abyss="Compare eye jewels, a Stygian Vise and Threads.",
 				Ultimatum="Compare an inscribed item, catalysts and Threads.",Ritual="Compare vessels, Omens and Threads.",
 				Sanctum="Compare a Forbidden Tome, relic bases and invocations.",["Pinnacle bosses"]="Compare boss fragments and related currency.",
 				["Saved examples"]="Reopen your saved sets of exact example properties.",
 			}
-			local encounters={Breach=true,Beyond=true,Incursion=true,Legion=true,Delirium=true,Harvest=true,Abyss=true,Ultimatum=true,Ritual=true,Sanctum=true,["Pinnacle bosses"]=true,["Blight & oils"]=true,["Heist & Expedition"]=true,["Covens & Threads"]=true}
+			local encounters={Breach=true,Beyond=true,Betrayal=true,Incursion=true,Legion=true,Delirium=true,Harvest=true,Abyss=true,Ultimatum=true,Ritual=true,Sanctum=true,["Pinnacle bosses"]=true,["Blight & oils"]=true,["Heist & Expedition"]=true,["Covens & Threads"]=true}
 			local entries={};for _,kind in ipairs(kinds) do
 				local description=descriptions[kind] or "Compare example items."
 				local category=encounters[kind] and "Encounters" or kind=="Saved examples" and "Saved" or kind=="Build targets" and "Build" or "Items and comparisons"
