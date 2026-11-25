@@ -103,6 +103,10 @@ function launch:OnInit()
 		return
 	end
 	RenderInit("DPI_AWARE")
+	if jit.os == "Windows" then
+		local ok, applied = pcall(function() return require("Modules.WindowsBranding").apply() end)
+		if not ok or not applied then ConPrintf("AI Edition window icon could not be applied.") end
+	end
 	ConPrintf("Loading main script...")
 	local errMsg
 	errMsg, self.main = PLoadModule("Modules/Main")

@@ -1,4 +1,4 @@
-# cspell:ignore pscustomobject
+# cspell:ignore pscustomobject pshome
 $ErrorActionPreference = 'Stop'
 
 # Parse the command installed in Windows Task Scheduler and exercise its managed rule comparison.

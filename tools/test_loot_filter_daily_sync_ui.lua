@@ -1,3 +1,4 @@
+-- cspell:ignore normalsound normalvolume strongfont
 local output, reviewWidth = arg[1], tonumber(arg[2]) or 960
 arg = {}
 dofile("HeadlessWrapper.lua")

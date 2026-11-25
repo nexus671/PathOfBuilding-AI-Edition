@@ -1,3 +1,4 @@
+-- cspell:ignore normalsound
 local pickupAreas = require("Modules.LootFilterPickupAreas")
 local sync = require("Modules.LootFilterDailySync")
 local background = require("Modules.LootFilterBackgroundTask")

@@ -11,7 +11,7 @@
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
 	<File name="AI/BuildProtocol.cjs" part="program" sha1="4b23043f49879b74a3ef9aae87c118e6d24e4d4b" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
-	<File name="Assets/AI-Edition.ico" part="program" sha1="69144a5d06355289050b6f9c9c0798223cd1d6d7" />
+	<File name="Assets/AI-Edition.ico" part="program" sha1="dee186a1cec155d549bf98b985d3198db2ab9078" />
 	<File name="Assets/ascendancypassiveheaderleft.png" part="program" sha1="6a65683dcc3b14382dc083198fe9361454e91b15" />
 	<File name="Assets/ascendancypassiveheadermiddle.png" part="program" sha1="79ccf100c4154d8f65544e2b32d44a612b7007c0" />
 	<File name="Assets/ascendancypassiveheaderright.png" part="program" sha1="dbb86c1b8b51019379e52cd1f8b2a9edee07a3f6" />
@@ -1655,7 +1655,7 @@
 	<File name="Classes/LootFilterCategoryControl.lua" part="program" sha1="c2305569737cb47ef545e0b5770b71dabfc4ed35" />
 	<File name="Classes/LootFilterCollectionControl.lua" part="program" sha1="f0ef5045827e7b50aa989cfbfa2fa44c652a1076" />
 	<File name="Classes/LootFilterControl.lua" part="program" sha1="b19bfed2f2ae93b14349a7ee032cb352ebe9a852" />
-	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="7c924d069c4b1d8575065759ca664cb06dad8d17" />
+	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="e43d672051879778038f7ae5cadf70bc1c6c078a" />
 	<File name="Classes/LootFilterDiffControl.lua" part="program" sha1="e57a08c9d50131bc74382df740961a42b88acf3c" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="ee9ed25943330eeb9e32235eb048277fe134c8b1" />
 	<File name="Classes/LootFilterEffectsControl.lua" part="program" sha1="59fcc5963d18c2df06c00de9e13827988ae3e58a" />
@@ -2012,9 +2012,9 @@
 	<File name="Export/Uniques/wand.lua" part="program" sha1="73ac6a237919566682de8d6428e1d034efa25f63" />
 	<File name="GameVersions.lua" part="program" sha1="56301ee96e4fb4afbc9a2ecc42be2778ddd054a5" />
 	<File name="HeadlessWrapper.lua" part="program" sha1="4bf2e32c7bd8fd796fad41710f3509f0fea5191d" />
-	<File name="Install AI Edition.cmd" part="program" sha1="f9c701d6707a20a326e063d872fa39490450ae2e" />
+	<File name="Install AI Edition.cmd" part="program" sha1="525b17aa9c8e70a24117ea02890039cad091a520" />
 	<File name="Install-AI-Edition.ps1" part="program" sha1="9fd49eea7de60d8d28142a14dc9871db218dec66" />
-	<File name="Launch.lua" part="program" sha1="11573444baaf35523d42a782d814c32788665eeb" />
+	<File name="Launch.lua" part="program" sha1="dde9137e328319c43328009012677af552a1c4ed" />
 	<File name="LaunchServer.lua" part="program" sha1="f3d649ef4d07c1f8423757e0b7e322f305ef2806" />
 	<File name="Modules/AddImplicitPopup.lua" part="program" sha1="f68d391d10b95c0feef70b7e8e82326a745dcb3b" />
 	<File name="Modules/AtlasArt.lua" part="program" sha1="d007b7632f8d2e284c7ed46d6a0d98c39d3e2576" />
@@ -2196,6 +2196,7 @@
 	<File name="Modules/VendorBaseSets.lua" part="program" sha1="c6a505a64698ea7b08fc93d993ee16daa255dfdf" />
 	<File name="Modules/VendorQualitySets.lua" part="program" sha1="2866d9a15684339d9a3a1ca2b5fae7939eb50b6f" />
 	<File name="Modules/VendorRarePairs.lua" part="program" sha1="96ad32284f46978636ece2d823e71acbf09b8529" />
+	<File name="Modules/WindowsBranding.lua" part="program" sha1="17ced3e67783a22335c633b1ae27ef11e4d9aa61" />
 	<File name="UpdateApply.lua" part="program" sha1="d7e47a29feff219c1ec3c6e4a19eb85b47691c26" />
 	<File name="UpdateCheck.lua" part="program" sha1="29689a9beae71ac5b9ad492c9f1c8c3b6a1f2f5e" />
 	<File name="abseil_dll.dll" part="runtime" platform="win32" sha1="e9c19e2bce146c5b41f71bb1e367ca055a10a94e" />

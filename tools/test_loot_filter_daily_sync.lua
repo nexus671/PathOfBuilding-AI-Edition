@@ -1,3 +1,4 @@
+-- cspell:ignore unhighlighted
 -- Windows integration check. Runs the actual native file operations using
 -- synthetic exchange responses and an isolated destination.
 local dir = assert(arg[1], "Supply an existing temporary directory")
