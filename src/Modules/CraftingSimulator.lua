@@ -75,14 +75,19 @@ function M.actionWarnings(action,model)
 	if item and item.craftingNameInferred then result[#result+1]={code="magic_affix_name",message="An imported modifier was identified using the magic item name. Verify that the name is the original in-game name; a manually edited name can lead to the wrong modifier tier."} end
 	-- Native imports can preserve legacy values; hypothetical state can also
 	-- contain them. Neither proves current-game availability.
-	local function outsideTier(state)
+	local function outsideTier(state,context)
 		for _,entry in ipairs(state and state.affixes or {}) do
 			local ranges=type(entry.range)=="table" and entry.range or {entry.range or 0.5}
-			for _,value in ipairs(ranges) do if type(value)=="number" and (value<0 or value>1) then return true end end
+			for _,value in ipairs(ranges) do
+				if type(value)=="number" and (value<0 or value>1) then
+					local mod=context and context.byId and context.byId[entry.id]
+					if #ranges~=1 or not mod or not M.isRawRegenRange(mod,value) then return true end
+				end
+			end
 		end
 		return false
 	end
-	local unusualRoll=outsideTier(model and model.initial)
+	local unusualRoll=outsideTier(model and model.initial,model)
 	if item and item.type=="Tincture" and item.tinctureValues=="Final" and ((item.tinctureImportedQuality or 0)>0 or (item.tinctureImportedEffect or item.tinctureData and item.tinctureData.effectInc or 0)~=0) then
 		result[#result+1]={code="tincture_imported_values",message="This copied tincture has locally scaled modifier values. The crafting model may infer the wrong modifier tier, and newly rolled modifiers can use a different scale from retained values. Modifier goals, previews and character effects may be inaccurate; verify the item before relying on this result."}
 	end
@@ -105,7 +110,7 @@ function M.actionWarnings(action,model)
 	if (action.method=="awakener" or action.method=="recombine" or action.method=="recombine_predictable") and type(action.donorItem)=="string" then
 		local ok,donor=pcall(M.model,action.donorItem)
 		if ok then
-			unusualRoll=unusualRoll or outsideTier(donor.initial)
+			unusualRoll=unusualRoll or outsideTier(donor.initial,donor)
 			if not abyss then for _,entry in ipairs(donor.initial.affixes) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true;break end end end
 		end
 	end
@@ -353,6 +358,14 @@ local function unknownSocketWarning(warnings)
 end
 
 local rollModifierIds=setmetatable({},{__mode="k"})
+local rawRegenCache=setmetatable({},{__mode="k"})
+function M.registerRollModifierIds(model)
+	for id,mod in pairs(model.byId) do
+		local previous=rollModifierIds[mod]
+		if previous==nil then rollModifierIds[mod]=id
+		elseif previous~=id then rollModifierIds[mod]=false;rawRegenCache[mod]=nil end
+	end
+end
 
 function M.model(raw)
 	assert(type(raw) == "string" and #raw <= 24000,"Invalid starting item")
@@ -453,10 +466,7 @@ function M.model(raw)
 	assert(c.Prefix <= caps.Prefix and c.Suffix <= caps.Suffix,"Starting item exceeds affix limits")
 	assert(renderLines(reconstructed) == renderLines(item),"Starting modifiers could not be resolved exactly. Use a blank base or advanced item text with recognized modifier IDs.")
 	model.initial=state
-	for id,mod in pairs(model.byId) do
-		local previous=rollModifierIds[mod]
-		if previous==nil then rollModifierIds[mod]=id elseif previous~=id then rollModifierIds[mod]=false end
-	end
+	M.registerRollModifierIds(model)
 	return model
 end
 
@@ -497,7 +507,6 @@ local function rollPrecision(line,low,high)
 end
 -- A displayed regeneration-per-second endpoint can conceal a per-minute integer.
 -- Use pinned raw bounds only when the identity, stat and endpoints agree.
-local rawRegenCache=setmetatable({},{__mode="k"})
 local function rawRegenSteps(mod,line,low,high)
  if #mod~=1 or not line:match("^Regenerate %(") then return end
  local expectedStat=line:match("%% of Life per second$") and "life_regeneration_rate_per_minute_%" or line:match("%% of Energy Shield per second$") and "base_energy_shield_regeneration_rate_per_minute_%" or line:match(" Life per second$") and "base_life_regeneration_rate_per_minute" or line:match(" Mana per second$") and "base_mana_regeneration_rate_per_minute"
@@ -509,12 +518,31 @@ local function rawRegenSteps(mod,line,low,high)
  local steps=stat and stat.id==expectedStat and stat.max-stat.min
  if not steps or steps<1 or steps>100000 or high<=low then rawRegenCache[mod]=false;return end
  local first,last=(stat.min/60-low)/(high-low),(stat.max/60-low)/(high-low)
- -- The raw bounds may round to the displayed endpoints. Only use them when
- -- both fit the native range and render identically to those endpoints.
+ -- The raw bounds may lie just outside the displayed range after rounding.
+ -- Only affixes can preserve such offsets; implicits still require 0..1.
  local firstDisplay,lastDisplay=M.baseRollValue(mod,first,1),M.baseRollValue(mod,last,1)
- if first< -1e-9 or last>1+1e-9 or firstDisplay==nil or lastDisplay==nil or firstDisplay~=M.baseRollValue(mod,0,1) or lastDisplay~=M.baseRollValue(mod,1,1) then rawRegenCache[mod]=false;return end
- first=math.max(0,first);last=math.min(1,last)
+ local outside=first< -1e-9 or last>1+1e-9
+ if (outside and mod.type~="Prefix" and mod.type~="Suffix") or math.abs(first)>100 or math.abs(last)>100 or firstDisplay==nil or lastDisplay==nil or firstDisplay~=M.baseRollValue(mod,0,1) or lastDisplay~=M.baseRollValue(mod,1,1) then rawRegenCache[mod]=false;return end
  local bounds={steps=steps,first=first,last=last};rawRegenCache[mod]=bounds;return bounds
+end
+function M.rawRegenPosition(mod,value)
+ local line=#mod==1 and mod[1];if not line then return end
+ local low,high=line:match("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)")
+ local raw=low and rawRegenSteps(mod,line,tonumber(low),tonumber(high));if not raw then return end
+ local step=(value-raw.first)/(raw.last-raw.first)*raw.steps
+ if step>=-1e-7 and step<=raw.steps+1e-7 and math.abs(step-math.floor(step+0.5))<1e-7 then
+  return math.max(0,math.min(1,math.floor(step+0.5)/raw.steps))
+ end
+end
+function M.isRawRegenRange(mod,value)
+ return M.rawRegenPosition(mod,value)~=nil
+end
+function M.rawRegenAtPosition(mod,position)
+ local line=#mod==1 and mod[1];if not line then return end
+ local low,high=line:match("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)")
+ local raw=low and rawRegenSteps(mod,line,tonumber(low),tonumber(high));if not raw then return end
+ local step=math.floor(position*raw.steps+0.5)
+ return raw.first+(step/raw.steps)*(raw.last-raw.first)
 end
 function M.rawRegenRange(mod,random)
  local line=#mod==1 and mod[1];if not line then return end
@@ -778,6 +806,11 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   end
   for _,entry in ipairs(entries) do
    local roll=type(entry.range) == "table" and math.min(unpack(entry.range)) or entry.range or 0.5
+   if (roll<0 or roll>1 or group.minRoll~=nil) and model and (type(entry.range)=="number" or type(entry.range)=="table" and #entry.range==1) then
+    local mod=model.byId and model.byId[entry.id]
+    local position=mod and M.rawRegenPosition(mod,roll)
+    if position then roll=position end
+   end
    for _,id in ipairs(group.anyOf) do if entry.id == id and roll >= (group.minRoll or 0) and (group.fractured == nil or (entry.fractured or false) == group.fractured) and (group.crafted == nil or (entry.crafted or false) == group.crafted) then
     local matches=true
     if group.minBaseValue~=nil or group.maxBaseValue~=nil then
@@ -987,8 +1020,13 @@ function M.rollOutsideTier(entry)
 	for _,value in ipairs(ranges) do if type(value)=="number" and (value<0 or value>1) then return true end end
 	return false
 end
-function M.requiresRollSource(entry)
-	return entry.legacyLightRadius==true or M.rollOutsideTier(entry)
+function M.requiresRollSource(entry,model)
+	if entry.legacyLightRadius then return true end
+	if not M.rollOutsideTier(entry) then return false end
+	local ranges=type(entry.range)=="table" and entry.range or {entry.range or 0.5}
+	local mod=model and model.byId and model.byId[entry.id]
+	if #ranges==1 and mod and M.isRawRegenRange(mod,ranges[1]) then return false end
+	return true
 end
 local function sameAffixRoll(left,right,leftModel,rightModel)
 	if left.id~=right.id or not not left.legacyLightRadius~=not not right.legacyLightRadius or not not left.description330~=not not right.description330 then return false end
@@ -1007,7 +1045,7 @@ end
 function M.validateLegacyRolls(model,state)
 	for _,entry in ipairs(state.affixes or {}) do
 		assert(entry.legacySource==nil or type(entry.legacySource)=="string" and #entry.legacySource<=24000,"Invalid legacy roll source")
-		if M.requiresRollSource(entry) then
+		if M.requiresRollSource(entry,model) then
 			local found=false
 			for _,original in ipairs(model.initial.affixes or {}) do if sameAffixRoll(entry,original,model,model) then found=true;break end end
 			if not found and entry.legacySource then
