@@ -4,15 +4,86 @@ local ui = require("Modules.PlanningUI")
 local sync = require("Modules.LootFilterDailySync")
 local M = {}
 
+local function openTradeSearch(league, query)
+	local encoded = require("Classes.TradeHelpers").B64GzipEncode(assert(require("dkjson").encode(query)))
+	OpenURL("https://www.pathofexile.com/trade/search/"..urlEncode(league).."/"..encoded)
+end
+
 local function openExactBase(target,league)
-	local json = require("dkjson")
-	local trade = require("Classes.TradeHelpers")
 	local level = target.itemLevel
 	local query = {type=target.name,status={option="available"},
 		stats={{type="and",filters={}}},filters={misc_filters={filters={ilvl={min=level,max=level}}}}}
 	if target.baseImplicit then query.stats[1].filters[1]={id=target.baseImplicit} end
-	local url = "https://www.pathofexile.com/trade/search/"..urlEncode(league).."/"..trade.B64GzipEncode(json.encode(query))
-	OpenURL(url)
+	openTradeSearch(league,query)
+end
+
+local function reviewTradeRolls(target, league)
+	local rolls = browse.tradeRolls(target)
+	local openReview
+	local function edit(row)
+		local width = math.min(490,main.screenW-40)
+		local c = {}
+		ui.description(c,"modifier",16,16,width-32,42,{row.line},14)
+		ui.label(c,"minLabel",16,68,"Minimum",14)
+		ui.label(c,"maxLabel",width/2,68,"Maximum",14)
+		c.minimum = new("EditControl"):EditControl(ui.anchor,{16,90,width/2-28,28},tostring(row.minimum or ""),"Any",nil,16)
+		c.maximum = new("EditControl"):EditControl(ui.anchor,{width/2,90,width/2-16,28},tostring(row.maximum or ""),"Any",nil,16)
+		c.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,140,132,28},"Apply bounds",function()
+			local minimum = c.minimum.buf=="" and nil or tonumber(c.minimum.buf)
+			local maximum = c.maximum.buf=="" and nil or tonumber(c.maximum.buf)
+			local function valid(text, value) return text=="" or value and math.abs(value)<=1000000 end
+			if not valid(c.minimum.buf,minimum) or not valid(c.maximum.buf,maximum) or minimum and maximum and minimum>maximum then
+				main:OpenMessagePopup("Trade roll bounds","Enter valid bounds in order, or leave either field blank.")
+				return
+			end
+			row.minimum,row.maximum,row.enabled = minimum,maximum,true
+			main:ClosePopup()
+			main:ClosePopup()
+			openReview()
+		end)
+		c.toggle = new("ButtonControl"):ButtonControl(ui.anchor,{158,140,132,28},row.enabled and "Exclude filter" or "Include filter",function()
+			row.enabled = not row.enabled
+			main:ClosePopup()
+			main:ClosePopup()
+			openReview()
+		end)
+		c.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-126,140,110,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(c,{apply=true})
+		main:OpenPopup(width,188,"Trade roll bounds",c,nil,"minimum","close")
+	end
+	openReview = function()
+		local filters = browse.rolledTradeQuery(target,rolls)
+		local socketFilters = filters.filters.socket_filters
+		local info = {target.base,league.." | Identified rare | Item level "..target.level,
+			target.corrupted and "Corrupted" or "Uncorrupted",
+			string.format("%d of %d item modifiers included",#filters.stats[1].filters,#rolls),
+		}
+		if socketFilters then
+			info[#info+1]=string.format("Sockets: %d | Largest link group: %d",
+				socketFilters.filters.sockets.min,socketFilters.filters.links.min)
+		end
+		info[#info+1]="Check influences, socket colors, and other item details in the Trade results."
+		local entries = {{id="summary",category="Search",label="Trade search for "..target.base,details=info}}
+		for index, row in ipairs(rolls) do
+			local filter = row.enabled and "Included" or row.id and "Excluded" or "Unavailable"
+			local bounds = row.numeric and ("Minimum "..tostring(row.minimum or "any").." | Maximum "..tostring(row.maximum or "any"))
+				or "Match modifier presence"
+			entries[#entries+1] = {id=tostring(index),label=row.line,category=filter,roll=row,
+				details={row.line,row.kind,filter,row.reason or bounds}}
+		end
+		require("Classes.PlanningBrowserControl").Open("Review Trade search",entries,{
+			action="Edit or toggle",closeOnChoose=false,enterChooses=false,
+			canChoose=function(entry) return entry.roll and entry.roll.id~=nil end,
+			choose=function(entry)
+				if entry.roll.numeric then edit(entry.roll); return end
+				entry.roll.enabled = not entry.roll.enabled
+				main:ClosePopup()
+				openReview()
+			end,
+			secondary={label="Open official Trade",run=function() openTradeSearch(league,filters) end},
+		})
+	end
+	openReview()
 end
 
 local function showMarketDetails(entry, title)
@@ -222,6 +293,12 @@ local function open(build, managedTarget)
 				accept=function(name) return name:lower():match("%.json$")~=nil end})
 		end)
 		controls.listingSample.enabled=function() return not busy and target and target.listingItem~=nil end
+		controls.rolledTrade = new("ButtonControl"):ButtonControl(ui.anchor,{24+actionWidth,358,actionWidth,28},"Review Trade search",function()
+			local league=controls.league.buf:match("^%s*(.-)%s*$")
+			if not league:match("^[%w _-]+$") then status("Enter a valid league ID to search official trade."); return end
+			reviewTradeRolls(target.listingItem,league)
+		end)
+		controls.rolledTrade.enabled=function() return not busy and target and target.listingItem~=nil end
 	end
 	controls.get=new("ButtonControl"):ButtonControl(ui.anchor,{16,282,138,28},"Show prices",function()
 		if busy then return end
@@ -374,7 +451,7 @@ local function open(build, managedTarget)
 		selectTarget(managedTarget,"Exact managed target. Show prices to check its current quote.")
 	end
 	ui.style(controls)
-	local height = managedTarget and 330 or width<576 and 404 or 366
+	local height = managedTarget and 330 or 404
 	popup=main:OpenPopup(width,height,"Browse loot market prices",controls,nil,nil,"close")
 end
 

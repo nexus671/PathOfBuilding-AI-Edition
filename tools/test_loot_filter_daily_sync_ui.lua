@@ -1793,6 +1793,10 @@ Item Level: 86
 		for _, line in ipairs(main.popups[1].controls.details.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
 		assert(table.concat(rows," "):find("2 matching rolls",1,true))
 		if output then gearUI:frame():write(output.."/quiver-listing-snapshot.json") end
+		gearUI:click("close")
+		gearUI:click("rolledTrade")
+		assert(main.popups[1].title=="Review Trade search")
+		gearUI:click("close")
 		local previousPaste=Paste
 		Paste=function() return ambiguousBase end
 		main.popups={}
@@ -1804,6 +1808,49 @@ Item Level: 86
 		gearUI:click("pasteItem");gearUI:click("listingSample")
 		Paste=previousPaste
 		assert(main.popups[1].title=="Comparable asking prices")
+		gearUI:click("close")
+		local previousOpen, opened = OpenURL
+		OpenURL=function(url) opened=url end
+		gearUI:text("league","not/a/league")
+		gearUI:click("rolledTrade")
+		assert(main.popups[1].title=="Browse loot market prices" and not opened)
+		gearUI:text("league","Covens")
+		gearUI:click("rolledTrade")
+		assert(main.popups[1].title=="Review Trade search" and not opened)
+		gearUI:text("search","increased Attack Speed")
+		gearUI:click("choose")
+		gearUI:click("toggle")
+		gearUI:text("search","maximum Life")
+		gearUI:click("choose")
+		gearUI:text("minimum","80")
+		gearUI:click("apply")
+		assert(main.popups[1].title=="Trade roll bounds" and not opened)
+		gearUI:click("close")
+		gearUI:text("minimum","70")
+		gearUI:text("maximum","")
+		gearUI:click("apply")
+		assert(main.popups[1].title=="Review Trade search" and not opened)
+		gearUI:text("search","maximum Life")
+		if output then gearUI:frame():write(output.."/rolled-trade-review.json") end
+		gearUI:click("secondary")
+		OpenURL=previousOpen
+		local prefix="https://www.pathofexile.com/trade/search/Covens/"
+		assert(opened and opened:sub(1,#prefix)==prefix)
+		local query=assert(json.decode(require("Classes.TradeHelpers").B64GzipDecode(opened:sub(#prefix+1))))
+		assert(query.type=="Broadhead Arrow Quiver" and query.filters.type_filters.filters.rarity.option=="rare")
+		assert(query.filters.misc_filters.filters.ilvl.min==86 and query.filters.misc_filters.filters.ilvl.max==86)
+		assert(query.filters.misc_filters.filters.corrupted.option=="false" and query.filters.misc_filters.filters.identified.option=="true")
+		local stats=query.stats[1].filters
+		assert(#stats==1 and stats[1].id=="explicit.stat_3299347043" and stats[1].value.min==70 and stats[1].value.max==nil)
+		local browse=require("Modules.LootFilterMarketBrowse")
+		local duplicate=browse.tradeRolls({explicitMods="--+79 to maximum Life\0--+78 to maximum Life",implicitMods="",enchantMods=""})
+		assert(#duplicate==2 and not duplicate[1].id and not duplicate[2].id)
+		local presence=browse.tradeRolls({explicitMods="--Adds 3 to 5 Fire Damage to Attacks",implicitMods="",enchantMods=""})
+		assert(#presence==1 and presence[1].id and not presence[1].numeric)
+		local presenceQuery=browse.rolledTradeQuery(target,presence)
+		assert(presenceQuery.stats[1].filters[1].id==presence[1].id and presenceQuery.stats[1].filters[1].value==nil)
+		local socketQuery=browse.rolledTradeQuery(ornate,browse.tradeRolls(ornate))
+		assert(socketQuery.filters.socket_filters.filters.sockets.min==1 and socketQuery.filters.socket_filters.filters.links.max==1)
 		print("Quiver pricing verifies copied and equipped rolls and excludes ambiguous legacy bases")
 	end
 	local armour = new("Item"):Item([[Rarity: RARE

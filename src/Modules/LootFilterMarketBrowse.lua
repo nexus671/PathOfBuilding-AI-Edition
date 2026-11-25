@@ -1,3 +1,4 @@
+-- cspell:ignore jsontype RGBW
 local json = require("dkjson")
 local marketJSON = require("Modules.LootFilterMarketJSON")
 local maps = require("Modules.LootFilterMapMarket")
@@ -157,6 +158,81 @@ function M.listingTargetForItem(item)
 	local baseName,implicit=baseTradeIdentity(item.baseName)
 	if implicit==false then return end
 	return require("Modules.LootFilterGearListings").target(item,baseName)
+end
+
+local tradeRollIndex
+local tradeChannels = {{"implicitMods","implicit"},{"explicitMods","explicit"},{"enchantMods","enchant"}}
+local tradeKinds = {implicit=true,explicit=true,enchant=true,crafted=true,fractured=true}
+
+function M.tradeRolls(target)
+	local trade = require("Classes.TradeHelpers")
+	if not tradeRollIndex then
+		tradeRollIndex = {}
+		for _, group in ipairs(trade.getTradeStats()) do
+			if tradeKinds[group.id] then
+				for _, stat in ipairs(group.entries) do
+					if stat.id:match("^"..group.id.."%.stat_%d+$") and not stat.option then
+						local key = group.id.."\0"..stat.text
+						local prior = tradeRollIndex[key]
+						tradeRollIndex[key] = (prior==nil or prior==stat.id) and stat.id or false
+					end
+				end
+			end
+		end
+	end
+	local rows, prior = {}, {}
+	for _, channel in ipairs(tradeChannels) do
+		for encoded in target[channel[1]]:gmatch("[^%z]+") do
+			local line = encoded:sub(3)
+			local kind = encoded:sub(1,1)=="f" and "fractured" or encoded:sub(2,2)=="c" and "crafted" or channel[2]
+			local template, placeholders = trade.modLineTemplate(line)
+			local exact = tradeRollIndex[kind.."\0"..line]
+			local id
+			if exact~=nil then id=exact else id=tradeRollIndex[kind.."\0"..template] end
+			local value = id and exact==nil and placeholders==1 and trade.modLineValue(line) or nil
+			local invalidRoll = value and math.abs(value)>1000000
+			if invalidRoll then id,value=nil,nil end
+			local entry = {line=line,kind=kind,id=id or nil,enabled=id and true or false,
+				numeric=value~=nil,minimum=value,maximum=value,
+				reason=invalidRoll and "This roll exceeds the supported numeric range."
+					or id==false and "Multiple Trade filters match." or not id and "No supported Trade filter." or nil}
+			if id and prior[id] then
+				for _, row in ipairs({prior[id],entry}) do
+					row.id,row.enabled,row.reason = nil,false,"More than one item modifier uses this Trade filter."
+				end
+			elseif id then prior[id]=entry end
+			rows[#rows+1]=entry
+		end
+	end
+	return rows
+end
+
+function M.rolledTradeQuery(target, rolls)
+	local filters = setmetatable({},{__jsontype="array"})
+	for _, row in ipairs(rolls) do
+		if row.id and row.enabled then
+			local minimum, maximum = row.minimum,row.maximum
+			for _, value in pairs({minimum,maximum}) do
+				assert(row.numeric and type(value)=="number" and value==value and math.abs(value)<=1000000,
+					"Enter roll bounds from -1,000,000 to 1,000,000")
+			end
+			assert(not (minimum and maximum) or minimum<=maximum,"The minimum cannot exceed the maximum")
+			filters[#filters+1]={id=row.id,value=(minimum or maximum) and {min=minimum,max=maximum} or nil}
+		end
+	end
+	local query = {type=target.base,status={option="available"},stats={{type="and",filters=filters}},
+		filters={type_filters={filters={rarity={option="rare"}}},misc_filters={filters={
+			ilvl={min=target.level,max=target.level},identified={option="true"},corrupted={option=tostring(target.corrupted)}}}}}
+	local equipment = target.equipment
+	if equipment and equipment.sockets~="" then
+		local count, largest = 0, 0
+		for group in equipment.sockets:gmatch("%S+") do
+			local _, links = group:gsub("[RGBW]","")
+			count,largest=count+links,math.max(largest,links)
+		end
+		query.filters.socket_filters={filters={sockets={min=count,max=count},links={min=largest,max=largest}}}
+	end
+	return query
 end
 
 function M.buildTargets(build)
