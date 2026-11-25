@@ -462,6 +462,70 @@ assert(main.popups[1].title=="GGG trade comparison")
 sync.configuration, launch.DownloadPage = configMock, originalFetch
 print("Native review compares exact direct-chaos historical trade volumes with the primary quote")
 
+do
+	local compact=headless.install({width=640,height=480})
+	compact:bind(build)
+	main.popups={}
+	local tradedHour=ggg.hour(os.time())
+	local function pair(league,id,count,chaosVolume)
+		return {league=league,market_pair={id,chaosId},volume_traded={[id]=count,[chaosId]=chaosVolume}}
+	end
+	local fusing=assert(ggg.itemId("Orb of Fusing"))
+	local regal=assert(ggg.itemId("Regal Orb"))
+	local rows={
+		pair("Covens",itemId,500,125),pair("Standard",itemId,250,150),
+		pair("Covens",fusing,100,100),pair("Covens",fusing,100,100),
+		pair("Covens",regal,100,33),pair("Invalid^league",itemId,500,125),
+	}
+	local xbox=encode({next_change_id=tradedHour+3600,markets=rows})
+	local sony=encode({next_change_id=tradedHour+3600,markets={pair("Covens",itemId,400,300)}})
+	assert(#ggg.review(ggg.decode(xbox,tradedHour))==2)
+	assert(not pcall(ggg.decode,xbox.." false",tradedHour))
+	assert(not pcall(ggg.decode,'{"markets":{},"next_change_id":'..(tradedHour+3600)..'}',tradedHour))
+	local calls={}
+	launch.DownloadPage=function(_,url,callback,options)
+		assert(options.followRedirects==false)
+		calls[#calls+1]=url
+		if url==ggg.endpoint.."xbox/"..tradedHour then callback({body=xbox})
+		elseif url==ggg.endpoint.."sony/"..tradedHour then callback({body=sony})
+		else error("Unexpected trade history URL "..url) end
+	end
+	require("Classes.LootFilterMarketBrowseControl").Open({itemsTab={}})
+	compact:click("tradeHistory")
+	assert(main.popups[1].title=="GGG trade history")
+	compact:choose("realm","Xbox")
+	if output then compact:frame():write(output.."/ggg-trade-history-source.json") end
+	compact:click("load")
+	assert(main.popups[1].title=="Xbox completed trades")
+	compact:choose("category","League Covens")
+	local function resultText()
+		local lines={}
+		for _,row in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		return table.concat(lines," "):gsub("%s+"," ")
+	end
+	assert(resultText():find("Xbox | Covens",1,true) and resultText():find("Average 0.25 chaos",1,true))
+	assert(main.popups[1].controls.count.label:find("1 result",1,true))
+	if output then compact:frame():write(output.."/ggg-trade-history-results.json") end
+	compact:click("close")
+	compact:choose("realm","PlayStation")
+	compact:text("league","Covens")
+	compact:click("load")
+	assert(main.popups[1].title=="PlayStation completed trades")
+	assert(resultText():find("PlayStation | Covens",1,true) and resultText():find("Average 0.75 chaos",1,true))
+	compact:click("close")
+	compact:choose("realm","Xbox")
+	compact:text("league","Standard")
+	compact:click("load")
+	assert(resultText():find("Xbox | Standard",1,true) and resultText():find("Average 0.6 chaos",1,true))
+	compact:click("close")
+	compact:text("league","Absent")
+	compact:click("load")
+	assert(#calls==2 and main.popups[1].controls.status.label:find("No matching",1,true))
+	launch.DownloadPage=originalFetch
+	compact:restore()
+	print("Native trade history isolates Xbox and PlayStation completed trades by realm and league")
+end
+
 -- Add a price-managed rule through the normal workspace and round-trip the
 -- profile through its build saver and compiler without editing filter text.
 newBuild()
