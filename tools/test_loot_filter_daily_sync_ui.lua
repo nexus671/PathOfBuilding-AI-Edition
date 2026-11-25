@@ -672,6 +672,23 @@ Hide
 	local changedLateScroll = lateScroll.template:gsub(' "Portal Scroll"','',1)
 	local unsafeLateScroll = baseRefresh.planImported(lateScroll,lateScroll.template,changedLateScroll)
 	assert(unsafeLateScroll.blocks[#unsafeLateScroll.blocks]:find("custom drop protection rules",1,true))
+	local rare = copyTable(custom)
+	local tierMarker = "# CUSTOM: Highlight item tier 5 rare equipment on rank A and B bases"
+	rare.template = custom.template..tierMarker..[[
+
+Show
+    Identified False
+    Rarity Rare
+    UnidentifiedItemTier 5
+    BaseType == "Royal Plate"
+    MinimapIcon 0 Red Diamond
+Hide
+    Identified False
+    Rarity Rare
+]]
+	local shadowed = rare.template:gsub(tierMarker,'Hide\n    BaseType == "Royal Plate"\n'..tierMarker)
+	local unsafeRare = baseRefresh.planImported(rare,rare.template,shadowed)
+	assert(unsafeRare.blocks[#unsafeRare.blocks]:find("custom drop protection rules",1,true))
 	local imports = copyTable(profile)
 	imports.template = 'Import "old.filter"\n'
 	imports.importFiles = {{name="old.filter",text=previous},{name="new.filter",text=finalText}}

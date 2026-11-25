@@ -156,6 +156,8 @@ When a kept bundled profile references an older NeverSink revision, open **Profi
 
 **Apply to draft** is available after the protected checks pass. The new bundled revision and preserved personal rules remain in the draft until you keep it. The daily sync file and its fixed baseline can be replaced separately after reviewing the new export.
 
+When refreshing an imported baseline or adopting external edits to the tiered test filter, PoB also protects its marked rare-equipment rules. It checks the Tier 5 Rank A/B block, fallback hide, and identified corrupted affix rules for changes. A precedence check replays the declared bases at tiers 4 and 5 and examples of lower-ranked and corrupted equipment. Their filter decisions and visible appearance must match before PoB accepts the update.
+
 ## Publish a verified filter to a PoE account
 
 In **Daily price sync**, open **Publish to account** after a successful refresh. Use the existing PoE login and item-filter permission, select an existing filter in the matching realm, and review the full diff. **Publish exact output** rechecks the local checksum and the remote filter before sending the approved text. The server validates the update.

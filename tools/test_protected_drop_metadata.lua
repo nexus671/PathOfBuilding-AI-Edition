@@ -99,3 +99,48 @@ local function checkAdditivePersonalProtections()
 end
 checkAdditivePersonalProtections()
 print("PERSONAL_PROTECTIONS_REMAIN_REQUIRED_WITH_CUSTOM_SAMPLES_OK")
+
+do
+	local prefix = [[# CUSTOM: Hide Wisdom and Portal Scrolls
+Hide
+    BaseType == "Scroll of Wisdom" "Portal Scroll"
+Show
+    BaseType == "Chaos Orb"
+]]
+	local rareRules = [[# CUSTOM: Highlight item tier 5 rare equipment on rank A and B bases
+Show
+    Identified False
+    Rarity Rare
+    UnidentifiedItemTier 5
+    BaseType == "Royal Plate" "Agate Amulet"
+    MinimapIcon 0 Red Diamond
+# CUSTOM: Suppress other unidentified rare bases before broad tiered gear rules
+Hide
+    Identified False
+    Rarity Rare
+# CUSTOM: Identified corrupted rare modifier rules copied from the filter
+Show
+    Identified True
+    Corrupted True
+    Rarity Rare
+    HasExplicitMod >=3 "Merciless" "Flaring" "of Celebration"
+# CUSTOM: Hide other identified corrupted rare equipment
+Hide
+    Identified True
+    Corrupted True
+    Rarity Rare
+    CorruptedMods < 2
+Show
+]]
+	local baseline = prefix..rareRules
+	assert(protected.personalRulesPreserved(baseline,baseline:gsub("\n","\r\n")))
+	assert(not protected.personalRulesPreserved(baseline,baseline:gsub("UnidentifiedItemTier 5","UnidentifiedItemTier 4")))
+	assert(not protected.personalRulesPreserved(baseline,baseline:gsub("of Celebration","of Incision")))
+	assert(not protected.personalRulesPreserved(baseline,baseline:gsub("gear rules\nHide","gear rules\nShow")))
+	assert(not protected.personalRulesPreserved(baseline,prefix..'Hide\n    BaseType == "Royal Plate"\n'..rareRules))
+	assert(not protected.personalRulesPreserved(baseline,prefix..'Show\n    BaseType == "Royal Plate"\n    MinimapIcon 0 Red Diamond\n    SetFontSize 18\n'..rareRules))
+	assert(not protected.personalRulesPreserved(baseline,prefix..'Show\n    BaseType == "Plate Vest"\n'..rareRules))
+	assert(not protected.personalRulesPreserved(baseline,prefix..'Show\n    BaseType == "Vaal Axe"\n'..rareRules))
+	assert(protected.personalRulesPreserved(baseline,prefix..'Show\n    BaseType == "Mirror of Kalandra"\n'..rareRules))
+end
+print("PERSONAL_RARE_VISIBILITY_PRECEDENCE_OK")
