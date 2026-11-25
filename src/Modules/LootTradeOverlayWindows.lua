@@ -225,6 +225,8 @@ function M.minimize(window)
 end
 
 M.foreground=foreground
+M.processId=function() return tonumber(kernel.GetCurrentProcessId()) end
+M.foregroundProcess=function() return pid(foreground()) end
 M.minimized=function(window) return user.IsIconic(windowHandle(window))~=0 end
 M.pointerDown=function()
 	return bit.band(user.GetAsyncKeyState(1),0x8000)~=0 or bit.band(user.GetAsyncKeyState(2),0x8000)~=0

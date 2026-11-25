@@ -392,6 +392,8 @@ function main:CanExit()
 end
 
 function main:Shutdown()
+	local compare=package.loaded["Modules.LootTradeBuildCompare"]
+	if compare then compare.close() end
 	self:CallMode("Shutdown")
 	self:SaveSettings()
 end
@@ -433,6 +435,10 @@ function main:OnFrame()
 	end
 
 	self:CallMode("OnFrame", self.inputEvents, self.viewPort)
+	if not launch.headless and require("ffi").os=="Windows" then
+		require("Modules.LootTradeBuildCompare").tick(self.userPath,
+			not self.newMode and self.mode=="BUILD" and self.modes.BUILD or nil,os.time())
+	end
 
 	if launch.updateErrMsg then
 		ToastNotification:Add(string.format("Update check failed!\n%s", launch.updateErrMsg))
