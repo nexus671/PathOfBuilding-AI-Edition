@@ -32,7 +32,9 @@ function M.resolveEndpoint(value)
 	return "https://"..authority..path:gsub("/+$","").."/"
 end
 
-M.endpoint = M.resolveEndpoint(os.getenv("POB_MARKET_CACHE_URL"))
+-- The scheduled action retains the endpoint selected when it was registered.
+local scheduledEndpoint = arg and arg[1] == "--loot-filter-sync-scheduled" and arg[2]
+M.endpoint = M.resolveEndpoint(scheduledEndpoint or os.getenv("POB_MARKET_CACHE_URL"))
 M.endpointError = "The configured PoB market cache must be an HTTPS URL without a query or credentials."
 M.managedClasses = {"Stackable Currency", "Map Fragments", "Misc Map Items", "Delve Stackable Socketable Currency", "Divination Cards", "Skill Gems", "Support Gems", "Maps", "Embers of the Allflame", uniques.class}
 M.managedAreas = {{label="All areas", val="all"}, {label="Campaign", val="campaign"}, {label="Maps", val="maps"}}

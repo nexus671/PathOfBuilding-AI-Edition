@@ -158,13 +158,11 @@ def smoke_loot_sync(directory, source, league, minimum_checks, *, market_cache=N
         )
         return json.loads(output) if output.strip() else None
 
-    startup = subprocess.STARTUPINFO()
-    startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    startup.wShowWindow = subprocess.SW_HIDE
-
     def invoke_worker():
-        return subprocess.run([str(directory / "Path of Building.exe"), "--loot-filter-sync-scheduled"],
-                              cwd=directory, env=env, startupinfo=startup, timeout=160, check=False).returncode
+        command = [str(directory / "PoBLootSync.exe")]
+        if market_cache is not None:
+            command.append(market_cache.rstrip("/"))
+        return subprocess.run(command, cwd=directory, env=env, timeout=160, check=False).returncode
 
     native_config("prepare")
     scheduled_date = date.today()

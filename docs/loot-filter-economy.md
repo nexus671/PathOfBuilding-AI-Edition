@@ -84,7 +84,7 @@ If a sync target was edited outside PoB, **External edits** compares the live fi
 
 ## Optional background sync on Windows
 
-Select **Enable background sync** in **Daily price sync** to register a task for your Windows account. While you are signed in, Windows checks every five minutes for a due update, including when PoB is closed. PoB still uses your configured daily time, verified baseline, and protected samples. The task stays idle when sync is paused or disabled, and **Disable background sync** removes it.
+Select **Enable background sync** in **Daily price sync** to register a task for your Windows account. While you are signed in, Windows starts PoB’s background worker every five minutes to check for a due update, including when PoB is closed. The worker starts without a desktop window. PoB still uses your configured daily time, verified baseline, and protected samples. The task stays idle when sync is paused or disabled, and **Disable background sync** removes it.
 
 **Enable notifications** adds a Windows notification for a new failure or when an update changes at least five managed rules. PoB counts pickup cutoff changes and price highlight changes, including stack thresholds, icons, sounds and label sizes. Each rule counts once, with separate counts for different areas, map tiers, map variants and gem variants. Quote changes alone do not trigger an alert. Clicking the notification opens PoB. Windows notification settings determine when the alert appears.
 

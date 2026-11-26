@@ -1,5 +1,6 @@
 -- Run the shared daily sync engine without opening a build or saving desktop settings.
 local M = {}
+local alerts = require("Modules.LootFilterBackgroundAlerts")
 
 local function exitStatus(failed)
 	-- Return a failing task result so Windows can retry a failed refresh.
@@ -31,7 +32,7 @@ function M.start(app, scheduled)
 		local sync = require("Modules.LootFilterDailySync")
 		app.lootSyncStarted = os.time()
 		-- GetTime and the native launch startTime are milliseconds. Reserve 30 seconds
-		-- for the final settings commit, process shutdown, and the Windows task wrapper.
+		-- for the final settings commit, process shutdown, and an optional Windows notification.
 		app.lootSyncLatestStart = scheduled and startedMs + 1000 *
 			(sync.taskExecutionSeconds-sync.refreshTimeoutSeconds-sync.workerFinalizationSeconds) or nil
 		local errors
@@ -85,12 +86,24 @@ function M.frame(app)
 			return true
 		end
 		app.lootSyncIndex = nextIndex
+		if app.lootSyncScheduled then
+			local read, previous = pcall(alerts.profile,sync,nextProfile.id)
+			if read and previous then
+				app.lootSyncBefore = app.lootSyncBefore or {}
+				app.lootSyncBefore[nextProfile.id] = previous
+			end
+		end
 		advance(os.time(),false,app.lootSyncScheduled,nextProfile.id,failure)
 		return false
 	end)
 	if ok and not finished then return end
 	ConPrintf("Loot filter background sync: %s", ok and sync.status or tostring(finished))
-	exitStatus(not ok or app.lootSyncFailed)
+	local failed = not ok or app.lootSyncFailed
+	if app.lootSyncBefore then
+		local read, text, warning = pcall(alerts.summarize,sync,app.lootSyncBefore,failed)
+		if read and text then pcall(alerts.notify,text,warning) end
+	end
+	exitStatus(failed)
 end
 
 return M

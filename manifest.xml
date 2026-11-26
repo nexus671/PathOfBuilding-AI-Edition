@@ -2119,8 +2119,9 @@
 	<File name="Modules/LootFilterAccount.lua" part="program" sha1="4a85550c4c75275ab7303bffa8463b7f82fafee0" />
 	<File name="Modules/LootFilterAppearanceSettings.lua" part="program" sha1="feecc806a9fd76a8977a3365cb565f32f33ee9fe" />
 	<File name="Modules/LootFilterAudio.lua" part="program" sha1="be558b4b26daea559d591f63c8c1839746d92750" />
-	<File name="Modules/LootFilterBackground.lua" part="program" sha1="2dcf95cb77c17cd9fe6ef9a4c8ca2f890ec05995" />
-	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="c2d958ab58d946cd92793ec35992516786fc6521" />
+	<File name="Modules/LootFilterBackground.lua" part="program" sha1="7163bb1180f471c1d1ec36423d52f7342fdaf687" />
+	<File name="Modules/LootFilterBackgroundAlerts.lua" part="program" sha1="e6e5ce5e1c4d00a54b7b8e6767e2cec97ff83713" />
+	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="3b9aeef059b99c24242bb7baa2526830aa08e6e1" />
 	<File name="Modules/LootFilterBaseRefresh.lua" part="program" sha1="c716bda8a878b6db8af8fda903d882d692d1d9c2" />
 	<File name="Modules/LootFilterCampaign.lua" part="program" sha1="90254b52f511ae8b9f22cf5d8c3854fbb97e782b" />
 	<File name="Modules/LootFilterCategoryStyles.lua" part="program" sha1="4c8f8e6a1aef62f216496dcd7cb55fd7ba9f0716" />
@@ -2132,7 +2133,7 @@
 	<File name="Modules/LootFilterDependencies.lua" part="program" sha1="0d82ce982e3c96fdcb44d9d3ecbc5248da761fb9" />
 	<File name="Modules/LootFilterDiagnostics.lua" part="program" sha1="f09371e7fb49c4003aa371003846093946330147" />
 	<File name="Modules/LootFilterDiff.lua" part="program" sha1="88486ea49dcf8826000b84018acb4e604532cc53" />
-	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="69471d6c2490404194d72fc3d096ae3caeb50961" />
+	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="bc8c8e50eb7b06b266a2e29782777aaed373d1c4" />
 	<File name="Modules/LootFilterEditing.lua" part="program" sha1="28b6bb32ae9b688ef9f9dd63d8ed34338dcc49de" />
 	<File name="Modules/LootFilterExchangeCrossCheck.lua" part="program" sha1="77ecf416639616ce3996802f50014636fe9b9b8f" />
 	<File name="Modules/LootFilterExports.lua" part="program" sha1="778f95494f6f7f499327b8e094457f0ff227b9e1" />
@@ -2161,6 +2162,7 @@
 	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="b61d0e38e36a87d68d19e8879b852c207a2b18df" />
 	<File name="Modules/LootFilterUniqueMarket.lua" part="program" sha1="8b397f48404bef2311cfd35930963ed813798c7f" />
 	<File name="Modules/LootFilterVisuals.lua" part="program" sha1="44f913b3183554afb21b36adb6a43a9db2520bbd" />
+	<File name="Modules/LootFilterWindowsProcess.lua" part="program" sha1="282605c9c157219a534301ffbd34cfe980526181" />
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="4707a76b68b0a805db8d941c3dd2f5af8978cc06" />
 	<File name="Modules/LootTradeBuildCompare.lua" part="program" sha1="2d56447dabfc4bede08665110d6409e8309de268" />
 	<File name="Modules/LootTradeOverlay.lua" part="program" sha1="4b531cbddf6442d1334eddfa7640a40ba744951e" />
@@ -2229,6 +2231,7 @@
 	<File name="msvcp140_atomic_wait.dll" part="runtime" platform="win32" sha1="8544021005709c682ce4d2430fba88aff0fc7eb3" />
 	<File name="msvcp140_codecvt_ids.dll" part="runtime" platform="win32" sha1="3bb5afd909c5271088a223191f38ca916c7d81f0" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" platform="win32" sha1="fcb5baec5551d81102fa017faca88c092559eceb" />
+	<File name="PoBLootSync.exe" part="runtime" platform="win32" sha1="b7a740b37376fe658749ce3379e511dd6d8fc6a3" />
 	<File name="re2.dll" part="runtime" platform="win32" sha1="4263cf948808108de40e7b6fb522b349cafaabcf" />
 	<File name="SimpleGraphic.dll" part="runtime" platform="win32" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" />
 	<File name="SimpleGraphic/Fonts/Bitstream Vera Sans Mono.10.tga" part="runtime" platform="win32" sha1="12e59115634000273611ef08b0d1b130ea95d4a7" />
